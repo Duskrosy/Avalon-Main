@@ -38,7 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
     name: "Analytics",
     slug: "analytics",
     items: [
-      { name: "KPI Dashboard", slug: "kpi-dashboard", route: "/analytics/kpi-dashboard" },
+      { name: "KPI Dashboard", slug: "kpi-dashboard", route: "/analytics/kpis" },
       { name: "Goals & Deadlines", slug: "goals", route: "/analytics/goals" },
     ],
   },
