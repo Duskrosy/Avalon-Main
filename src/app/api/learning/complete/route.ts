@@ -1,0 +1,38 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/permissions";
+
+// POST /api/learning/complete — mark/unmark material as complete
+// Body: { material_id: string, completed: boolean }
+export async function POST(req: NextRequest) {
+  const supabase = await createClient();
+  const currentUser = await getCurrentUser(supabase);
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { material_id, completed } = await req.json() as {
+    material_id: string;
+    completed: boolean;
+  };
+
+  if (!material_id) return NextResponse.json({ error: "material_id required" }, { status: 400 });
+
+  if (completed) {
+    const { error } = await supabase.from("learning_completions").insert({
+      user_id: currentUser.id,
+      material_id,
+    });
+    // Ignore duplicate (23505)
+    if (error && error.code !== "23505") {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  } else {
+    const { error } = await supabase
+      .from("learning_completions")
+      .delete()
+      .eq("user_id", currentUser.id)
+      .eq("material_id", material_id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
