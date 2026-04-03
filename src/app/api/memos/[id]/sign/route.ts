@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
+import { trackEventServer } from "@/lib/observability/track";
 
 // POST /api/memos/[id]/sign — current user signs the memo
 export async function POST(
@@ -31,6 +32,12 @@ export async function POST(
   if (error && error.code !== "23505") {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  trackEventServer(supabase, currentUser.id, "memo.signed", {
+    module: "knowledgebase",
+    category: "audit",
+    properties: { memo_id: id },
+  });
 
   return NextResponse.json({ ok: true });
 }

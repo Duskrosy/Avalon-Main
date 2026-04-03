@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { trackEventServer } from "@/lib/observability/track";
 
 // GET /api/sales/volume?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -64,6 +65,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  trackEventServer(supabase, currentUser.id, "sales.volume.logged", {
+    module: "sales-ops",
+    properties: { agent_id, date },
+  });
+
   return NextResponse.json(data, { status: 201 });
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
+import { trackEventServer } from "@/lib/observability/track";
 
 // GET /api/bookings?date=YYYY-MM-DD or ?room_id=xxx
 export async function GET(req: NextRequest) {
@@ -85,6 +86,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  trackEventServer(supabase, currentUser.id, "room.booked", {
+    module: "scheduling",
+    properties: { room_id },
+  });
+
   return NextResponse.json({ id: data.id }, { status: 201 });
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
+import { trackEventServer } from "@/lib/observability/track";
 
 // POST /api/learning/complete — mark/unmark material as complete
 // Body: { material_id: string, completed: boolean }
@@ -32,6 +33,13 @@ export async function POST(req: NextRequest) {
       .eq("user_id", currentUser.id)
       .eq("material_id", material_id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (completed) {
+    trackEventServer(supabase, currentUser.id, "learning.completed", {
+      module: "knowledgebase",
+      properties: { material_id },
+    });
   }
 
   return NextResponse.json({ ok: true });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { trackEventServer } from "@/lib/observability/track";
 
 // GET /api/leaves
 export async function GET(request: Request) {
@@ -124,6 +125,11 @@ export async function POST(request: Request) {
     await admin.from("notifications").insert(notifications);
   }
 
+  trackEventServer(supabase, currentUser.id, "leave.submitted", {
+    module: "people",
+    properties: { leave_type, start_date, end_date },
+  });
+
   return NextResponse.json({ leave: data });
 }
 
@@ -188,6 +194,12 @@ export async function PATCH(request: Request) {
     title: `Leave ${action}`,
     body: `Your ${leave.leave_type} leave (${leave.start_date} to ${leave.end_date}) has been ${action} by ${currentUser.first_name} ${currentUser.last_name}.`,
     link_url: "/people/leaves",
+  });
+
+  trackEventServer(supabase, currentUser.id, `leave.${action}`, {
+    module: "people",
+    category: "audit",
+    properties: { leave_id, action },
   });
 
   return NextResponse.json({ message: `Leave ${action}` });
