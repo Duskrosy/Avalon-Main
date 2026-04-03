@@ -26,6 +26,7 @@ yarn-error.log*
 # env files — NEVER commit secrets
 .env
 .env.local
+.env.local.example
 .env.development.local
 .env.test.local
 .env.production.local

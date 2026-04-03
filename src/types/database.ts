@@ -81,6 +81,43 @@ export type FeatureFlag = {
 };
 
 // ============================================================
+// People — Leaves & Notifications
+// ============================================================
+
+export type Leave = {
+  id: string;
+  user_id: string;
+  leave_type: "vacation" | "sick" | "personal" | "other";
+  start_date: string;
+  end_date: string;
+  reason: string | null;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LeaveWithProfile = Leave & {
+  profile: Pick<Profile, "id" | "first_name" | "last_name" | "department_id"> & {
+    department: Pick<Department, "id" | "name"> | null;
+  };
+  reviewer: Pick<Profile, "first_name" | "last_name"> | null;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  link_url: string | null;
+  is_read: boolean;
+  created_at: string;
+};
+
+// ============================================================
 // Observability types
 // ============================================================
 
