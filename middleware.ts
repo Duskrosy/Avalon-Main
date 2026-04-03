@@ -39,18 +39,13 @@ setInterval(() => {
   }
 }, RATE_LIMIT_WINDOW_MS);
 
-// ─── CSP nonce ───────────────────────────────────────────────────────────────
-function generateNonce(): string {
-  const bytes = new Uint8Array(16);
-  crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes));
-}
-
-function buildCsp(nonce: string, supabaseHost: string): string {
+function buildCsp(supabaseHost: string): string {
   return [
     "default-src 'self'",
-    // nonce covers Next.js inline scripts; strict-dynamic allows their child scripts
-    `script-src 'nonce-${nonce}' 'strict-dynamic'`,
+    // 'unsafe-inline' is required for Next.js App Router (inline hydration scripts).
+    // 'strict-dynamic' cannot be used because Next.js emits static <script src> chunk
+    // tags that don't carry nonces and aren't dynamically created by a trusted script.
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
@@ -79,16 +74,12 @@ export default async function middleware(request: NextRequest) {
     });
   }
 
-  // Generate nonce and build CSP (only for page routes — API responses don't need CSP)
-  const nonce = generateNonce();
   const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
     ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
     : "*.supabase.co";
-  const csp = buildCsp(nonce, supabaseHost);
+  const csp = buildCsp(supabaseHost);
 
-  // Pass nonce to Next.js so it injects it into inline scripts
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
 
   let supabaseResponse = NextResponse.next({
     request: { headers: requestHeaders },
@@ -140,10 +131,7 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Set CSP on the response (not the request)
   supabaseResponse.headers.set("Content-Security-Policy", csp);
-  // Pass nonce forward so server components can read it via headers()
-  supabaseResponse.headers.set("x-nonce", nonce);
 
   return supabaseResponse;
 }
