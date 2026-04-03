@@ -550,10 +550,10 @@ export function KpiDashboard({
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">KPI Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {currentDeptName ? `${currentDeptName} · ` : ""}Performance tracking
-          </p>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {currentDeptName ? `${currentDeptName}` : "KPI Dashboard"}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">KPI performance tracking</p>
         </div>
         {isOps && departments.length > 0 && (
           <select
