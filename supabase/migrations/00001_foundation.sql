@@ -655,10 +655,11 @@ INSERT INTO public.roles (name, slug, tier, description) VALUES
 
 -- Default departments
 INSERT INTO public.departments (name, slug, description) VALUES
-  ('Operations',      'ops',    'Operations and administration'),
-  ('Sales',           'sales',  'Sales department'),
-  ('Ad Operations',   'ad-ops', 'Advertising operations'),
-  ('Human Resources', 'hr',     'Human resources department');
+  ('Operations',      'ops',     'Operations and administration'),
+  ('Sales',           'sales',   'Sales department'),
+  ('Ad Operations',   'ad-ops',  'Advertising operations'),
+  ('Human Resources', 'hr',      'Human resources department'),
+  ('Finance',         'finance', 'Finance department');
 
 -- Default permissions (22 records)
 INSERT INTO public.permissions (action, resource, description) VALUES
