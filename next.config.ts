@@ -1,27 +1,8 @@
 import type { NextConfig } from "next";
 
-const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
-  : "*.supabase.co";
-
-const csp = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data: https:",
-  "font-src 'self'",
-  `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
-  "frame-src 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
-
+// CSP is set dynamically in middleware.ts (nonce-based, per-request).
+// Only static headers that don't need a nonce live here.
 const securityHeaders = [
-  {
-    key: "Content-Security-Policy",
-    value: csp,
-  },
   {
     key: "X-DNS-Prefetch-Control",
     value: "on",
