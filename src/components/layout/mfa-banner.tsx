@@ -30,9 +30,7 @@ export function MfaBanner() {
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <a
-          href="https://supabase.com/dashboard/project/_/auth/users"
-          target="_blank"
-          rel="noopener noreferrer"
+          href="/account/security"
           className="text-amber-700 font-medium hover:underline"
         >
           Set up 2FA →

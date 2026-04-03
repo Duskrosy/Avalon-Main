@@ -103,6 +103,13 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    name: "Account",
+    slug: "account",
+    items: [
+      { name: "Security", slug: "security", route: "/account/security" },
+    ],
+  },
+  {
     name: "Admin",
     slug: "admin",
     minTier: 1, // OPS only
