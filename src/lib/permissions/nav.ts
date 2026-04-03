@@ -86,6 +86,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Consistency", slug: "consistency", route: "/sales-ops/consistency" },
       { name: "Downtime Log", slug: "downtime-log", route: "/sales-ops/downtime-log" },
       { name: "Incentive Payouts", slug: "incentive-payouts", route: "/sales-ops/incentive-payouts" },
+      { name: "Weekly Report", slug: "weekly-report", route: "/sales-ops/weekly-agent-report" },
       { name: "Monthly Summary", slug: "monthly-summary", route: "/sales-ops/monthly-summary" },
     ],
   },
