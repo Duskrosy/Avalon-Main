@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { kanbanColumnPostSchema } from "@/lib/api/schemas";
 
 // POST /api/kanban/columns — add column to board
 export async function POST(req: NextRequest) {
@@ -9,13 +11,11 @@ export async function POST(req: NextRequest) {
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { board_id, name, sort_order } = await req.json() as {
-    board_id: string;
-    name: string;
-    sort_order?: number;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(kanbanColumnPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!board_id || !name) return NextResponse.json({ error: "board_id and name required" }, { status: 400 });
+  const { board_id, name, sort_order } = body;
 
   const { data, error } = await supabase
     .from("kanban_columns")

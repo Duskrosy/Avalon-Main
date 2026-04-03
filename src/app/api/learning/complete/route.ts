@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { learningCompletePostSchema } from "@/lib/api/schemas";
 
 // POST /api/learning/complete — mark/unmark material as complete
 // Body: { material_id: string, completed: boolean }
@@ -10,12 +12,11 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { material_id, completed } = await req.json() as {
-    material_id: string;
-    completed: boolean;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(learningCompletePostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!material_id) return NextResponse.json({ error: "material_id required" }, { status: 400 });
+  const { material_id, completed } = body;
 
   if (completed) {
     const { error } = await supabase.from("learning_completions").insert({

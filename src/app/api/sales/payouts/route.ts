@@ -11,6 +11,8 @@ import {
   computeDailyFps,
 } from "@/lib/sales/scoring";
 import type { DailyVolume, QaLog } from "@/lib/sales/types";
+import { validateBody } from "@/lib/api/validate";
+import { salesPayoutPostSchema, salesPayoutPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/sales/payouts?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -45,7 +47,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesPayoutPostSchema, raw);
+  if (validationError) return validationError;
+
   const {
     agent_id, month,
     paid_pairs, abandoned_pairs, onhand_pairs, total_delivered,
@@ -142,19 +147,22 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesPayoutPatchSchema, raw);
+  if (validationError) return validationError;
 
+  const updatePayload: Record<string, unknown> = { ...body };
   if (body.status === "approved") {
-    body.approved_by = currentUser.id;
-    body.approved_at = new Date().toISOString();
+    updatePayload.approved_by = currentUser.id;
+    updatePayload.approved_at = new Date().toISOString();
   }
   if (body.status === "paid") {
-    body.paid_at = new Date().toISOString();
+    updatePayload.paid_at = new Date().toISOString();
   }
 
   const { data, error } = await supabase
     .from("sales_incentive_payouts")
-    .update(body)
+    .update(updatePayload)
     .eq("id", id)
     .select()
     .single();

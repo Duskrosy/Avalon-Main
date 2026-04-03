@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { adAssetPostSchema, adAssetPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/ad-ops/assets?status=&content_type=&funnel_stage=&creator_id=
 export async function GET(req: NextRequest) {
@@ -47,22 +49,23 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(adAssetPostSchema, raw);
+  if (validationError) return validationError;
 
   const { data, error } = await supabase
     .from("ad_assets")
     .insert({
       request_id: body.request_id ?? null,
-      asset_code: body.asset_code,
       title: body.title,
-      product: body.product ?? null,
       content_type: body.content_type ?? null,
-      hook_type: body.hook_type ?? null,
       funnel_stage: body.funnel_stage ?? null,
-      creator_id: body.creator_id ?? currentUser.id,
+      ad_format: body.ad_format ?? null,
+      creator_id: currentUser.id,
       thumbnail_url: body.thumbnail_url ?? null,
-      tags: body.tags ?? [],
+      file_url: body.file_url ?? null,
       notes: body.notes ?? null,
+      status: body.status ?? "draft",
     })
     .select()
     .single();
@@ -86,7 +89,9 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(adAssetPatchSchema, raw);
+  if (validationError) return validationError;
 
   const { data, error } = await supabase
     .from("ad_assets")

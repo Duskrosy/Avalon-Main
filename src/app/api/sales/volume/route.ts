@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { salesVolumePostSchema } from "@/lib/api/schemas";
 
 // GET /api/sales/volume?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -38,7 +40,10 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesVolumePostSchema, raw);
+  if (validationError) return validationError;
+
   const {
     agent_id, date, follow_ups, confirmed_total, confirmed_abandoned,
     buffer_approved, buffer_reason, buffer_proof_link,

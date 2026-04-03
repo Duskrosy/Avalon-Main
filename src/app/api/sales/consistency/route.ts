@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { CONSISTENCY_TIERS } from "@/lib/sales/constants";
+import { validateBody } from "@/lib/api/validate";
+import { salesConsistencyPostSchema, salesConsistencyPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/sales/consistency?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -35,7 +37,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesConsistencyPostSchema, raw);
+  if (validationError) return validationError;
+
   const { agent_id, month, ranges_hit, evaluator, notes } = body;
 
   const clampedRanges = Math.max(0, Math.min(3, ranges_hit ?? 0));
@@ -69,17 +74,20 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesConsistencyPatchSchema, raw);
+  if (validationError) return validationError;
 
+  const updatePayload: Record<string, unknown> = { ...body };
   if (body.ranges_hit !== undefined) {
     const clampedRanges = Math.max(0, Math.min(3, body.ranges_hit));
-    body.ranges_hit = clampedRanges;
-    body.consistency_score = CONSISTENCY_TIERS[clampedRanges as keyof typeof CONSISTENCY_TIERS] ?? 0;
+    updatePayload.ranges_hit = clampedRanges;
+    updatePayload.consistency_score = CONSISTENCY_TIERS[clampedRanges as keyof typeof CONSISTENCY_TIERS] ?? 0;
   }
 
   const { data, error } = await supabase
     .from("sales_consistency")
-    .update(body)
+    .update(updatePayload)
     .eq("id", id)
     .select()
     .single();

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps, resolveNavigation } from "@/lib/permissions";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { MfaBanner } from "@/components/layout/mfa-banner";
 
 async function getBirthdayBanner(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -110,6 +111,7 @@ export default async function DashboardLayout({
       />
       <div className="ml-64">
         <Topbar unreadCount={unreadCount} birthdayBanner={birthdayBanner} />
+        {userTier <= 2 && <MfaBanner />}
         <main className="p-6">{children}</main>
       </div>
     </div>

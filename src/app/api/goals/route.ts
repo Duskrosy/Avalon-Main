@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { goalPostSchema } from "@/lib/api/schemas";
 
 // GET /api/goals?department_id=xxx
 export async function GET(req: NextRequest) {
@@ -35,20 +37,11 @@ export async function POST(req: NextRequest) {
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, description, target_value, current_value, unit, deadline, department_id } =
-    await req.json() as {
-      title: string;
-      description?: string;
-      target_value: number;
-      current_value?: number;
-      unit?: string;
-      deadline: string;
-      department_id?: string;
-    };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(goalPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!title || !target_value || !deadline) {
-    return NextResponse.json({ error: "title, target_value, deadline required" }, { status: 400 });
-  }
+  const { title, description, target_value, current_value, unit, deadline, department_id } = body;
 
   const { data, error } = await supabase
     .from("goals")

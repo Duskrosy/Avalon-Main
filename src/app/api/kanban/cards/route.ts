@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { kanbanCardPostSchema, kanbanCardPatchSchema } from "@/lib/api/schemas";
 
 // POST /api/kanban/cards — create card
 export async function POST(req: NextRequest) {
@@ -9,17 +11,11 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { column_id, title, description, assigned_to, due_date, priority } = body as {
-    column_id: string;
-    title: string;
-    description?: string;
-    assigned_to?: string;
-    due_date?: string;
-    priority?: string;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(kanbanCardPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!column_id || !title) return NextResponse.json({ error: "column_id and title required" }, { status: 400 });
+  const { column_id, title, description, assigned_to, due_date, priority } = body;
 
   const { data, error } = await supabase
     .from("kanban_cards")
@@ -58,19 +54,11 @@ export async function PATCH(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { id, ...updates } = body as {
-    id: string;
-    column_id?: string;
-    title?: string;
-    description?: string;
-    assigned_to?: string | null;
-    due_date?: string | null;
-    priority?: string;
-    sort_order?: number;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(kanbanCardPatchSchema, raw);
+  if (validationError) return validationError;
 
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const { id, ...updates } = body;
 
   const patch: Record<string, unknown> = {};
   if (updates.column_id !== undefined) patch.column_id = updates.column_id;

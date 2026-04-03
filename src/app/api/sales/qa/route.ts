@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { QA_TIERS } from "@/lib/sales/constants";
+import { validateBody } from "@/lib/api/validate";
+import { salesQaPostSchema, salesQaPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/sales/qa?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -40,7 +42,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesQaPostSchema, raw);
+  if (validationError) return validationError;
+
   const { agent_id, qa_date, message_link, qa_tier, qa_reason, evaluator, notes } = body;
 
   const tierDef = QA_TIERS[qa_tier as keyof typeof QA_TIERS];
@@ -79,18 +84,22 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesQaPatchSchema, raw);
+  if (validationError) return validationError;
+
+  const updatePayload: Record<string, unknown> = { ...body };
 
   // Recalculate points/fail if tier is updated
   if (body.qa_tier) {
     const tierDef = QA_TIERS[body.qa_tier as keyof typeof QA_TIERS];
-    body.qa_points = tierDef?.points ?? 0;
-    body.qa_fail = tierDef?.fail ?? false;
+    updatePayload.qa_points = tierDef?.points ?? 0;
+    updatePayload.qa_fail = tierDef?.fail ?? false;
   }
 
   const { data, error } = await supabase
     .from("sales_qa_log")
-    .update(body)
+    .update(updatePayload)
     .eq("id", id)
     .select()
     .single();

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { goalPatchSchema } from "@/lib/api/schemas";
 
 // PATCH /api/goals/[id]
 export async function PATCH(
@@ -13,7 +15,10 @@ export async function PATCH(
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(goalPatchSchema, raw);
+  if (validationError) return validationError;
+
   const updates: Record<string, unknown> = {};
   if (body.title !== undefined) updates.title = body.title;
   if (body.description !== undefined) updates.description = body.description;

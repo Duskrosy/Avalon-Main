@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { leavePostSchema, leavePatchSchema } from "@/lib/api/schemas";
 
 // GET /api/leaves
 export async function GET(request: Request) {
@@ -69,12 +71,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { leave_type, start_date, end_date, reason } = body;
+  const raw = await request.json();
+  const { data: body, error: validationError } = validateBody(leavePostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!leave_type || !start_date || !end_date) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+  const { leave_type, start_date, end_date, reason } = body;
 
   if (new Date(start_date) > new Date(end_date)) {
     return NextResponse.json({ error: "Start date must be before end date" }, { status: 400 });
@@ -142,12 +143,11 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { leave_id, action } = body;
+  const raw = await request.json();
+  const { data: body, error: validationError } = validateBody(leavePatchSchema, raw);
+  if (validationError) return validationError;
 
-  if (!leave_id || !action || !["approved", "rejected"].includes(action)) {
-    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-  }
+  const { leave_id, action } = body;
 
   const admin = createAdminClient();
 

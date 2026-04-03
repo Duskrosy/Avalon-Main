@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { bookingPostSchema } from "@/lib/api/schemas";
 
 // GET /api/bookings?date=YYYY-MM-DD or ?room_id=xxx
 export async function GET(req: NextRequest) {
@@ -42,17 +44,11 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { room_id, title, start_time, end_time, notes } = await req.json() as {
-    room_id: string;
-    title: string;
-    start_time: string;
-    end_time: string;
-    notes?: string;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(bookingPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!room_id || !title || !start_time || !end_time) {
-    return NextResponse.json({ error: "room_id, title, start_time, end_time are required" }, { status: 400 });
-  }
+  const { room_id, title, start_time, end_time, notes } = body;
 
   const start = new Date(start_time);
   const end = new Date(end_time);

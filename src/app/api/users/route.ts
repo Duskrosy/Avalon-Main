@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { userPostSchema } from "@/lib/api/schemas";
 
 // GET /api/users
 export async function GET() {
@@ -46,12 +48,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const { email, password, first_name, last_name, department_id, role_id, birthday, phone } = body;
+  const raw = await request.json();
+  const { data: body, error: validationError } = validateBody(userPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!email || !password || !first_name || !last_name || !department_id || !role_id) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+  const { email, password, first_name, last_name, department_id, role_id, birthday, phone } = body;
 
   // Managers can only create users in their own department
   if (!isOps(currentUser) && department_id !== currentUser.department_id) {

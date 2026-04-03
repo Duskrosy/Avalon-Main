@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { memoPostSchema } from "@/lib/api/schemas";
 
 // GET /api/memos — list memos accessible to this user
 export async function GET() {
@@ -30,15 +32,11 @@ export async function POST(req: NextRequest) {
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json();
-  const { title, content, department_id } = body as {
-    title: string;
-    content: string;
-    department_id?: string | null;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(memoPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
-  if (!content?.trim()) return NextResponse.json({ error: "content is required" }, { status: 400 });
+  const { title, content, department_id } = body;
 
   const { data: memo, error } = await supabase
     .from("memos")

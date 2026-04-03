@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { adDeploymentPostSchema, adDeploymentPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/ad-ops/deployments?status=&asset_id=
 export async function GET(req: NextRequest) {
@@ -40,18 +42,23 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(adDeploymentPostSchema, raw);
+  if (validationError) return validationError;
 
   const { data, error } = await supabase
     .from("ad_deployments")
     .insert({
-      asset_id: body.asset_id,
+      asset_id: body.asset_id ?? null,
       meta_account_id: body.meta_account_id ?? null,
       campaign_name: body.campaign_name ?? null,
       meta_campaign_id: body.meta_campaign_id ?? null,
       meta_adset_id: body.meta_adset_id ?? null,
       meta_ad_id: body.meta_ad_id ?? null,
-      status: body.status ?? "planned",
+      budget_daily: body.budget_daily ?? null,
+      budget_total: body.budget_total ?? null,
+      notes: body.notes ?? null,
+      status: body.status ?? "draft",
       launched_by: body.status === "active" ? currentUser.id : null,
       launched_at: body.status === "active" ? new Date().toISOString() : null,
     })
@@ -77,16 +84,19 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(adDeploymentPatchSchema, raw);
+  if (validationError) return validationError;
 
-  if (body.status === "active" && !body.launched_by) {
-    body.launched_by = currentUser.id;
-    body.launched_at = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = { ...body };
+  if (body.status === "active") {
+    updatePayload.launched_by = currentUser.id;
+    updatePayload.launched_at = new Date().toISOString();
   }
 
   const { data, error } = await supabase
     .from("ad_deployments")
-    .update(body)
+    .update(updatePayload)
     .eq("id", id)
     .select()
     .single();

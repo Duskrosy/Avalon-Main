@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { validateBody } from "@/lib/api/validate";
+import { salesDowntimePostSchema, salesDowntimePatchSchema } from "@/lib/api/schemas";
 
 // GET /api/sales/downtime?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -37,7 +39,9 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesDowntimePostSchema, raw);
+  if (validationError) return validationError;
 
   const { data, error } = await supabase
     .from("sales_downtime_log")
@@ -58,19 +62,22 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(salesDowntimePatchSchema, raw);
+  if (validationError) return validationError;
 
   if (body.verified !== undefined && !isManagerOrAbove(currentUser)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const updatePayload: Record<string, unknown> = { ...body };
   if (body.verified === true) {
-    body.verified_by = currentUser.id;
+    updatePayload.verified_by = currentUser.id;
   }
 
   const { data, error } = await supabase
     .from("sales_downtime_log")
-    .update(body)
+    .update(updatePayload)
     .eq("id", id)
     .select()
     .single();

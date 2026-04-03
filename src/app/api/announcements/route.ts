@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { announcementPostSchema } from "@/lib/api/schemas";
 
 // GET /api/announcements
 export async function GET() {
@@ -30,16 +32,11 @@ export async function POST(req: NextRequest) {
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { title, content, priority, department_id, expires_at } = await req.json() as {
-    title: string;
-    content: string;
-    priority?: "normal" | "important" | "urgent";
-    department_id?: string | null;
-    expires_at?: string | null;
-  };
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(announcementPostSchema, raw);
+  if (validationError) return validationError;
 
-  if (!title?.trim()) return NextResponse.json({ error: "title is required" }, { status: 400 });
-  if (!content?.trim()) return NextResponse.json({ error: "content is required" }, { status: 400 });
+  const { title, content, priority, department_id, expires_at } = body;
 
   // Non-OPS managers can only post to own department
   if (!isOps(currentUser) && department_id && department_id !== currentUser.department_id) {

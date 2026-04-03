@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { trackEventServer } from "@/lib/observability/track";
+import { validateBody } from "@/lib/api/validate";
+import { adRequestPostSchema, adRequestPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/ad-ops/requests?status=&limit=100
 export async function GET(req: NextRequest) {
@@ -38,7 +40,9 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(adRequestPostSchema, raw);
+  if (validationError) return validationError;
 
   const { data, error } = await supabase
     .from("ad_requests")
@@ -73,7 +77,9 @@ export async function PATCH(req: NextRequest) {
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(adRequestPatchSchema, raw);
+  if (validationError) return validationError;
 
   const { data, error } = await supabase
     .from("ad_requests")

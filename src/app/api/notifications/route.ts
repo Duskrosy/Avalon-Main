@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { notificationPatchSchema } from "@/lib/api/schemas";
 
 // GET /api/notifications
 export async function GET(request: Request) {
@@ -46,7 +48,10 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const raw = await request.json();
+  const { data: body, error: validationError } = validateBody(notificationPatchSchema, raw);
+  if (validationError) return validationError;
+
   const { id, mark_all } = body;
 
   const admin = createAdminClient();
