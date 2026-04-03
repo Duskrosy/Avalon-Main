@@ -107,6 +107,10 @@ export type IncentivePayout = {
   scored_days: number;
   consistency_score: number;
   final_fps: number | null;
+  paid_pairs: number;
+  abandoned_pairs: number;
+  onhand_pairs: number;
+  total_delivered: number;
   main_tier_payout: number;
   abandoned_payout: number;
   onhand_payout: number;
