@@ -27,7 +27,8 @@ function dayAfter(date: string): string {
 async function syncFacebook(pageId: string, token: string, date: string) {
   const since = date;
   const until = dayAfter(date);
-  const metrics = "page_impressions,page_impressions_unique,page_engaged_users";
+  // page_post_engagements replaces deprecated page_engaged_users in Graph API v19+
+  const metrics = "page_impressions,page_impressions_unique,page_post_engagements";
   const url = `${META_BASE}/${pageId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${token}`;
 
   const res = await fetch(url);
@@ -48,7 +49,7 @@ async function syncFacebook(pageId: string, token: string, date: string) {
   return {
     impressions:        getValue("page_impressions"),
     reach:              getValue("page_impressions_unique"),
-    engagements:        getValue("page_engaged_users"),
+    engagements:        getValue("page_post_engagements"),
     follower_count,
     video_plays:        0,
     video_plays_3s:     0,
@@ -60,7 +61,8 @@ async function syncFacebook(pageId: string, token: string, date: string) {
 async function syncInstagram(igUserId: string, token: string, date: string) {
   const since = date;
   const until = dayAfter(date);
-  const metrics = "impressions,reach,profile_views";
+  // impressions + reach + accounts_engaged are the stable v21.0 day-period metrics
+  const metrics = "impressions,reach,accounts_engaged";
   const url = `${META_BASE}/${igUserId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${token}`;
 
   const res = await fetch(url);
@@ -80,7 +82,7 @@ async function syncInstagram(igUserId: string, token: string, date: string) {
   return {
     impressions:        getValue("impressions"),
     reach:              getValue("reach"),
-    engagements:        getValue("profile_views"), // best proxy without post-level data
+    engagements:        getValue("accounts_engaged"),
     follower_count,
     video_plays:        0,
     video_plays_3s:     0,
