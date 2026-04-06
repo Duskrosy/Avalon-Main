@@ -455,37 +455,109 @@ export function AnalyticsView({ groups }: Props) {
       {/* ── Data: KPI cards + charts ── */}
       {!loading && hasData && summary && (
         <>
-          {/* KPI Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Impressions</p>
-              <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalImpressions)}</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Avg Engagement Rate</p>
-              <p className="text-2xl font-bold text-gray-900">{fmtPct(summary.avgEngRate)}</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Follower Growth</p>
-              <p className={`text-2xl font-bold ${summary.totalFollowerGrow >= 0 ? "text-green-600" : "text-red-500"}`}>
-                {summary.totalFollowerGrow >= 0 ? "+" : ""}{fmtK(summary.totalFollowerGrow)}
-              </p>
-              {summary.latestFollowers != null && (
-                <p className="text-xs text-gray-400 mt-0.5">{fmtK(summary.latestFollowers)} total</p>
-              )}
-            </div>
-            {isVideoFirst ? (
+          {/* KPI Summary cards — platform-specific */}
+          {activePlatform?.platform === "facebook" && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Avg Hook Rate</p>
-                <p className="text-2xl font-bold text-gray-900">{fmtPct(summary.avgHookRate)}</p>
+                <p className="text-xs text-gray-500 mb-1">Reach</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalReach)}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">unique accounts reached</p>
               </div>
-            ) : (
               <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Total Video Plays</p>
+                <p className="text-xs text-gray-500 mb-1">Engagements</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalEngagements)}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Page Views</p>
                 <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalVideoPlays)}</p>
               </div>
-            )}
-          </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Followers</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.latestFollowers)}</p>
+                {summary.totalFollowerGrow !== 0 && (
+                  <p className={`text-xs mt-0.5 font-medium ${summary.totalFollowerGrow >= 0 ? "text-green-600" : "text-red-500"}`}>
+                    {summary.totalFollowerGrow >= 0 ? "+" : ""}{fmtK(summary.totalFollowerGrow)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activePlatform?.platform === "instagram" && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Views</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalImpressions)}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">impressions</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Reach</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalReach)}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Interactions</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalEngagements)}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Followers</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.latestFollowers)}</p>
+                {summary.totalFollowerGrow !== 0 && (
+                  <p className={`text-xs mt-0.5 font-medium ${summary.totalFollowerGrow >= 0 ? "text-green-600" : "text-red-500"}`}>
+                    {summary.totalFollowerGrow >= 0 ? "+" : ""}{fmtK(summary.totalFollowerGrow)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activePlatform?.platform === "youtube" && (
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Subscribers</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.latestFollowers)}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Total Views</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalReach)}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">lifetime</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Follower Growth</p>
+                <p className={`text-2xl font-bold ${summary.totalFollowerGrow >= 0 ? "text-green-600" : "text-red-500"}`}>
+                  {summary.totalFollowerGrow >= 0 ? "+" : ""}{fmtK(summary.totalFollowerGrow)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activePlatform?.platform === "tiktok" && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Views</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalImpressions)}</p>
+                <span className="inline-block mt-1 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-600 font-medium">Manual data</span>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Reach</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalReach)}</p>
+                <span className="inline-block mt-1 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-600 font-medium">Manual data</span>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Interactions</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.totalEngagements)}</p>
+                <span className="inline-block mt-1 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-50 text-amber-600 font-medium">Manual data</span>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Followers</p>
+                <p className="text-2xl font-bold text-gray-900">{fmtK(summary.latestFollowers)}</p>
+                {summary.totalFollowerGrow !== 0 && (
+                  <p className={`text-xs mt-0.5 font-medium ${summary.totalFollowerGrow >= 0 ? "text-green-600" : "text-red-500"}`}>
+                    {summary.totalFollowerGrow >= 0 ? "+" : ""}{fmtK(summary.totalFollowerGrow)}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Chart 1: Impressions & Reach */}
           <div className="bg-white border border-gray-200 rounded-xl p-5 mb-4">
@@ -571,49 +643,79 @@ export function AnalyticsView({ groups }: Props) {
             </div>
           )}
 
-          {/* Top Posts table */}
-          {topPosts.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden mb-6">
-              <div className="px-5 py-3 border-b border-gray-100">
-                <h3 className="text-sm font-semibold text-gray-700">Top Posts (by impressions)</h3>
-              </div>
-              <div className="divide-y divide-gray-50">
+          {/* Recent Posts grid */}
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-sm font-semibold text-gray-700">Recent Posts</h3>
+              {topPosts.length > 0 && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">{topPosts.length}</span>
+              )}
+            </div>
+            {topPosts.length === 0 ? (
+              <p className="text-xs text-gray-400">Post stats will appear after the next sync</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {topPosts.map((p) => (
-                  <div key={p.id} className="px-5 py-3 flex items-start gap-3">
+                  <div key={p.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
                     {/* Thumbnail */}
-                    <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
+                    <div className="relative aspect-video bg-gray-100">
                       {p.thumbnail_url ? (
                         <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-300 text-lg">▶</div>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-2xl" style={{ color: platColor }}>
+                            {activePlatform?.platform === "youtube" ? "▶" :
+                             activePlatform?.platform === "instagram" ? "📷" :
+                             activePlatform?.platform === "tiktok" ? "♪" : "▶"}
+                          </span>
+                        </div>
+                      )}
+                      {/* Post type badge */}
+                      {p.post_type && (
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-black/60 text-white capitalize">
+                          {p.post_type}
+                        </span>
                       )}
                     </div>
-                    {/* Caption */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-700 truncate">
+                    {/* Body */}
+                    <div className="p-2.5 flex flex-col gap-1.5 flex-1">
+                      {/* Caption */}
+                      <p className="text-xs text-gray-700 line-clamp-2 leading-snug">
                         {p.caption_preview ?? "(no caption)"}
                       </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
-                        {p.post_type ?? "post"}
-                        {p.published_at ? ` · ${format(parseISO(p.published_at), "d MMM yyyy")}` : ""}
-                        {p.post_url && (
-                          <> · <a href={p.post_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">View</a></>
+                      {/* Date */}
+                      {p.published_at && (
+                        <p className="text-[10px] text-gray-400">
+                          {format(parseISO(p.published_at), "d MMM yyyy")}
+                        </p>
+                      )}
+                      {/* Metrics row */}
+                      <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-auto pt-1 border-t border-gray-50">
+                        <span title={activePlatform?.platform === "facebook" ? "Reach" : "Impressions"}>
+                          👁 {activePlatform?.platform === "facebook" ? fmtK(p.reach) : fmtK(p.impressions)}
+                        </span>
+                        <span title="Engagements">❤️ {fmtK(p.engagements)}</span>
+                        {(p.video_plays ?? 0) > 0 && (
+                          <span title="Plays">▶ {fmtK(p.video_plays)}</span>
                         )}
-                      </p>
-                    </div>
-                    {/* Metrics */}
-                    <div className="text-right shrink-0 space-y-0.5">
-                      <p className="text-xs font-medium text-gray-800">{fmtK(p.impressions)} imp</p>
-                      <p className="text-[10px] text-gray-400">
-                        {fmtK(p.engagements)} eng
-                        {p.video_plays != null ? ` · ${fmtK(p.video_plays)} plays` : ""}
-                      </p>
+                      </div>
+                      {/* View post link */}
+                      {p.post_url && (
+                        <a
+                          href={p.post_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[10px] text-blue-500 hover:underline mt-0.5"
+                        >
+                          View post →
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Raw data table (collapsed by default) */}
           <details className="bg-white border border-gray-200 rounded-xl overflow-hidden">

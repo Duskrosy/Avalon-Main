@@ -137,6 +137,183 @@ async function syncYouTube(channelId: string, date: string) {
   };
 }
 
+// ─── Individual Post Stats Sync ───────────────────────────────────────────────
+// Fetches recent posts and upserts individual stats into smm_top_posts.
+// Non-fatal: errors are logged but do not fail the parent sync.
+async function syncPosts(
+  platformType: string,
+  pageId: string,
+  token: string,
+  platformId: string,
+  admin: ReturnType<typeof createAdminClient>
+): Promise<void> {
+  const today = new Date().toISOString().split("T")[0];
+
+  if (platformType === "facebook") {
+    // Fetch recent posts
+    const postsUrl =
+      `${META_BASE}/${pageId}/posts` +
+      `?fields=id,message,created_time,full_picture,permalink_url` +
+      `&limit=20&access_token=${token}`;
+    const postsRes = await fetch(postsUrl);
+    const postsJson = await postsRes.json();
+    if (!postsRes.ok || postsJson.error) {
+      console.warn("[social-sync] FB posts fetch failed:", postsJson.error?.message ?? postsRes.status);
+      return;
+    }
+
+    const posts: Array<{
+      id: string;
+      message?: string;
+      created_time?: string;
+      full_picture?: string;
+      permalink_url?: string;
+    }> = postsJson.data ?? [];
+
+    if (posts.length === 0) return;
+
+    // Fetch insights for each post (non-fatal per-post)
+    async function fetchPostMetric(postId: string, metric: string): Promise<number> {
+      try {
+        const url = `${META_BASE}/${postId}/insights/${metric}?period=lifetime&access_token=${token}`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!res.ok || json.error) return 0;
+        return json.data?.[0]?.values?.[0]?.value ?? 0;
+      } catch {
+        return 0;
+      }
+    }
+
+    const rows = await Promise.all(
+      posts.map(async (post) => {
+        const [impressions, engagements] = await Promise.all([
+          fetchPostMetric(post.id, "post_impressions_unique"),
+          fetchPostMetric(post.id, "post_engaged_users"),
+        ]);
+
+        return {
+          platform_id:      platformId,
+          post_external_id: post.id,
+          post_url:         post.permalink_url ?? null,
+          thumbnail_url:    post.full_picture ?? null,
+          caption_preview:  post.message ? post.message.slice(0, 120) : null,
+          post_type:        post.full_picture ? "image" : "video",
+          published_at:     post.created_time ?? null,
+          impressions,
+          reach:            impressions, // post_impressions_unique = unique reach
+          engagements,
+          video_plays:      0,
+          avg_play_time_secs: null,
+          metric_date:      today,
+        };
+      })
+    );
+
+    const { error } = await admin
+      .from("smm_top_posts")
+      .upsert(rows, { onConflict: "platform_id,post_external_id" });
+
+    if (error) {
+      console.warn("[social-sync] FB smm_top_posts upsert error:", error.message);
+    }
+
+  } else if (platformType === "instagram") {
+    // Fetch recent media
+    const mediaUrl =
+      `${META_BASE}/${pageId}/media` +
+      `?fields=id,caption,timestamp,media_type,thumbnail_url,media_url,permalink` +
+      `&limit=20&access_token=${token}`;
+    const mediaRes = await fetch(mediaUrl);
+    const mediaJson = await mediaRes.json();
+    if (!mediaRes.ok || mediaJson.error) {
+      console.warn("[social-sync] IG media fetch failed:", mediaJson.error?.message ?? mediaRes.status);
+      return;
+    }
+
+    const mediaItems: Array<{
+      id: string;
+      caption?: string;
+      timestamp?: string;
+      media_type?: string;
+      thumbnail_url?: string;
+      media_url?: string;
+      permalink?: string;
+    }> = mediaJson.data ?? [];
+
+    if (mediaItems.length === 0) return;
+
+    function mapIgMediaType(mediaType: string | undefined): string {
+      switch (mediaType) {
+        case "VIDEO":          return "video";
+        case "CAROUSEL_ALBUM": return "carousel";
+        case "REELS":          return "reel";
+        default:               return "image";
+      }
+    }
+
+    const rows = await Promise.all(
+      mediaItems.map(async (item) => {
+        // Fetch insights — some metrics only apply to certain media types (e.g. plays for video/reel)
+        const insightsUrl =
+          `${META_BASE}/${item.id}/insights` +
+          `?metric=impressions,reach,total_interactions,plays,saved&access_token=${token}`;
+
+        let impressions = 0;
+        let reach = 0;
+        let engagements = 0;
+        let video_plays = 0;
+
+        try {
+          const insRes = await fetch(insightsUrl);
+          const insJson = await insRes.json();
+          if (insRes.ok && !insJson.error) {
+            const metricsArr: Array<{ name: string; values?: Array<{ value: number }> }> =
+              insJson.data ?? [];
+            for (const m of metricsArr) {
+              const val = m.values?.[0]?.value ?? 0;
+              if (m.name === "impressions")        impressions  = val;
+              if (m.name === "reach")              reach        = val;
+              if (m.name === "total_interactions") engagements  = val;
+              if (m.name === "plays")              video_plays  = val;
+            }
+          }
+        } catch {
+          // non-fatal — leave all metrics as 0
+        }
+
+        const postType = mapIgMediaType(item.media_type);
+        const isVideo  = postType === "video" || postType === "reel";
+
+        return {
+          platform_id:        platformId,
+          post_external_id:   item.id,
+          post_url:           item.permalink ?? null,
+          thumbnail_url:      isVideo ? (item.thumbnail_url ?? item.media_url ?? null) : (item.media_url ?? null),
+          caption_preview:    item.caption ? item.caption.slice(0, 120) : null,
+          post_type:          postType,
+          published_at:       item.timestamp ?? null,
+          impressions,
+          reach,
+          engagements,
+          video_plays,
+          avg_play_time_secs: null,
+          metric_date:        today,
+        };
+      })
+    );
+
+    const { error } = await admin
+      .from("smm_top_posts")
+      .upsert(rows, { onConflict: "platform_id,post_external_id" });
+
+    if (error) {
+      console.warn("[social-sync] IG smm_top_posts upsert error:", error.message);
+    }
+  }
+  // YouTube and TikTok: no per-post stats synced
+}
+
 // ─── POST /api/smm/social-sync ─────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const fromCron = isCronRequest(req);
@@ -312,6 +489,17 @@ async function syncOnePlatform(
       .single();
 
     if (upsertErr) throw new Error(upsertErr.message);
+
+    // ── Post-level stats (Facebook & Instagram only) ────────────────────────
+    if (platform.platform === "facebook" || platform.platform === "instagram") {
+      try {
+        await syncPosts(platform.platform, pageId, token!, platform.id, admin);
+      } catch (postErr: unknown) {
+        // Non-fatal: page-level data already written
+        const msg = postErr instanceof Error ? postErr.message : String(postErr);
+        console.warn(`[social-sync] post sync failed for platform ${platform.id}:`, msg);
+      }
+    }
 
     return { ok: true, synced_date: syncDate, data_source: "api", data: row };
   } catch (err: unknown) {
