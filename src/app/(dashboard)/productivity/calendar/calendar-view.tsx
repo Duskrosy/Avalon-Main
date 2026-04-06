@@ -15,6 +15,14 @@ type CalendarEvent = {
 
 type Filter = { leave: boolean; booking: boolean; birthday: boolean; task: boolean; post: boolean };
 
+type CalendarSettings = {
+  show_tasks: boolean;
+  show_leaves: boolean;
+  show_rooms: boolean;
+  show_birthdays: boolean;
+  show_posts: boolean;
+};
+
 const TYPE_LABELS = {
   leave: "Leaves",
   booking: "Room bookings",
@@ -31,20 +39,46 @@ const TYPE_COLORS = {
   post: "bg-gray-700",
 };
 
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      onClick={() => onChange(!checked)}
+      className={`relative w-10 h-5 rounded-full transition-colors ${checked ? "bg-gray-900" : "bg-gray-200"}`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+          checked ? "translate-x-5" : "translate-x-0"
+        }`}
+      />
+    </button>
+  );
+}
+
 export function CalendarView({
   initialMonth,
   initialEvents,
   showSmmPosts = false,
+  settings,
 }: {
   initialMonth: string;
   initialEvents: CalendarEvent[];
   showSmmPosts?: boolean;
+  settings: CalendarSettings;
 }) {
   const [month, setMonth] = useState(initialMonth);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filter>({ leave: true, booking: true, birthday: true, task: true, post: true });
+  const [filters, setFilters] = useState<Filter>({
+    leave:    settings.show_leaves,
+    booking:  settings.show_rooms,
+    birthday: settings.show_birthdays,
+    task:     settings.show_tasks,
+    post:     settings.show_posts,
+  });
+  const [showSettingsPanel, setShowSettingsPanel] = useState(false);
+  const [settingsForm, setSettingsForm] = useState<CalendarSettings>(settings);
+  const [saving, setSaving] = useState(false);
 
   const [year, mon] = month.split("-").map(Number);
   const firstDay = new Date(year, mon - 1, 1);
@@ -66,6 +100,25 @@ export function CalendarView({
     const today = new Date().toISOString().slice(0, 7);
     if (today !== month) navigate(0);
   };
+
+  async function saveSettings() {
+    setSaving(true);
+    await fetch("/api/calendar/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settingsForm),
+    });
+    // Also update the active filters immediately
+    setFilters({
+      leave:    settingsForm.show_leaves,
+      booking:  settingsForm.show_rooms,
+      birthday: settingsForm.show_birthdays,
+      task:     settingsForm.show_tasks,
+      post:     settingsForm.show_posts,
+    });
+    setSaving(false);
+    setShowSettingsPanel(false);
+  }
 
   // Group events by date, applying filters
   const byDate = events.reduce<Record<string, CalendarEvent[]>>((acc, e) => {
@@ -114,6 +167,15 @@ export function CalendarView({
             className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
           >
             ›
+          </button>
+          <button
+            onClick={() => {
+              setSettingsForm(settings);
+              setShowSettingsPanel(true);
+            }}
+            className="text-gray-400 hover:text-gray-700 text-sm px-2 py-1 rounded-lg border border-gray-200 hover:border-gray-400"
+          >
+            ⚙ Settings
           </button>
         </div>
       </div>
@@ -256,6 +318,90 @@ export function CalendarView({
           )}
         </div>
       </div>
+
+      {/* Settings panel */}
+      {showSettingsPanel && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/20" onClick={() => setShowSettingsPanel(false)} />
+          <div className="relative bg-white w-80 h-full shadow-xl p-6 overflow-y-auto z-50">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-base font-semibold text-gray-900">Calendar Settings</h2>
+              <button onClick={() => setShowSettingsPanel(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            </div>
+
+            <p className="text-xs text-gray-500 mb-4">Choose which events appear in your calendar by default.</p>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Tasks</p>
+                  <p className="text-xs text-gray-400">Kanban due dates</p>
+                </div>
+                <Toggle
+                  checked={settingsForm.show_tasks}
+                  onChange={(v) => setSettingsForm((f) => ({ ...f, show_tasks: v }))}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Leaves &amp; Absences</p>
+                  <p className="text-xs text-gray-400">Approved leave requests</p>
+                </div>
+                <Toggle
+                  checked={settingsForm.show_leaves}
+                  onChange={(v) => setSettingsForm((f) => ({ ...f, show_leaves: v }))}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Room Bookings</p>
+                  <p className="text-xs text-gray-400">Meeting room reservations</p>
+                </div>
+                <Toggle
+                  checked={settingsForm.show_rooms}
+                  onChange={(v) => setSettingsForm((f) => ({ ...f, show_rooms: v }))}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Birthdays</p>
+                  <p className="text-xs text-gray-400">Team member birthdays</p>
+                </div>
+                <Toggle
+                  checked={settingsForm.show_birthdays}
+                  onChange={(v) => setSettingsForm((f) => ({ ...f, show_birthdays: v }))}
+                />
+              </div>
+
+              {showSmmPosts && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">SMM Posts</p>
+                    <p className="text-xs text-gray-400">Scheduled social media posts</p>
+                  </div>
+                  <Toggle
+                    checked={settingsForm.show_posts}
+                    onChange={(v) => setSettingsForm((f) => ({ ...f, show_posts: v }))}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={saveSettings}
+                disabled={saving}
+                className="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save preferences"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 {
   "crons": [
-    {
-      "path": "/api/ad-ops/sync",
-      "schedule": "0 19 * * *"
-    }
+    { "path": "/api/ad-ops/sync",            "schedule": "0 19 * * *" },
+    { "path": "/api/smm/social-sync",        "schedule": "0 20 * * *" },
+    { "path": "/api/smm/competitors/scrape", "schedule": "0 20 * * *" },
+    { "path": "/api/smm/news/fetch",         "schedule": "0 22 * * *" }
   ]
 }

@@ -68,6 +68,21 @@ export default async function CalendarPage() {
     .lte("due_date", lastStr);
   if (!ops && deptId) cardsQ = cardsQ.eq("column.board.department_id", deptId);
 
+  // Calendar settings
+  const { data: calSettingsRow } = await supabase
+    .from("user_calendar_settings")
+    .select("*")
+    .eq("user_id", currentUser.id)
+    .maybeSingle();
+
+  const calSettings = calSettingsRow ?? {
+    show_tasks: true,
+    show_leaves: true,
+    show_rooms: true,
+    show_birthdays: true,
+    show_posts: true,
+  };
+
   const [leavesRes, birthdaysRes, bookingsRes, cardsRes] = await Promise.all([
     leavesQ, birthdaysQ, bookingsQ, cardsQ,
   ]);
@@ -139,6 +154,7 @@ export default async function CalendarPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       initialEvents={events as any}
       showSmmPosts={showSmmPosts}
+      settings={calSettings}
     />
   );
 }

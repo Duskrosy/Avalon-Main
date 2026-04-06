@@ -1,181 +1,511 @@
 "use client";
 
 import { useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-type Group = { id: string; name: string; weekly_target: number };
-type Member = { id: string; first_name: string; last_name: string };
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-type Props = {
-  weekPostCount: number;
-  weeklyTarget: number;
-  pendingCards: number | null;
-  members: Member[];
-  canManage: boolean;
-  groups: Group[];
+type Campaign = {
+  id: string;
+  campaign_name: string;
+  organic_target: number;
+  ads_target: number;
+  notes: string | null;
+  week_start: string;
 };
 
-export function CreativesDashboard({
-  weekPostCount,
-  weeklyTarget,
-  pendingCards,
-  members,
-  canManage,
-  groups,
-}: Props) {
-  const [editingTarget, setEditingTarget] = useState(false);
-  const [targetValue, setTargetValue] = useState(weeklyTarget);
+type Member = { id: string; first_name: string; last_name: string };
+
+type DayData = { day: string; organic: number; ad: number };
+
+type Props = {
+  currentUserId: string;
+  canManage: boolean;
+  members: Member[];
+  campaign: Campaign | null;
+  organicCount: number;
+  adsCount: number;
+  weeklyOrganicTarget: number;
+  weeklyAdsTarget: number;
+  pendingTasksCount: number;
+  requestsInReview: number;
+  adsApprovedCount: number;
+  weekStart: string; // YYYY-MM-DD (Monday)
+  weeklyPostsByDay: DayData[];
+};
+
+// ── Avatar palette ────────────────────────────────────────────────────────────
+
+const AVATAR_COLORS = [
+  "bg-violet-100 text-violet-700",
+  "bg-sky-100 text-sky-700",
+  "bg-emerald-100 text-emerald-700",
+  "bg-rose-100 text-rose-700",
+  "bg-amber-100 text-amber-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-teal-100 text-teal-700",
+  "bg-pink-100 text-pink-700",
+];
+
+function avatarColor(index: number) {
+  return AVATAR_COLORS[index % AVATAR_COLORS.length];
+}
+
+function initials(m: Member) {
+  return `${m.first_name?.[0] ?? ""}${m.last_name?.[0] ?? ""}`.toUpperCase();
+}
+
+// ── Status helper ─────────────────────────────────────────────────────────────
+
+function weekProgress(): number {
+  // Fraction of the work week (Mon 0% → Sun 100%) that has elapsed
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  // Days elapsed since Monday (0=Mon, 6=Sun)
+  const daysSinceMon = day === 0 ? 6 : day - 1;
+  const hoursFraction = now.getHours() / 24;
+  return Math.min((daysSinceMon + hoursFraction) / 7, 1);
+}
+
+function contentStatus(count: number, target: number): {
+  label: string;
+  color: string;
+} {
+  if (target === 0) return { label: "No target set", color: "text-gray-400" };
+  const done = count / target;
+  const elapsed = weekProgress();
+  if (done >= 1) return { label: "Complete", color: "text-emerald-600" };
+  if (done >= elapsed - 0.05) return { label: "On track", color: "text-sky-600" };
+  return { label: "Behind", color: "text-amber-600" };
+}
+
+// ── Week label ────────────────────────────────────────────────────────────────
+
+function weekLabel(mondayISO: string): string {
+  const d = new Date(mondayISO + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+// ── Campaign setup form ───────────────────────────────────────────────────────
+
+function CampaignSetupForm({
+  weekStart,
+  onCreated,
+}: {
+  weekStart: string;
+  onCreated: (c: Campaign) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [organicTarget, setOrganicTarget] = useState(25);
+  const [adsTarget, setAdsTarget] = useState(10);
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  const progress = Math.min((weekPostCount / targetValue) * 100, 100);
-  const isOnTrack = weekPostCount >= Math.round(targetValue * 0.7);
-
-  const saveTarget = async () => {
+  async function submit() {
+    if (!name.trim()) { setErr("Campaign name is required"); return; }
     setSaving(true);
-    // Update weekly_target on the first group (or all groups proportionally)
-    // For now: update first active group's target
-    if (groups.length > 0) {
-      await fetch("/api/smm/groups", {
-        method: "PATCH",
+    setErr(null);
+    try {
+      const res = await fetch("/api/creatives/campaigns", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: groups[0].id, weekly_target: targetValue }),
+        body: JSON.stringify({
+          week_start: weekStart,
+          campaign_name: name.trim(),
+          organic_target: organicTarget,
+          ads_target: adsTarget,
+        }),
       });
+      if (!res.ok) {
+        const j = await res.json();
+        setErr(j.error ?? "Failed to create campaign");
+        return;
+      }
+      const created = await res.json();
+      onCreated(created as Campaign);
+      setOpen(false);
+    } catch {
+      setErr("Network error");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setEditingTarget(false);
-  };
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-3 text-sm px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-700 transition-colors"
+      >
+        Set campaign name
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div>
+        <label className="text-xs text-gray-500 font-medium">Campaign name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Andromeda Q2 Push"
+          className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+        />
+      </div>
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="text-xs text-gray-500 font-medium">Organic target</label>
+          <input
+            type="number"
+            min={1}
+            max={200}
+            value={organicTarget}
+            onChange={(e) => setOrganicTarget(Number(e.target.value))}
+            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          />
+        </div>
+        <div className="flex-1">
+          <label className="text-xs text-gray-500 font-medium">Ads target</label>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={adsTarget}
+            onChange={(e) => setAdsTarget(Number(e.target.value))}
+            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          />
+        </div>
+      </div>
+      {err && <p className="text-xs text-red-500">{err}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={submit}
+          disabled={saving}
+          className="text-sm px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-700 disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Saving…" : "Create"}
+        </button>
+        <button
+          onClick={() => setOpen(false)}
+          className="text-sm px-3 py-2 text-gray-500 hover:text-gray-700"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Progress bar ──────────────────────────────────────────────────────────────
+
+function ProgressBar({
+  value,
+  max,
+  color,
+}: {
+  value: number;
+  max: number;
+  color: string;
+}) {
+  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  return (
+    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden w-full">
+      <div
+        className={`h-full rounded-full transition-all duration-500 ${color}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
+export function CreativesDashboard({
+  canManage,
+  members,
+  campaign: initialCampaign,
+  organicCount,
+  adsCount,
+  weeklyOrganicTarget,
+  weeklyAdsTarget,
+  pendingTasksCount,
+  requestsInReview,
+  weekStart,
+  weeklyPostsByDay,
+}: Props) {
+  const [campaign, setCampaign] = useState<Campaign | null>(initialCampaign);
+
+  const organicStatus = contentStatus(organicCount, weeklyOrganicTarget);
+  const adsStatus = contentStatus(adsCount, weeklyAdsTarget);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Creatives Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-1">Weekly content overview</p>
+        <h1 className="text-2xl font-semibold text-gray-900">Creatives</h1>
+        <p className="text-sm text-gray-400 mt-0.5">
+          Week of {weekLabel(weekStart)}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Weekly Volume Card */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 col-span-1 md:col-span-2 lg:col-span-1">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">This Week</p>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl font-bold text-gray-900">{weekPostCount}</span>
-                <span className="text-sm text-gray-400">/ {targetValue} posts</span>
+      {/* ── Andromeda Creatives card ────────────────────────────────────────── */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        {/* Card header */}
+        <div className="flex items-center justify-between mb-5">
+          <span className="text-base font-semibold text-gray-900">
+            Andromeda Creatives
+          </span>
+          {campaign && (
+            <span className="bg-gray-900 text-white text-xs font-medium px-3 py-1 rounded-full">
+              {campaign.campaign_name}
+            </span>
+          )}
+        </div>
+
+        {campaign ? (
+          <>
+            {/* Two progress sections */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Organic Content */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Organic Content
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-gray-900">
+                    {organicCount}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    / {weeklyOrganicTarget}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={organicCount}
+                  max={weeklyOrganicTarget}
+                  color="bg-emerald-500"
+                />
+                <p className={`text-xs font-medium ${organicStatus.color}`}>
+                  {organicStatus.label}
+                </p>
+              </div>
+
+              {/* Ad Creatives */}
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  Ad Creatives
+                </p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-gray-900">
+                    {adsCount}
+                  </span>
+                  <span className="text-sm text-gray-400">
+                    / {weeklyAdsTarget}
+                  </span>
+                </div>
+                <ProgressBar
+                  value={adsCount}
+                  max={weeklyAdsTarget}
+                  color="bg-indigo-500"
+                />
+                <p className={`text-xs font-medium ${adsStatus.color}`}>
+                  {adsStatus.label}
+                </p>
+                <p className="text-xs text-gray-400">from SMM post tracker</p>
               </div>
             </div>
-            {canManage && (
-              <button
-                onClick={() => setEditingTarget(true)}
-                className="text-xs text-gray-400 hover:text-gray-600 p-1"
-                title="Edit weekly target"
-              >
-                ✎
-              </button>
-            )}
-          </div>
 
-          {/* Progress bar */}
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${
-                progress >= 100 ? "bg-green-500" : isOnTrack ? "bg-blue-500" : "bg-amber-400"
-              }`}
-              style={{ width: `${progress}%` }}
-            />
+            {/* Divider */}
+            <div className="border-t border-gray-100 mb-5" />
+
+            {/* Mini bar chart — daily post breakdown */}
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-3 uppercase tracking-wide">
+                Daily posts this week
+              </p>
+              <div className="h-36">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={weeklyPostsByDay}
+                    barSize={14}
+                    margin={{ top: 0, right: 0, left: -28, bottom: 0 }}
+                  >
+                    <XAxis
+                      dataKey="day"
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fontSize: 11, fill: "#9ca3af" }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "10px",
+                        border: "1px solid #e5e7eb",
+                        fontSize: 12,
+                      }}
+                      cursor={{ fill: "#f9fafb" }}
+                    />
+                    <Bar
+                      dataKey="organic"
+                      stackId="a"
+                      fill="#10b981"
+                      radius={[0, 0, 0, 0]}
+                      name="Organic"
+                    />
+                    <Bar
+                      dataKey="ad"
+                      stackId="a"
+                      fill="#6366f1"
+                      radius={[4, 4, 0, 0]}
+                      name="Ad"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Legend */}
+              <div className="flex items-center gap-4 mt-2">
+                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500" />
+                  Organic
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-500" />
+                  Ad
+                </span>
+              </div>
+            </div>
+          </>
+        ) : canManage ? (
+          <div>
+            <p className="text-sm text-gray-500">No campaign set for this week.</p>
+            <CampaignSetupForm weekStart={weekStart} onCreated={setCampaign} />
           </div>
-          <p className={`text-xs mt-2 ${
-            progress >= 100 ? "text-green-600" : isOnTrack ? "text-blue-600" : "text-amber-600"
-          }`}>
-            {progress >= 100 ? "Target reached! 🎉" : isOnTrack ? `${targetValue - weekPostCount} to go — on track` : `${targetValue - weekPostCount} to go — behind pace`}
+        ) : (
+          <p className="text-sm text-gray-500">
+            No campaign set for this week. Ask your manager to set one.
           </p>
+        )}
+      </div>
 
-          {/* Edit target modal */}
-          {editingTarget && (
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                type="number"
-                min="1"
-                max="200"
-                value={targetValue}
-                onChange={(e) => setTargetValue(Number(e.target.value))}
-                className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+      {/* ── Stats row ──────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {/* Pending Tasks */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <svg
+              className="w-4 h-4 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
               />
-              <button
-                onClick={saveTarget}
-                disabled={saving}
-                className="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
-              >
-                {saving ? "Saving…" : "Save"}
-              </button>
-              <button
-                onClick={() => { setEditingTarget(false); setTargetValue(weeklyTarget); }}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                Cancel
-              </button>
-            </div>
-          )}
+            </svg>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Pending Tasks
+            </p>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{pendingTasksCount}</p>
+          <p className="text-xs text-gray-400 mt-1">assigned to you</p>
         </div>
 
-        {/* Pending Tasks Card */}
+        {/* Team */}
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Pending Tasks</p>
-          {pendingCards !== null ? (
-            <div className="mt-2">
-              <span className="text-3xl font-bold text-gray-900">{pendingCards}</span>
-              <p className="text-xs text-gray-400 mt-1">assigned to you</p>
-              <a
-                href="/productivity/kanban"
-                className="mt-3 inline-block text-xs text-blue-600 hover:text-blue-800"
-              >
-                View board →
-              </a>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 mt-2">—</p>
-          )}
-        </div>
-
-        {/* Team Members Card */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Team</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">{members.length}</p>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Team
+          </p>
+          <p className="text-3xl font-bold text-gray-900">{members.length}</p>
           <p className="text-xs text-gray-400 mt-1">active members</p>
           {members.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-3">
-              {members.slice(0, 6).map((m) => (
-                <span
+            <div className="flex items-center mt-3 -space-x-1.5">
+              {members.slice(0, 4).map((m, i) => (
+                <div
                   key={m.id}
-                  className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
+                  className={`w-7 h-7 rounded-full text-xs font-semibold flex items-center justify-center ring-2 ring-white ${avatarColor(i)}`}
+                  title={`${m.first_name} ${m.last_name}`}
                 >
-                  {m.first_name}
-                </span>
+                  {initials(m)}
+                </div>
               ))}
-              {members.length > 6 && (
-                <span className="text-xs text-gray-400">+{members.length - 6}</span>
+              {members.length > 4 && (
+                <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold flex items-center justify-center ring-2 ring-white">
+                  +{members.length - 4}
+                </div>
               )}
             </div>
           )}
         </div>
+
+        {/* Requests In Review */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <svg
+              className="w-4 h-4 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.8}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+              />
+            </svg>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              Requests In Review
+            </p>
+          </div>
+          <p className="text-3xl font-bold text-gray-900">{requestsInReview}</p>
+          <p className="text-xs text-gray-400 mt-1">awaiting review</p>
+        </div>
       </div>
 
-      {/* Quick links */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: "Content Calendar", href: "/productivity/calendar", icon: "📅" },
-          { label: "Task Board", href: "/productivity/kanban", icon: "📋" },
-          { label: "Content Manager", href: "/creatives/content", icon: "✏️" },
-          { label: "Analytics", href: "/creatives/analytics", icon: "📊" },
-        ].map((link) => (
-          <a
-            key={link.href}
-            href={link.href}
-            className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-gray-50 transition-colors text-center"
-          >
-            <span className="text-2xl">{link.icon}</span>
-            <span className="text-xs font-medium text-gray-700">{link.label}</span>
-          </a>
-        ))}
-      </div>
+      {/* ── Team member list ───────────────────────────────────────────────────── */}
+      {members.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
+            Team Members
+          </p>
+          <ul className="divide-y divide-gray-50">
+            {members.map((m, i) => (
+              <li key={m.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                <div
+                  className={`w-8 h-8 rounded-full text-xs font-semibold flex items-center justify-center flex-shrink-0 ${avatarColor(i)}`}
+                >
+                  {initials(m)}
+                </div>
+                <span className="text-sm text-gray-800 font-medium">
+                  {m.first_name} {m.last_name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
