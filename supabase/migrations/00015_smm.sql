@@ -136,7 +136,7 @@ CREATE POLICY smm_p_select  ON public.smm_posts FOR SELECT  USING (public.is_ad_
 CREATE POLICY smm_p_insert  ON public.smm_posts FOR INSERT  WITH CHECK (public.is_ad_ops_access());
 CREATE POLICY smm_p_update  ON public.smm_posts FOR UPDATE  USING (public.is_ad_ops_access());
 CREATE POLICY smm_p_delete  ON public.smm_posts FOR DELETE  USING (
-  public.is_ops() OR created_by = (SELECT id FROM public.profiles WHERE user_id = auth.uid() LIMIT 1)
+  public.is_ops() OR created_by = auth.uid()
 );
 
 -- smm_analytics
