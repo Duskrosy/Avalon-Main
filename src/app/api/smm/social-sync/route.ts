@@ -63,33 +63,47 @@ async function syncFacebook(pageId: string, token: string, date: string) {
 }
 
 // ─── Instagram Business Insights ───────────────────────────────────────────────
+// v21.0: impressions removed (use views), accounts_engaged needs metric_type=total_value
 async function syncInstagram(igUserId: string, token: string, date: string) {
   const since = date;
   const until = dayAfter(date);
-  // impressions + reach + accounts_engaged are the stable v21.0 day-period metrics
-  const metrics = "impressions,reach,accounts_engaged";
-  const url = `${META_BASE}/${igUserId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${token}`;
 
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok || json.error) throw new Error(json.error?.message ?? "Instagram API error");
+  // Standard day-period metrics
+  async function fetchMetric(metric: string): Promise<number> {
+    const url = `${META_BASE}/${igUserId}/insights/${metric}?period=day&since=${since}&until=${until}&access_token=${token}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok || json.error) return 0;
+    return json.data?.[0]?.values?.[0]?.value ?? 0;
+  }
 
-  const getValue = (name: string): number => {
-    const metric = (json.data ?? []).find((d: { name: string }) => d.name === name);
-    return metric?.values?.[0]?.value ?? 0;
-  };
+  // total_value metrics need metric_type=total_value param
+  async function fetchTotalMetric(metric: string): Promise<number> {
+    const url = `${META_BASE}/${igUserId}/insights?metric=${metric}&metric_type=total_value&period=day&since=${since}&until=${until}&access_token=${token}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok || json.error) return 0;
+    return json.data?.[0]?.total_value?.value ?? 0;
+  }
 
-  // Follower count
+  const [reach, views, totalInteractions, accountsEngaged] = await Promise.all([
+    fetchMetric("reach"),
+    fetchMetric("views"),              // replaces deprecated impressions
+    fetchMetric("total_interactions"), // likes + comments + shares + saves combined
+    fetchTotalMetric("accounts_engaged"),
+  ]);
+
+  // Follower count from profile fields (more reliable than follower_count metric)
   const profRes = await fetch(`${META_BASE}/${igUserId}?fields=followers_count&access_token=${token}`);
   const profJson = await profRes.json();
   const follower_count: number | null = profJson.followers_count ?? null;
 
   return {
-    impressions:        getValue("impressions"),
-    reach:              getValue("reach"),
-    engagements:        getValue("accounts_engaged"),
+    impressions:        views,
+    reach,
+    engagements:        totalInteractions || accountsEngaged,
     follower_count,
-    video_plays:        0,
+    video_plays:        views,
     video_plays_3s:     0,
     avg_play_time_secs: 0,
   };
