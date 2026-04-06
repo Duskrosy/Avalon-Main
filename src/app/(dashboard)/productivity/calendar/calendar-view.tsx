@@ -8,17 +8,19 @@ type CalendarEvent = {
   title: string;
   date: string;       // YYYY-MM-DD
   end_date?: string;
-  type: "leave" | "booking" | "birthday" | "task";
+  type: "leave" | "booking" | "birthday" | "task" | "post";
   color: string;
+  meta?: string;
 };
 
-type Filter = { leave: boolean; booking: boolean; birthday: boolean; task: boolean };
+type Filter = { leave: boolean; booking: boolean; birthday: boolean; task: boolean; post: boolean };
 
 const TYPE_LABELS = {
   leave: "Leaves",
   booking: "Room bookings",
   birthday: "Birthdays",
   task: "Tasks",
+  post: "SMM Posts",
 };
 
 const TYPE_COLORS = {
@@ -26,20 +28,23 @@ const TYPE_COLORS = {
   booking: "bg-blue-500",
   birthday: "bg-pink-400",
   task: "bg-purple-500",
+  post: "bg-gray-700",
 };
 
 export function CalendarView({
   initialMonth,
   initialEvents,
+  showSmmPosts = false,
 }: {
   initialMonth: string;
   initialEvents: CalendarEvent[];
+  showSmmPosts?: boolean;
 }) {
   const [month, setMonth] = useState(initialMonth);
   const [events, setEvents] = useState<CalendarEvent[]>(initialEvents);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
-  const [filters, setFilters] = useState<Filter>({ leave: true, booking: true, birthday: true, task: true });
+  const [filters, setFilters] = useState<Filter>({ leave: true, booking: true, birthday: true, task: true, post: true });
 
   const [year, mon] = month.split("-").map(Number);
   const firstDay = new Date(year, mon - 1, 1);
@@ -115,7 +120,9 @@ export function CalendarView({
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {(Object.keys(filters) as (keyof Filter)[]).map((type) => (
+        {(Object.keys(filters) as (keyof Filter)[])
+          .filter((type) => type !== "post" || showSmmPosts)
+          .map((type) => (
           <button
             key={type}
             onClick={() => setFilters((f) => ({ ...f, [type]: !f[type] }))}
@@ -216,7 +223,9 @@ export function CalendarView({
                       />
                       <div>
                         <p className="text-xs text-gray-800 font-medium leading-snug">{e.title}</p>
-                        <p className="text-xs text-gray-400 capitalize">{e.type}</p>
+                        <p className="text-xs text-gray-400 capitalize">
+                          {e.type === "post" ? (e.meta ?? "SMM Post") : e.type}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -227,8 +236,11 @@ export function CalendarView({
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Month summary</h3>
               <div className="space-y-2">
-                {(Object.keys(TYPE_LABELS) as (keyof typeof TYPE_LABELS)[]).map((type) => {
+                {(Object.keys(TYPE_LABELS) as (keyof typeof TYPE_LABELS)[])
+                  .filter((type) => type !== "post" || showSmmPosts)
+                  .map((type) => {
                   const count = events.filter((e) => e.type === type).length;
+                  if (count === 0) return null;
                   return (
                     <div key={type} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">

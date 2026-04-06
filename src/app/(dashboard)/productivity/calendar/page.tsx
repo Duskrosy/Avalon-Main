@@ -1,50 +1,80 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/permissions";
+import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CalendarView } from "./calendar-view";
+
+const PLATFORM_COLORS: Record<string, string> = {
+  facebook: "#1877F2",
+  instagram: "#E1306C",
+  tiktok: "#010101",
+  youtube: "#FF0000",
+};
 
 export default async function CalendarPage() {
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
-  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const ops = isOps(currentUser);
+  const deptId = currentUser.department_id;
 
-  // Fetch initial events for current month
+  // Get dept slug to determine SMM post visibility
+  let deptSlug: string | null = null;
+  if (deptId) {
+    const { data: deptRow } = await supabase
+      .from("departments")
+      .select("slug")
+      .eq("id", deptId)
+      .maybeSingle();
+    deptSlug = deptRow?.slug ?? null;
+  }
+  const showSmmPosts = ops || ["creatives", "marketing", "ad-ops"].includes(deptSlug ?? "");
+
+  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
   const [year, mon] = month.split("-").map(Number);
   const firstStr = `${month}-01`;
   const lastStr  = new Date(year, mon, 0).toISOString().split("T")[0];
 
+  // Leaves
+  let leavesQ = supabase
+    .from("leaves")
+    .select("id, leave_type, start_date, end_date, profile:profiles!user_id(first_name, last_name, department_id)")
+    .eq("status", "approved")
+    .lte("start_date", lastStr)
+    .gte("end_date", firstStr);
+
+  // Birthdays
+  let birthdaysQ = supabase
+    .from("profiles")
+    .select("id, first_name, last_name, birthday, department_id")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .not("birthday", "is", null);
+  if (!ops && deptId) birthdaysQ = birthdaysQ.eq("department_id", deptId);
+
+  // Room bookings (shared)
+  const bookingsQ = supabase
+    .from("room_bookings")
+    .select("id, title, start_time, room:rooms(name)")
+    .gte("start_time", `${firstStr}T00:00:00Z`)
+    .lte("start_time", `${lastStr}T23:59:59Z`);
+
+  // Kanban cards
+  let cardsQ = supabase
+    .from("kanban_cards")
+    .select(`id, title, due_date, column:kanban_columns!inner(board:kanban_boards!inner(department_id))`)
+    .not("due_date", "is", null)
+    .gte("due_date", firstStr)
+    .lte("due_date", lastStr);
+  if (!ops && deptId) cardsQ = cardsQ.eq("column.board.department_id", deptId);
+
   const [leavesRes, birthdaysRes, bookingsRes, cardsRes] = await Promise.all([
-    supabase
-      .from("leaves")
-      .select("id, leave_type, start_date, end_date, profile:profiles!user_id(first_name, last_name)")
-      .eq("status", "approved")
-      .lte("start_date", lastStr)
-      .gte("end_date", firstStr),
-    supabase
-      .from("profiles")
-      .select("id, first_name, last_name, birthday")
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .not("birthday", "is", null),
-    supabase
-      .from("room_bookings")
-      .select("id, title, start_time, room:rooms(name)")
-      .gte("start_time", `${firstStr}T00:00:00Z`)
-      .lte("start_time", `${lastStr}T23:59:59Z`),
-    supabase
-      .from("kanban_cards")
-      .select("id, title, due_date")
-      .not("due_date", "is", null)
-      .gte("due_date", firstStr)
-      .lte("due_date", lastStr),
+    leavesQ, birthdaysQ, bookingsQ, cardsQ,
   ]);
 
-  // Build events server-side for initial render
   type CalendarEvent = {
     id: string; title: string; date: string;
-    end_date?: string; type: string; color: string;
+    end_date?: string; type: string; color: string; meta?: string;
   };
 
   const events: CalendarEvent[] = [];
@@ -52,6 +82,7 @@ export default async function CalendarPage() {
   for (const l of leavesRes.data ?? []) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const p = l.profile as any;
+    if (!ops && p?.department_id && p.department_id !== deptId) continue;
     const name = p ? `${p.first_name} ${p.last_name}` : "Someone";
     events.push({ id: l.id, title: `${name} — ${l.leave_type.replace(/_/g, " ")}`, date: l.start_date, end_date: l.end_date, type: "leave", color: "#f59e0b" });
   }
@@ -75,6 +106,39 @@ export default async function CalendarPage() {
     events.push({ id: c.id, title: c.title, date: c.due_date!, type: "task", color: "#8b5cf6" });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <CalendarView initialMonth={month} initialEvents={events as any} />;
+  // SMM posts — only for creatives, marketing, ad-ops, OPS
+  if (showSmmPosts) {
+    const { data: posts } = await supabase
+      .from("smm_posts")
+      .select("id, platform, post_type, caption, scheduled_at, group:smm_groups(name)")
+      .in("status", ["scheduled", "published"])
+      .not("scheduled_at", "is", null)
+      .gte("scheduled_at", `${firstStr}T00:00:00Z`)
+      .lte("scheduled_at", `${lastStr}T23:59:59Z`);
+
+    for (const p of posts ?? []) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const group = p.group as any;
+      const dateStr = new Date(p.scheduled_at!).toISOString().split("T")[0];
+      const platformLabel = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
+      const captionPreview = p.caption ? ` — ${p.caption.slice(0, 40)}${p.caption.length > 40 ? "…" : ""}` : "";
+      events.push({
+        id: `post-${p.id}`,
+        title: `${platformLabel}${captionPreview}`,
+        date: dateStr,
+        type: "post",
+        color: PLATFORM_COLORS[p.platform] ?? "#6b7280",
+        meta: `${group?.name ?? ""}${p.post_type ? ` · ${p.post_type.replace(/_/g, " ")}` : ""}`,
+      });
+    }
+  }
+
+  return (
+    <CalendarView
+      initialMonth={month}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      initialEvents={events as any}
+      showSmmPosts={showSmmPosts}
+    />
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { format } from "date-fns";
 
 const PRIORITY_COLORS = {
@@ -141,13 +141,61 @@ function CardModal({
   );
 }
 
+type SortField = "title" | "priority" | "due_date" | "assigned_to" | "status";
+type SortDir = "asc" | "desc";
+
+const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
+
 export function KanbanBoard({ board, initialColumns, members, departmentId, canManage }: Props) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [boardState, setBoardState] = useState<Board>(board);
   const [modal, setModal] = useState<(Partial<Card> & { column_id?: string }) | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColName, setNewColName] = useState("");
+  const [view, setView] = useState<"board" | "list">("board");
+  const [listSort, setListSort] = useState<{ field: SortField; dir: SortDir }>({ field: "due_date", dir: "asc" });
+  const [listFilter, setListFilter] = useState<{ priority: string; assigned: string; status: string }>({
+    priority: "", assigned: "", status: "",
+  });
   const dragCard = useRef<{ cardId: string; sourceColId: string } | null>(null);
+
+  // Flat list of all cards with their column name (status)
+  const allCards = useMemo(() => {
+    return columns.flatMap((col) =>
+      col.kanban_cards.map((card) => ({ ...card, columnId: col.id, columnName: col.name }))
+    );
+  }, [columns]);
+
+  const filteredSortedCards = useMemo(() => {
+    let cards = allCards;
+    if (listFilter.priority) cards = cards.filter((c) => c.priority === listFilter.priority);
+    if (listFilter.assigned) cards = cards.filter((c) => c.assigned_to_profile?.id === listFilter.assigned);
+    if (listFilter.status) cards = cards.filter((c) => c.columnId === listFilter.status);
+
+    return [...cards].sort((a, b) => {
+      let cmp = 0;
+      switch (listSort.field) {
+        case "title":    cmp = a.title.localeCompare(b.title); break;
+        case "priority": cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]; break;
+        case "due_date": {
+          const da = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+          const db = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+          cmp = da - db; break;
+        }
+        case "assigned_to": {
+          const na = a.assigned_to_profile ? `${a.assigned_to_profile.first_name} ${a.assigned_to_profile.last_name}` : "zzz";
+          const nb = b.assigned_to_profile ? `${b.assigned_to_profile.first_name} ${b.assigned_to_profile.last_name}` : "zzz";
+          cmp = na.localeCompare(nb); break;
+        }
+        case "status": cmp = a.columnName.localeCompare(b.columnName); break;
+      }
+      return listSort.dir === "asc" ? cmp : -cmp;
+    });
+  }, [allCards, listFilter, listSort]);
+
+  const toggleSort = (field: SortField) => {
+    setListSort((s) => s.field === field ? { field, dir: s.dir === "asc" ? "desc" : "asc" } : { field, dir: "asc" });
+  };
 
   // Auto-create board if not exists
   const ensureBoard = useCallback(async () => {
@@ -290,17 +338,188 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
 
   const isOverdue = (due: string | null) => due && new Date(due) < new Date();
 
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (listSort.field !== field) return <span className="text-gray-300 ml-1">↕</span>;
+    return <span className="text-gray-900 ml-1">{listSort.dir === "asc" ? "↑" : "↓"}</span>;
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="mb-6 flex items-center justify-between gap-4 shrink-0">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Kanban Board</h1>
-          <p className="text-sm text-gray-500 mt-1">Task management</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Task Board</h1>
+          <p className="text-sm text-gray-500 mt-1">{allCards.length} card{allCards.length !== 1 ? "s" : ""} across {columns.length} column{columns.length !== 1 ? "s" : ""}</p>
+        </div>
+        {/* View toggle */}
+        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setView("board")}
+            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+              view === "board" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Board
+          </button>
+          <button
+            onClick={() => setView("list")}
+            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+              view === "list" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            List
+          </button>
         </div>
       </div>
 
-      {/* Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
+      {/* ── LIST VIEW ───────────────────────────────────────────── */}
+      {view === "list" && (
+        <div className="flex flex-col gap-4 flex-1 min-h-0">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-2 items-center shrink-0">
+            <select
+              value={listFilter.status}
+              onChange={(e) => setListFilter((f) => ({ ...f, status: e.target.value }))}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="">All columns</option>
+              {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <select
+              value={listFilter.priority}
+              onChange={(e) => setListFilter((f) => ({ ...f, priority: e.target.value }))}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="">All priorities</option>
+              {Object.keys(PRIORITY_LABELS).map((p) => (
+                <option key={p} value={p}>{PRIORITY_LABELS[p as Card["priority"]]}</option>
+              ))}
+            </select>
+            <select
+              value={listFilter.assigned}
+              onChange={(e) => setListFilter((f) => ({ ...f, assigned: e.target.value }))}
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              <option value="">All members</option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
+              ))}
+            </select>
+            {(listFilter.status || listFilter.priority || listFilter.assigned) && (
+              <button
+                onClick={() => setListFilter({ priority: "", assigned: "", status: "" })}
+                className="text-xs text-gray-400 hover:text-gray-600"
+              >
+                Clear filters
+              </button>
+            )}
+            <span className="ml-auto text-xs text-gray-400">{filteredSortedCards.length} card{filteredSortedCards.length !== 1 ? "s" : ""}</span>
+          </div>
+
+          {/* Table */}
+          <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
+            <table className="w-full text-sm min-w-[600px]">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50">
+                  <th
+                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none"
+                    onClick={() => toggleSort("title")}
+                  >
+                    Title <SortIcon field="title" />
+                  </th>
+                  <th
+                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-28"
+                    onClick={() => toggleSort("status")}
+                  >
+                    Status <SortIcon field="status" />
+                  </th>
+                  <th
+                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-24"
+                    onClick={() => toggleSort("priority")}
+                  >
+                    Priority <SortIcon field="priority" />
+                  </th>
+                  <th
+                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-36"
+                    onClick={() => toggleSort("assigned_to")}
+                  >
+                    Assigned to <SortIcon field="assigned_to" />
+                  </th>
+                  <th
+                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-28"
+                    onClick={() => toggleSort("due_date")}
+                  >
+                    Due <SortIcon field="due_date" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {filteredSortedCards.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-12 text-sm text-gray-400">
+                      No cards found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSortedCards.map((card) => (
+                    <tr
+                      key={card.id}
+                      onClick={() => setModal({ ...card, column_id: card.columnId })}
+                      className="hover:bg-gray-50 cursor-pointer"
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-start gap-2">
+                          <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
+                            card.priority === "urgent" ? "bg-red-500" :
+                            card.priority === "high"   ? "bg-amber-400" :
+                            card.priority === "medium" ? "bg-blue-400" : "bg-gray-300"
+                          }`} />
+                          <div>
+                            <p className="font-medium text-gray-900">{card.title}</p>
+                            {card.description && (
+                              <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{card.description}</p>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">
+                          {card.columnName}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-xs font-medium ${
+                          card.priority === "urgent" ? "text-red-600" :
+                          card.priority === "high"   ? "text-amber-600" :
+                          card.priority === "medium" ? "text-blue-600" : "text-gray-400"
+                        }`}>
+                          {PRIORITY_LABELS[card.priority]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {card.assigned_to_profile
+                          ? `${card.assigned_to_profile.first_name} ${card.assigned_to_profile.last_name}`
+                          : <span className="text-gray-300">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {card.due_date ? (
+                          <span className={`text-xs ${isOverdue(card.due_date) ? "text-red-500 font-medium" : "text-gray-500"}`}>
+                            {format(new Date(card.due_date), "d MMM yyyy")}
+                          </span>
+                        ) : (
+                          <span className="text-gray-300">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── BOARD VIEW ──────────────────────────────────────────── */}
+      {view === "board" && <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
         {columns.map((col) => (
           <div
             key={col.id}
@@ -406,7 +625,7 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
             )}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Card modal */}
       {modal && (
