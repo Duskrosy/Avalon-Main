@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOps } from "@/lib/permissions";
+import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
+import { CreativesRequestsView } from "./requests-view";
 
 export default async function CreativesRequestsPage() {
   const supabase = await createClient();
@@ -17,17 +18,33 @@ export default async function CreativesRequestsPage() {
     if (!["creatives", "ad-ops"].includes(dept?.slug ?? "")) redirect("/");
   }
 
+  // Fetch creatives department members for assignee dropdown
+  const { data: creativesDept } = await supabase
+    .from("departments")
+    .select("id")
+    .eq("slug", "creatives")
+    .maybeSingle();
+
+  const members: { id: string; first_name: string; last_name: string }[] = [];
+  if (creativesDept?.id) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, first_name, last_name")
+      .eq("department_id", creativesDept.id)
+      .eq("is_active", true)
+      .order("first_name");
+    if (profiles) members.push(...profiles);
+  }
+
+  const canManage = isManagerOrAbove(currentUser);
+
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Requests</h1>
-      <p className="text-sm text-gray-500 mb-8">Fulfillment queue — requests assigned to Creatives.</p>
-      <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-16 text-center">
-        <p className="text-4xl mb-4">📬</p>
-        <p className="text-sm font-medium text-gray-700">Coming soon</p>
-        <p className="text-xs text-gray-400 mt-1">
-          This will show requests assigned to the Creatives team.
-        </p>
-      </div>
+      <CreativesRequestsView
+        members={members}
+        currentUserId={currentUser.id}
+        canManage={canManage}
+      />
     </div>
   );
 }

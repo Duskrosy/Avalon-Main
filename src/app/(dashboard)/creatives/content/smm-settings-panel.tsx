@@ -1,0 +1,367 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+const VALID_PLATFORMS = ["facebook", "instagram", "tiktok", "youtube"] as const;
+type SmmPlatform = (typeof VALID_PLATFORMS)[number];
+
+type SmmGroup = {
+  id: string;
+  name: string;
+  weekly_target: number;
+  is_active: boolean;
+  sort_order: number;
+  smm_group_platforms: {
+    id: string;
+    platform: string;
+    page_id: string | null;
+    page_name: string | null;
+    handle: string | null;
+    is_active: boolean;
+  }[];
+};
+
+export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
+  const [groups, setGroups] = useState<SmmGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupTarget, setNewGroupTarget] = useState(25);
+  const [creating, setCreating] = useState(false);
+  const [editPlatform, setEditPlatform] = useState<{ groupId: string; platform: SmmPlatform } | null>(null);
+  const [platformForm, setPlatformForm] = useState({ page_id: "", page_name: "", handle: "" });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/smm/groups");
+        if (res.ok) setGroups(await res.json());
+      } catch { /* ignore */ } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  async function createGroup() {
+    if (!newGroupName.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/smm/groups", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newGroupName.trim(), weekly_target: newGroupTarget }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const g = await res.json();
+      setGroups((prev) => [...prev, { ...g, smm_group_platforms: [] }]);
+      setNewGroupName("");
+      setNewGroupTarget(25);
+      setShowNewGroup(false);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to create group");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function updateGroupTarget(id: string, weekly_target: number) {
+    await fetch("/api/smm/groups", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, weekly_target }),
+    });
+    setGroups((prev) => prev.map((g) => g.id === id ? { ...g, weekly_target } : g));
+  }
+
+  async function deleteGroup(id: string) {
+    if (!confirm("Delete this SMM group? All platforms and posts inside will also be deleted.")) return;
+    const res = await fetch("/api/smm/groups", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    if (res.ok) setGroups((prev) => prev.filter((g) => g.id !== id));
+  }
+
+  async function togglePlatform(groupId: string, platform: SmmPlatform) {
+    const group = groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const existing = group.smm_group_platforms.find((p) => p.platform === platform);
+
+    if (existing) {
+      const res = await fetch("/api/smm/platforms", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: existing.id, is_active: !existing.is_active }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === groupId
+              ? { ...g, smm_group_platforms: g.smm_group_platforms.map((p) => p.id === updated.id ? updated : p) }
+              : g
+          )
+        );
+      }
+    } else {
+      setEditPlatform({ groupId, platform });
+      setPlatformForm({ page_id: "", page_name: "", handle: "" });
+    }
+  }
+
+  async function savePlatform() {
+    if (!editPlatform) return;
+    const { groupId, platform } = editPlatform;
+    const group = groups.find((g) => g.id === groupId);
+    const existing = group?.smm_group_platforms.find((p) => p.platform === platform);
+    const body = { ...platformForm };
+
+    if (existing) {
+      const res = await fetch("/api/smm/platforms", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: existing.id, ...body }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === groupId
+              ? { ...g, smm_group_platforms: g.smm_group_platforms.map((p) => p.id === updated.id ? updated : p) }
+              : g
+          )
+        );
+      }
+    } else {
+      const res = await fetch("/api/smm/platforms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_id: groupId, platform, ...body }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === groupId
+              ? { ...g, smm_group_platforms: [...g.smm_group_platforms, created] }
+              : g
+          )
+        );
+      }
+    }
+    setEditPlatform(null);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onClose}
+          className="text-sm text-gray-400 hover:text-gray-700 flex items-center gap-1"
+        >
+          ← Back
+        </button>
+        <h2 className="text-lg font-semibold text-gray-900">Manage Groups & Platforms</h2>
+        <button
+          onClick={() => setShowNewGroup(true)}
+          className="ml-auto text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
+        >
+          + New Group
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
+      )}
+
+      {/* New group form */}
+      {showNewGroup && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+          <div className="flex gap-3">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Group name, e.g. Local, International"
+              value={newGroupName}
+              onChange={(e) => setNewGroupName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createGroup()}
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            />
+            <button
+              onClick={createGroup}
+              disabled={creating}
+              className="text-sm px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+            >
+              {creating ? "Creating…" : "Create"}
+            </button>
+            <button onClick={() => setShowNewGroup(false)} className="text-sm text-gray-400 hover:text-gray-600">
+              Cancel
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500 w-32">Weekly post target</label>
+            <input
+              type="number"
+              min="1"
+              max="200"
+              value={newGroupTarget}
+              onChange={(e) => setNewGroupTarget(Number(e.target.value))}
+              className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            />
+          </div>
+        </div>
+      )}
+
+      {loading && <p className="text-sm text-gray-400 py-8 text-center">Loading…</p>}
+
+      {!loading && groups.length === 0 && !showNewGroup && (
+        <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-12 text-center">
+          <p className="text-sm text-gray-400">No SMM groups yet. Create one to get started.</p>
+        </div>
+      )}
+
+      {groups.map((group) => (
+        <div key={group.id} className="bg-white border border-gray-200 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <h3 className="font-semibold text-gray-900">{group.name}</h3>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-gray-400">Weekly target:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="200"
+                  defaultValue={group.weekly_target}
+                  onBlur={(e) => {
+                    const val = Number(e.target.value);
+                    if (val !== group.weekly_target && val > 0) updateGroupTarget(group.id, val);
+                  }}
+                  className="w-14 border border-gray-200 rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+                <span className="text-xs text-gray-400">posts</span>
+              </div>
+            </div>
+            <button
+              onClick={() => deleteGroup(group.id)}
+              className="text-xs text-gray-300 hover:text-red-500 transition-colors"
+            >
+              Delete
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {VALID_PLATFORMS.map((platform) => {
+              const existing = group.smm_group_platforms.find((p) => p.platform === platform);
+              const isActive = existing?.is_active ?? false;
+
+              return (
+                <div
+                  key={platform}
+                  className={`border rounded-xl p-3 transition-colors ${
+                    isActive ? "border-gray-900 bg-gray-50" : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-gray-800 capitalize">{platform}</span>
+                    <button
+                      onClick={() => togglePlatform(group.id, platform)}
+                      className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                        isActive ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                      }`}
+                    >
+                      {isActive ? "Active" : "Enable"}
+                    </button>
+                  </div>
+                  {existing ? (
+                    <div className="text-xs text-gray-400 space-y-0.5">
+                      {existing.page_name && <p className="truncate">{existing.page_name}</p>}
+                      {existing.page_id && <p className="font-mono text-[10px] text-gray-300 truncate">{existing.page_id}</p>}
+                      {existing.handle && <p>@{existing.handle}</p>}
+                      <button
+                        onClick={() => {
+                          setEditPlatform({ groupId: group.id, platform });
+                          setPlatformForm({
+                            page_id: existing.page_id ?? "",
+                            page_name: existing.page_name ?? "",
+                            handle: existing.handle ?? "",
+                          });
+                        }}
+                        className="text-blue-500 hover:text-blue-700 mt-0.5 block"
+                      >
+                        Edit details
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-300">Not configured</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Platform edit modal */}
+      {editPlatform && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h2 className="text-base font-semibold text-gray-900 mb-4 capitalize">
+              {editPlatform.platform} — Page Details
+            </h2>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Page / Channel Name</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={platformForm.page_name}
+                  onChange={(e) => setPlatformForm((f) => ({ ...f, page_name: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  placeholder="e.g. Avalon Heights PH"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Page ID / Channel ID</label>
+                <input
+                  type="text"
+                  value={platformForm.page_id}
+                  onChange={(e) => setPlatformForm((f) => ({ ...f, page_id: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  placeholder="Numeric page or channel ID"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">Handle / Username</label>
+                <input
+                  type="text"
+                  value={platformForm.handle}
+                  onChange={(e) => setPlatformForm((f) => ({ ...f, handle: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  placeholder="@handle"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setEditPlatform(null)}
+                className="flex-1 border border-gray-200 text-sm py-2 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={savePlatform}
+                className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

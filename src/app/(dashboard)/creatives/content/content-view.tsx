@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { SmmSettingsPanel } from "./smm-settings-panel";
 
 type Platform = { id: string; platform: string; page_name: string | null; is_active: boolean };
 type Group = { id: string; name: string; weekly_target: number; smm_group_platforms: Platform[] };
@@ -167,12 +168,13 @@ export function ContentManager({
   canManage: boolean;
 }) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [groups] = useState<Group[]>(initialGroups);
+  const [groups, setGroups] = useState<Group[]>(initialGroups);
   const [activeGroup, setActiveGroup] = useState<string>(groups[0]?.id ?? "");
   const [activePlatform, setActivePlatform] = useState<string>("all");
   const [activeStatus, setActiveStatus] = useState<string>("all");
   const [modal, setModal] = useState<Post | "new" | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const group = groups.find((g) => g.id === activeGroup);
   const activePlatforms = group?.smm_group_platforms.filter((p) => p.is_active) ?? [];
@@ -227,17 +229,31 @@ export function ContentManager({
 
   return (
     <div className="space-y-4">
+      {/* Settings panel mode */}
+      {showSettings ? (
+        <SmmSettingsPanel onClose={() => setShowSettings(false)} />
+      ) : (
+      <>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Content</h1>
           <p className="text-sm text-gray-500 mt-1">SMM content management</p>
         </div>
-        <button
-          onClick={() => setModal("new")}
-          className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
-        >
-          + New Post
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowSettings(true)}
+            className="text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500"
+            title="Manage Groups & Platforms"
+          >
+            ⚙ Groups
+          </button>
+          <button
+            onClick={() => setModal("new")}
+            className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
+          >
+            + New Post
+          </button>
+        </div>
       </div>
 
       {groups.length === 0 ? (
@@ -381,7 +397,9 @@ export function ContentManager({
         </>
       )}
 
-      {/* Modal */}
+      </> /* end !showSettings */}
+
+      {/* Modal — available in both modes */}
       {modal !== null && (
         <PostModal
           groups={groups}
