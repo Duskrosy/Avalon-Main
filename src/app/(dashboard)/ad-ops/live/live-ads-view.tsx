@@ -15,6 +15,7 @@ type LiveDeployment = {
   auto_paused_at: string | null;
   auto_paused_reason: string | null;
   launched_at: string | null;
+  daily_budget: number | null;
   live_spend: number | null;
   asset: {
     id: string;
@@ -488,10 +489,10 @@ export function LiveAdsView() {
                   </button>
                 )}
 
-                {/* Launched date */}
-                {ad.launched_at && (
+                {/* Daily budget */}
+                {ad.daily_budget && ad.account?.currency && (
                   <p className="text-xs text-gray-400">
-                    Launched {format(new Date(ad.launched_at), "MMM d, yyyy")}
+                    {fmtCurrency(ad.daily_budget, ad.account.currency)}/day budget
                   </p>
                 )}
 

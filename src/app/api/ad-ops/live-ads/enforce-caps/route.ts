@@ -5,16 +5,12 @@ import { resolveToken, fetchCampaignSpend, updateCampaignStatus } from "@/lib/me
 /**
  * GET /api/ad-ops/live-ads/enforce-caps
  *
- * Cron endpoint — runs every hour via Vercel cron.
- * Checks all ACTIVE deployments with a spend cap set,
- * fetches real-time spend from Meta, and auto-pauses any
- * campaigns that have hit or exceeded their cap.
+ * Checks all ACTIVE meta_campaigns with a spend cap set,
+ * fetches real-time spend from Meta, and auto-pauses any that hit their cap.
  *
- * Auth: Bearer $CRON_SECRET header (set in Vercel env vars).
- * Also callable manually by OPS via the dashboard.
+ * Auth: Bearer $CRON_SECRET header.
  */
 export async function GET(req: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────────────────────
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
@@ -23,88 +19,87 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // ── Fetch all ACTIVE deployments with a spend cap ─────────────────────────
-  const { data: deployments, error: dbErr } = await admin
-    .from("ad_deployments")
-    .select(`
-      id, meta_campaign_id, spend_cap, spend_cap_period,
-      account:ad_meta_accounts(account_id, meta_access_token)
-    `)
-    .eq("status", "active")
+  // Fetch all ACTIVE campaigns with a spend cap set
+  const { data: campaigns, error: dbErr } = await admin
+    .from("meta_campaigns")
+    .select("id, campaign_id, meta_account_id, spend_cap, spend_cap_period")
+    .eq("effective_status", "ACTIVE")
     .not("spend_cap", "is", null);
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
-  if (!deployments?.length) {
-    return NextResponse.json({ checked: 0, paused: 0, message: "No active capped deployments" });
+  if (!campaigns?.length) {
+    return NextResponse.json({ checked: 0, paused: 0, message: "No active capped campaigns" });
   }
 
-  // ── Group by Meta account for batched spend fetch ─────────────────────────
-  type Dep = (typeof deployments)[number];
-  const byAccount = new Map<string, Dep[]>();
+  // Fetch accounts for tokens
+  const accountIds = [...new Set(campaigns.map((c) => c.meta_account_id))];
+  const { data: accounts } = await admin
+    .from("ad_meta_accounts")
+    .select("id, account_id, meta_access_token")
+    .in("id", accountIds);
 
-  for (const dep of deployments) {
-    const acct = dep.account as unknown as { account_id: string; meta_access_token: string | null } | null;
-    if (!acct?.account_id || !dep.meta_campaign_id) continue;
-    const key = acct.account_id;
-    if (!byAccount.has(key)) byAccount.set(key, []);
-    byAccount.get(key)!.push(dep);
+  const accountMap = Object.fromEntries((accounts ?? []).map((a) => [a.id, a]));
+
+  // Group by Meta account for batched spend fetch
+  const byAccount = new Map<string, typeof campaigns>();
+  for (const c of campaigns) {
+    const acct = accountMap[c.meta_account_id];
+    if (!acct?.account_id || !c.campaign_id) continue;
+    if (!byAccount.has(acct.account_id)) byAccount.set(acct.account_id, []);
+    byAccount.get(acct.account_id)!.push(c);
   }
 
   const spendMap: Record<string, number> = {};
 
   await Promise.allSettled(
-    Array.from(byAccount.entries()).map(async ([accountId, deps]) => {
-      const acct = deps[0].account as unknown as { account_id: string; meta_access_token: string | null } | null;
+    Array.from(byAccount.entries()).map(async ([accountId, camps]) => {
+      const acct = accountMap[camps[0].meta_account_id];
       const token = resolveToken(acct ?? {});
-      const campaignIds = deps.map((d) => d.meta_campaign_id!).filter(Boolean);
+      const campaignIds = camps.map((c) => c.campaign_id!).filter(Boolean);
       if (!token || !campaignIds.length) return;
-
-      // Use the first deployment's period (all caps in same account may differ — handled per-dep below)
       const result = await fetchCampaignSpend(accountId, token, campaignIds, "lifetime");
       Object.assign(spendMap, result);
     }),
   );
 
-  // ── Auto-pause over-cap campaigns ─────────────────────────────────────────
+  // Auto-pause over-cap campaigns
   type CapResult = { id: string; campaign_id: string; spend: number; cap: number; paused: boolean; error?: string };
   const results: CapResult[] = [];
 
   await Promise.allSettled(
-    deployments.map(async (dep) => {
-      if (!dep.meta_campaign_id || dep.spend_cap === null) return;
-
-      const acct = dep.account as unknown as { account_id: string; meta_access_token: string | null } | null;
+    campaigns.map(async (c) => {
+      if (!c.campaign_id || c.spend_cap === null) return;
+      const acct = accountMap[c.meta_account_id];
       const token = resolveToken(acct ?? {});
       if (!token) return;
 
-      // For per-period caps, re-fetch with the right period
-      let liveSpend = spendMap[dep.meta_campaign_id] ?? null;
-      if (dep.spend_cap_period !== "lifetime" && acct?.account_id) {
+      let liveSpend = spendMap[c.campaign_id] ?? null;
+
+      // Re-fetch with correct period if not lifetime
+      if (c.spend_cap_period !== "lifetime" && acct?.account_id) {
         try {
           const perPeriod = await fetchCampaignSpend(
             acct.account_id,
             token,
-            [dep.meta_campaign_id],
-            dep.spend_cap_period as "lifetime" | "monthly" | "daily",
+            [c.campaign_id],
+            c.spend_cap_period as "lifetime" | "monthly" | "daily",
           );
-          liveSpend = perPeriod[dep.meta_campaign_id] ?? liveSpend;
-        } catch {
-          // fall back to lifetime spend already fetched
-        }
+          liveSpend = perPeriod[c.campaign_id] ?? liveSpend;
+        } catch { /* fall back to lifetime */ }
       }
 
       if (liveSpend === null) return;
 
-      const result: CapResult = { id: dep.id, campaign_id: dep.meta_campaign_id, spend: liveSpend, cap: dep.spend_cap!, paused: false };
+      const result: CapResult = { id: c.id, campaign_id: c.campaign_id, spend: liveSpend, cap: c.spend_cap!, paused: false };
 
-      if (liveSpend >= dep.spend_cap!) {
+      if (liveSpend >= c.spend_cap!) {
         try {
-          await updateCampaignStatus(dep.meta_campaign_id, token, "PAUSED");
-          await admin.from("ad_deployments").update({
-            status: "paused",
+          await updateCampaignStatus(c.campaign_id, token, "PAUSED");
+          await admin.from("meta_campaigns").update({
+            effective_status: "PAUSED",
             auto_paused_at: new Date().toISOString(),
-            auto_paused_reason: `Spend cap reached: ${liveSpend.toFixed(2)} / ${dep.spend_cap}`,
-          }).eq("id", dep.id);
+            auto_paused_reason: `Spend cap reached: ${liveSpend.toFixed(2)} / ${c.spend_cap}`,
+          }).eq("id", c.id);
           result.paused = true;
         } catch (e) {
           result.error = String(e);
@@ -115,11 +110,9 @@ export async function GET(req: NextRequest) {
     }),
   );
 
-  const pausedCount = results.filter((r) => r.paused).length;
-
   return NextResponse.json({
-    checked: deployments.length,
-    paused: pausedCount,
+    checked: campaigns.length,
+    paused: results.filter((r) => r.paused).length,
     timestamp: new Date().toISOString(),
     results,
   });
