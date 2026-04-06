@@ -397,7 +397,7 @@ export function ContentManager({
         </>
       )}
 
-      </> /* end !showSettings */}
+      </>)}
 
       {/* Modal — available in both modes */}
       {modal !== null && (
