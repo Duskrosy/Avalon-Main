@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
@@ -23,8 +24,8 @@ const deleteGroupSchema = z.object({
 async function requireOps() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
-  if (!user || !isOps(user)) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), supabase: null };
-  return { error: null, supabase };
+  if (!user || !isOps(user)) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  return { error: null };
 }
 
 // GET — list all groups with platforms
@@ -33,7 +34,9 @@ export async function GET() {
   const user = await getCurrentUser(supabase);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data, error } = await supabase
+  // Use admin client so RLS doesn't filter out platforms for non-OPS users
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("smm_groups")
     .select(`
       id, name, weekly_target, is_active, sort_order,
@@ -48,7 +51,7 @@ export async function GET() {
 
 // POST — create group
 export async function POST(req: NextRequest) {
-  const { error, supabase } = await requireOps();
+  const { error } = await requireOps();
   if (error) return error;
 
   const raw = await req.json().catch(() => ({}));
@@ -58,7 +61,8 @@ export async function POST(req: NextRequest) {
   }
   const { name, weekly_target } = parsed.data;
 
-  const { data, error: dbErr } = await supabase!
+  const admin = createAdminClient();
+  const { data, error: dbErr } = await admin
     .from("smm_groups")
     .insert({ name: name.trim(), weekly_target: weekly_target ?? 25 })
     .select()
@@ -70,7 +74,7 @@ export async function POST(req: NextRequest) {
 
 // PATCH — update group
 export async function PATCH(req: NextRequest) {
-  const { error, supabase } = await requireOps();
+  const { error } = await requireOps();
   if (error) return error;
 
   const raw = await req.json().catch(() => ({}));
@@ -90,7 +94,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { data, error: dbErr } = await supabase!
+  const admin = createAdminClient();
+  const { data, error: dbErr } = await admin
     .from("smm_groups")
     .update(updates)
     .eq("id", id)
@@ -103,7 +108,7 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE — delete group (cascades to platforms + posts)
 export async function DELETE(req: NextRequest) {
-  const { error, supabase } = await requireOps();
+  const { error } = await requireOps();
   if (error) return error;
 
   const raw = await req.json().catch(() => ({}));
@@ -113,7 +118,8 @@ export async function DELETE(req: NextRequest) {
   }
   const { id } = parsed.data;
 
-  const { error: dbErr } = await supabase!
+  const admin = createAdminClient();
+  const { error: dbErr } = await admin
     .from("smm_groups")
     .delete()
     .eq("id", id);

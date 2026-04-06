@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const weekStart = searchParams.get("week_start") ?? currentWeekMonday();
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("creatives_campaigns")
     .select(
       "id, week_start, campaign_name, organic_target, ads_target, notes, created_by, created_at, updated_at"
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
   }
   const { week_start, campaign_name, organic_target, ads_target, notes } = parsed.data;
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("creatives_campaigns")
     .insert({
       week_start,
@@ -153,7 +154,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("creatives_campaigns")
     .update(updates)
     .eq("id", id)

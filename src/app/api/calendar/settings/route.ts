@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -29,7 +30,7 @@ export async function GET() {
   const user = await getCurrentUser(supabase);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data, error: dbErr } = await supabase
+  const { data, error: dbErr } = await createAdminClient()
     .from("user_calendar_settings")
     .select("show_tasks, show_leaves, show_rooms, show_birthdays, show_posts, updated_at")
     .eq("user_id", user.id)
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
   const { show_tasks, show_leaves, show_rooms, show_birthdays, show_posts } = parsed.data;
 
-  const { data, error: dbErr } = await supabase
+  const { data, error: dbErr } = await createAdminClient()
     .from("user_calendar_settings")
     .upsert(
       {

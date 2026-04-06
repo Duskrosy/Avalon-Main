@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -52,7 +53,7 @@ export async function GET() {
   const { error, supabase } = await guardRead();
   if (error) return error;
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("smm_news_sources")
     .select("id, name, url, category, is_active, created_at")
     .order("created_at", { ascending: true });
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
   }
   const { name, url, category } = parsed.data;
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("smm_news_sources")
     .insert({ name: name.trim(), url: url.trim(), category })
     .select()
@@ -95,7 +96,7 @@ export async function PATCH(req: NextRequest) {
   }
   const { id, is_active } = parsed.data;
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("smm_news_sources")
     .update({ is_active })
     .eq("id", id)
@@ -118,7 +119,7 @@ export async function DELETE(req: NextRequest) {
   }
   const { id } = parsed.data;
 
-  const { error: dbErr } = await supabase!
+  const { error: dbErr } = await createAdminClient()
     .from("smm_news_sources")
     .delete()
     .eq("id", id);

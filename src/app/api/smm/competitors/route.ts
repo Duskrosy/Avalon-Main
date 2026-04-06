@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -85,7 +86,7 @@ export async function GET(req: NextRequest) {
     if (!accountId)
       return NextResponse.json({ error: "account_id required" }, { status: 400 });
 
-    const { data, error: dbErr } = await supabase!
+    const { data, error: dbErr } = await createAdminClient()
       .from("smm_competitor_snapshots")
       .select(
         "id, snapshot_date, follower_count, post_count, avg_engagement_rate, posting_frequency_week, notes, data_source, created_at"
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Full competitor list with accounts ──
-  const { data: competitors, error: compErr } = await supabase!
+  const { data: competitors, error: compErr } = await createAdminClient()
     .from("smm_competitors")
     .select(
       `id, name, notes, created_at,
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
   > = {};
 
   if (allAccountIds.length > 0) {
-    const { data: snapshots } = await supabase!
+    const { data: snapshots } = await createAdminClient()
       .from("smm_competitor_snapshots")
       .select(
         "account_id, snapshot_date, follower_count, post_count, avg_engagement_rate, posting_frequency_week, notes, data_source"
@@ -200,7 +201,7 @@ export async function POST(req: NextRequest) {
   }
   const { name, notes } = parsed.data;
 
-  const { data, error: dbErr } = await supabase!
+  const { data, error: dbErr } = await createAdminClient()
     .from("smm_competitors")
     .insert({
       name: name.trim(),
@@ -240,7 +241,7 @@ export async function PATCH(req: NextRequest) {
     if (Object.keys(updates).length === 0)
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
 
-    const { data, error: dbErr } = await supabase!
+    const { data, error: dbErr } = await createAdminClient()
       .from("smm_competitors")
       .update(updates)
       .eq("id", id)
@@ -260,7 +261,7 @@ export async function PATCH(req: NextRequest) {
       if (!competitor_id || !platform)
         return NextResponse.json({ error: "competitor_id and platform required" }, { status: 400 });
 
-      const { data, error: dbErr } = await supabase!
+      const { data, error: dbErr } = await createAdminClient()
         .from("smm_competitor_accounts")
         .upsert(
           {
@@ -285,7 +286,7 @@ export async function PATCH(req: NextRequest) {
     if (external_id !== undefined) updates.external_id = external_id?.trim() || null;
     if (is_active !== undefined)   updates.is_active   = is_active;
 
-    const { data, error: dbErr } = await supabase!
+    const { data, error: dbErr } = await createAdminClient()
       .from("smm_competitor_accounts")
       .update(updates)
       .eq("id", id)
@@ -313,7 +314,7 @@ export async function PATCH(req: NextRequest) {
 
     const date = snapshot_date ?? new Date().toISOString().split("T")[0];
 
-    const { data, error: dbErr } = await supabase!
+    const { data, error: dbErr } = await createAdminClient()
       .from("smm_competitor_snapshots")
       .upsert(
         {
@@ -358,7 +359,7 @@ export async function DELETE(req: NextRequest) {
   const { type, id } = parsedDel.data;
 
   if (type === "competitor") {
-    const { error: dbErr } = await supabase!
+    const { error: dbErr } = await createAdminClient()
       .from("smm_competitors")
       .delete()
       .eq("id", id);
@@ -368,7 +369,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   if (type === "account") {
-    const { error: dbErr } = await supabase!
+    const { error: dbErr } = await createAdminClient()
       .from("smm_competitor_accounts")
       .delete()
       .eq("id", id);

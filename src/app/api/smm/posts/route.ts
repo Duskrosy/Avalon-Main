@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
@@ -33,7 +34,7 @@ const deletePostSchema = z.object({
 async function guard() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
-  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), supabase: null, user: null };
+  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
 
   // Check SMM access: creatives, marketing, ad-ops, OPS
   const ops = isOps(user);
@@ -44,17 +45,18 @@ async function guard() {
       .eq("id", user.department_id)
       .maybeSingle();
     if (!["creatives", "marketing", "ad-ops"].includes(dept?.slug ?? "")) {
-      return { error: NextResponse.json({ error: "Unauthorized" }, { status: 403 }), supabase: null, user: null };
+      return { error: NextResponse.json({ error: "Unauthorized" }, { status: 403 }), user: null };
     }
   }
 
-  return { error: null, supabase, user };
+  return { error: null, user };
 }
 
 // GET — list posts with filters
 export async function GET(req: NextRequest) {
-  const { error, supabase, user } = await guard();
+  const { error, user } = await guard();
   if (error) return error;
+  void user;
 
   const { searchParams } = new URL(req.url);
   const groupId    = searchParams.get("group_id");
@@ -62,7 +64,9 @@ export async function GET(req: NextRequest) {
   const status     = searchParams.get("status");
   const monthParam = searchParams.get("month"); // YYYY-MM
 
-  let query = supabase!
+  // Use admin client to bypass RLS for reads (access is already guarded above)
+  const admin = createAdminClient();
+  let query = admin
     .from("smm_posts")
     .select(`
       id, group_id, platform, post_type, status, caption,
@@ -88,7 +92,7 @@ export async function GET(req: NextRequest) {
 
 // POST — create post
 export async function POST(req: NextRequest) {
-  const { error, supabase, user } = await guard();
+  const { error, user } = await guard();
   if (error) return error;
 
   const raw = await req.json().catch(() => ({}));
@@ -98,7 +102,8 @@ export async function POST(req: NextRequest) {
   }
   const { group_id, platform, post_type, status, caption, scheduled_at, published_at, linked_task_id } = parsed.data;
 
-  const { data, error: dbErr } = await supabase!
+  const admin = createAdminClient();
+  const { data, error: dbErr } = await admin
     .from("smm_posts")
     .insert({
       group_id,
@@ -109,7 +114,7 @@ export async function POST(req: NextRequest) {
       scheduled_at: scheduled_at ?? null,
       published_at: published_at ?? null,
       linked_task_id: linked_task_id ?? null,
-      created_by: user!.id,  // profile.id = auth.uid()
+      created_by: user!.id,
     })
     .select(`
       id, group_id, platform, post_type, status, caption,
@@ -124,7 +129,7 @@ export async function POST(req: NextRequest) {
 
 // PATCH — update post
 export async function PATCH(req: NextRequest) {
-  const { error, supabase } = await guard();
+  const { error } = await guard();
   if (error) return error;
 
   const raw = await req.json().catch(() => ({}));
@@ -144,7 +149,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
-  const { data, error: dbErr } = await supabase!
+  const admin = createAdminClient();
+  const { data, error: dbErr } = await admin
     .from("smm_posts")
     .update(updates)
     .eq("id", id)
@@ -161,7 +167,7 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE — delete post
 export async function DELETE(req: NextRequest) {
-  const { error, supabase } = await guard();
+  const { error } = await guard();
   if (error) return error;
 
   const raw = await req.json().catch(() => ({}));
@@ -171,7 +177,8 @@ export async function DELETE(req: NextRequest) {
   }
   const { id } = parsed.data;
 
-  const { error: dbErr } = await supabase!
+  const admin = createAdminClient();
+  const { error: dbErr } = await admin
     .from("smm_posts")
     .delete()
     .eq("id", id);
