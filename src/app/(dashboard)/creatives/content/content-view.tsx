@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { format } from "date-fns";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { format, parseISO } from "date-fns";
 import { SmmSettingsPanel } from "./smm-settings-panel";
 
 type Platform = { id: string; platform: string; page_name: string | null; is_active: boolean };
@@ -19,11 +19,33 @@ type Post = {
   created_by_profile: { first_name: string; last_name: string } | null;
 };
 
+type TopPost = {
+  id: string;
+  post_external_id: string;
+  post_url: string | null;
+  thumbnail_url: string | null;
+  caption_preview: string | null;
+  post_type: string | null;
+  published_at: string | null;
+  impressions: number | null;
+  reach: number | null;
+  engagements: number | null;
+  video_plays: number | null;
+  metric_date: string;
+};
+
 const PLATFORM_COLORS: Record<string, string> = {
   facebook:  "bg-blue-100 text-blue-800",
   instagram: "bg-pink-100 text-pink-800",
   tiktok:    "bg-gray-900 text-white",
   youtube:   "bg-red-100 text-red-800",
+};
+
+const PLATFORM_EMOJIS: Record<string, string> = {
+  facebook:  "📘",
+  instagram: "📸",
+  tiktok:    "🎵",
+  youtube:   "▶️",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -37,6 +59,13 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUSES = ["idea", "draft", "scheduled", "published", "backlog"] as const;
 const POST_TYPES = ["organic", "ad", "trad_marketing", "offline_event"] as const;
 const PLATFORMS = ["facebook", "instagram", "tiktok", "youtube"] as const;
+
+function fmtK(n: number | null | undefined): string {
+  if (n == null) return "—";
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
 
 function PostModal({
   groups,
@@ -175,6 +204,9 @@ export function ContentManager({
   const [modal, setModal] = useState<Post | "new" | null>(null);
   const [saving, setSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [viewMode, setViewMode] = useState<"planned" | "published">("planned");
+  const [livePostsMap, setLivePostsMap] = useState<Record<string, TopPost[]>>({});
+  const [liveLoading, setLiveLoading] = useState(false);
 
   const group = groups.find((g) => g.id === activeGroup);
   const activePlatforms = group?.smm_group_platforms.filter((p) => p.is_active) ?? [];
@@ -187,6 +219,44 @@ export function ContentManager({
       return true;
     });
   }, [posts, activeGroup, activePlatform, activeStatus]);
+
+  const fetchLivePosts = useCallback(async () => {
+    if (!group) return;
+    const platforms = group.smm_group_platforms.filter((p) => p.is_active);
+    const toFetch = activePlatform !== "all"
+      ? platforms.filter((p) => p.platform === activePlatform)
+      : platforms;
+
+    if (toFetch.length === 0) return;
+
+    setLiveLoading(true);
+    try {
+      const results = await Promise.all(
+        toFetch.map(async (p) => {
+          const res = await fetch(
+            `/api/smm/top-posts?platform_id=${p.id}&from=2020-01-01&to=2099-01-01`
+          );
+          if (!res.ok) return { platformId: p.id, posts: [] as TopPost[] };
+          const data = await res.json();
+          const posts: TopPost[] = Array.isArray(data) ? data : (data.posts ?? []);
+          return { platformId: p.id, posts };
+        })
+      );
+      const map: Record<string, TopPost[]> = {};
+      for (const { platformId, posts } of results) {
+        map[platformId] = posts;
+      }
+      setLivePostsMap(map);
+    } finally {
+      setLiveLoading(false);
+    }
+  }, [group, activePlatform]);
+
+  useEffect(() => {
+    if (viewMode === "published") {
+      fetchLivePosts();
+    }
+  }, [viewMode, activeGroup, activePlatform, fetchLivePosts]);
 
   const handleSave = async (data: Partial<Post>) => {
     setSaving(true);
@@ -227,6 +297,29 @@ export function ContentManager({
     setPosts((ps) => ps.filter((p) => p.id !== id));
   };
 
+  // Build flat list of published posts for the grid
+  const livePosts: Array<TopPost & { _platformId: string; _platformName: string }> = useMemo(() => {
+    if (!group) return [];
+    const platforms = group.smm_group_platforms.filter((p) => p.is_active);
+    const toShow = activePlatform !== "all"
+      ? platforms.filter((p) => p.platform === activePlatform)
+      : platforms;
+
+    const flat: Array<TopPost & { _platformId: string; _platformName: string }> = [];
+    for (const plat of toShow) {
+      const posts = livePostsMap[plat.id] ?? [];
+      for (const post of posts) {
+        flat.push({ ...post, _platformId: plat.id, _platformName: plat.platform });
+      }
+    }
+    flat.sort((a, b) => {
+      const da = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const db = b.published_at ? new Date(b.published_at).getTime() : 0;
+      return db - da;
+    });
+    return flat;
+  }, [livePostsMap, group, activePlatform]);
+
   return (
     <div className="space-y-4">
       {/* Settings panel mode */}
@@ -239,6 +332,31 @@ export function ContentManager({
           <h1 className="text-2xl font-semibold text-gray-900">Content</h1>
           <p className="text-sm text-gray-500 mt-1">SMM content management</p>
         </div>
+
+        {/* View mode toggle */}
+        <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setViewMode("planned")}
+            className={`text-sm px-4 py-2 transition-colors ${
+              viewMode === "planned"
+                ? "bg-gray-900 text-white"
+                : "bg-white text-gray-500 hover:bg-gray-50"
+            }`}
+          >
+            Planned
+          </button>
+          <button
+            onClick={() => setViewMode("published")}
+            className={`text-sm px-4 py-2 transition-colors border-l border-gray-200 ${
+              viewMode === "published"
+                ? "bg-gray-900 text-white"
+                : "bg-white text-gray-500 hover:bg-gray-50"
+            }`}
+          >
+            Published
+          </button>
+        </div>
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSettings(true)}
@@ -247,12 +365,14 @@ export function ContentManager({
           >
             ⚙ Groups
           </button>
-          <button
-            onClick={() => setModal("new")}
-            className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
-          >
-            + New Post
-          </button>
+          {viewMode === "planned" && (
+            <button
+              onClick={() => setModal("new")}
+              className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
+            >
+              + New Post
+            </button>
+          )}
         </div>
       </div>
 
@@ -312,87 +432,186 @@ export function ContentManager({
             </div>
           )}
 
-          {/* Status filter */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-gray-400">Status:</span>
-            {["all", ...STATUSES].map((s) => (
-              <button
-                key={s}
-                onClick={() => setActiveStatus(s)}
-                className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-                  activeStatus === s
-                    ? "bg-gray-900 text-white border-transparent"
-                    : "border-gray-200 text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
-              </button>
-            ))}
-            <span className="ml-auto text-xs text-gray-400">{filteredPosts.length} post{filteredPosts.length !== 1 ? "s" : ""}</span>
-          </div>
+          {viewMode === "planned" ? (
+            <>
+              {/* Status filter */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-400">Status:</span>
+                {["all", ...STATUSES].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setActiveStatus(s)}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      activeStatus === s
+                        ? "bg-gray-900 text-white border-transparent"
+                        : "border-gray-200 text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+                <span className="ml-auto text-xs text-gray-400">{filteredPosts.length} post{filteredPosts.length !== 1 ? "s" : ""}</span>
+              </div>
 
-          {/* Posts grid */}
-          {filteredPosts.length === 0 ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
-              <p className="text-sm text-gray-400">No posts found. Create one to get started.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPosts.map((post) => (
-                <div
-                  key={post.id}
-                  className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow"
-                >
-                  {/* Platform + status badges */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? "bg-gray-100 text-gray-600"}`}>
-                      {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
-                    </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[post.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
-                    </span>
-                    <span className="text-xs text-gray-400 ml-auto">
-                      {post.post_type.replace(/_/g, " ")}
-                    </span>
-                  </div>
-
-                  {/* Caption */}
-                  <p className="text-sm text-gray-700 line-clamp-3 flex-1">
-                    {post.caption || <span className="text-gray-300 italic">No caption</span>}
-                  </p>
-
-                  {/* Scheduled date */}
-                  {post.scheduled_at && (
-                    <p className="text-xs text-gray-400">
-                      📅 {format(new Date(post.scheduled_at), "d MMM yyyy · HH:mm")}
-                    </p>
-                  )}
-
-                  {/* Author */}
-                  {post.created_by_profile && (
-                    <p className="text-xs text-gray-400">
-                      {post.created_by_profile.first_name} {post.created_by_profile.last_name}
-                    </p>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 pt-1 border-t border-gray-50">
-                    <button
-                      onClick={() => setModal(post)}
-                      className="text-xs text-gray-500 hover:text-gray-900"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(post.id)}
-                      className="text-xs text-gray-300 hover:text-red-500 ml-auto"
-                    >
-                      Delete
-                    </button>
-                  </div>
+              {/* Posts grid */}
+              {filteredPosts.length === 0 ? (
+                <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
+                  <p className="text-sm text-gray-400">No posts found. Create one to get started.</p>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredPosts.map((post) => (
+                    <div
+                      key={post.id}
+                      className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow"
+                    >
+                      {/* Platform + status badges */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? "bg-gray-100 text-gray-600"}`}>
+                          {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[post.status] ?? "bg-gray-100 text-gray-600"}`}>
+                          {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
+                        </span>
+                        <span className="text-xs text-gray-400 ml-auto">
+                          {post.post_type.replace(/_/g, " ")}
+                        </span>
+                      </div>
+
+                      {/* Caption */}
+                      <p className="text-sm text-gray-700 line-clamp-3 flex-1">
+                        {post.caption || <span className="text-gray-300 italic">No caption</span>}
+                      </p>
+
+                      {/* Scheduled date */}
+                      {post.scheduled_at && (
+                        <p className="text-xs text-gray-400">
+                          📅 {format(new Date(post.scheduled_at), "d MMM yyyy · HH:mm")}
+                        </p>
+                      )}
+
+                      {/* Author */}
+                      {post.created_by_profile && (
+                        <p className="text-xs text-gray-400">
+                          {post.created_by_profile.first_name} {post.created_by_profile.last_name}
+                        </p>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 pt-1 border-t border-gray-50">
+                        <button
+                          onClick={() => setModal(post)}
+                          className="text-xs text-gray-500 hover:text-gray-900"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(post.id)}
+                          className="text-xs text-gray-300 hover:text-red-500 ml-auto"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            /* Published view */
+            <>
+              {liveLoading ? (
+                <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+              ) : livePosts.length === 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  <p className="text-sm text-gray-400 col-span-full text-center py-8">
+                    No published posts synced yet. Hit Sync Now on the Analytics page.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {livePosts.map((post) => {
+                    const platformColorClass = PLATFORM_COLORS[post._platformName] ?? "bg-gray-100 text-gray-600";
+                    const platformEmoji = PLATFORM_EMOJIS[post._platformName] ?? "🌐";
+                    const postTypeLabel = post.post_type
+                      ? post.post_type.charAt(0).toUpperCase() + post.post_type.slice(1)
+                      : null;
+                    const impressionVal =
+                      post.impressions && post.impressions > 0 ? post.impressions : post.reach;
+
+                    return (
+                      <div
+                        key={`${post._platformId}-${post.id}`}
+                        className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col hover:shadow-sm transition-shadow"
+                      >
+                        {/* Thumbnail */}
+                        <div className="relative aspect-video bg-gray-100 flex items-center justify-center">
+                          {post.thumbnail_url ? (
+                            <img
+                              src={post.thumbnail_url}
+                              alt={post.caption_preview ?? "Post thumbnail"}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-2xl">{platformEmoji}</span>
+                          )}
+
+                          {/* Post type badge — top left */}
+                          {postTypeLabel && (
+                            <span className="absolute top-1.5 left-1.5 text-[10px] px-1.5 py-0.5 bg-black/60 text-white rounded-full">
+                              {postTypeLabel}
+                            </span>
+                          )}
+
+                          {/* Platform badge — top right */}
+                          <span className={`absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${platformColorClass}`}>
+                            {post._platformName.charAt(0).toUpperCase() + post._platformName.slice(1)}
+                          </span>
+                        </div>
+
+                        {/* Card body */}
+                        <div className="p-2.5 flex flex-col gap-1.5 flex-1">
+                          {/* Caption */}
+                          {post.caption_preview && (
+                            <p className="text-xs text-gray-700 line-clamp-2">{post.caption_preview}</p>
+                          )}
+
+                          {/* Date */}
+                          {post.published_at && (
+                            <p className="text-[10px] text-gray-400">
+                              {format(parseISO(post.published_at), "d MMM yyyy")}
+                            </p>
+                          )}
+
+                          {/* Metrics row */}
+                          <div className="flex items-center gap-3 text-[10px] text-gray-500 flex-wrap">
+                            <span>👁 {fmtK(impressionVal)}</span>
+                            <span>❤️ {fmtK(post.engagements)}</span>
+                            {post.video_plays != null && post.video_plays > 0 && (
+                              <span>▶️ {fmtK(post.video_plays)}</span>
+                            )}
+                          </div>
+
+                          {/* View link */}
+                          {post.post_url && (
+                            <div className="mt-auto pt-1 flex justify-end">
+                              <a
+                                href={post.post_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[10px] text-gray-400 hover:text-gray-700"
+                              >
+                                View →
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </>
       )}
