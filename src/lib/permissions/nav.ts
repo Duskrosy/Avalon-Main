@@ -101,6 +101,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Asset Library",   slug: "ad-library",     route: "/ad-ops/library" },
       { name: "Deployments",     slug: "ad-deployments", route: "/ad-ops/deployments" },
       { name: "Performance",     slug: "ad-performance", route: "/ad-ops/performance" },
+      { name: "Settings",        slug: "ad-settings",    route: "/ad-ops/settings", minTier: 1 },
     ],
   },
   {
