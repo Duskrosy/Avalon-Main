@@ -116,6 +116,7 @@ export const NAV_GROUPS: NavGroup[] = [
     slug: "ad-ops",
     departments: ["ad-ops"],
     items: [
+      { name: "Live Ads",       slug: "live-ads",       route: "/ad-ops/live" },
       { name: "Dashboard",      slug: "ad-dashboard",   route: "/ad-ops/dashboard" },
       { name: "Live Campaigns", slug: "ad-campaigns",   route: "/ad-ops/campaigns" },
       { name: "Performance",    slug: "ad-performance", route: "/ad-ops/performance" },

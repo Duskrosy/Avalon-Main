@@ -200,3 +200,74 @@ function normaliseAdInsight(raw: RawAdInsight): MetaAdInsight {
     purchase_roas: raw.purchase_roas,
   };
 }
+
+// ─── Campaign status management ───────────────────────────────────────────────
+
+/**
+ * Pause or resume a campaign via Meta Ads API.
+ * status: "ACTIVE" | "PAUSED"
+ */
+export async function updateCampaignStatus(
+  campaignId: string,
+  token: string,
+  status: "ACTIVE" | "PAUSED",
+): Promise<void> {
+  const res = await fetch(`${BASE}/${campaignId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, access_token: token }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${body}`);
+  }
+}
+
+/**
+ * Fetch lifetime spend for a list of campaign IDs from one ad account.
+ * Returns a map of campaignId → spend (number).
+ */
+export async function fetchCampaignSpend(
+  accountId: string,
+  token: string,
+  campaignIds: string[],
+  period: "lifetime" | "monthly" | "daily" = "lifetime",
+): Promise<Record<string, number>> {
+  if (campaignIds.length === 0) return {};
+
+  const datePreset =
+    period === "monthly" ? "this_month" :
+    period === "daily"   ? "today" :
+    undefined; // lifetime uses date_range instead
+
+  const params = new URLSearchParams({
+    access_token: token,
+    fields: "campaign_id,spend",
+    level: "campaign",
+    async: "false",
+    filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: campaignIds }]),
+    limit: "500",
+  });
+
+  if (datePreset) {
+    params.set("date_preset", datePreset);
+  } else {
+    // Lifetime: use a wide date range from 2015 to tomorrow
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+    params.set("time_range", JSON.stringify({ since: "2015-01-01", until: tomorrow }));
+  }
+
+  const url = `${BASE}/act_${accountId}/insights?${params}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Meta spend fetch error ${res.status}: ${body}`);
+  }
+  const json = await res.json() as { data: { campaign_id: string; spend: string }[] };
+
+  const map: Record<string, number> = {};
+  for (const row of json.data ?? []) {
+    map[row.campaign_id] = parseFloat(row.spend ?? "0");
+  }
+  return map;
+}
