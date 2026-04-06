@@ -11,7 +11,13 @@ type DeploymentOption = {
   campaign_name: string | null;
   status: string;
   meta_account_id: string | null;
-  asset: { asset_code: string; title: string } | null;
+  asset: {
+    asset_code: string;
+    title: string;
+    thumbnail_url: string | null;
+    content_type: string | null;
+    hook_type: string | null;
+  } | null;
 };
 
 type Group = {
@@ -71,6 +77,9 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<"charts" | "creatives">("charts");
+  const [latestSnapshotMap, setLatestSnapshotMap] = useState<Record<string, Snapshot>>({});
+  const [creativesLoading, setCreativesLoading] = useState(false);
   const [form, setForm] = useState({
     metric_date: new Date().toISOString().split("T")[0],
     impressions: "",
@@ -109,6 +118,29 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
   }, [selectedId]);
 
   useEffect(() => { fetchSnapshots(); }, [fetchSnapshots]);
+
+  // Fetch latest snapshot for each deployment when switching to creatives view
+  useEffect(() => {
+    if (viewMode !== "creatives") return;
+    setCreativesLoading(true);
+    Promise.allSettled(
+      filteredDeployments.map((d) =>
+        fetch(`/api/ad-ops/performance?deployment_id=${d.id}&limit=1`)
+          .then((r) => (r.ok ? r.json() : []))
+          .then((data: Snapshot[]) => ({ id: d.id, snapshot: data[0] ?? null }))
+      )
+    ).then((results) => {
+      const map: Record<string, Snapshot> = {};
+      for (const r of results) {
+        if (r.status === "fulfilled" && r.value.snapshot) {
+          map[r.value.id] = r.value.snapshot;
+        }
+      }
+      setLatestSnapshotMap(map);
+      setCreativesLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, selectedGroupId]);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -200,21 +232,23 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
         </div>
       )}
 
-      {/* Deployment selector */}
+      {/* Deployment selector + view toggle */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <select
-          value={selectedId}
-          onChange={(e) => setSelectedId(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 flex-1 max-w-sm"
-        >
-          {filteredDeployments.length === 0 && <option value="">No deployments</option>}
-          {filteredDeployments.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.campaign_name ?? d.asset?.title ?? d.id.slice(0, 8)} ({d.status})
-            </option>
-          ))}
-        </select>
-        {selectedId && (
+        {viewMode === "charts" && (
+          <select
+            value={selectedId}
+            onChange={(e) => setSelectedId(e.target.value)}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 flex-1 max-w-sm"
+          >
+            {filteredDeployments.length === 0 && <option value="">No deployments</option>}
+            {filteredDeployments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.campaign_name ?? d.asset?.title ?? d.id.slice(0, 8)} ({d.status})
+              </option>
+            ))}
+          </select>
+        )}
+        {selectedId && viewMode === "charts" && (
           <button
             onClick={() => setShowAddModal(true)}
             className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
@@ -222,9 +256,151 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
             + Log Metrics
           </button>
         )}
+        <div className="ml-auto flex items-center bg-gray-100 rounded-lg p-0.5">
+          <button
+            onClick={() => setViewMode("charts")}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              viewMode === "charts"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Charts
+          </button>
+          <button
+            onClick={() => setViewMode("creatives")}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              viewMode === "creatives"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Creatives
+          </button>
+        </div>
       </div>
 
-      {selectedDep && (
+      {/* Creatives view */}
+      {viewMode === "creatives" && (
+        <>
+          {creativesLoading ? (
+            <div className="text-center py-16 text-gray-400 text-sm">Loading creatives...</div>
+          ) : filteredDeployments.length === 0 ? (
+            <div className="bg-gray-50 rounded-xl p-12 text-center">
+              <p className="text-sm text-gray-400">No deployments in this group.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredDeployments.map((dep) => {
+                const snap = latestSnapshotMap[dep.id] ?? null;
+                const depAccount = dep.meta_account_id
+                  ? accounts.find((a) => a.id === dep.meta_account_id)
+                  : undefined;
+                const cardSym = currencySymbol(depAccount?.currency ?? null);
+                const statusColors: Record<string, string> = {
+                  active: "bg-green-100 text-green-700",
+                  paused: "bg-amber-100 text-amber-700",
+                  ended: "bg-gray-100 text-gray-500",
+                };
+                const badgeClass = statusColors[dep.status] ?? "bg-gray-100 text-gray-500";
+                const initials = dep.asset?.asset_code
+                  ? dep.asset.asset_code.slice(0, 2).toUpperCase()
+                  : (dep.campaign_name ?? "??").slice(0, 2).toUpperCase();
+                return (
+                  <div
+                    key={dep.id}
+                    className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative aspect-video bg-gray-100 shrink-0">
+                      {dep.asset?.thumbnail_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={dep.asset.thumbnail_url}
+                          alt={dep.asset.title ?? dep.asset.asset_code}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-xl font-bold text-gray-400 font-mono">{initials}</span>
+                        </div>
+                      )}
+                      {/* Status badge */}
+                      <span
+                        className={`absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${badgeClass}`}
+                      >
+                        {dep.status}
+                      </span>
+                    </div>
+
+                    {/* Card body */}
+                    <div className="p-3 flex flex-col gap-2 flex-1">
+                      {/* Content type + hook type tags */}
+                      {(dep.asset?.content_type || dep.asset?.hook_type) && (
+                        <div className="flex gap-1 flex-wrap">
+                          {dep.asset.content_type && (
+                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                              {dep.asset.content_type}
+                            </span>
+                          )}
+                          {dep.asset.hook_type && (
+                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                              {dep.asset.hook_type}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Asset code */}
+                      {dep.asset?.asset_code && (
+                        <p className="text-[10px] font-mono text-gray-400">{dep.asset.asset_code}</p>
+                      )}
+
+                      {/* Campaign name */}
+                      <p className="text-sm text-gray-800 line-clamp-2 leading-snug">
+                        {dep.campaign_name ?? dep.asset?.title ?? dep.id.slice(0, 8)}
+                      </p>
+
+                      {/* Metrics */}
+                      {snap ? (
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1">
+                          {([
+                            ["Spend", snap.spend != null ? `${cardSym}${fmt(snap.spend, 2)}` : "—"],
+                            ["ROAS", snap.roas != null ? `${fmt(snap.roas, 2)}x` : "—"],
+                            ["CTR", snap.ctr != null ? `${fmt(snap.ctr * 100, 2)}%` : "—"],
+                            ["Impr.", fmtK(snap.impressions)],
+                            ["Clicks", fmtK(snap.clicks)],
+                          ] as [string, string][]).map(([label, value]) => (
+                            <div key={label} className="flex flex-col">
+                              <span className="text-[9px] text-gray-400 uppercase tracking-wide">{label}</span>
+                              <span className="text-xs font-medium text-gray-700">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-gray-400 mt-1">No data yet</p>
+                      )}
+
+                      {/* View details */}
+                      <button
+                        onClick={() => {
+                          setSelectedId(dep.id);
+                          setViewMode("charts");
+                        }}
+                        className="mt-auto pt-2 text-xs text-gray-500 hover:text-gray-900 text-left transition-colors"
+                      >
+                        View details →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {viewMode === "charts" && selectedDep && (
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">

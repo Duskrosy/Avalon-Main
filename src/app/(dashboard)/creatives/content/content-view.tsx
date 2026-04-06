@@ -204,6 +204,8 @@ export function ContentManager({
   const [modal, setModal] = useState<Post | "new" | null>(null);
   const [saving, setSaving] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"planned" | "published">("planned");
   const [livePostsMap, setLivePostsMap] = useState<Record<string, TopPost[]>>({});
   const [liveLoading, setLiveLoading] = useState(false);
@@ -257,6 +259,31 @@ export function ContentManager({
       fetchLivePosts();
     }
   }, [viewMode, activeGroup, activePlatform, fetchLivePosts]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+
+    const platformsToSync =
+      activePlatform === "all"
+        ? activePlatforms
+        : activePlatforms.filter((p) => p.platform === activePlatform);
+
+    await Promise.allSettled(
+      platformsToSync.map((platform) =>
+        fetch("/api/smm/social-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ platform_id: platform.id }),
+        })
+      )
+    );
+
+    await fetchLivePosts();
+    setSyncing(false);
+    setSyncMsg("✓ Synced");
+    setTimeout(() => setSyncMsg(null), 3000);
+  };
 
   const handleSave = async (data: Partial<Post>) => {
     setSaving(true);
@@ -365,6 +392,15 @@ export function ContentManager({
           >
             ⚙ Groups
           </button>
+          {viewMode === "published" && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 disabled:opacity-50 transition-colors"
+            >
+              {syncing ? "Syncing…" : syncMsg ?? "↻ Sync"}
+            </button>
+          )}
           {viewMode === "planned" && (
             <button
               onClick={() => setModal("new")}

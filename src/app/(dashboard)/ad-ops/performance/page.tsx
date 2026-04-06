@@ -11,7 +11,7 @@ export default async function AdPerformancePage() {
   const [{ data: deployments }, { data: groups }, { data: accounts }] = await Promise.all([
     supabase
       .from("ad_deployments")
-      .select("id, campaign_name, status, meta_account_id, asset:ad_assets(asset_code, title)")
+      .select("id, campaign_name, status, meta_account_id, asset:ad_assets(asset_code, title, thumbnail_url, content_type, hook_type)")
       .in("status", ["active", "paused", "ended"])
       .order("launched_at", { ascending: false }),
     supabase
