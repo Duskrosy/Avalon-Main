@@ -24,10 +24,15 @@ type AdsetRow = {
   adset_name: string;
   adset_id: string | null;
   spend: number;
+  live_spend: number | null;
   conversions: number;
   conversion_value: number;
   impressions: number;
   roas: number | null;
+  spend_cap: number | null;
+  spend_cap_period: "lifetime" | "monthly" | "daily";
+  auto_paused_at: string | null;
+  auto_paused_reason: string | null;
   ads: AdRow[];
 };
 
@@ -81,40 +86,6 @@ function roasColor(r: number) {
   return "text-gray-700";
 }
 
-// ─── Inline editor ─────────────────────────────────────────────────────────────
-
-function BudgetInput({
-  label, currency, onSave, onCancel,
-}: { label: string; currency: string; onSave: (v: number) => Promise<void>; onCancel: () => void }) {
-  const [val, setVal] = useState("");
-  const [saving, setSaving] = useState(false);
-  const ref = useRef<HTMLInputElement>(null);
-  useEffect(() => { ref.current?.focus(); }, []);
-  async function save() {
-    const n = parseFloat(val);
-    if (isNaN(n) || n <= 0) return;
-    setSaving(true);
-    try { await onSave(n); } finally { setSaving(false); }
-  }
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-xs text-gray-400">{currency}</span>
-      <input
-        ref={ref} type="number" min="1" step="1" placeholder="0"
-        value={val} onChange={(e) => setVal(e.target.value)}
-        onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") onCancel(); }}
-        className="w-20 text-xs border border-gray-200 rounded px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-400"
-      />
-      <button onClick={save} disabled={saving}
-        className="text-xs px-2 py-0.5 bg-[#3A5635] text-white rounded disabled:opacity-50 hover:bg-[#2e4429]">
-        {saving ? "…" : "Set"}
-      </button>
-      <button onClick={onCancel} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
-    </div>
-  );
-}
-
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 export function LiveAdsView() {
@@ -147,8 +118,11 @@ export function LiveAdsView() {
   const [capPeriod, setCapPeriod]     = useState<"lifetime" | "monthly" | "daily">("lifetime");
   const [savingCap, setSavingCap]     = useState(false);
 
-  // Budget editors
-  const [editingAdsetBudget, setEditingAdsetBudget] = useState<string | null>(null); // adset_id
+  // Adset cap editor
+  const [editingAdsetCap, setEditingAdsetCap]       = useState<string | null>(null); // adset_id
+  const [adsetCapAmount, setAdsetCapAmount]         = useState("");
+  const [adsetCapPeriod, setAdsetCapPeriod]         = useState<"lifetime" | "monthly" | "daily">("lifetime");
+  const [savingAdsetCap, setSavingAdsetCap]         = useState(false);
   const [editingCapCampaignId, setEditingCapCampaignId] = useState<string | null>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -246,15 +220,54 @@ export function LiveAdsView() {
     }
   }
 
-  // ── Adset budget ───────────────────────────────────────────────────────────
+  // ── Adset spend cap ────────────────────────────────────────────────────────
 
-  async function handleAdsetBudget(adsetId: string, budget: number) {
-    await fetch("/api/ad-ops/live-ads/adset", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ adset_id: adsetId, daily_budget: budget }),
-    });
-    setEditingAdsetBudget(null);
+  function openAdsetCapEditor(adset: AdsetRow) {
+    setEditingAdsetCap(adset.adset_id);
+    setAdsetCapAmount(adset.spend_cap?.toString() ?? "");
+    setAdsetCapPeriod(adset.spend_cap_period ?? "lifetime");
+  }
+
+  async function handleSaveAdsetCap(adsetId: string) {
+    const parsed = parseFloat(adsetCapAmount);
+    if (isNaN(parsed) || parsed <= 0) return;
+    setSavingAdsetCap(true);
+    try {
+      const res = await fetch("/api/ad-ops/live-ads/adset", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adset_id: adsetId, spend_cap: parsed, spend_cap_period: adsetCapPeriod }),
+      });
+      if (res.ok) {
+        setAds((prev) => prev.map((c) => ({
+          ...c,
+          adsets: c.adsets.map((a) =>
+            a.adset_id === adsetId ? { ...a, spend_cap: parsed, spend_cap_period: adsetCapPeriod } : a
+          ),
+        })));
+        setEditingAdsetCap(null);
+      }
+    } finally {
+      setSavingAdsetCap(false);
+    }
+  }
+
+  async function handleClearAdsetCap(adsetId: string) {
+    setSavingAdsetCap(true);
+    try {
+      await fetch("/api/ad-ops/live-ads/adset", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adset_id: adsetId, spend_cap: null }),
+      });
+      setAds((prev) => prev.map((c) => ({
+        ...c,
+        adsets: c.adsets.map((a) => a.adset_id === adsetId ? { ...a, spend_cap: null } : a),
+      })));
+      setEditingAdsetCap(null);
+    } finally {
+      setSavingAdsetCap(false);
+    }
   }
 
   // ── Ad toggle ──────────────────────────────────────────────────────────────
@@ -565,12 +578,14 @@ export function LiveAdsView() {
                     ) : (
                       <div>
                         {ad.adsets.map((adset) => {
-                          const adsetKey   = `${ad.id}__${adset.adset_name}`;
-                          const adsetOpen  = expandedAdsets.has(adsetKey);
-                          const adsetId    = adset.adset_id;
+                          const adsetKey      = `${ad.id}__${adset.adset_name}`;
+                          const adsetOpen     = expandedAdsets.has(adsetKey);
+                          const adsetId       = adset.adset_id;
                           const isPausedAdset = adsetId ? pausedAdsets.has(adsetId) : false;
-                          const isTogAdset = adsetId ? togglingAdset === adsetId : false;
-                          const isEditBudget = adsetId ? editingAdsetBudget === adsetId : false;
+                          const isTogAdset    = adsetId ? togglingAdset === adsetId : false;
+                          const isEditingThisAdsetCap = editingAdsetCap === adsetId;
+                          const adsetSpendDisplay = adset.live_spend ?? adset.spend;
+                          const adsetPct = spendPct(adsetSpendDisplay, adset.spend_cap);
 
                           return (
                             <div key={adsetKey} className="border-b border-gray-100 last:border-b-0">
@@ -587,29 +602,64 @@ export function LiveAdsView() {
                                   <span className={`text-sm font-medium truncate block ${isPausedAdset ? "line-through text-gray-400" : "text-gray-700"}`}>
                                     {adset.adset_name}
                                   </span>
+                                  {/* Spend vs cap bar */}
+                                  {adset.spend_cap && (
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <div className="w-24 bg-gray-100 rounded-full h-1">
+                                        <div className={`h-1 rounded-full ${progressColor(adsetPct)}`} style={{ width: `${adsetPct}%` }} />
+                                      </div>
+                                      <span className="text-xs text-gray-400">
+                                        {fmtMoney(adsetSpendDisplay, currency)} / {fmtMoney(adset.spend_cap, currency)}
+                                      </span>
+                                    </div>
+                                  )}
                                 </button>
 
                                 {/* Adset stats */}
                                 <div className="hidden sm:flex items-center gap-3 text-xs text-gray-500 shrink-0">
-                                  <span><span className="font-semibold text-gray-700">{fmtMoney(adset.spend, currency)}</span></span>
+                                  <span>
+                                    <span className="font-semibold text-gray-700">{fmtMoney(adset.spend, currency)}</span>
+                                    {adset.live_spend !== null && adset.live_spend !== adset.spend && (
+                                      <span className="text-gray-400 ml-1">(live: {fmtMoney(adset.live_spend, currency)})</span>
+                                    )}
+                                  </span>
                                   {adset.roas !== null && (
                                     <span className={`font-semibold ${roasColor(adset.roas)}`}>{fmt(adset.roas)}x</span>
                                   )}
                                   <span className="text-gray-400">{adset.ads.length} ads</span>
                                 </div>
 
-                                {/* Budget editor inline */}
-                                {isEditBudget && adsetId ? (
-                                  <BudgetInput
-                                    label="Daily" currency={currency}
-                                    onSave={(v) => handleAdsetBudget(adsetId, v)}
-                                    onCancel={() => setEditingAdsetBudget(null)}
-                                  />
-                                ) : (
-                                  adsetId && (
-                                    <button onClick={() => setEditingAdsetBudget(adsetId)}
-                                      className="text-xs text-gray-400 hover:text-gray-700 px-1 shrink-0" title="Set budget">
-                                      💰
+                                {/* Spend cap button / editor */}
+                                {adsetId && (
+                                  isEditingThisAdsetCap ? (
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <input type="number" min="1" step="1" placeholder="Cap amount"
+                                        value={adsetCapAmount} onChange={(e) => setAdsetCapAmount(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === "Enter") handleSaveAdsetCap(adsetId); if (e.key === "Escape") setEditingAdsetCap(null); }}
+                                        className="w-24 text-xs border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                      />
+                                      <select value={adsetCapPeriod} onChange={(e) => setAdsetCapPeriod(e.target.value as "lifetime" | "monthly" | "daily")}
+                                        className="text-xs border border-gray-200 rounded px-1.5 py-1 bg-white">
+                                        <option value="lifetime">Lifetime</option>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="daily">Daily</option>
+                                      </select>
+                                      <button onClick={() => handleSaveAdsetCap(adsetId)} disabled={savingAdsetCap}
+                                        className="text-xs px-2 py-1 bg-[#3A5635] text-white rounded disabled:opacity-50 hover:bg-[#2e4429]">
+                                        {savingAdsetCap ? "…" : "Set"}
+                                      </button>
+                                      {adset.spend_cap && (
+                                        <button onClick={() => handleClearAdsetCap(adsetId)}
+                                          className="text-xs px-1.5 py-1 border border-gray-200 rounded text-gray-400 hover:text-red-500">
+                                          ✕
+                                        </button>
+                                      )}
+                                      <button onClick={() => setEditingAdsetCap(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => openAdsetCapEditor(adset)}
+                                      className="shrink-0 text-xs text-gray-400 hover:text-[#3A5635] border border-dashed border-gray-200 hover:border-[#3A5635] px-2 py-1 rounded transition-colors whitespace-nowrap">
+                                      {adset.spend_cap ? `Cap: ${fmtMoney(adset.spend_cap, currency)}` : "+ Spend cap"}
                                     </button>
                                   )
                                 )}

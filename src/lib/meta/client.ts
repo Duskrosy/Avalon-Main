@@ -310,6 +310,53 @@ export async function setAdsetDailyBudget(
 }
 
 /**
+ * Fetch spend for a list of adset IDs from one ad account.
+ * Returns a map of adsetId → spend (number).
+ */
+export async function fetchAdsetSpend(
+  accountId: string,
+  token: string,
+  adsetIds: string[],
+  period: "lifetime" | "monthly" | "daily" = "lifetime",
+): Promise<Record<string, number>> {
+  if (!adsetIds.length) return {};
+
+  const datePreset =
+    period === "monthly" ? "this_month" :
+    period === "daily"   ? "today" :
+    undefined;
+
+  const params = new URLSearchParams({
+    access_token: token,
+    fields: "adset_id,spend",
+    level: "adset",
+    async: "false",
+    filtering: JSON.stringify([{ field: "adset.id", operator: "IN", value: adsetIds }]),
+    limit: "500",
+  });
+
+  if (datePreset) {
+    params.set("date_preset", datePreset);
+  } else {
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+    params.set("time_range", JSON.stringify({ since: "2015-01-01", until: tomorrow }));
+  }
+
+  const url = `${BASE}/act_${accountId}/insights?${params}`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Meta adset spend error ${res.status}: ${body}`);
+  }
+  const json = await res.json() as { data: { adset_id: string; spend: string }[] };
+  const map: Record<string, number> = {};
+  for (const row of json.data ?? []) {
+    map[row.adset_id] = parseFloat(row.spend ?? "0");
+  }
+  return map;
+}
+
+/**
  * Fetch lifetime spend for a list of campaign IDs from one ad account.
  * Returns a map of campaignId → spend (number).
  */

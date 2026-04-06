@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
-import { resolveToken, fetchCampaignSpend, updateCampaignStatus } from "@/lib/meta/client";
+import { resolveToken, fetchCampaignSpend, fetchAdsetSpend, updateCampaignStatus } from "@/lib/meta/client";
 import { z } from "zod";
 
 async function requireAccess() {
@@ -108,7 +108,43 @@ export async function GET(req: NextRequest) {
     ad.video_plays_25pct += s.video_plays_25pct ?? 0;
   }
 
-  // 6. Live spend from Meta, batched by account
+  // 6. Adset spend caps from DB
+  const allAdsetIds = Array.from(new Set(
+    Array.from(statsMap.values()).flatMap((adsetMap) =>
+      Array.from(adsetMap.values()).flatMap((adset) =>
+        Array.from(adset.ads.values()).map((a) => a.adset_id).filter(Boolean) as string[]
+      )
+    )
+  ));
+  const { data: adsetCapsRaw } = allAdsetIds.length
+    ? await admin.from("meta_adset_caps").select("adset_id, meta_account_id, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason").in("adset_id", allAdsetIds)
+    : { data: [] };
+  const adsetCapMap = Object.fromEntries((adsetCapsRaw ?? []).map((c) => [c.adset_id, c]));
+
+  // 6b. Live adset spend from Meta for capped adsets only
+  const cappedAdsetIds = (adsetCapsRaw ?? []).map((c) => c.adset_id);
+  const adsetSpendMap: Record<string, number> = {};
+  if (cappedAdsetIds.length) {
+    // Group capped adsets by account
+    const adsetByAccount = new Map<string, { adsetIds: string[]; acctId: string }>();
+    for (const cap of adsetCapsRaw ?? []) {
+      const acct = accountMap[cap.meta_account_id ?? ""] ?? null;
+      if (!acct?.account_id) continue;
+      if (!adsetByAccount.has(acct.account_id)) adsetByAccount.set(acct.account_id, { adsetIds: [], acctId: acct.account_id });
+      adsetByAccount.get(acct.account_id)!.adsetIds.push(cap.adset_id);
+    }
+    await Promise.allSettled(
+      Array.from(adsetByAccount.entries()).map(async ([accountId, { adsetIds }]) => {
+        const acct = (accounts ?? []).find((a) => a.account_id === accountId);
+        if (!acct) return;
+        const token = resolveToken(acct);
+        const result = await fetchAdsetSpend(accountId, token, adsetIds, "lifetime");
+        Object.assign(adsetSpendMap, result);
+      })
+    );
+  }
+
+  // 7. Live campaign spend from Meta, batched by account
   const byAccount = new Map<string, typeof campaigns>();
   for (const c of campaigns) {
     const acct = accountMap[c.meta_account_id];
@@ -129,7 +165,7 @@ export async function GET(req: NextRequest) {
     }),
   );
 
-  // 7. Build final response
+  // 8. Build final response
   const result = campaigns.map((c) => {
     const acct = accountMap[c.meta_account_id] ?? null;
     const key = `${c.meta_account_id}__${c.campaign_id}`;
@@ -142,16 +178,22 @@ export async function GET(req: NextRequest) {
           const adsetConvValue = ads.reduce((s, a) => s + a.conversion_value, 0);
           const adsetConv = ads.reduce((s, a) => s + a.conversions, 0);
           const adsetImpr = ads.reduce((s, a) => s + a.impressions, 0);
-          // Use the adset_id from the first ad row (all ads in the adset share the same adset_id)
           const adsetId = ads[0]?.adset_id ?? null;
+          const cap = adsetId ? adsetCapMap[adsetId] : null;
+          const liveAdsetSpend = adsetId ? (adsetSpendMap[adsetId] ?? null) : null;
           return {
             adset_name: adset.adset_name,
             adset_id: adsetId,
             spend: adsetSpend,
+            live_spend: liveAdsetSpend,
             conversions: adsetConv,
             conversion_value: adsetConvValue,
             impressions: adsetImpr,
             roas: adsetSpend > 0 ? adsetConvValue / adsetSpend : null,
+            spend_cap: cap?.spend_cap ?? null,
+            spend_cap_period: cap?.spend_cap_period ?? "lifetime",
+            auto_paused_at: cap?.auto_paused_at ?? null,
+            auto_paused_reason: cap?.auto_paused_reason ?? null,
             ads: ads.map((a) => ({
               ...a,
               roas: a.spend > 0 ? a.conversion_value / a.spend : null,
