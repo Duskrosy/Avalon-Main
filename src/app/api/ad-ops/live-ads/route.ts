@@ -12,24 +12,27 @@ async function requireAccess() {
   return { error: null, user };
 }
 
-// GET — fetch live campaigns + real-time spend from Meta
-export async function GET() {
+// ─── GET — live campaigns + stats + thumbnails ─────────────────────────────────
+export async function GET(req: NextRequest) {
   const { error } = await requireAccess();
   if (error) return error;
 
+  const days = parseInt(req.nextUrl.searchParams.get("days") ?? "7");
+  const cutoff = new Date(Date.now() - days * 86400000).toISOString().split("T")[0];
+
   const admin = createAdminClient();
 
-  // Fetch active + paused campaigns from the synced Meta campaigns table
+  // 1. Campaigns: ACTIVE, or paused via this page (auto_paused_at IS NOT NULL)
   const { data: campaigns, error: dbErr } = await admin
     .from("meta_campaigns")
     .select("id, campaign_id, campaign_name, effective_status, meta_account_id, daily_budget, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason")
-    .or("effective_status.in.(ACTIVE,PAUSED),auto_paused_at.not.is.null")
+    .or("effective_status.eq.ACTIVE,auto_paused_at.not.is.null")
     .order("campaign_name");
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
   if (!campaigns?.length) return NextResponse.json([]);
 
-  // Fetch all active accounts for token + currency lookup
+  // 2. Accounts for token + currency lookup
   const { data: accounts } = await admin
     .from("ad_meta_accounts")
     .select("id, account_id, name, meta_access_token, currency")
@@ -37,7 +40,73 @@ export async function GET() {
 
   const accountMap = Object.fromEntries((accounts ?? []).map((a) => [a.id, a]));
 
-  // Group campaigns by Meta account to batch the spend fetch
+  // 3. Stats for these campaigns over the requested window
+  const campaignIds = campaigns.map((c) => c.campaign_id).filter(Boolean) as string[];
+  const { data: statsRaw } = campaignIds.length
+    ? await admin
+        .from("meta_ad_stats")
+        .select("campaign_id, meta_account_id, ad_id, ad_name, adset_name, spend, conversions, conversion_value, impressions, clicks, video_plays, video_plays_25pct, metric_date")
+        .in("campaign_id", campaignIds)
+        .gte("metric_date", cutoff)
+    : { data: [] };
+
+  // 4. Thumbnail map: meta_ad_id → thumbnail_url via ad_deployments → ad_assets
+  const adIds = [...new Set((statsRaw ?? []).map((s) => s.ad_id).filter(Boolean))] as string[];
+  const thumbnailMap: Record<string, string> = {};
+  if (adIds.length) {
+    const { data: deps } = await admin
+      .from("ad_deployments")
+      .select("meta_ad_id, asset:ad_assets(thumbnail_url)")
+      .in("meta_ad_id", adIds);
+    for (const d of deps ?? []) {
+      const thumb = (d.asset as unknown as { thumbnail_url: string | null } | null)?.thumbnail_url;
+      if (d.meta_ad_id && thumb) thumbnailMap[d.meta_ad_id] = thumb;
+    }
+  }
+
+  // 5. Aggregate stats: campaign_key → adset_name → ad_id
+  type AdAgg = {
+    ad_id: string;
+    ad_name: string | null;
+    spend: number; conversions: number; conversion_value: number;
+    impressions: number; clicks: number; video_plays: number; video_plays_25pct: number;
+    thumbnail_url: string | null;
+  };
+  type AdsetAgg = {
+    adset_name: string;
+    ads: Map<string, AdAgg>;
+  };
+  const statsMap = new Map<string, Map<string, AdsetAgg>>();
+
+  for (const s of statsRaw ?? []) {
+    if (!s.campaign_id) continue;
+    const key = `${s.meta_account_id}__${s.campaign_id}`;
+    if (!statsMap.has(key)) statsMap.set(key, new Map());
+    const adsetKey = s.adset_name ?? "__unset__";
+    const adsetMap = statsMap.get(key)!;
+    if (!adsetMap.has(adsetKey)) {
+      adsetMap.set(adsetKey, { adset_name: s.adset_name ?? "Unknown Adset", ads: new Map() });
+    }
+    const adset = adsetMap.get(adsetKey)!;
+    if (!adset.ads.has(s.ad_id)) {
+      adset.ads.set(s.ad_id, {
+        ad_id: s.ad_id, ad_name: s.ad_name ?? null,
+        spend: 0, conversions: 0, conversion_value: 0,
+        impressions: 0, clicks: 0, video_plays: 0, video_plays_25pct: 0,
+        thumbnail_url: thumbnailMap[s.ad_id] ?? null,
+      });
+    }
+    const ad = adset.ads.get(s.ad_id)!;
+    ad.spend            += s.spend ?? 0;
+    ad.conversions      += s.conversions ?? 0;
+    ad.conversion_value += s.conversion_value ?? 0;
+    ad.impressions      += s.impressions ?? 0;
+    ad.clicks           += s.clicks ?? 0;
+    ad.video_plays      += s.video_plays ?? 0;
+    ad.video_plays_25pct += s.video_plays_25pct ?? 0;
+  }
+
+  // 6. Live spend from Meta, batched by account
   const byAccount = new Map<string, typeof campaigns>();
   for (const c of campaigns) {
     const acct = accountMap[c.meta_account_id];
@@ -46,50 +115,68 @@ export async function GET() {
     byAccount.get(acct.account_id)!.push(c);
   }
 
-  // Fetch live spend per account in parallel
-  const spendMap: Record<string, number> = {}; // key: meta campaign_id
-
+  const spendMap: Record<string, number> = {};
   await Promise.allSettled(
     Array.from(byAccount.entries()).map(async ([accountId, camps]) => {
       const acct = accountMap[camps[0].meta_account_id];
       const token = resolveToken(acct ?? {});
-      const campaignIds = camps.map((c) => c.campaign_id).filter(Boolean) as string[];
-      if (!campaignIds.length || !token) return;
-
+      const ids = camps.map((c) => c.campaign_id).filter(Boolean) as string[];
+      if (!ids.length || !token) return;
       const period = (camps[0].spend_cap_period ?? "lifetime") as "lifetime" | "monthly" | "daily";
-      const result = await fetchCampaignSpend(accountId, token, campaignIds, period);
-      Object.assign(spendMap, result);
+      Object.assign(spendMap, await fetchCampaignSpend(accountId, token, ids, period));
     }),
   );
 
-  // Shape the response to match what live-ads-view expects
-  const result = campaigns.map((c) => ({
-    id: c.id,
-    campaign_name: c.campaign_name,
-    status: (c.effective_status ?? "").toLowerCase(), // normalise to lowercase for the UI
-    meta_campaign_id: c.campaign_id,
-    spend_cap: c.spend_cap,
-    spend_cap_period: c.spend_cap_period ?? "lifetime",
-    auto_paused_at: c.auto_paused_at,
-    auto_paused_reason: c.auto_paused_reason,
-    launched_at: null,
-    live_spend: c.campaign_id ? (spendMap[c.campaign_id] ?? null) : null,
-    asset: null, // meta_campaigns has no linked creative asset
-    account: accountMap[c.meta_account_id]
-      ? {
-          id: accountMap[c.meta_account_id].id,
-          name: accountMap[c.meta_account_id].name,
-          account_id: accountMap[c.meta_account_id].account_id,
-          currency: accountMap[c.meta_account_id].currency ?? "USD",
-        }
-      : null,
-    daily_budget: c.daily_budget,
-  }));
+  // 7. Build final response
+  const result = campaigns.map((c) => {
+    const acct = accountMap[c.meta_account_id] ?? null;
+    const key = `${c.meta_account_id}__${c.campaign_id}`;
+    const adsetMap = statsMap.get(key);
+
+    const adsets = adsetMap
+      ? Array.from(adsetMap.values()).map((adset) => {
+          const ads = Array.from(adset.ads.values()).sort((a, b) => b.spend - a.spend);
+          const adsetSpend = ads.reduce((s, a) => s + a.spend, 0);
+          const adsetConvValue = ads.reduce((s, a) => s + a.conversion_value, 0);
+          const adsetConv = ads.reduce((s, a) => s + a.conversions, 0);
+          const adsetImpr = ads.reduce((s, a) => s + a.impressions, 0);
+          return {
+            adset_name: adset.adset_name,
+            spend: adsetSpend,
+            conversions: adsetConv,
+            conversion_value: adsetConvValue,
+            impressions: adsetImpr,
+            roas: adsetSpend > 0 ? adsetConvValue / adsetSpend : null,
+            ads: ads.map((a) => ({
+              ...a,
+              roas: a.spend > 0 ? a.conversion_value / a.spend : null,
+              ctr: a.impressions > 0 ? (a.clicks / a.impressions) * 100 : null,
+              hook_rate: a.impressions > 0 ? (a.video_plays_25pct / a.impressions) * 100 : null,
+            })),
+          };
+        }).sort((a, b) => b.spend - a.spend)
+      : [];
+
+    return {
+      id: c.id,
+      campaign_name: c.campaign_name,
+      status: (c.effective_status ?? "").toLowerCase(),
+      meta_campaign_id: c.campaign_id,
+      spend_cap: c.spend_cap,
+      spend_cap_period: c.spend_cap_period ?? "lifetime",
+      auto_paused_at: c.auto_paused_at,
+      auto_paused_reason: c.auto_paused_reason,
+      daily_budget: c.daily_budget,
+      live_spend: c.campaign_id ? (spendMap[c.campaign_id] ?? null) : null,
+      account: acct ? { id: acct.id, name: acct.name, account_id: acct.account_id, currency: acct.currency ?? "USD" } : null,
+      adsets,
+    };
+  });
 
   return NextResponse.json(result);
 }
 
-// POST — toggle campaign status (pause / resume)
+// ─── POST — toggle campaign status ────────────────────────────────────────────
 const toggleSchema = z.object({
   deployment_id: z.string().uuid(),
   action: z.enum(["pause", "resume"]),
@@ -98,26 +185,21 @@ const toggleSchema = z.object({
 export async function POST(req: NextRequest) {
   const { error, user } = await requireAccess();
   if (error) return error;
-  if (!isManagerOrAbove(user!)) {
-    return NextResponse.json({ error: "Managers or above only" }, { status: 403 });
-  }
+  if (!isManagerOrAbove(user!)) return NextResponse.json({ error: "Managers or above only" }, { status: 403 });
 
-  const raw = await req.json().catch(() => ({}));
-  const parsed = toggleSchema.safeParse(raw);
+  const parsed = toggleSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
 
   const { deployment_id, action } = parsed.data;
   const admin = createAdminClient();
 
-  // Look up in meta_campaigns
-  const { data: campaign, error: campErr } = await admin
+  const { data: campaign } = await admin
     .from("meta_campaigns")
     .select("campaign_id, meta_account_id")
     .eq("id", deployment_id)
     .single();
 
-  if (campErr || !campaign) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
-  if (!campaign.campaign_id) return NextResponse.json({ error: "No Meta campaign ID on this record" }, { status: 400 });
+  if (!campaign?.campaign_id) return NextResponse.json({ error: "Campaign not found" }, { status: 404 });
 
   const { data: acct } = await admin
     .from("ad_meta_accounts")
@@ -128,23 +210,19 @@ export async function POST(req: NextRequest) {
   const token = resolveToken(acct ?? {});
   if (!token) return NextResponse.json({ error: "No access token configured" }, { status: 400 });
 
-  const metaStatus = action === "pause" ? "PAUSED" : "ACTIVE";
-  await updateCampaignStatus(campaign.campaign_id, token, metaStatus);
+  await updateCampaignStatus(campaign.campaign_id, token, action === "pause" ? "PAUSED" : "ACTIVE");
 
-  const effectiveStatus = action === "pause" ? "PAUSED" : "ACTIVE";
-  await admin
-    .from("meta_campaigns")
-    .update({
-      effective_status: effectiveStatus,
-      auto_paused_at: action === "resume" ? null : undefined,
-      auto_paused_reason: action === "resume" ? null : undefined,
-    })
-    .eq("id", deployment_id);
+  await admin.from("meta_campaigns").update({
+    effective_status: action === "pause" ? "PAUSED" : "ACTIVE",
+    // Pausing from this page sets auto_paused_at so it remains visible in "Paused" filter
+    auto_paused_at: action === "pause" ? new Date().toISOString() : null,
+    auto_paused_reason: action === "pause" ? "Manually paused via Live Ads" : null,
+  }).eq("id", deployment_id);
 
-  return NextResponse.json({ ok: true, status: effectiveStatus.toLowerCase() });
+  return NextResponse.json({ ok: true, status: action === "pause" ? "paused" : "active" });
 }
 
-// PATCH — set or clear spend cap
+// ─── PATCH — set or clear spend cap ───────────────────────────────────────────
 const capSchema = z.object({
   deployment_id: z.string().uuid(),
   spend_cap: z.number().positive().nullable(),
@@ -154,12 +232,9 @@ const capSchema = z.object({
 export async function PATCH(req: NextRequest) {
   const { error, user } = await requireAccess();
   if (error) return error;
-  if (!isManagerOrAbove(user!)) {
-    return NextResponse.json({ error: "Managers or above only" }, { status: 403 });
-  }
+  if (!isManagerOrAbove(user!)) return NextResponse.json({ error: "Managers or above only" }, { status: 403 });
 
-  const raw = await req.json().catch(() => ({}));
-  const parsed = capSchema.safeParse(raw);
+  const parsed = capSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
 
   const { deployment_id, spend_cap, spend_cap_period } = parsed.data;
@@ -168,11 +243,7 @@ export async function PATCH(req: NextRequest) {
   const updates: Record<string, unknown> = { spend_cap: spend_cap ?? null };
   if (spend_cap_period) updates.spend_cap_period = spend_cap_period;
 
-  const { error: dbErr } = await admin
-    .from("meta_campaigns")
-    .update(updates)
-    .eq("id", deployment_id);
-
+  const { error: dbErr } = await admin.from("meta_campaigns").update(updates).eq("id", deployment_id);
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
