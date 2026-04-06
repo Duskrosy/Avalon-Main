@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/permissions";
+import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CampaignsView } from "./campaigns-view";
 
@@ -39,6 +39,7 @@ export default async function CampaignsPage() {
       accounts={(accounts ?? []) as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       stats={(stats ?? []) as any}
+      canSync={isOps(currentUser)}
     />
   );
 }

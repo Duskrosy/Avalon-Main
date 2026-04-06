@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 
 type Campaign = {
@@ -47,6 +48,7 @@ type Props = {
   campaigns: Campaign[];
   accounts: Account[];
   stats: AdStat[];
+  canSync: boolean;
 };
 
 type CampaignTotals = {
@@ -77,10 +79,32 @@ function fmtMoney(n: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
 }
 
-export function CampaignsView({ campaigns, accounts, stats }: Props) {
+export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
+  const router = useRouter();
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<"7" | "14" | "30">("7");
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/ad-ops/sync", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncMsg({ type: "error", text: body.error ?? `Sync failed (${res.status})` });
+      } else {
+        setSyncMsg({ type: "ok", text: `Synced ${body.campaigns ?? 0} campaigns, ${body.ads ?? 0} ads` });
+        router.refresh();
+      }
+    } catch {
+      setSyncMsg({ type: "error", text: "Network error — sync request failed" });
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   const accountMap = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
 
@@ -183,9 +207,14 @@ export function CampaignsView({ campaigns, accounts, stats }: Props) {
               <> · Last sync: {format(parseISO(campaigns[0].last_synced_at), "d MMM, h:mm a")}</>
             )}
           </p>
+          {syncMsg && (
+            <p className={`text-xs mt-1 ${syncMsg.type === "ok" ? "text-green-600" : "text-red-500"}`}>
+              {syncMsg.text}
+            </p>
+          )}
         </div>
 
-        {/* Filters */}
+        {/* Filters + sync button */}
         <div className="flex items-center gap-2 flex-wrap">
           {accounts.length > 1 && (
             <select
@@ -210,6 +239,22 @@ export function CampaignsView({ campaigns, accounts, stats }: Props) {
               </button>
             ))}
           </div>
+          {canSync && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="bg-gray-900 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {syncing ? (
+                <>
+                  <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  Syncing…
+                </>
+              ) : "Sync Now"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -234,7 +279,16 @@ export function CampaignsView({ campaigns, accounts, stats }: Props) {
       {campaigns.length === 0 ? (
         <div className="bg-gray-50 rounded-xl p-16 text-center">
           <p className="text-sm font-medium text-gray-500">No campaigns synced yet</p>
-          <p className="text-xs text-gray-400 mt-1">Use the Sync Now button on the dashboard to pull your Meta campaigns</p>
+          <p className="text-xs text-gray-400 mt-2">Click <strong>Sync Now</strong> above to pull your campaigns from Meta</p>
+          {canSync && (
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="mt-4 bg-gray-900 text-white text-sm px-5 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              {syncing ? "Syncing…" : "Sync Now"}
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
