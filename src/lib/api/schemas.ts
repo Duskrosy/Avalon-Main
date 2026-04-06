@@ -355,10 +355,10 @@ export const adPerformancePostSchema = z.object({
   impressions: z.number().int().min(0).optional().nullable(),
   clicks: z.number().int().min(0).optional().nullable(),
   spend: z.number().min(0).optional().nullable(),
-  purchases: z.number().int().min(0).optional().nullable(),
-  revenue: z.number().min(0).optional().nullable(),
-  video_views_3s: z.number().int().min(0).optional().nullable(),
-  video_views_thruplay: z.number().int().min(0).optional().nullable(),
+  conversions: z.number().int().min(0).optional().nullable(),
+  conversion_value: z.number().min(0).optional().nullable(),
+  video_plays: z.number().int().min(0).optional().nullable(),
+  video_plays_25pct: z.number().int().min(0).optional().nullable(),
 });
 
 // ─── Obs: Alerts ─────────────────────────────────────────────────────────────

@@ -46,13 +46,13 @@ export async function POST(req: NextRequest) {
     .upsert({
       deployment_id: body.deployment_id,
       metric_date: body.metric_date,
-      spend: body.spend ?? null,
-      impressions: body.impressions ?? null,
-      clicks: body.clicks ?? null,
-      purchases: body.purchases ?? null,
-      revenue: body.revenue ?? null,
-      video_views_3s: body.video_views_3s ?? null,
-      video_views_thruplay: body.video_views_thruplay ?? null,
+      spend: body.spend ?? 0,
+      impressions: body.impressions ?? 0,
+      clicks: body.clicks ?? 0,
+      conversions: body.conversions ?? 0,
+      conversion_value: body.conversion_value ?? 0,
+      video_plays: body.video_plays ?? 0,
+      video_plays_25pct: body.video_plays_25pct ?? 0,
     }, { onConflict: "deployment_id,metric_date" })
     .select()
     .single();

@@ -19,10 +19,10 @@ type Snapshot = {
   impressions: number | null;
   clicks: number | null;
   spend: number | null;
-  purchases: number | null;
-  revenue: number | null;
-  video_views_3s: number | null;
-  video_views_thruplay: number | null;
+  conversions: number | null;
+  conversion_value: number | null;
+  video_plays: number | null;
+  video_plays_25pct: number | null;
   hook_rate: number | null;
   thruplay_rate: number | null;
   ctr: number | null;
@@ -56,10 +56,10 @@ export function PerformanceView({ deployments, canManage }: Props) {
     impressions: "",
     clicks: "",
     spend: "",
-    purchases: "",
-    revenue: "",
-    video_views_3s: "",
-    video_views_thruplay: "",
+    conversions: "",
+    conversion_value: "",
+    video_plays: "",
+    video_plays_25pct: "",
   });
 
   const fetchSnapshots = useCallback(async () => {
@@ -81,10 +81,10 @@ export function PerformanceView({ deployments, canManage }: Props) {
       impressions: form.impressions ? parseInt(form.impressions) : null,
       clicks: form.clicks ? parseInt(form.clicks) : null,
       spend: form.spend ? parseFloat(form.spend) : null,
-      purchases: form.purchases ? parseInt(form.purchases) : null,
-      revenue: form.revenue ? parseFloat(form.revenue) : null,
-      video_views_3s: form.video_views_3s ? parseInt(form.video_views_3s) : null,
-      video_views_thruplay: form.video_views_thruplay ? parseInt(form.video_views_thruplay) : null,
+      conversions: form.conversions ? parseInt(form.conversions) : null,
+      conversion_value: form.conversion_value ? parseFloat(form.conversion_value) : null,
+      video_plays: form.video_plays ? parseInt(form.video_plays) : null,
+      video_plays_25pct: form.video_plays_25pct ? parseInt(form.video_plays_25pct) : null,
     };
     const res = await fetch("/api/ad-ops/performance", {
       method: "POST",
@@ -112,14 +112,14 @@ export function PerformanceView({ deployments, canManage }: Props) {
   const totals = snapshots.reduce(
     (acc, s) => ({
       spend: acc.spend + (s.spend ?? 0),
-      revenue: acc.revenue + (s.revenue ?? 0),
+      conversion_value: acc.conversion_value + (s.conversion_value ?? 0),
       impressions: acc.impressions + (s.impressions ?? 0),
       clicks: acc.clicks + (s.clicks ?? 0),
-      purchases: acc.purchases + (s.purchases ?? 0),
+      conversions: acc.conversions + (s.conversions ?? 0),
     }),
-    { spend: 0, revenue: 0, impressions: 0, clicks: 0, purchases: 0 },
+    { spend: 0, conversion_value: 0, impressions: 0, clicks: 0, conversions: 0 },
   );
-  const overallROAS = totals.spend > 0 ? totals.revenue / totals.spend : null;
+  const overallROAS = totals.spend > 0 ? totals.conversion_value / totals.spend : null;
 
   return (
     <div>
@@ -161,8 +161,8 @@ export function PerformanceView({ deployments, canManage }: Props) {
               <p className="text-xl font-bold text-gray-900">${totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Revenue</p>
-              <p className="text-xl font-bold text-gray-900">${totals.revenue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              <p className="text-xs text-gray-500 mb-1">Conv. Value</p>
+              <p className="text-xl font-bold text-gray-900">${totals.conversion_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-1">ROAS</p>
@@ -173,8 +173,8 @@ export function PerformanceView({ deployments, canManage }: Props) {
               <p className="text-xl font-bold text-gray-900">{fmtK(totals.impressions)}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Purchases</p>
-              <p className="text-xl font-bold text-gray-900">{totals.purchases.toLocaleString()}</p>
+              <p className="text-xs text-gray-500 mb-1">Conversions</p>
+              <p className="text-xl font-bold text-gray-900">{totals.conversions.toLocaleString()}</p>
             </div>
           </div>
 
@@ -228,14 +228,14 @@ export function PerformanceView({ deployments, canManage }: Props) {
                       <tr className="text-gray-400 border-b border-gray-100">
                         <th className="px-4 py-3 text-left font-medium">Date</th>
                         <th className="px-4 py-3 text-right font-medium">Spend</th>
-                        <th className="px-4 py-3 text-right font-medium">Revenue</th>
+                        <th className="px-4 py-3 text-right font-medium">Conv. Value</th>
                         <th className="px-4 py-3 text-right font-medium">ROAS</th>
                         <th className="px-4 py-3 text-right font-medium">Impressions</th>
                         <th className="px-4 py-3 text-right font-medium">Clicks</th>
                         <th className="px-4 py-3 text-right font-medium">CTR</th>
                         <th className="px-4 py-3 text-right font-medium">Hook Rate</th>
                         <th className="px-4 py-3 text-right font-medium">ThruPlay</th>
-                        <th className="px-4 py-3 text-right font-medium">Purchases</th>
+                        <th className="px-4 py-3 text-right font-medium">Conversions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -250,7 +250,7 @@ export function PerformanceView({ deployments, canManage }: Props) {
                               {s.spend != null ? `$${s.spend.toFixed(0)}` : "—"}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-600">
-                              {s.revenue != null ? `$${s.revenue.toFixed(0)}` : "—"}
+                              {s.conversion_value != null ? `$${s.conversion_value.toFixed(0)}` : "—"}
                             </td>
                             <td className="px-4 py-3 text-right font-medium text-gray-800">
                               {fmt(s.roas, 2, "x")}
@@ -260,7 +260,7 @@ export function PerformanceView({ deployments, canManage }: Props) {
                             <td className="px-4 py-3 text-right text-gray-600">{fmt(s.ctr, 3, "%")}</td>
                             <td className="px-4 py-3 text-right font-medium text-gray-800">{fmt(s.hook_rate, 1, "%")}</td>
                             <td className="px-4 py-3 text-right text-gray-600">{fmt(s.thruplay_rate, 1, "%")}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{s.purchases ?? "—"}</td>
+                            <td className="px-4 py-3 text-right text-gray-600">{s.conversions ?? "—"}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -292,17 +292,17 @@ export function PerformanceView({ deployments, canManage }: Props) {
                   ["impressions", "Impressions"],
                   ["clicks", "Clicks"],
                   ["spend", "Spend ($)"],
-                  ["purchases", "Purchases"],
-                  ["revenue", "Revenue ($)"],
-                  ["video_views_3s", "3s Video Views"],
-                  ["video_views_thruplay", "ThruPlay Views"],
+                  ["conversions", "Conversions"],
+                  ["conversion_value", "Conv. Value ($)"],
+                  ["video_plays", "3s Video Plays"],
+                  ["video_plays_25pct", "25% ThruPlay"],
                 ] as [keyof typeof form, string][]).map(([key, label]) => (
                   <div key={key}>
                     <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
                     <input
                       type="number"
                       min="0"
-                      step={key === "spend" || key === "revenue" ? "0.01" : "1"}
+                      step={key === "spend" || key === "conversion_value" ? "0.01" : "1"}
                       value={form[key]}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
                       className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"

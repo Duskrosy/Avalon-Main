@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 
@@ -7,6 +9,17 @@ type Request = { id: string; title: string; status: string; target_date: string 
 type Asset = { id: string; asset_code: string; title: string; status: string; content_type: string | null; funnel_stage: string | null };
 type Deployment = { id: string; status: string; campaign_name: string | null; launched_at: string | null; asset: { asset_code: string; title: string } | null };
 type MetaAccount = { id: string; name: string; account_id: string; is_active: boolean };
+
+type SyncRun = {
+  id: string;
+  status: string;
+  triggered_by: string | null;
+  sync_date: string | null;
+  completed_at: string | null;
+  records_processed: number;
+  account_results: { account_id: string; name: string; status: string; records?: number; error?: string }[] | null;
+  error_log: string | null;
+} | null;
 
 type Props = {
   recentRequests: Request[];
@@ -16,6 +29,8 @@ type Props = {
   requestCounts: { status: string }[];
   assetCounts: { status: string }[];
   canManage: boolean;
+  lastSync: SyncRun;
+  canSync: boolean;
   currentDeptSlug: string;
 };
 
@@ -44,10 +59,11 @@ const FUNNEL_COLORS: Record<string, string> = {
 };
 
 const MODULES = [
-  { href: "/ad-ops/requests",    label: "Requests",      desc: "Creative briefs from Marketing" },
-  { href: "/ad-ops/library",     label: "Asset Library", desc: "All produced creatives" },
-  { href: "/ad-ops/deployments", label: "Deployments",   desc: "Active campaigns across Meta accounts" },
-  { href: "/ad-ops/performance", label: "Performance",   desc: "Metrics, hook rate, ROAS, ThruPlay" },
+  { href: "/ad-ops/campaigns",   label: "Live Campaigns", desc: "Auto-synced from Meta — all campaigns & ad stats" },
+  { href: "/ad-ops/requests",    label: "Requests",       desc: "Creative briefs from Marketing" },
+  { href: "/ad-ops/library",     label: "Asset Library",  desc: "All produced creatives" },
+  { href: "/ad-ops/deployments", label: "Deployments",    desc: "Active campaigns across Meta accounts" },
+  { href: "/ad-ops/performance", label: "Performance",    desc: "Metrics, hook rate, ROAS, ThruPlay" },
 ];
 
 function countByStatus(rows: { status: string }[], status: string) {
@@ -61,7 +77,31 @@ export function AdDashboard({
   metaAccounts,
   requestCounts,
   assetCounts,
+  lastSync,
+  canSync,
 }: Props) {
+  const router = useRouter();
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const res = await fetch("/api/ad-ops/sync", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setSyncError(body.error ?? `Sync failed (${res.status})`);
+      } else {
+        router.refresh();
+      }
+    } catch {
+      setSyncError("Network error — sync request failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
+
   const totalRequests = requestCounts.length;
   const openRequests = requestCounts.filter((r) =>
     ["submitted", "in_progress", "review"].includes(r.status)
@@ -78,6 +118,57 @@ export function AdDashboard({
           Shared workspace for Creatives &amp; Marketing · {metaAccounts.length} Meta account{metaAccounts.length !== 1 ? "s" : ""} connected
         </p>
       </div>
+
+      {/* Meta Sync status */}
+      {canSync && (
+        <div className="mb-6 border border-gray-200 rounded-xl bg-white p-4 flex items-center gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Meta Ads Sync</p>
+            {lastSync ? (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
+                  lastSync.status === "success" ? "bg-green-50 text-green-700" :
+                  lastSync.status === "failed"  ? "bg-red-50 text-red-600" :
+                  "bg-amber-50 text-amber-600"
+                }`}>
+                  {lastSync.status === "success" ? "✓" : lastSync.status === "failed" ? "✕" : "⟳"} {lastSync.status}
+                </span>
+                {lastSync.completed_at && (
+                  <span className="text-xs text-gray-400">
+                    {format(parseISO(lastSync.completed_at), "d MMM yyyy, h:mm a")}
+                    {lastSync.triggered_by && ` · ${lastSync.triggered_by}`}
+                  </span>
+                )}
+                {lastSync.records_processed > 0 && (
+                  <span className="text-xs text-gray-400">{lastSync.records_processed} records</span>
+                )}
+                {lastSync.account_results && lastSync.account_results.length > 0 && (
+                  <span className="text-xs text-gray-400">
+                    {lastSync.account_results.filter((r) => r.status === "ok").length}/{lastSync.account_results.length} accounts ok
+                  </span>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Never synced — click Sync Now to pull Meta data</p>
+            )}
+            {syncError && <p className="text-xs text-red-500 mt-1">{syncError}</p>}
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="shrink-0 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {syncing ? (
+              <>
+                <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+                Syncing…
+              </>
+            ) : "Sync Now"}
+          </button>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">

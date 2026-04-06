@@ -95,11 +95,12 @@ export const NAV_GROUPS: NavGroup[] = [
     slug: "ad-ops",
     departments: ["ad-ops"],
     items: [
-      { name: "Dashboard",      slug: "ad-dashboard",   route: "/ad-ops/dashboard" },
-      { name: "Requests",       slug: "ad-requests",    route: "/ad-ops/requests" },
-      { name: "Asset Library",  slug: "ad-library",     route: "/ad-ops/library" },
-      { name: "Deployments",    slug: "ad-deployments", route: "/ad-ops/deployments" },
-      { name: "Performance",    slug: "ad-performance", route: "/ad-ops/performance" },
+      { name: "Dashboard",       slug: "ad-dashboard",   route: "/ad-ops/dashboard" },
+      { name: "Live Campaigns",  slug: "ad-campaigns",   route: "/ad-ops/campaigns" },
+      { name: "Requests",        slug: "ad-requests",    route: "/ad-ops/requests" },
+      { name: "Asset Library",   slug: "ad-library",     route: "/ad-ops/library" },
+      { name: "Deployments",     slug: "ad-deployments", route: "/ad-ops/deployments" },
+      { name: "Performance",     slug: "ad-performance", route: "/ad-ops/performance" },
     ],
   },
   {
