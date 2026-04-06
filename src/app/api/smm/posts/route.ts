@@ -1,6 +1,34 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const createPostSchema = z.object({
+  group_id: z.string().uuid(),
+  platform: z.string().min(1).max(50),
+  post_type: z.string().min(1).max(50),
+  status: z.string().max(50).optional(),
+  caption: z.string().max(5000).optional().nullable(),
+  scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
+  published_at: z.string().datetime({ offset: true }).optional().nullable(),
+  linked_task_id: z.string().uuid().optional().nullable(),
+});
+
+const updatePostSchema = z.object({
+  id: z.string().uuid(),
+  group_id: z.string().uuid().optional(),
+  platform: z.string().min(1).max(50).optional(),
+  post_type: z.string().min(1).max(50).optional(),
+  status: z.string().max(50).optional(),
+  caption: z.string().max(5000).optional().nullable(),
+  scheduled_at: z.string().datetime({ offset: true }).optional().nullable(),
+  published_at: z.string().datetime({ offset: true }).optional().nullable(),
+  linked_task_id: z.string().uuid().optional().nullable(),
+});
+
+const deletePostSchema = z.object({
+  id: z.string().uuid(),
+});
 
 async function guard() {
   const supabase = await createClient();
@@ -63,12 +91,12 @@ export async function POST(req: NextRequest) {
   const { error, supabase, user } = await guard();
   if (error) return error;
 
-  const body = await req.json();
-  const { group_id, platform, post_type, status, caption, scheduled_at, published_at, linked_task_id } = body;
-
-  if (!group_id) return NextResponse.json({ error: "group_id is required" }, { status: 400 });
-  if (!platform) return NextResponse.json({ error: "platform is required" }, { status: 400 });
-  if (!post_type) return NextResponse.json({ error: "post_type is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = createPostSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { group_id, platform, post_type, status, caption, scheduled_at, published_at, linked_task_id } = parsed.data;
 
   const { data, error: dbErr } = await supabase!
     .from("smm_posts")
@@ -99,14 +127,17 @@ export async function PATCH(req: NextRequest) {
   const { error, supabase } = await guard();
   if (error) return error;
 
-  const body = await req.json();
-  const { id, ...fields } = body;
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = updatePostSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id, ...fields } = parsed.data;
 
-  const allowed = ["platform", "post_type", "status", "caption", "scheduled_at", "published_at", "linked_task_id", "group_id"];
+  const allowed = ["platform", "post_type", "status", "caption", "scheduled_at", "published_at", "linked_task_id", "group_id"] as const;
   const updates: Record<string, unknown> = {};
   for (const key of allowed) {
-    if (key in fields) updates[key] = fields[key] ?? null;
+    if (key in fields) updates[key] = (fields as Record<string, unknown>)[key] ?? null;
   }
 
   if (Object.keys(updates).length === 0) {
@@ -133,8 +164,12 @@ export async function DELETE(req: NextRequest) {
   const { error, supabase } = await guard();
   if (error) return error;
 
-  const { id } = await req.json();
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = deletePostSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id } = parsed.data;
 
   const { error: dbErr } = await supabase!
     .from("smm_posts")

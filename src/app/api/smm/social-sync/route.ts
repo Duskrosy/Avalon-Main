@@ -2,6 +2,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const socialSyncSchema = z.object({
+  platform_id: z.string().uuid().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD").optional(),
+});
 
 const META_BASE = "https://graph.facebook.com/v21.0";
 
@@ -82,6 +88,34 @@ async function syncInstagram(igUserId: string, token: string, date: string) {
   };
 }
 
+// ─── YouTube Channel Statistics ───────────────────────────────────────────────
+async function syncYouTube(channelId: string, date: string) {
+  // date param unused — YouTube Data API only provides lifetime stats, not per-day
+  void date;
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error("YOUTUBE_API_KEY not set in environment variables.");
+
+  const url = `https://www.googleapis.com/youtube/v3/channels?part=statistics&id=${channelId}&key=${apiKey}`;
+  const res = await fetch(url);
+  const json = await res.json();
+
+  if (!res.ok || json.error) throw new Error(json.error?.message ?? "YouTube API error");
+
+  const stats = json.items?.[0]?.statistics;
+  if (!stats) throw new Error(`YouTube channel not found for ID: ${channelId}`);
+
+  return {
+    impressions:        0,                                        // requires YouTube Analytics API (OAuth)
+    reach:              parseInt(stats.viewCount    ?? "0", 10), // lifetime total views as reach proxy
+    engagements:        0,
+    follower_count:     parseInt(stats.subscriberCount ?? "0", 10),
+    video_plays:        0,
+    video_plays_3s:     0,
+    avg_play_time_secs: 0,
+  };
+}
+
 // ─── POST /api/smm/social-sync ─────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const fromCron = isCronRequest(req);
@@ -104,8 +138,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const body = await req.json().catch(() => ({}));
-  const { platform_id, date } = body as { platform_id?: string; date?: string };
+  const raw = await req.json().catch(() => ({}));
+  const parsed = socialSyncSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { platform_id, date } = parsed.data;
 
   // Default sync target: yesterday
   const yesterday = new Date();
@@ -180,7 +218,17 @@ async function syncOnePlatform(
     };
   }
 
-  if (!metaPlatforms.includes(platform.platform)) {
+  if (platform.platform === "youtube") {
+    if (!process.env.YOUTUBE_API_KEY) {
+      return { ok: false, needs_manual: true, error: "YOUTUBE_API_KEY not configured." };
+    }
+    if (!pageId) {
+      return { ok: false, needs_manual: true, error: "No channel ID configured. Add it in Content → ⚙ Groups." };
+    }
+    // fall through to try block
+  }
+
+  if (!metaPlatforms.includes(platform.platform) && platform.platform !== "youtube") {
     return {
       ok: false,
       needs_manual: true,
@@ -201,6 +249,10 @@ async function syncOnePlatform(
 
     if (platform.platform === "facebook") {
       metrics = await syncFacebook(pageId, token!, syncDate);
+    } else if (platform.platform === "instagram") {
+      metrics = await syncInstagram(pageId, token!, syncDate);
+    } else if (platform.platform === "youtube") {
+      metrics = await syncYouTube(pageId, syncDate);
     } else {
       metrics = await syncInstagram(pageId, token!, syncDate);
     }

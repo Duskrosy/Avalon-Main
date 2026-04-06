@@ -1,6 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const createGroupSchema = z.object({
+  name: z.string().min(1).max(200),
+  weekly_target: z.number().int().min(1).max(500).optional(),
+});
+
+const updateGroupSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().min(1).max(200).optional(),
+  weekly_target: z.number().int().min(1).max(500).optional(),
+  is_active: z.boolean().optional(),
+  sort_order: z.number().int().min(0).optional(),
+});
+
+const deleteGroupSchema = z.object({
+  id: z.string().uuid(),
+});
 
 async function requireOps() {
   const supabase = await createClient();
@@ -33,16 +51,16 @@ export async function POST(req: NextRequest) {
   const { error, supabase } = await requireOps();
   if (error) return error;
 
-  const body = await req.json();
-  const { name, weekly_target } = body;
-
-  if (!name || typeof name !== "string" || !name.trim()) {
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = createGroupSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
+  const { name, weekly_target } = parsed.data;
 
   const { data, error: dbErr } = await supabase!
     .from("smm_groups")
-    .insert({ name: name.trim(), weekly_target: Number(weekly_target ?? 25) })
+    .insert({ name: name.trim(), weekly_target: weekly_target ?? 25 })
     .select()
     .single();
 
@@ -55,15 +73,18 @@ export async function PATCH(req: NextRequest) {
   const { error, supabase } = await requireOps();
   if (error) return error;
 
-  const body = await req.json();
-  const { id, name, weekly_target, is_active, sort_order } = body;
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = updateGroupSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id, name, weekly_target, is_active, sort_order } = parsed.data;
 
   const updates: Record<string, unknown> = {};
-  if (name          !== undefined) updates.name          = String(name).trim();
-  if (weekly_target !== undefined) updates.weekly_target = Number(weekly_target);
-  if (is_active     !== undefined) updates.is_active     = Boolean(is_active);
-  if (sort_order    !== undefined) updates.sort_order    = Number(sort_order);
+  if (name          !== undefined) updates.name          = name.trim();
+  if (weekly_target !== undefined) updates.weekly_target = weekly_target;
+  if (is_active     !== undefined) updates.is_active     = is_active;
+  if (sort_order    !== undefined) updates.sort_order    = sort_order;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -85,8 +106,12 @@ export async function DELETE(req: NextRequest) {
   const { error, supabase } = await requireOps();
   if (error) return error;
 
-  const { id } = await req.json();
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = deleteGroupSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id } = parsed.data;
 
   const { error: dbErr } = await supabase!
     .from("smm_groups")

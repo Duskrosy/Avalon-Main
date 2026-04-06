@@ -1,6 +1,23 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const createCampaignSchema = z.object({
+  week_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
+  campaign_name: z.string().min(1).max(300),
+  organic_target: z.number().int().min(0).optional(),
+  ads_target: z.number().int().min(0).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+const updateCampaignSchema = z.object({
+  id: z.string().uuid(),
+  campaign_name: z.string().min(1).max(300).optional(),
+  organic_target: z.number().int().min(0).optional(),
+  ads_target: z.number().int().min(0).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+});
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
@@ -81,23 +98,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { week_start, campaign_name, organic_target, ads_target, notes } = body;
-
-  if (!week_start || typeof week_start !== "string") {
-    return NextResponse.json({ error: "week_start is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = createCampaignSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
-  if (!campaign_name || typeof campaign_name !== "string" || !campaign_name.trim()) {
-    return NextResponse.json({ error: "campaign_name is required" }, { status: 400 });
-  }
+  const { week_start, campaign_name, organic_target, ads_target, notes } = parsed.data;
 
   const { data, error: dbErr } = await supabase!
     .from("creatives_campaigns")
     .insert({
       week_start,
       campaign_name: campaign_name.trim(),
-      organic_target: organic_target != null ? Number(organic_target) : 25,
-      ads_target: ads_target != null ? Number(ads_target) : 10,
+      organic_target: organic_target ?? 25,
+      ads_target: ads_target ?? 10,
       notes: notes?.trim() || null,
       created_by: user!.id,
     })
@@ -122,15 +136,17 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const body = await req.json();
-  const { id, campaign_name, organic_target, ads_target, notes } = body;
-
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = updateCampaignSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id, campaign_name, organic_target, ads_target, notes } = parsed.data;
 
   const updates: Record<string, unknown> = {};
-  if (campaign_name !== undefined) updates.campaign_name = String(campaign_name).trim();
-  if (organic_target !== undefined) updates.organic_target = Number(organic_target);
-  if (ads_target !== undefined) updates.ads_target = Number(ads_target);
+  if (campaign_name !== undefined) updates.campaign_name = campaign_name.trim();
+  if (organic_target !== undefined) updates.organic_target = organic_target;
+  if (ads_target !== undefined) updates.ads_target = ads_target;
   if (notes !== undefined) updates.notes = notes?.trim() || null;
 
   if (Object.keys(updates).length === 0) {

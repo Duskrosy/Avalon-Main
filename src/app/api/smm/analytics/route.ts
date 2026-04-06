@@ -1,6 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const upsertAnalyticsSchema = z.object({
+  platform_id: z.string().uuid(),
+  metric_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Must be YYYY-MM-DD"),
+  impressions: z.number().int().min(0).optional(),
+  reach: z.number().int().min(0).optional(),
+  engagements: z.number().int().min(0).optional(),
+  follower_count: z.number().int().min(0).optional().nullable(),
+  follower_growth: z.number().int().optional().nullable(),
+  video_plays: z.number().int().min(0).optional(),
+  video_plays_3s: z.number().int().min(0).optional(),
+  avg_play_time_secs: z.number().min(0).optional(),
+});
 
 async function guard() {
   const supabase = await createClient();
@@ -53,28 +67,29 @@ export async function POST(req: NextRequest) {
   const { error, supabase } = await guard();
   if (error) return error;
 
-  const body = await req.json();
+  const raw = await req.json().catch(() => ({}));
+  const parsed = upsertAnalyticsSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
   const {
     platform_id, metric_date,
     impressions, reach, engagements,
     follower_count, follower_growth,
     video_plays, video_plays_3s, avg_play_time_secs,
-  } = body;
-
-  if (!platform_id) return NextResponse.json({ error: "platform_id required" }, { status: 400 });
-  if (!metric_date) return NextResponse.json({ error: "metric_date required" }, { status: 400 });
+  } = parsed.data;
 
   const row = {
     platform_id,
     metric_date,
-    impressions:        Number(impressions ?? 0),
-    reach:              Number(reach ?? 0),
-    engagements:        Number(engagements ?? 0),
-    follower_count:     follower_count != null && follower_count !== "" ? Number(follower_count) : null,
-    follower_growth:    follower_growth != null && follower_growth !== "" ? Number(follower_growth) : null,
-    video_plays:        Number(video_plays ?? 0),
-    video_plays_3s:     Number(video_plays_3s ?? 0),
-    avg_play_time_secs: Number(avg_play_time_secs ?? 0),
+    impressions:        impressions ?? 0,
+    reach:              reach ?? 0,
+    engagements:        engagements ?? 0,
+    follower_count:     follower_count ?? null,
+    follower_growth:    follower_growth ?? null,
+    video_plays:        video_plays ?? 0,
+    video_plays_3s:     video_plays_3s ?? 0,
+    avg_play_time_secs: avg_play_time_secs ?? 0,
     data_source:        "manual",
   };
 

@@ -1,6 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const calendarSettingsSchema = z.object({
+  show_tasks: z.boolean().optional(),
+  show_leaves: z.boolean().optional(),
+  show_rooms: z.boolean().optional(),
+  show_birthdays: z.boolean().optional(),
+  show_posts: z.boolean().optional(),
+});
 
 // ─── Default settings ─────────────────────────────────────────────────────────
 
@@ -39,19 +48,23 @@ export async function POST(req: NextRequest) {
   const user = await getCurrentUser(supabase);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { show_tasks, show_leaves, show_rooms, show_birthdays, show_posts } = body;
+  const raw = await req.json().catch(() => ({}));
+  const parsed = calendarSettingsSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { show_tasks, show_leaves, show_rooms, show_birthdays, show_posts } = parsed.data;
 
   const { data, error: dbErr } = await supabase
     .from("user_calendar_settings")
     .upsert(
       {
         user_id: user.id,
-        show_tasks:     show_tasks     != null ? Boolean(show_tasks)     : DEFAULTS.show_tasks,
-        show_leaves:    show_leaves    != null ? Boolean(show_leaves)    : DEFAULTS.show_leaves,
-        show_rooms:     show_rooms     != null ? Boolean(show_rooms)     : DEFAULTS.show_rooms,
-        show_birthdays: show_birthdays != null ? Boolean(show_birthdays) : DEFAULTS.show_birthdays,
-        show_posts:     show_posts     != null ? Boolean(show_posts)     : DEFAULTS.show_posts,
+        show_tasks:     show_tasks     ?? DEFAULTS.show_tasks,
+        show_leaves:    show_leaves    ?? DEFAULTS.show_leaves,
+        show_rooms:     show_rooms     ?? DEFAULTS.show_rooms,
+        show_birthdays: show_birthdays ?? DEFAULTS.show_birthdays,
+        show_posts:     show_posts     ?? DEFAULTS.show_posts,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" }

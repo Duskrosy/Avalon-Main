@@ -1,6 +1,38 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const createCompetitorSchema = z.object({
+  name: z.string().min(1).max(200),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+const patchCompetitorSchema = z.object({
+  type: z.enum(["competitor", "account", "snapshot"]),
+  id: z.string().uuid().optional(),
+  // competitor fields
+  name: z.string().min(1).max(200).optional(),
+  notes: z.string().max(2000).optional().nullable(),
+  // account fields
+  competitor_id: z.string().uuid().optional(),
+  platform: z.string().min(1).max(50).optional(),
+  handle: z.string().max(200).optional().nullable(),
+  external_id: z.string().max(200).optional().nullable(),
+  is_active: z.boolean().optional(),
+  // snapshot fields
+  account_id: z.string().uuid().optional(),
+  snapshot_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  follower_count: z.number().int().min(0).optional().nullable(),
+  post_count: z.number().int().min(0).optional().nullable(),
+  avg_engagement_rate: z.number().min(0).optional().nullable(),
+  posting_frequency_week: z.number().min(0).optional().nullable(),
+});
+
+const deleteCompetitorSchema = z.object({
+  type: z.enum(["competitor", "account"]),
+  id: z.string().uuid(),
+});
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 // is_ad_ops_access = OPS or department in [creatives, marketing, ad-ops]
@@ -161,11 +193,12 @@ export async function POST(req: NextRequest) {
   const { error, supabase, user } = await guard();
   if (error) return error;
 
-  const body = await req.json();
-  const { name, notes } = body;
-
-  if (!name?.trim())
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = createCompetitorSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { name, notes } = parsed.data;
 
   const { data, error: dbErr } = await supabase!
     .from("smm_competitors")
@@ -188,8 +221,12 @@ export async function PATCH(req: NextRequest) {
   const { error, supabase } = await guard();
   if (error) return error;
 
-  const body = await req.json();
-  const { type, ...rest } = body;
+  const raw = await req.json().catch(() => ({}));
+  const parsedPatch = patchCompetitorSchema.safeParse(raw);
+  if (!parsedPatch.success) {
+    return NextResponse.json({ error: parsedPatch.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { type, ...rest } = parsedPatch.data;
 
   // ── Competitor update ──
   if (type === "competitor") {
@@ -313,10 +350,12 @@ export async function DELETE(req: NextRequest) {
   if (!isOps(user!))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json();
-  const { type, id } = body;
-
-  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsedDel = deleteCompetitorSchema.safeParse(raw);
+  if (!parsedDel.success) {
+    return NextResponse.json({ error: parsedDel.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { type, id } = parsedDel.data;
 
   if (type === "competitor") {
     const { error: dbErr } = await supabase!

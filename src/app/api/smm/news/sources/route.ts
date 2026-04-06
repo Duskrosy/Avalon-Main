@@ -1,6 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+
+const createNewsSourceSchema = z.object({
+  name: z.string().min(1).max(200),
+  url: z.string().url().max(2000),
+  category: z.enum(["shoes", "height", "viral_ph", "general"]).optional().default("general"),
+});
+
+const updateNewsSourceSchema = z.object({
+  id: z.string().uuid(),
+  is_active: z.boolean(),
+});
+
+const deleteNewsSourceSchema = z.object({
+  id: z.string().uuid(),
+});
 
 async function guardRead() {
   const supabase = await createClient();
@@ -50,20 +66,16 @@ export async function POST(req: NextRequest) {
   const { error, supabase } = await guardOps();
   if (error) return error;
 
-  const body = await req.json();
-  const { name, url, category } = body;
-
-  if (!name || typeof name !== "string" || !name.trim())
-    return NextResponse.json({ error: "name is required" }, { status: 400 });
-  if (!url || typeof url !== "string" || !url.trim())
-    return NextResponse.json({ error: "url is required" }, { status: 400 });
-
-  const validCategories = ["shoes", "height", "viral_ph", "general"];
-  const cat = category && validCategories.includes(category) ? category : "general";
+  const raw = await req.json().catch(() => ({}));
+  const parsed = createNewsSourceSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { name, url, category } = parsed.data;
 
   const { data, error: dbErr } = await supabase!
     .from("smm_news_sources")
-    .insert({ name: name.trim(), url: url.trim(), category: cat })
+    .insert({ name: name.trim(), url: url.trim(), category })
     .select()
     .single();
 
@@ -76,11 +88,12 @@ export async function PATCH(req: NextRequest) {
   const { error, supabase } = await guardOps();
   if (error) return error;
 
-  const body = await req.json();
-  const { id, is_active } = body;
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
-  if (typeof is_active !== "boolean")
-    return NextResponse.json({ error: "is_active (boolean) is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = updateNewsSourceSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id, is_active } = parsed.data;
 
   const { data, error: dbErr } = await supabase!
     .from("smm_news_sources")
@@ -98,8 +111,12 @@ export async function DELETE(req: NextRequest) {
   const { error, supabase } = await guardOps();
   if (error) return error;
 
-  const { id } = await req.json();
-  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const raw = await req.json().catch(() => ({}));
+  const parsed = deleteNewsSourceSchema.safeParse(raw);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
+  const { id } = parsed.data;
 
   const { error: dbErr } = await supabase!
     .from("smm_news_sources")
