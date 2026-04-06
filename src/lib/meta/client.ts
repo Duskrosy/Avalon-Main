@@ -201,6 +201,33 @@ function normaliseAdInsight(raw: RawAdInsight): MetaAdInsight {
   };
 }
 
+// ─── Ad thumbnail fetching ────────────────────────────────────────────────────
+
+/**
+ * Fetch thumbnail URLs for a list of ad IDs.
+ * Returns a map of adId → thumbnailUrl (omits ads with no thumbnail).
+ */
+export async function fetchAdThumbnails(
+  adIds: string[],
+  token: string,
+): Promise<Record<string, string>> {
+  if (!adIds.length) return {};
+  const results: Record<string, string> = {};
+  await Promise.allSettled(
+    adIds.map(async (adId) => {
+      try {
+        const url = `${BASE}/${adId}?fields=creative%7Bthumbnail_url%7D&access_token=${encodeURIComponent(token)}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return;
+        const json = await res.json() as { creative?: { thumbnail_url?: string } };
+        const thumb = json?.creative?.thumbnail_url;
+        if (thumb) results[adId] = thumb;
+      } catch { /* skip */ }
+    }),
+  );
+  return results;
+}
+
 // ─── Campaign status management ───────────────────────────────────────────────
 
 /**
@@ -216,6 +243,65 @@ export async function updateCampaignStatus(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, access_token: token }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${body}`);
+  }
+}
+
+/**
+ * Pause or resume an adset.
+ */
+export async function updateAdsetStatus(
+  adsetId: string,
+  token: string,
+  status: "ACTIVE" | "PAUSED",
+): Promise<void> {
+  const res = await fetch(`${BASE}/${adsetId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, access_token: token }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${body}`);
+  }
+}
+
+/**
+ * Pause or resume an individual ad.
+ */
+export async function updateAdStatus(
+  adId: string,
+  token: string,
+  status: "ACTIVE" | "PAUSED",
+): Promise<void> {
+  const res = await fetch(`${BASE}/${adId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, access_token: token }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Meta API error ${res.status}: ${body}`);
+  }
+}
+
+/**
+ * Set an adset's daily budget (amount in the account's currency, NOT cents).
+ * Meta API expects the value in the minor unit (cents/pence/centavos).
+ */
+export async function setAdsetDailyBudget(
+  adsetId: string,
+  token: string,
+  dailyBudget: number, // in major currency units (e.g. PHP 500)
+): Promise<void> {
+  const budgetMinorUnit = Math.round(dailyBudget * 100); // convert to cents
+  const res = await fetch(`${BASE}/${adsetId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ daily_budget: budgetMinorUnit, access_token: token }),
   });
   if (!res.ok) {
     const body = await res.text();

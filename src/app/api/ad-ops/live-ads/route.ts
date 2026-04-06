@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const { data: statsRaw } = campaignIds.length
     ? await admin
         .from("meta_ad_stats")
-        .select("campaign_id, meta_account_id, ad_id, ad_name, adset_name, spend, conversions, conversion_value, impressions, clicks, video_plays, video_plays_25pct, metric_date")
+        .select("campaign_id, meta_account_id, ad_id, ad_name, adset_id, adset_name, spend, conversions, conversion_value, impressions, clicks, video_plays, video_plays_25pct, metric_date")
         .in("campaign_id", campaignIds)
         .gte("metric_date", cutoff)
     : { data: [] };
@@ -68,6 +68,7 @@ export async function GET(req: NextRequest) {
   type AdAgg = {
     ad_id: string;
     ad_name: string | null;
+    adset_id: string | null;
     spend: number; conversions: number; conversion_value: number;
     impressions: number; clicks: number; video_plays: number; video_plays_25pct: number;
     thumbnail_url: string | null;
@@ -91,6 +92,7 @@ export async function GET(req: NextRequest) {
     if (!adset.ads.has(s.ad_id)) {
       adset.ads.set(s.ad_id, {
         ad_id: s.ad_id, ad_name: s.ad_name ?? null,
+        adset_id: s.adset_id ?? null,
         spend: 0, conversions: 0, conversion_value: 0,
         impressions: 0, clicks: 0, video_plays: 0, video_plays_25pct: 0,
         thumbnail_url: thumbnailMap[s.ad_id] ?? null,
@@ -140,8 +142,11 @@ export async function GET(req: NextRequest) {
           const adsetConvValue = ads.reduce((s, a) => s + a.conversion_value, 0);
           const adsetConv = ads.reduce((s, a) => s + a.conversions, 0);
           const adsetImpr = ads.reduce((s, a) => s + a.impressions, 0);
+          // Use the adset_id from the first ad row (all ads in the adset share the same adset_id)
+          const adsetId = ads[0]?.adset_id ?? null;
           return {
             adset_name: adset.adset_name,
+            adset_id: adsetId,
             spend: adsetSpend,
             conversions: adsetConv,
             conversion_value: adsetConvValue,
