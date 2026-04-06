@@ -275,6 +275,22 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const overallROAS = overallTotals.spend > 0
     ? overallTotals.conversion_value / overallTotals.spend : null;
 
+  // Derive display currency from visible campaigns (use filtered account's currency,
+  // or the currency that appears most often across visible campaigns)
+  const overallCurrency = useMemo(() => {
+    if (filterAccount !== "all") return accountMap[filterAccount]?.currency ?? "USD";
+    const currencies = visibleCampaigns
+      .map((c) => accountMap[c.meta_account_id]?.currency)
+      .filter(Boolean) as string[];
+    if (currencies.length === 0) return "USD";
+    // Most common currency
+    const counts = currencies.reduce<Record<string, number>>((acc, c) => {
+      acc[c] = (acc[c] ?? 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+  }, [filterAccount, accountMap, visibleCampaigns]);
+
   // Unique statuses for filter dropdown
   const availableStatuses = useMemo(
     () => [...new Set(campaigns.map((c) => c.effective_status))].sort(),
@@ -470,8 +486,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       {campaigns.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
           {[
-            { label: "Total Spend",   value: fmtMoney(overallTotals.spend) },
-            { label: "Conv. Value",   value: fmtMoney(overallTotals.conversion_value) },
+            { label: "Total Spend",   value: fmtMoney(overallTotals.spend, overallCurrency) },
+            { label: "Conv. Value",   value: fmtMoney(overallTotals.conversion_value, overallCurrency) },
             { label: "ROAS",          value: overallROAS != null ? `${fmt(overallROAS)}x` : "—" },
             { label: "Impressions",   value: fmtK(overallTotals.impressions) },
             { label: "Conversions",   value: overallTotals.conversions.toLocaleString() },
