@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOps } from "@/lib/permissions";
+import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
+import { NewsView } from "./news-view";
 
 export default async function MarketingNewsPage() {
   const supabase = await createClient();
@@ -14,22 +15,14 @@ export default async function MarketingNewsPage() {
       .select("slug")
       .eq("id", currentUser.department_id ?? "")
       .maybeSingle();
-    if (!["marketing", "creatives"].includes(dept?.slug ?? "")) redirect("/");
+    if (!["marketing", "creatives", "ad-ops"].includes(dept?.slug ?? "")) redirect("/");
   }
 
+  const canManage = isManagerOrAbove(currentUser);
+
   return (
-    <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-2">News Feed</h1>
-      <p className="text-sm text-gray-500 mb-8">
-        RSS news aggregator. Requires migration 00017 to be applied.
-      </p>
-      <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-16 text-center">
-        <p className="text-4xl mb-4">📰</p>
-        <p className="text-sm font-medium text-gray-700">Coming soon</p>
-        <p className="text-xs text-gray-400 mt-1">
-          Industry news and trends aggregated from RSS feeds.
-        </p>
-      </div>
+    <div className="max-w-4xl mx-auto">
+      <NewsView canManage={canManage} />
     </div>
   );
 }

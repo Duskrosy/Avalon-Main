@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
+import { MarketingRequestsView } from "./requests-view";
 
 export default async function MarketingRequestsPage() {
   const supabase = await createClient();
@@ -17,17 +18,14 @@ export default async function MarketingRequestsPage() {
     if (!["marketing", "creatives"].includes(dept?.slug ?? "")) redirect("/");
   }
 
+  const currentUserName = `${currentUser.first_name} ${currentUser.last_name}`;
+
   return (
     <div className="max-w-5xl mx-auto">
-      <h1 className="text-2xl font-semibold text-gray-900 mb-2">Requests</h1>
-      <p className="text-sm text-gray-500 mb-8">Submit and track creative requests.</p>
-      <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-16 text-center">
-        <p className="text-4xl mb-4">📝</p>
-        <p className="text-sm font-medium text-gray-700">Coming soon</p>
-        <p className="text-xs text-gray-400 mt-1">
-          Submit creative requests and track their status.
-        </p>
-      </div>
+      <MarketingRequestsView
+        currentUserId={currentUser.id}
+        currentUserName={currentUserName}
+      />
     </div>
   );
 }

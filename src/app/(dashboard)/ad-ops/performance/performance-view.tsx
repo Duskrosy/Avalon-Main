@@ -10,7 +10,19 @@ type DeploymentOption = {
   id: string;
   campaign_name: string | null;
   status: string;
+  meta_account_id: string | null;
   asset: { asset_code: string; title: string } | null;
+};
+
+type Group = {
+  id: string;
+  name: string;
+};
+
+type AccountLink = {
+  id: string;
+  group_id: string | null;
+  currency: string | null;
 };
 
 type Snapshot = {
@@ -31,8 +43,15 @@ type Snapshot = {
 
 type Props = {
   deployments: DeploymentOption[];
+  groups: Group[];
+  accounts: AccountLink[];
   canManage: boolean;
 };
+
+function currencySymbol(code: string | null): string {
+  const map: Record<string, string> = { USD: "$", PHP: "₱", EUR: "€", GBP: "£", SGD: "S$", AUD: "A$" };
+  return map[code ?? ""] ?? (code ?? "$");
+}
 
 function fmt(n: number | null, decimals = 2, suffix = "") {
   if (n == null) return "—";
@@ -45,7 +64,8 @@ function fmtK(n: number | null) {
   return n.toLocaleString();
 }
 
-export function PerformanceView({ deployments, canManage }: Props) {
+export function PerformanceView({ deployments, groups, accounts, canManage }: Props) {
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>(deployments[0]?.id ?? "");
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +81,24 @@ export function PerformanceView({ deployments, canManage }: Props) {
     video_plays: "",
     video_plays_25pct: "",
   });
+
+  // Build a set of meta_account IDs that belong to the selected group
+  const accountIdsInGroup: Set<string> = selectedGroupId
+    ? new Set(accounts.filter((a) => a.group_id === selectedGroupId).map((a) => a.id))
+    : new Set();
+
+  // Filter deployments based on selected group
+  const filteredDeployments = selectedGroupId
+    ? deployments.filter((d) => d.meta_account_id && accountIdsInGroup.has(d.meta_account_id))
+    : deployments;
+
+  // Auto-select first deployment when group changes
+  useEffect(() => {
+    if (!filteredDeployments.find((d) => d.id === selectedId)) {
+      setSelectedId(filteredDeployments[0]?.id ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGroupId]);
 
   const fetchSnapshots = useCallback(async () => {
     if (!selectedId) return;
@@ -98,7 +136,12 @@ export function PerformanceView({ deployments, canManage }: Props) {
     setSaving(false);
   }
 
-  const selectedDep = deployments.find((d) => d.id === selectedId);
+  const selectedDep = filteredDeployments.find((d) => d.id === selectedId);
+  const selectedAccount = selectedDep?.meta_account_id
+    ? accounts.find((a) => a.id === selectedDep.meta_account_id)
+    : undefined;
+  const depCurrency: string | null = selectedAccount?.currency ?? null;
+  const sym = currencySymbol(depCurrency);
   const chartData = [...snapshots]
     .sort((a, b) => a.metric_date.localeCompare(b.metric_date))
     .map((s) => ({
@@ -128,6 +171,35 @@ export function PerformanceView({ deployments, canManage }: Props) {
         <p className="text-sm text-gray-500 mt-1">Daily metrics by deployment</p>
       </div>
 
+      {/* Account group tabs */}
+      {groups.length > 0 && (
+        <div className="flex items-center gap-1 mb-5 border-b border-gray-200 overflow-x-auto">
+          <button
+            onClick={() => setSelectedGroupId(null)}
+            className={`px-4 py-2.5 text-sm font-medium shrink-0 border-b-2 transition-colors ${
+              selectedGroupId === null
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            All
+          </button>
+          {groups.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => setSelectedGroupId(g.id)}
+              className={`px-4 py-2.5 text-sm font-medium shrink-0 border-b-2 transition-colors ${
+                selectedGroupId === g.id
+                  ? "border-gray-900 text-gray-900"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              {g.name}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Deployment selector */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <select
@@ -135,8 +207,8 @@ export function PerformanceView({ deployments, canManage }: Props) {
           onChange={(e) => setSelectedId(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 flex-1 max-w-sm"
         >
-          {deployments.length === 0 && <option value="">No deployments</option>}
-          {deployments.map((d) => (
+          {filteredDeployments.length === 0 && <option value="">No deployments</option>}
+          {filteredDeployments.map((d) => (
             <option key={d.id} value={d.id}>
               {d.campaign_name ?? d.asset?.title ?? d.id.slice(0, 8)} ({d.status})
             </option>
@@ -158,11 +230,11 @@ export function PerformanceView({ deployments, canManage }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-1">Total Spend</p>
-              <p className="text-xl font-bold text-gray-900">${totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              <p className="text-xl font-bold text-gray-900">{sym}{totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-1">Conv. Value</p>
-              <p className="text-xl font-bold text-gray-900">${totals.conversion_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+              <p className="text-xl font-bold text-gray-900">{sym}{totals.conversion_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-1">ROAS</p>
@@ -247,10 +319,10 @@ export function PerformanceView({ deployments, canManage }: Props) {
                               {format(parseISO(s.metric_date), "d MMM yyyy")}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-600">
-                              {s.spend != null ? `$${s.spend.toFixed(0)}` : "—"}
+                              {s.spend != null ? `${sym}${s.spend.toFixed(0)}` : "—"}
                             </td>
                             <td className="px-4 py-3 text-right text-gray-600">
-                              {s.conversion_value != null ? `$${s.conversion_value.toFixed(0)}` : "—"}
+                              {s.conversion_value != null ? `${sym}${s.conversion_value.toFixed(0)}` : "—"}
                             </td>
                             <td className="px-4 py-3 text-right font-medium text-gray-800">
                               {fmt(s.roas, 2, "x")}
@@ -270,6 +342,12 @@ export function PerformanceView({ deployments, canManage }: Props) {
             </>
           )}
         </>
+      )}
+
+      {filteredDeployments.length === 0 && (
+        <div className="bg-gray-50 rounded-xl p-12 text-center">
+          <p className="text-sm text-gray-400">No deployments in this group.</p>
+        </div>
       )}
 
       {showAddModal && (

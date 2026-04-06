@@ -8,7 +8,7 @@ import { format, parseISO } from "date-fns";
 type Request = { id: string; title: string; status: string; target_date: string | null; created_at: string };
 type Asset = { id: string; asset_code: string; title: string; status: string; content_type: string | null; funnel_stage: string | null };
 type Deployment = { id: string; status: string; campaign_name: string | null; launched_at: string | null; asset: { asset_code: string; title: string } | null };
-type MetaAccount = { id: string; name: string; account_id: string; is_active: boolean };
+type MetaAccount = { id: string; name: string; account_id: string; is_active: boolean; currency: string | null };
 
 type SyncRun = {
   id: string;
@@ -32,6 +32,13 @@ type Props = {
   lastSync: SyncRun;
   canSync: boolean;
   currentDeptSlug: string;
+  yesterdayDate: string;
+  hasYesterdayData: boolean;
+  yesterdayTotals: { spend: number; impressions: number; conversions: number; roas: number | null };
+  topByROAS: { name: string; roas: number } | null;
+  topBySpend: { name: string; spend: number } | null;
+  perAccountSpend: { id: string; name: string; spend: number; currency: string | null }[];
+  totalsCurrency: string | null;
 };
 
 const REQUEST_STATUS_STYLES: Record<string, string> = {
@@ -70,6 +77,21 @@ function countByStatus(rows: { status: string }[], status: string) {
   return rows.filter((r) => r.status === status).length;
 }
 
+function currencySymbol(code: string | null): string {
+  const map: Record<string, string> = { USD: "$", PHP: "₱", EUR: "€", GBP: "£", SGD: "S$", AUD: "A$" };
+  return map[code ?? ""] ?? (code ?? "$");
+}
+
+function fmtCurrency(n: number, currency: string | null = null) {
+  return currencySymbol(currency) + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function fmtK(n: number) {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
 export function AdDashboard({
   recentRequests,
   recentAssets,
@@ -79,6 +101,13 @@ export function AdDashboard({
   assetCounts,
   lastSync,
   canSync,
+  yesterdayDate,
+  hasYesterdayData,
+  yesterdayTotals,
+  topByROAS,
+  topBySpend,
+  perAccountSpend,
+  totalsCurrency,
 }: Props) {
   const router = useRouter();
   const [syncing, setSyncing] = useState(false);
@@ -110,6 +139,14 @@ export function AdDashboard({
   const pendingReview = countByStatus(assetCounts, "pending_review");
   const needsRevision = countByStatus(assetCounts, "needs_revision");
 
+  // Format yesterday label
+  let yesterdayLabel = "Yesterday";
+  try {
+    yesterdayLabel = format(parseISO(yesterdayDate), "d MMM yyyy");
+  } catch {
+    // keep default
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -117,6 +154,78 @@ export function AdDashboard({
         <p className="text-sm text-gray-500 mt-1">
           Shared workspace for Creatives &amp; Marketing · {metaAccounts.length} Meta account{metaAccounts.length !== 1 ? "s" : ""} connected
         </p>
+      </div>
+
+      {/* ── Yesterday's Performance ───────────────────────────────────────────── */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">Yesterday&apos;s Performance</h2>
+          <span className="text-xs text-gray-400">{yesterdayLabel}</span>
+        </div>
+
+        {!hasYesterdayData ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-gray-400">No data yet — sync to get yesterday&apos;s metrics</p>
+            {canSync && (
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+              >
+                {syncing ? "Syncing…" : "Sync Now"}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Totals row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Total Spend{totalsCurrency === null && perAccountSpend.length > 1 ? " (mixed)" : ""}</p>
+                <p className="text-xl font-bold text-gray-900">{fmtCurrency(yesterdayTotals.spend, totalsCurrency)}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Impressions</p>
+                <p className="text-xl font-bold text-gray-900">{fmtK(yesterdayTotals.impressions)}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Overall ROAS</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {yesterdayTotals.roas != null ? yesterdayTotals.roas.toFixed(2) + "x" : "—"}
+                </p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4">
+                <p className="text-xs text-gray-500 mb-1">Conversions</p>
+                <p className="text-xl font-bold text-gray-900">{yesterdayTotals.conversions.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* Top campaigns + per-account */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              {topByROAS && (
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Top Campaign · ROAS</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate mb-1">{topByROAS.name}</p>
+                  <p className="text-xl font-bold text-green-700">{topByROAS.roas.toFixed(2)}x</p>
+                </div>
+              )}
+              {topBySpend && (
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Top Campaign · Spend</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate mb-1">{topBySpend.name}</p>
+                  <p className="text-xl font-bold text-gray-900">{fmtCurrency(topBySpend.spend, totalsCurrency)}</p>
+                </div>
+              )}
+              {perAccountSpend.map((a) => (
+                <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                  <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Account Spend</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate mb-1">{a.name}</p>
+                  <p className="text-xl font-bold text-gray-900">{fmtCurrency(a.spend, a.currency)}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Meta Sync status */}
