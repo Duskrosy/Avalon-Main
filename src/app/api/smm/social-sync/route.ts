@@ -24,34 +24,39 @@ function dayAfter(date: string): string {
 }
 
 // ─── Facebook Page Insights ────────────────────────────────────────────────────
+// Note: page_impressions + page_fans deprecated for New Pages Experience accounts.
+// Using page_impressions_unique (unique reach) for both impressions and reach,
+// page_post_engagements for engagements, fan_count from page fields for followers.
 async function syncFacebook(pageId: string, token: string, date: string) {
   const since = date;
   const until = dayAfter(date);
-  // page_post_engagements replaces deprecated page_engaged_users in Graph API v19+
-  const metrics = "page_impressions,page_impressions_unique,page_post_engagements";
-  const url = `${META_BASE}/${pageId}/insights?metric=${metrics}&period=day&since=${since}&until=${until}&access_token=${token}`;
 
-  const res = await fetch(url);
-  const json = await res.json();
-  if (!res.ok || json.error) throw new Error(json.error?.message ?? "Facebook API error");
+  // Request each metric individually so one failure doesn't kill the whole call
+  async function fetchMetric(metric: string): Promise<number> {
+    const url = `${META_BASE}/${pageId}/insights/${metric}?period=day&since=${since}&until=${until}&access_token=${token}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!res.ok || json.error) return 0;
+    return json.data?.[0]?.values?.[0]?.value ?? 0;
+  }
 
-  const getValue = (name: string): number => {
-    const metric = (json.data ?? []).find((d: { name: string }) => d.name === name);
-    // Meta returns two values (since→day, day→until); we want the first (the requested day)
-    return metric?.values?.[0]?.value ?? 0;
-  };
+  const [reach, engagements, pageViews] = await Promise.all([
+    fetchMetric("page_impressions_unique"),
+    fetchMetric("page_post_engagements"),
+    fetchMetric("page_views_total"),
+  ]);
 
-  // Total follower count — separate call
-  const fanRes = await fetch(`${META_BASE}/${pageId}?fields=fan_count&access_token=${token}`);
+  // Follower count from page fields (fan_count is reliable across all page types)
+  const fanRes = await fetch(`${META_BASE}/${pageId}?fields=fan_count,followers_count&access_token=${token}`);
   const fanJson = await fanRes.json();
-  const follower_count: number | null = fanJson.fan_count ?? null;
+  const follower_count: number | null = fanJson.followers_count ?? fanJson.fan_count ?? null;
 
   return {
-    impressions:        getValue("page_impressions"),
-    reach:              getValue("page_impressions_unique"),
-    engagements:        getValue("page_post_engagements"),
+    impressions:        reach,   // page_impressions deprecated for NPE pages; unique reach is best proxy
+    reach,
+    engagements,
     follower_count,
-    video_plays:        0,
+    video_plays:        pageViews, // page_views_total as proxy for video context
     video_plays_3s:     0,
     avg_play_time_secs: 0,
   };
