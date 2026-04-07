@@ -1,65 +1,25 @@
 // Shopify Admin API client (REST Admin API 2024-01)
 // Server-side only — never import from client components.
 //
-// Auth model: Client Credentials OAuth grant (new Shopify custom app model).
-// SHOPIFY_CLIENT_SECRET starts with "shpss_" — this is NOT an access token.
-// We exchange client_id + client_secret for a short-lived shpat_ access token
-// before every batch of API calls. The token is cached in-process (valid 24h).
+// Auth model: Custom App Admin API access token (shpat_...).
+// Custom apps (created in Shopify Admin → Settings → Apps → Develop apps)
+// generate a permanent access token when you click "Install app".
+// That token is stored in SHOPIFY_ACCESS_TOKEN.
+// The shpss_ client secret you also received is only for webhook HMAC
+// verification — it is NOT used for API calls.
 
 const BASE = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/admin/api/2024-01`;
 
-// ─── Token cache ──────────────────────────────────────────────────────────────
-// Module-level cache — survives across requests in the same Lambda warm instance.
-// On cold start or expiry, a fresh token is fetched automatically.
-
-let _cachedToken: string | null = null;
-let _tokenExpiresAt: number = 0; // Unix ms
-
-async function getShopifyToken(): Promise<string> {
-  // Return cached token if still valid (with 60s safety buffer)
-  if (_cachedToken && Date.now() < _tokenExpiresAt - 60_000) {
-    return _cachedToken;
-  }
-
-  const clientId     = process.env.SHOPIFY_CLIENT_ID;
-  const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
-  const shopDomain   = process.env.SHOPIFY_SHOP_DOMAIN;
-
-  if (!clientId || !clientSecret || !shopDomain) {
+function getShopifyToken(): string {
+  const token = process.env.SHOPIFY_ACCESS_TOKEN;
+  if (!token) {
     throw new Error(
-      "Missing Shopify env vars. Set SHOPIFY_SHOP_DOMAIN, SHOPIFY_CLIENT_ID, and SHOPIFY_CLIENT_SECRET.",
+      "SHOPIFY_ACCESS_TOKEN is not set. " +
+      "In Shopify Admin → Settings → Apps → Develop apps → your app → " +
+      "API credentials → click 'Install app' to generate the shpat_ token.",
     );
   }
-
-  const body = new URLSearchParams({
-    client_id:     clientId,
-    client_secret: clientSecret,
-    grant_type:    "client_credentials",
-  });
-
-  const res = await fetch(
-    `https://${shopDomain}/admin/oauth/access_token`,
-    {
-      method:  "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body:    body.toString(),
-      cache:   "no-store",
-    },
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Shopify token exchange failed ${res.status}: ${text}`);
-  }
-
-  const json = await res.json() as { access_token: string; expires_in?: number };
-  if (!json.access_token) throw new Error("Shopify token response missing access_token");
-
-  _cachedToken    = json.access_token;
-  // expires_in is in seconds (typically 86399). Default to 23h if missing.
-  _tokenExpiresAt = Date.now() + (json.expires_in ?? 82800) * 1000;
-
-  return _cachedToken;
+  return token;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
