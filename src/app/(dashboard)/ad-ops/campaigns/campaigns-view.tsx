@@ -127,6 +127,32 @@ const PRESET_FORMULAS: Array<{ label: string; formula: string; format: MetricCar
   { label: "Conv. Value",       formula: "conversion_value",                  format: "currency"   },
 ];
 
+const VARIABLE_GROUPS = [
+  {
+    label: "Money",
+    vars: [
+      { name: "spend",            desc: "Total ad spend" },
+      { name: "conversion_value", desc: "Revenue from conversions" },
+    ],
+  },
+  {
+    label: "Performance",
+    vars: [
+      { name: "impressions", desc: "Total impressions" },
+      { name: "clicks",      desc: "Total link clicks" },
+      { name: "reach",       desc: "Unique people reached" },
+      { name: "conversions", desc: "Purchase count" },
+    ],
+  },
+  {
+    label: "Video",
+    vars: [
+      { name: "video_plays",       desc: "3-second video plays" },
+      { name: "video_plays_25pct", desc: "25% completion plays" },
+    ],
+  },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(n: number, dec = 2) { return n.toFixed(dec); }
@@ -141,14 +167,69 @@ function fmtMoney(n: number, currency = "USD") {
   }).format(n);
 }
 
+// Safe recursive-descent formula parser — no eval / new Function (CSP-safe)
 function evaluateFormula(formula: string, vars: Record<string, number>): number | null {
+  let pos = 0;
+  const s = formula.trim();
+
+  const skipWs = () => { while (pos < s.length && /\s/.test(s[pos])) pos++; };
+
+  const parseExpr = (): number => {
+    let left = parseTerm();
+    skipWs();
+    while (pos < s.length && (s[pos] === "+" || s[pos] === "-")) {
+      const op = s[pos++];
+      const right = parseTerm();
+      left = op === "+" ? left + right : left - right;
+      skipWs();
+    }
+    return left;
+  };
+
+  const parseTerm = (): number => {
+    let left = parseFactor();
+    skipWs();
+    while (pos < s.length && (s[pos] === "*" || s[pos] === "/")) {
+      const op = s[pos++];
+      const right = parseFactor();
+      left = op === "*" ? left * right : left / right;
+      skipWs();
+    }
+    return left;
+  };
+
+  const parseFactor = (): number => {
+    skipWs();
+    if (s[pos] === "-") { pos++; return -parseFactor(); }
+    if (s[pos] === "+") { pos++; return parseFactor(); }
+    if (s[pos] === "(") {
+      pos++;
+      const val = parseExpr();
+      skipWs();
+      if (s[pos] !== ")") throw new Error("Expected )");
+      pos++;
+      return val;
+    }
+    if (/[0-9.]/.test(s[pos] ?? "")) {
+      let n = "";
+      while (pos < s.length && /[0-9.]/.test(s[pos])) n += s[pos++];
+      return parseFloat(n);
+    }
+    if (/[a-zA-Z_]/.test(s[pos] ?? "")) {
+      let name = "";
+      while (pos < s.length && /[a-zA-Z0-9_]/.test(s[pos])) name += s[pos++];
+      if (!(name in vars)) throw new Error(`Unknown: ${name}`);
+      return vars[name];
+    }
+    throw new Error(`Unexpected char: ${s[pos]}`);
+  };
+
   try {
-    const keys = Object.keys(vars);
-    const vals = Object.values(vars);
-    // eslint-disable-next-line no-new-func
-    const fn = new Function(...keys, `"use strict"; return (${formula});`);
-    const result = fn(...vals);
-    if (typeof result !== "number" || !isFinite(result) || isNaN(result)) return null;
+    if (!s) return null;
+    const result = parseExpr();
+    skipWs();
+    if (pos !== s.length) return null;
+    if (!isFinite(result) || isNaN(result)) return null;
     return result;
   } catch { return null; }
 }
@@ -213,6 +294,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [newLabel, setNewLabel] = useState("");
   const [newFormula, setNewFormula] = useState("");
   const [newFormat, setNewFormat] = useState<MetricCard["format"]>("number");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const formulaInputRef = useRef<HTMLInputElement>(null);
 
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -339,6 +422,40 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     setNewLabel(preset.label);
     setNewFormula(preset.formula);
     setNewFormat(preset.format);
+    setSuggestions([]);
+  }
+
+  function insertVar(varName: string) {
+    const input = formulaInputRef.current;
+    const curPos = input?.selectionStart ?? newFormula.length;
+    // Find start of current word being typed
+    let wordStart = curPos;
+    while (wordStart > 0 && /[a-zA-Z0-9_]/.test(newFormula[wordStart - 1])) wordStart--;
+    const before = newFormula.slice(0, wordStart);
+    const after  = newFormula.slice(curPos);
+    const next   = before + varName + after;
+    setNewFormula(next);
+    setSuggestions([]);
+    const newCurPos = wordStart + varName.length;
+    requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(newCurPos, newCurPos);
+    });
+  }
+
+  function handleFormulaChange(val: string) {
+    setNewFormula(val);
+    const input = formulaInputRef.current;
+    const curPos = input?.selectionStart ?? val.length;
+    let wordStart = curPos;
+    while (wordStart > 0 && /[a-zA-Z0-9_]/.test(val[wordStart - 1])) wordStart--;
+    const word = val.slice(wordStart, curPos).toLowerCase();
+    if (word.length >= 2) {
+      const allVars = VARIABLE_GROUPS.flatMap((g) => g.vars.map((v) => v.name));
+      setSuggestions(allVars.filter((v) => v.includes(word) && v !== word));
+    } else {
+      setSuggestions([]);
+    }
   }
 
   // ── Stats aggregation ─────────────────────────────────────────────────────
@@ -1031,20 +1148,61 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                       className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                     />
                   </div>
-                  {/* Formula */}
+
+                  {/* Formula + variable picker */}
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Formula</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. conversion_value / spend"
-                      value={newFormula}
-                      onChange={(e) => setNewFormula(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Variables: <span className="font-mono">spend, impressions, clicks, reach, conversions, conversion_value, video_plays, video_plays_25pct</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-gray-500">Formula</label>
+                      {/* Variable groups dropdown — optgroup headers are separators, can't be selected */}
+                      <select
+                        defaultValue=""
+                        onChange={(e) => { if (e.target.value) { insertVar(e.target.value); e.target.value = ""; } }}
+                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-gray-900 text-gray-600"
+                      >
+                        <option value="" disabled>Insert variable…</option>
+                        {VARIABLE_GROUPS.map((group) => (
+                          <optgroup key={group.label} label={`── ${group.label} ──`}>
+                            {group.vars.map((v) => (
+                              <option key={v.name} value={v.name} title={v.desc}>{v.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Formula input with autocomplete */}
+                    <div className="relative">
+                      <input
+                        ref={formulaInputRef}
+                        type="text"
+                        placeholder="e.g. conversion_value / spend"
+                        value={newFormula}
+                        onChange={(e) => handleFormulaChange(e.target.value)}
+                        onBlur={() => setTimeout(() => setSuggestions([]), 150)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      />
+                      {/* Autocomplete suggestions */}
+                      {suggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                          {suggestions.map((s) => (
+                            <button
+                              key={s}
+                              onMouseDown={(e) => { e.preventDefault(); insertVar(s); }}
+                              className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-gray-50 text-gray-700"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Custom conversions note */}
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      <span className="font-mono text-gray-500">conversions</span> &amp; <span className="font-mono text-gray-500">conversion_value</span> reflect your custom purchase event per account — configure it in <span className="font-medium">Account Settings ⚙</span>.
                     </p>
                   </div>
+
                   {/* Format + preview row */}
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
