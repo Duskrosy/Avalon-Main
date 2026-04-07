@@ -133,26 +133,33 @@ function NavGroupSection({
   );
 }
 
-// ─── Dashboard section (special — has dept sub-items for OPS) ────────────────
+// ─── Executive Dashboard section (OPS only — dept sub-tabs) ─────────────────
+
+const EXEC_TABS = [
+  { label: "Overview",      href: "/executive" },
+  { label: "Sales",         href: "/executive/sales" },
+  { label: "Ad Operations", href: "/executive/ad-ops" },
+  { label: "Creatives",     href: "/executive/creatives" },
+  { label: "Marketing",     href: "/executive/marketing" },
+  { label: "People",        href: "/executive/people" },
+];
 
 function DashboardSection({
   pathname,
   isOps,
-  departments,
 }: {
   pathname: string;
   isOps: boolean;
   departments: Department[];
 }) {
-  const isDashboardRoot = pathname === "/";
-  const isDeptRoute = pathname.startsWith("/dashboard/");
-  const isAnyDashboard = isDashboardRoot || isDeptRoute;
+  const isExecRoute = pathname === "/executive" || pathname.startsWith("/executive/");
+  const isHomeRoot  = pathname === "/";
 
-  const [open, setOpen] = useState(isAnyDashboard || isOps);
+  const [open, setOpen] = useState(isExecRoute || isHomeRoot);
 
   useEffect(() => {
-    if (isAnyDashboard) setOpen(true);
-  }, [isAnyDashboard]);
+    if (isExecRoute || isHomeRoot) setOpen(true);
+  }, [isExecRoute, isHomeRoot]);
 
   if (!isOps) {
     return (
@@ -160,7 +167,7 @@ function DashboardSection({
         href="/"
         className={cn(
           "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-          isDashboardRoot
+          isHomeRoot
             ? "bg-gray-100 text-gray-900"
             : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
         )}
@@ -181,8 +188,8 @@ function DashboardSection({
         )}
       >
         <div className="flex items-center gap-2.5">
-          <span className="text-sm">🏠</span>
-          <span className="font-medium">Dashboard</span>
+          <span className="text-sm">🏛️</span>
+          <span className="font-medium">Executive</span>
         </div>
         <ChevronDown
           className={cn("text-gray-400 transition-transform shrink-0", open && "rotate-180")}
@@ -191,24 +198,15 @@ function DashboardSection({
 
       {open && (
         <div className="ml-5 mt-0.5 space-y-0.5 border-l border-gray-100 pl-3">
-          <Link
-            href="/"
-            className={cn(
-              "block px-3 py-1.5 rounded-md text-sm transition-colors",
-              isDashboardRoot
-                ? "text-gray-900 font-medium bg-gray-100"
-                : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-            )}
-          >
-            Overview
-          </Link>
-          {departments.map((dept) => {
-            const href = `/dashboard/${dept.slug}`;
-            const active = pathname === href;
+          {EXEC_TABS.map((tab) => {
+            const active =
+              tab.href === "/executive"
+                ? pathname === "/executive"
+                : pathname === tab.href || pathname.startsWith(tab.href + "/");
             return (
               <Link
-                key={dept.slug}
-                href={href}
+                key={tab.href}
+                href={tab.href}
                 className={cn(
                   "block px-3 py-1.5 rounded-md text-sm transition-colors",
                   active
@@ -216,7 +214,7 @@ function DashboardSection({
                     : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
                 )}
               >
-                {dept.name}
+                {tab.label}
               </Link>
             );
           })}
