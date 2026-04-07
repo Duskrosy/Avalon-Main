@@ -484,7 +484,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       .forEach((s) => {
         const t = adMap.get(s.ad_id) ?? {
           ad_id: s.ad_id, ad_name: s.ad_name, adset_name: s.adset_name,
-          spend: 0, impressions: 0, clicks: 0, conversions: 0,
+          spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
           conversion_value: 0, video_plays: 0, video_plays_25pct: 0, adCount: 1,
         };
         t.spend            += s.spend;
