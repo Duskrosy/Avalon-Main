@@ -194,28 +194,26 @@ async function syncPosts(
 
     if (posts.length === 0) return;
 
-    // Fetch insights for each post (non-fatal per-post).
-    // Use ?metric= query param format — the /{post}/insights/{metric} path format
-    // is deprecated for New Pages Experience and returns 0 for those pages.
-    async function fetchPostMetric(postId: string, metric: string): Promise<number> {
+    // Fetch a single insight metric for one FB post. Returns 0 on any error.
+    // Use ?metric= query param format — /{post}/insights/{metric} path is
+    // deprecated for New Pages Experience and silently returns 0.
+    const fbMetric = async (postId: string, metric: string): Promise<number> => {
       try {
-        const url = `${META_BASE}/${postId}/insights?metric=${metric}&period=lifetime&access_token=${token}`;
-        const res = await fetch(url);
+        const res  = await fetch(`${META_BASE}/${postId}/insights?metric=${metric}&period=lifetime&access_token=${token}`);
         const json = await res.json();
         if (!res.ok || json.error) return 0;
-        // Response shape: { data: [{ name, values: [{ value }] }] }
-        const entry = json.data?.find((d: { name: string }) => d.name === metric);
+        const entry = (json.data ?? []).find((d: { name: string }) => d.name === metric);
         return entry?.values?.[0]?.value ?? 0;
       } catch {
         return 0;
       }
-    }
+    };
 
     const rows = await Promise.all(
       posts.map(async (post) => {
         const [impressions, engagements] = await Promise.all([
-          fetchPostMetric(post.id, "post_impressions_unique"),
-          fetchPostMetric(post.id, "post_engaged_users"),
+          fbMetric(post.id, "post_impressions_unique"),
+          fbMetric(post.id, "post_engaged_users"),
         ]);
 
         return {
@@ -271,55 +269,52 @@ async function syncPosts(
 
     if (mediaItems.length === 0) return;
 
-    function mapIgMediaType(mediaType: string | undefined): string {
-      switch (mediaType) {
-        case "VIDEO":          return "video";
-        case "CAROUSEL_ALBUM": return "carousel";
-        case "REELS":          return "reel";
-        default:               return "image";
+    // Helper — defined outside the map callback to avoid strict-mode hoisting issues
+    const igMediaType = (t: string | undefined): string => {
+      if (t === "VIDEO")          return "video";
+      if (t === "CAROUSEL_ALBUM") return "carousel";
+      if (t === "REELS")          return "reel";
+      return "image";
+    };
+
+    // Fetch a single insight metric for one media item.
+    // Returns 0 on any error so one bad metric never blocks the rest.
+    // impressions is deprecated in v22 — use views for video, reach for images.
+    const igMetric = async (mediaId: string, metric: string): Promise<number> => {
+      try {
+        const res  = await fetch(`${META_BASE}/${mediaId}/insights?metric=${metric}&access_token=${token}`);
+        const json = await res.json();
+        if (!res.ok || json.error) return 0;
+        const entry = (json.data ?? []).find((d: { name: string }) => d.name === metric);
+        return entry?.values?.[0]?.value ?? 0;
+      } catch {
+        return 0;
       }
-    }
+    };
 
     const rows = await Promise.all(
       mediaItems.map(async (item) => {
-        // Fetch insights per media item.
-        // Request metrics individually so one unsupported metric (e.g. plays on image)
-        // doesn't block reach/engagements for that post.
-        async function fetchIgPostMetric(mediaId: string, metric: string): Promise<number> {
-          try {
-            const url = `${META_BASE}/${mediaId}/insights?metric=${metric}&access_token=${token}`;
-            const res = await fetch(url);
-            const json = await res.json();
-            if (!res.ok || json.error) return 0;
-            const entry = json.data?.find((d: { name: string }) => d.name === metric);
-            return entry?.values?.[0]?.value ?? 0;
-          } catch {
-            return 0;
-          }
-        }
-
-        const postType = mapIgMediaType(item.media_type);
+        const postType = igMediaType(item.media_type);
         const isVideo  = postType === "video" || postType === "reel";
 
-        // Note: `impressions` is deprecated for IG media as of v22.0.
-        // Use `views` for video/reel (total plays), `reach` as the main exposure metric for images.
         const [reach, views, engagements, video_plays] = await Promise.all([
-          fetchIgPostMetric(item.id, "reach"),
-          isVideo ? fetchIgPostMetric(item.id, "views") : fetchIgPostMetric(item.id, "reach"),
-          fetchIgPostMetric(item.id, "total_interactions"),
-          isVideo ? fetchIgPostMetric(item.id, "plays") : Promise.resolve(0),
+          igMetric(item.id, "reach"),
+          isVideo ? igMetric(item.id, "views") : igMetric(item.id, "reach"),
+          igMetric(item.id, "total_interactions"),
+          isVideo ? igMetric(item.id, "plays") : Promise.resolve(0),
         ]);
-        const impressions = views;
 
         return {
           platform_id:        platformId,
           post_external_id:   item.id,
-          post_url:           item.permalink ?? null,
-          thumbnail_url:      isVideo ? (item.thumbnail_url ?? item.media_url ?? null) : (item.media_url ?? null),
+          post_url:           item.permalink          ?? null,
+          thumbnail_url:      isVideo
+                                ? (item.thumbnail_url ?? item.media_url ?? null)
+                                : (item.media_url     ?? null),
           caption_preview:    item.caption ? item.caption.slice(0, 120) : null,
           post_type:          postType,
-          published_at:       item.timestamp ?? null,
-          impressions,
+          published_at:       item.timestamp          ?? null,
+          impressions:        views,
           reach,
           engagements,
           video_plays,
