@@ -92,7 +92,6 @@ export function LiveAdsView() {
   const [ads, setAds] = useState<LiveCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [days, setDays] = useState<7 | 14 | 30>(7);
   const [filter, setFilter] = useState<"all" | "active" | "paused">("all");
   const [msgTab, setMsgTab] = useState<"main" | "messenger">("main");
 
@@ -128,17 +127,17 @@ export function LiveAdsView() {
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  const fetchAds = useCallback(async (d = days) => {
+  const fetchAds = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/ad-ops/live-ads?days=${d}`);
+      const res = await fetch(`/api/ad-ops/live-ads`);
       if (!res.ok) return;
       setAds(await res.json());
       setLastRefreshed(new Date());
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, []);
 
   // Cap enforcement on load
   useEffect(() => {
@@ -151,10 +150,10 @@ export function LiveAdsView() {
   }, [ads]);
 
   useEffect(() => {
-    fetchAds(days);
-    const t = setInterval(() => fetchAds(days), AUTO_REFRESH_MS);
+    fetchAds();
+    const t = setInterval(() => fetchAds(), AUTO_REFRESH_MS);
     return () => clearInterval(t);
-  }, [days, fetchAds]);
+  }, [fetchAds]);
 
   // ── Thumbnail fetch on adset expand ───────────────────────────────────────
 
@@ -380,23 +379,23 @@ export function LiveAdsView() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Live Ads</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Real-time spend · auto-refreshes every 50 min</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-            {([7, 14, 30] as const).map((d) => (
-              <button key={d} onClick={() => setDays(d)}
-                className={`px-3 py-1.5 ${days === d ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>
-                {d}d
-              </button>
-            ))}
-          </div>
-          {lastRefreshed && (
-            <span className="text-xs text-gray-400 hidden sm:block">
-              Updated {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
             </span>
-          )}
-          <button onClick={() => fetchAds(days)} disabled={loading}
+            <p className="text-sm text-gray-500">
+              Live · auto-refreshes every 50 min
+              {lastRefreshed && (
+                <span className="ml-2 text-gray-400">
+                  · Updated {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => fetchAds()} disabled={loading}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50">
             <svg className={`w-4 h-4 text-gray-500 ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
