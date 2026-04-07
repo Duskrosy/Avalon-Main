@@ -50,6 +50,7 @@ type AdStat = {
   video_plays_25pct: number;
   conversions: number;
   conversion_value: number;
+  messaging_conversations: number;
   hook_rate: number | null;
   ctr: number | null;
   roas: number | null;
@@ -62,6 +63,7 @@ type CampaignTotals = {
   reach: number;
   conversions: number;
   conversion_value: number;
+  messaging_conversations: number;
   video_plays: number;
   video_plays_25pct: number;
   adCount: number;
@@ -294,6 +296,29 @@ const AD_COL_DEFS: ColDef[] = [
     render: (ad, cur) => { const v = ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : null; return v != null ? fmtMoney(v, cur) : "—"; } },
   { id: "cpp",               label: "CPP",
     render: (ad, cur) => { const v = ad.conversions > 0 ? ad.spend / ad.conversions : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+  { id: "msg_convs",         label: "Results",
+    render: (ad) => (ad.messaging_conversations ?? 0).toLocaleString() },
+  { id: "cost_per_result",   label: "Cost/Result",
+    render: (ad, cur) => { const v = (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+];
+
+// Default columns for Messenger-objective campaigns
+const DEFAULT_AD_COLUMNS_MESSENGER: AdColumnConfig[] = [
+  { id: "spend",            visible: true  },
+  { id: "msg_convs",        visible: true  },
+  { id: "cost_per_result",  visible: true  },
+  { id: "ctr",              visible: true  },
+  { id: "impressions",      visible: true  },
+  { id: "clicks",           visible: true  },
+  { id: "roas",             visible: false },
+  { id: "hook_rate",        visible: false },
+  { id: "conversions",      visible: false },
+  { id: "conversion_value", visible: false },
+  { id: "reach",            visible: false },
+  { id: "video_plays",      visible: false },
+  { id: "video_plays_25pct",visible: false },
+  { id: "cpm",              visible: false },
+  { id: "cpp",              visible: false },
 ];
 
 const DEFAULT_AD_COLUMNS: AdColumnConfig[] = [
@@ -370,7 +395,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const formulaInputRef = useRef<HTMLInputElement>(null);
 
-  // Ad table columns state (localStorage-persisted)
+  // Ad table columns state (localStorage-persisted) — separate configs for standard vs Messenger
   const [adColumns, setAdColumns] = useState<AdColumnConfig[]>(() => {
     if (typeof window === "undefined") return DEFAULT_AD_COLUMNS;
     try {
@@ -378,6 +403,14 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       if (stored) return JSON.parse(stored) as AdColumnConfig[];
     } catch { /* ignore */ }
     return DEFAULT_AD_COLUMNS;
+  });
+  const [adColumnsMessenger, setAdColumnsMessenger] = useState<AdColumnConfig[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_AD_COLUMNS_MESSENGER;
+    try {
+      const stored = localStorage.getItem("avalon_ad_columns_messenger");
+      if (stored) return JSON.parse(stored) as AdColumnConfig[];
+    } catch { /* ignore */ }
+    return DEFAULT_AD_COLUMNS_MESSENGER;
   });
   const [colEditorOpen, setColEditorOpen] = useState(false);
   const [editCols, setEditCols] = useState<AdColumnConfig[]>([]);
@@ -567,13 +600,20 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   }
 
   // ── Ad column helpers ─────────────────────────────────────────────────────
+  const isMessengerTab = activeTab === "messenger";
+
   function saveAdColumns(cols: AdColumnConfig[]) {
-    setAdColumns(cols);
-    try { localStorage.setItem("avalon_ad_columns", JSON.stringify(cols)); } catch { /* ignore */ }
+    if (isMessengerTab) {
+      setAdColumnsMessenger(cols);
+      try { localStorage.setItem("avalon_ad_columns_messenger", JSON.stringify(cols)); } catch { /* ignore */ }
+    } else {
+      setAdColumns(cols);
+      try { localStorage.setItem("avalon_ad_columns", JSON.stringify(cols)); } catch { /* ignore */ }
+    }
   }
 
   function openColEditor() {
-    setEditCols([...adColumns]);
+    setEditCols([...(isMessengerTab ? adColumnsMessenger : adColumns)]);
     setColEditorOpen(true);
   }
 
@@ -676,16 +716,18 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       const key = `${s.meta_account_id}__${s.campaign_id}`;
       const t = map.get(key) ?? {
         spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
-        conversion_value: 0, video_plays: 0, video_plays_25pct: 0, adCount: 0,
+        conversion_value: 0, messaging_conversations: 0,
+        video_plays: 0, video_plays_25pct: 0, adCount: 0,
       };
-      t.spend             += s.spend;
-      t.impressions       += s.impressions;
-      t.clicks            += s.clicks;
-      t.reach             += (s.reach ?? 0);
-      t.conversions       += s.conversions;
-      t.conversion_value  += s.conversion_value;
-      t.video_plays       += s.video_plays;
-      t.video_plays_25pct += s.video_plays_25pct;
+      t.spend                  += s.spend;
+      t.impressions            += s.impressions;
+      t.clicks                 += s.clicks;
+      t.reach                  += (s.reach ?? 0);
+      t.conversions            += s.conversions;
+      t.conversion_value       += s.conversion_value;
+      t.messaging_conversations += (s.messaging_conversations ?? 0);
+      t.video_plays            += s.video_plays;
+      t.video_plays_25pct      += s.video_plays_25pct;
       map.set(key, t);
     }
     // count unique ads per campaign
@@ -742,18 +784,20 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         const t = campaignTotals.get(`${c.meta_account_id}__${c.campaign_id}`);
         if (!t) return acc;
         return {
-          spend:             acc.spend + t.spend,
-          impressions:       acc.impressions + t.impressions,
-          clicks:            acc.clicks + t.clicks,
-          reach:             acc.reach + (t.reach ?? 0),
-          conversions:       acc.conversions + t.conversions,
-          conversion_value:  acc.conversion_value + t.conversion_value,
-          video_plays:       acc.video_plays + t.video_plays,
-          video_plays_25pct: acc.video_plays_25pct + t.video_plays_25pct,
+          spend:                   acc.spend + t.spend,
+          impressions:             acc.impressions + t.impressions,
+          clicks:                  acc.clicks + t.clicks,
+          reach:                   acc.reach + (t.reach ?? 0),
+          conversions:             acc.conversions + t.conversions,
+          conversion_value:        acc.conversion_value + t.conversion_value,
+          messaging_conversations: acc.messaging_conversations + (t.messaging_conversations ?? 0),
+          video_plays:             acc.video_plays + t.video_plays,
+          video_plays_25pct:       acc.video_plays_25pct + t.video_plays_25pct,
         };
       },
       { spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
-        conversion_value: 0, video_plays: 0, video_plays_25pct: 0 },
+        conversion_value: 0, messaging_conversations: 0,
+        video_plays: 0, video_plays_25pct: 0 },
     );
   }, [visibleCampaigns, campaignTotals]);
 
@@ -787,9 +831,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
   }, [filterAccount, accountMap, visibleCampaigns]);
 
-  // Active column defs in user-defined order (supports built-in + custom formula cols)
+  // Active column defs in user-defined order (uses messenger config when in Messenger tab)
   const activeAdCols = useMemo(
-    () => adColumns
+    () => (isMessengerTab ? adColumnsMessenger : adColumns)
       .filter((c) => c.visible)
       .map((c): ColDef | undefined => {
         if (c.custom && c.formula && c.label) {
@@ -812,7 +856,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         return AD_COL_DEFS.find((d) => d.id === c.id);
       })
       .filter(Boolean) as ColDef[],
-    [adColumns],
+    [adColumns, adColumnsMessenger, isMessengerTab],
   );
 
   // Messenger auto-grouping
@@ -844,15 +888,17 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         const t = adMap.get(s.ad_id) ?? {
           ad_id: s.ad_id, ad_name: s.ad_name, adset_name: s.adset_name,
           spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
-          conversion_value: 0, video_plays: 0, video_plays_25pct: 0, adCount: 1,
+          conversion_value: 0, messaging_conversations: 0,
+          video_plays: 0, video_plays_25pct: 0, adCount: 1,
         };
-        t.spend            += s.spend;
-        t.impressions      += s.impressions;
-        t.clicks           += s.clicks;
-        t.conversions      += s.conversions;
-        t.conversion_value += s.conversion_value;
-        t.video_plays      += s.video_plays;
-        t.video_plays_25pct += s.video_plays_25pct;
+        t.spend                   += s.spend;
+        t.impressions             += s.impressions;
+        t.clicks                  += s.clicks;
+        t.conversions             += s.conversions;
+        t.conversion_value        += s.conversion_value;
+        t.messaging_conversations += (s.messaging_conversations ?? 0);
+        t.video_plays             += s.video_plays;
+        t.video_plays_25pct       += s.video_plays_25pct;
         adMap.set(s.ad_id, t);
       });
     return Array.from(adMap.values()).sort((a, b) => b.spend - a.spend);
@@ -1266,19 +1312,43 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         <span className="text-gray-500">
                           <span className="font-semibold text-gray-800">{fmtMoney(totals.spend, account?.currency)}</span> spend
                         </span>
-                        <span className="text-gray-500">
-                          <span className={`font-semibold ${roas != null && roas >= 2 ? "text-green-700" : roas != null && roas < 1 ? "text-red-500" : "text-gray-800"}`}>
-                            {roas != null ? `${fmt(roas)}x` : "—"}
-                          </span> ROAS
-                        </span>
-                        <span className="text-gray-500">
-                          <span className={`font-semibold ${hookRate != null && hookRate >= 4 ? "text-green-700" : "text-gray-800"}`}>
-                            {hookRate != null ? `${fmt(hookRate, 1)}%` : "—"}
-                          </span> hook
-                        </span>
-                        <span className="text-gray-500">
-                          <span className="font-semibold text-gray-800">{totals.conversions}</span> conv.
-                        </span>
+                        {isMessengerTab ? (
+                          // Messenger-specific metrics
+                          <>
+                            <span className="text-gray-500">
+                              <span className="font-semibold text-gray-800">{(totals.messaging_conversations ?? 0).toLocaleString()}</span> results
+                            </span>
+                            <span className="text-gray-500">
+                              <span className="font-semibold text-gray-800">
+                                {(totals.messaging_conversations ?? 0) > 0
+                                  ? fmtMoney(totals.spend / totals.messaging_conversations, account?.currency)
+                                  : "—"}
+                              </span> cost/result
+                            </span>
+                            <span className="text-gray-500">
+                              <span className="font-semibold text-gray-800">
+                                {totals.impressions > 0 ? `${fmt((totals.clicks / totals.impressions) * 100, 2)}%` : "—"}
+                              </span> CTR
+                            </span>
+                          </>
+                        ) : (
+                          // Standard metrics
+                          <>
+                            <span className="text-gray-500">
+                              <span className={`font-semibold ${roas != null && roas >= 2 ? "text-green-700" : roas != null && roas < 1 ? "text-red-500" : "text-gray-800"}`}>
+                                {roas != null ? `${fmt(roas)}x` : "—"}
+                              </span> ROAS
+                            </span>
+                            <span className="text-gray-500">
+                              <span className={`font-semibold ${hookRate != null && hookRate >= 4 ? "text-green-700" : "text-gray-800"}`}>
+                                {hookRate != null ? `${fmt(hookRate, 1)}%` : "—"}
+                              </span> hook
+                            </span>
+                            <span className="text-gray-500">
+                              <span className="font-semibold text-gray-800">{totals.conversions}</span> conv.
+                            </span>
+                          </>
+                        )}
                         <span className="text-gray-400">{totals.adCount} ad{totals.adCount !== 1 ? "s" : ""}</span>
                       </div>
                     ) : (
@@ -1590,7 +1660,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div>
                 <h2 className="text-base font-semibold text-gray-900">Ad Table Columns</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Applies to all campaign drill-downs</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {isMessengerTab ? "Messenger tab columns" : "Standard campaigns columns"}
+                  {" · "}saved separately per tab
+                </p>
               </div>
               <button onClick={() => setColEditorOpen(false)} className="text-gray-400 hover:text-gray-700 rounded-lg p-1">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1763,7 +1836,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             {/* Footer */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
               <button
-                onClick={() => setEditCols([...DEFAULT_AD_COLUMNS])}
+                onClick={() => setEditCols(isMessengerTab ? [...DEFAULT_AD_COLUMNS_MESSENGER] : [...DEFAULT_AD_COLUMNS])}
                 className="text-xs text-gray-400 hover:text-gray-700 underline transition-colors"
               >
                 Reset to defaults

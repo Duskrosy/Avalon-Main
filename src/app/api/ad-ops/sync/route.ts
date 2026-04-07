@@ -141,6 +141,14 @@ export async function POST(req: NextRequest) {
             conversion_value = roas ? Math.round(parseFloat(roas) * spend * 100) / 100 : 0;
           }
 
+          // Messaging conversations started (for Messenger-objective campaigns)
+          const messaging_conversations = parseInt(
+            insight.raw_actions?.find(
+              (a) => a.action_type === "onsite_conversion.messaging_conversation_started_7d"
+            )?.value ?? "0",
+            10,
+          );
+
           return {
             meta_account_id: account.id,
             campaign_id: insight.campaign_id,
@@ -158,6 +166,7 @@ export async function POST(req: NextRequest) {
             video_plays_25pct: parseInt(insight.video_plays_25pct ?? "0", 10),
             conversions,
             conversion_value,
+            messaging_conversations,
             last_synced_at: new Date().toISOString(),
           };
         });

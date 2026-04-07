@@ -27,7 +27,7 @@ export default async function CampaignsPage() {
   // Fetch 30-day aggregated stats per campaign
   const { data: stats } = await supabase
     .from("meta_ad_stats")
-    .select("campaign_id, meta_account_id, impressions, clicks, spend, reach, video_plays, video_plays_25pct, conversions, conversion_value, metric_date, ad_id, ad_name, adset_name, hook_rate, ctr, roas")
+    .select("campaign_id, meta_account_id, impressions, clicks, spend, reach, video_plays, video_plays_25pct, conversions, conversion_value, messaging_conversations, metric_date, ad_id, ad_name, adset_name, hook_rate, ctr, roas")
     .gte("metric_date", fromDate)
     .order("metric_date", { ascending: false });
 

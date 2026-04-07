@@ -38,6 +38,7 @@ export async function GET() {
     video_plays_25pct: number;
     conversions: number;
     conversion_value: number;
+    messaging_conversations: number;
     hook_rate: null;
     ctr: null;
     roas: null;
@@ -74,22 +75,30 @@ export async function GET() {
           conversion_value = roas ? Math.round(parseFloat(roas) * spend * 100) / 100 : 0;
         }
 
+        const messaging_conversations = parseInt(
+          insight.raw_actions?.find(
+            (a) => a.action_type === "onsite_conversion.messaging_conversation_started_7d"
+          )?.value ?? "0",
+          10,
+        );
+
         allStats.push({
-          meta_account_id:   account.id,
-          campaign_id:       insight.campaign_id,
-          campaign_name:     insight.campaign_name ?? null,
-          adset_name:        insight.adset_name    ?? null,
-          ad_id:             insight.ad_id,
-          ad_name:           insight.ad_name       ?? null,
-          metric_date:       todayStr,
-          impressions:       parseInt(insight.impressions       ?? "0", 10),
-          clicks:            parseInt(insight.clicks            ?? "0", 10),
+          meta_account_id:          account.id,
+          campaign_id:              insight.campaign_id,
+          campaign_name:            insight.campaign_name ?? null,
+          adset_name:               insight.adset_name    ?? null,
+          ad_id:                    insight.ad_id,
+          ad_name:                  insight.ad_name       ?? null,
+          metric_date:              todayStr,
+          impressions:              parseInt(insight.impressions       ?? "0", 10),
+          clicks:                   parseInt(insight.clicks            ?? "0", 10),
           spend,
-          reach:             parseInt(insight.reach             ?? "0", 10),
-          video_plays:       parseInt(insight.video_plays       ?? "0", 10),
-          video_plays_25pct: parseInt(insight.video_plays_25pct ?? "0", 10),
+          reach:                    parseInt(insight.reach             ?? "0", 10),
+          video_plays:              parseInt(insight.video_plays       ?? "0", 10),
+          video_plays_25pct:        parseInt(insight.video_plays_25pct ?? "0", 10),
           conversions,
           conversion_value,
+          messaging_conversations,
           hook_rate: null,
           ctr:       null,
           roas:      null,
