@@ -329,6 +329,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [customStart, setCustomStart] = useState("");
   const [customEnd,   setCustomEnd]   = useState("");
 
+  // Live stats for "Today" — fetched from Meta directly, not from DB
+  const [liveStats,    setLiveStats]    = useState<AdStat[] | null>(null);
+  const [liveFetching, setLiveFetching] = useState(false);
+
   // Expand state
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -398,6 +402,21 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     if (settingsOpen) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [settingsOpen]);
+
+  // Live fetch when "Today" is selected
+  useEffect(() => {
+    if (datePreset !== "today") {
+      setLiveStats(null);
+      return;
+    }
+    setLiveFetching(true);
+    setLiveStats(null);
+    fetch("/api/ad-ops/today-stats")
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((data: AdStat[]) => setLiveStats(data))
+      .catch(() => setLiveStats([]))
+      .finally(() => setLiveFetching(false));
+  }, [datePreset]);
 
   // Account map (uses live currency from local state so UI is instant)
   const accountMap = useMemo(
@@ -645,10 +664,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     }
   }, [datePreset, customStart, customEnd]);
 
-  const filteredStats = useMemo(
-    () => stats.filter((s) => s.metric_date >= startDate && s.metric_date <= endDate),
-    [stats, startDate, endDate],
-  );
+  const filteredStats = useMemo(() => {
+    // For "Today" use the live Meta fetch; for all other presets use the DB snapshot
+    const source = datePreset === "today" && liveStats != null ? liveStats : stats;
+    return source.filter((s) => s.metric_date >= startDate && s.metric_date <= endDate);
+  }, [stats, liveStats, datePreset, startDate, endDate]);
 
   const campaignTotals = useMemo(() => {
     const map = new Map<string, CampaignTotals>();
@@ -845,10 +865,27 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Live Campaigns</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Auto-synced from Meta · {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""}
-            {campaigns[0]?.last_synced_at && (
-              <> · Last sync: {format(parseISO(campaigns[0].last_synced_at), "d MMM, h:mm a")}</>
+          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+            <span>
+              Auto-synced from Meta · {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""}
+              {campaigns[0]?.last_synced_at && (
+                <> · Last sync: {format(parseISO(campaigns[0].last_synced_at), "d MMM, h:mm a")}</>
+              )}
+            </span>
+            {datePreset === "today" && (
+              liveFetching ? (
+                <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                  </svg>
+                  Fetching live data…
+                </span>
+              ) : liveStats != null ? (
+                <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                  Live from Meta
+                </span>
+              ) : null
             )}
           </p>
           {syncMsg && (
@@ -1122,10 +1159,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             {metricCards.map((card) => {
               const value = evaluateFormula(card.formula, formulaVars);
               return (
-                <div key={card.id} className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
+                <div key={card.id} className={`bg-white border border-gray-200 rounded-xl p-4 min-w-0 transition-opacity ${liveFetching ? "opacity-40" : ""}`}>
                   <p className="text-xs text-gray-500 mb-1 truncate">{card.label}</p>
                   <p className="text-xl font-bold text-gray-900 truncate">
-                    {formatMetricValue(value, card.format, overallCurrency)}
+                    {liveFetching ? <span className="inline-block w-16 h-5 bg-gray-200 rounded animate-pulse" /> : formatMetricValue(value, card.format, overallCurrency)}
                   </p>
                 </div>
               );
