@@ -20,7 +20,7 @@ export default async function CampaignsPage() {
       .order("last_synced_at", { ascending: false }),
     supabase
       .from("ad_meta_accounts")
-      .select("id, name, account_id, currency")
+      .select("id, name, account_id, currency, primary_conversion_id, primary_conversion_name")
       .eq("is_active", true),
   ]);
 

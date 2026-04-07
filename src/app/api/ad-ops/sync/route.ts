@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   // ── 2. Fetch all active Meta accounts ─────────────────────────────────────
   const { data: accounts } = await admin
     .from("ad_meta_accounts")
-    .select("id, account_id, name, meta_access_token, currency")
+    .select("id, account_id, name, meta_access_token, currency, primary_conversion_id, primary_conversion_name")
     .eq("is_active", true);
 
   if (!accounts || accounts.length === 0) {
@@ -118,29 +118,49 @@ export async function POST(req: NextRequest) {
       // ── Upsert ad stats into meta_ad_stats ────────────────────────────
       let adCount = 0;
       if (adInsights.length > 0) {
-        const statRows = adInsights.map((insight) => ({
-          meta_account_id: account.id,
-          campaign_id: insight.campaign_id,
-          campaign_name: insight.campaign_name ?? null,
-          adset_id: insight.adset_id ?? null,
-          adset_name: insight.adset_name ?? null,
-          ad_id: insight.ad_id,
-          ad_name: insight.ad_name ?? null,
-          metric_date: metricDate,
-          impressions: parseInt(insight.impressions ?? "0", 10),
-          clicks: parseInt(insight.clicks ?? "0", 10),
-          spend: parseFloat(insight.spend ?? "0"),
-          reach: parseInt(insight.reach ?? "0", 10),
-          video_plays: parseInt(insight.video_plays ?? "0", 10),
-          video_plays_25pct: parseInt(insight.video_plays_25pct ?? "0", 10),
-          conversions: parseInt(insight.conversions ?? "0", 10),
-          conversion_value: (() => {
+        const customConvId = account.primary_conversion_id;
+        // Custom conversion action type: offsite_conversion.custom.{id}
+        const customActionType = customConvId ? `offsite_conversion.custom.${customConvId}` : null;
+
+        const statRows = adInsights.map((insight) => {
+          const spend = parseFloat(insight.spend ?? "0");
+
+          // Conversions: use custom conversion if configured, otherwise default purchase
+          let conversions: number;
+          let conversion_value: number;
+
+          if (customActionType && insight.raw_actions) {
+            const countEntry = insight.raw_actions.find((a) => a.action_type === customActionType);
+            const valueEntry = insight.raw_action_values?.find((a) => a.action_type === customActionType);
+            conversions = parseInt(countEntry?.value ?? "0", 10);
+            conversion_value = parseFloat(valueEntry?.value ?? "0");
+          } else {
+            // Fallback: default purchase action + purchase_roas
+            conversions = parseInt(insight.conversions ?? "0", 10);
             const roas = insight.purchase_roas?.[0]?.value;
-            if (!roas) return 0;
-            return Math.round(parseFloat(roas) * parseFloat(insight.spend ?? "0") * 100) / 100;
-          })(),
-          last_synced_at: new Date().toISOString(),
-        }));
+            conversion_value = roas ? Math.round(parseFloat(roas) * spend * 100) / 100 : 0;
+          }
+
+          return {
+            meta_account_id: account.id,
+            campaign_id: insight.campaign_id,
+            campaign_name: insight.campaign_name ?? null,
+            adset_id: insight.adset_id ?? null,
+            adset_name: insight.adset_name ?? null,
+            ad_id: insight.ad_id,
+            ad_name: insight.ad_name ?? null,
+            metric_date: metricDate,
+            impressions: parseInt(insight.impressions ?? "0", 10),
+            clicks: parseInt(insight.clicks ?? "0", 10),
+            spend,
+            reach: parseInt(insight.reach ?? "0", 10),
+            video_plays: parseInt(insight.video_plays ?? "0", 10),
+            video_plays_25pct: parseInt(insight.video_plays_25pct ?? "0", 10),
+            conversions,
+            conversion_value,
+            last_synced_at: new Date().toISOString(),
+          };
+        });
 
         const { error } = await admin
           .from("meta_ad_stats")

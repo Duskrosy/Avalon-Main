@@ -69,7 +69,7 @@ export async function PATCH(req: NextRequest) {
   if (error) return error;
 
   const body = await req.json();
-  const { id, name, label, currency, group_id, is_active } = body;
+  const { id, name, label, currency, group_id, is_active, primary_conversion_id, primary_conversion_name } = body;
 
   if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
   if (currency && !CURRENCIES.includes(currency)) {
@@ -81,8 +81,9 @@ export async function PATCH(req: NextRequest) {
   if (label     !== undefined) updates.label     = label ? String(label).trim() : null;
   if (currency  !== undefined) updates.currency  = currency;
   if (is_active !== undefined) updates.is_active = Boolean(is_active);
-  // group_id can be null (ungrouped) or a UUID
-  if ("group_id" in body)      updates.group_id  = group_id ?? null;
+  if ("group_id"               in body) updates.group_id               = group_id ?? null;
+  if ("primary_conversion_id"  in body) updates.primary_conversion_id  = primary_conversion_id ?? null;
+  if ("primary_conversion_name" in body) updates.primary_conversion_name = primary_conversion_name ?? null;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

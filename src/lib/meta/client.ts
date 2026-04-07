@@ -52,6 +52,9 @@ export type MetaAdInsight = {
   video_plays_25pct?: string;     // 25% completion
   conversions?: string;
   purchase_roas?: { action_type: string; value: string }[];
+  // Raw action arrays — used to extract custom conversion data
+  raw_actions?: { action_type: string; value: string }[];
+  raw_action_values?: { action_type: string; value: string }[];
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -149,6 +152,7 @@ export async function fetchAdInsights(
     "video_p25_watched_actions",
     // Conversions + ROAS
     "actions",
+    "action_values",   // monetary value per action type (needed for custom conversions)
     "purchase_roas",
   ].join(",");
 
@@ -167,10 +171,11 @@ export async function fetchAdInsights(
 // ─── Normaliser ───────────────────────────────────────────────────────────────
 
 type ActionEntry = { action_type: string; value: string };
-type RawAdInsight = Omit<MetaAdInsight, "video_plays" | "video_plays_25pct" | "conversions"> & {
+type RawAdInsight = Omit<MetaAdInsight, "video_plays" | "video_plays_25pct" | "conversions" | "raw_actions" | "raw_action_values"> & {
   video_play_actions?: ActionEntry[];
   video_p25_watched_actions?: ActionEntry[];
   actions?: ActionEntry[];
+  action_values?: ActionEntry[];
   purchase_roas?: { action_type: string; value: string }[];
 };
 
@@ -198,6 +203,9 @@ function normaliseAdInsight(raw: RawAdInsight): MetaAdInsight {
     video_plays_25pct: sumAction(raw.video_p25_watched_actions, "video_p25_watched"),
     conversions: sumAction(raw.actions, "purchase"),
     purchase_roas: raw.purchase_roas,
+    // Pass raw arrays through so callers can extract custom conversion data
+    raw_actions: raw.actions,
+    raw_action_values: raw.action_values,
   };
 }
 

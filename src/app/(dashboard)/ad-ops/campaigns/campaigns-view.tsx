@@ -24,6 +24,15 @@ type Account = {
   name: string;
   account_id: string;
   currency: string;
+  primary_conversion_id: string | null;
+  primary_conversion_name: string | null;
+};
+
+type CustomConversion = {
+  id: string;
+  name: string;
+  pixel?: { id: string };
+  custom_event_type?: string;
 };
 
 type AdStat = {
@@ -124,6 +133,15 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     Object.fromEntries(accounts.map((a) => [a.id, a.currency ?? "USD"]))
   );
   const [savingCurrency, setSavingCurrency] = useState<string | null>(null);
+
+  // Custom conversion state
+  const [customConversions, setCustomConversions] = useState<Record<string, CustomConversion[]>>({}); // accountId → list
+  const [loadingConversions, setLoadingConversions] = useState<string | null>(null);
+  const [accountConversions, setAccountConversions] = useState<Record<string, { id: string | null; name: string | null }>>(
+    Object.fromEntries(accounts.map((a) => [a.id, { id: a.primary_conversion_id ?? null, name: a.primary_conversion_name ?? null }]))
+  );
+  const [savingConversion, setSavingConversion] = useState<string | null>(null);
+
   const settingsRef = useRef<HTMLDivElement>(null);
 
   // Close settings on outside click
@@ -175,6 +193,33 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       });
     } finally {
       setSavingCurrency(null);
+    }
+  }
+
+  // ── Custom conversion helpers ─────────────────────────────────────────────
+  async function loadCustomConversions(accountId: string) {
+    setLoadingConversions(accountId);
+    try {
+      const res = await fetch(`/api/ad-ops/custom-conversions?account_id=${accountId}`);
+      if (!res.ok) return;
+      const data: CustomConversion[] = await res.json();
+      setCustomConversions((prev) => ({ ...prev, [accountId]: data }));
+    } finally {
+      setLoadingConversions(null);
+    }
+  }
+
+  async function saveConversion(accountId: string, convId: string | null, convName: string | null) {
+    setAccountConversions((prev) => ({ ...prev, [accountId]: { id: convId, name: convName } }));
+    setSavingConversion(accountId);
+    try {
+      await fetch("/api/ad-ops/meta-accounts", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: accountId, primary_conversion_id: convId, primary_conversion_name: convName }),
+      });
+    } finally {
+      setSavingConversion(null);
     }
   }
 
@@ -373,32 +418,101 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               {settingsOpen && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-4">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Account Settings</p>
-                  <div className="space-y-3">
-                    {accounts.map((account) => (
-                      <div key={account.id} className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{account.name}</p>
-                          <p className="text-xs text-gray-400">{account.account_id}</p>
+                  <div className="space-y-4">
+                    {accounts.map((account) => {
+                      const convList = customConversions[account.id];
+                      const currentConv = accountConversions[account.id];
+                      const isLoadingConv = loadingConversions === account.id;
+                      const isSavingConv  = savingConversion === account.id;
+
+                      return (
+                        <div key={account.id} className="space-y-2 pb-3 border-b border-gray-100 last:border-b-0 last:pb-0">
+                          {/* Account header */}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{account.name}</p>
+                            <p className="text-xs text-gray-400">{account.account_id}</p>
+                          </div>
+
+                          {/* Currency */}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500">Currency</span>
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={accountCurrencies[account.id] ?? "USD"}
+                                onChange={(e) => saveCurrency(account.id, e.target.value)}
+                                disabled={savingCurrency === account.id}
+                                className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-50"
+                              >
+                                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                              </select>
+                              {savingCurrency === account.id && (
+                                <svg className="animate-spin w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Custom conversion */}
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">Purchase conversion</span>
+                              {!convList && (
+                                <button
+                                  onClick={() => loadCustomConversions(account.id)}
+                                  disabled={isLoadingConv}
+                                  className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                                >
+                                  {isLoadingConv ? "Loading…" : "Load from Meta"}
+                                </button>
+                              )}
+                              {convList && (
+                                <button onClick={() => loadCustomConversions(account.id)} disabled={isLoadingConv}
+                                  className="text-xs text-gray-400 hover:text-gray-600">
+                                  ↺
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Current selection display */}
+                            {!convList && currentConv?.name && (
+                              <p className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+                                ✓ {currentConv.name}
+                              </p>
+                            )}
+
+                            {/* Dropdown once loaded */}
+                            {convList && (
+                              <div className="flex items-center gap-1.5">
+                                <select
+                                  value={currentConv?.id ?? ""}
+                                  onChange={(e) => {
+                                    const selected = convList.find((c) => c.id === e.target.value);
+                                    saveConversion(account.id, selected?.id ?? null, selected?.name ?? null);
+                                  }}
+                                  disabled={isSavingConv}
+                                  className="flex-1 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50 bg-white"
+                                >
+                                  <option value="">— Default (purchase event) —</option>
+                                  {convList.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                                </select>
+                                {isSavingConv && (
+                                  <svg className="animate-spin w-3 h-3 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                                  </svg>
+                                )}
+                              </div>
+                            )}
+
+                            {convList?.length === 0 && (
+                              <p className="text-xs text-gray-400">No custom conversions found on this account</p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <select
-                            value={accountCurrencies[account.id] ?? "USD"}
-                            onChange={(e) => saveCurrency(account.id, e.target.value)}
-                            disabled={savingCurrency === account.id}
-                            className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-50"
-                          >
-                            {CURRENCIES.map((c) => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                          {savingCurrency === account.id && (
-                            <svg className="animate-spin w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                            </svg>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
