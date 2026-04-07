@@ -1,7 +1,66 @@
 // Shopify Admin API client (REST Admin API 2024-01)
 // Server-side only — never import from client components.
+//
+// Auth model: Client Credentials OAuth grant (new Shopify custom app model).
+// SHOPIFY_CLIENT_SECRET starts with "shpss_" — this is NOT an access token.
+// We exchange client_id + client_secret for a short-lived shpat_ access token
+// before every batch of API calls. The token is cached in-process (valid 24h).
 
 const BASE = `https://${process.env.SHOPIFY_SHOP_DOMAIN}/admin/api/2024-01`;
+
+// ─── Token cache ──────────────────────────────────────────────────────────────
+// Module-level cache — survives across requests in the same Lambda warm instance.
+// On cold start or expiry, a fresh token is fetched automatically.
+
+let _cachedToken: string | null = null;
+let _tokenExpiresAt: number = 0; // Unix ms
+
+async function getShopifyToken(): Promise<string> {
+  // Return cached token if still valid (with 60s safety buffer)
+  if (_cachedToken && Date.now() < _tokenExpiresAt - 60_000) {
+    return _cachedToken;
+  }
+
+  const clientId     = process.env.SHOPIFY_CLIENT_ID;
+  const clientSecret = process.env.SHOPIFY_CLIENT_SECRET;
+  const shopDomain   = process.env.SHOPIFY_SHOP_DOMAIN;
+
+  if (!clientId || !clientSecret || !shopDomain) {
+    throw new Error(
+      "Missing Shopify env vars. Set SHOPIFY_SHOP_DOMAIN, SHOPIFY_CLIENT_ID, and SHOPIFY_CLIENT_SECRET.",
+    );
+  }
+
+  const body = new URLSearchParams({
+    client_id:     clientId,
+    client_secret: clientSecret,
+    grant_type:    "client_credentials",
+  });
+
+  const res = await fetch(
+    `https://${shopDomain}/admin/oauth/access_token`,
+    {
+      method:  "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body:    body.toString(),
+      cache:   "no-store",
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Shopify token exchange failed ${res.status}: ${text}`);
+  }
+
+  const json = await res.json() as { access_token: string; expires_in?: number };
+  if (!json.access_token) throw new Error("Shopify token response missing access_token");
+
+  _cachedToken    = json.access_token;
+  // expires_in is in seconds (typically 86399). Default to 23h if missing.
+  _tokenExpiresAt = Date.now() + (json.expires_in ?? 82800) * 1000;
+
+  return _cachedToken;
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,8 +96,7 @@ export type ShopifyOrder = {
 // ─── Base fetch ───────────────────────────────────────────────────────────────
 
 async function shopifyGet<T>(path: string): Promise<T> {
-  const token = process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!token) throw new Error("SHOPIFY_ACCESS_TOKEN is not set");
+  const token = await getShopifyToken();
 
   const res = await fetch(`${BASE}${path}`, {
     headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
@@ -106,8 +164,9 @@ export async function fetchShopifyOrders(params: {
   status?: string;        // "any" | "open" | "closed" | "cancelled"
   limit?: number;         // max 250 per page
 }): Promise<ShopifyOrder[]> {
-  const token = process.env.SHOPIFY_ACCESS_TOKEN;
-  if (!token) throw new Error("SHOPIFY_ACCESS_TOKEN is not set");
+  const token = await getShopifyToken();
+  const shopDomain = process.env.SHOPIFY_SHOP_DOMAIN;
+  if (!shopDomain) throw new Error("SHOPIFY_SHOP_DOMAIN is not set");
 
   const fields =
     "id,order_number,name,created_at,financial_status,fulfillment_status," +
@@ -120,13 +179,17 @@ export async function fetchShopifyOrders(params: {
   });
   if (params.createdAtMin) qs.set("created_at_min", params.createdAtMin);
 
-  let nextUrl: string | null = `${BASE}/orders.json?${qs}`;
+  let nextUrl: string | null =
+    `https://${shopDomain}/admin/api/2024-01/orders.json?${qs}`;
   const allOrders: ShopifyOrder[] = [];
 
   while (nextUrl) {
     const pageUrl: string = nextUrl;
     const res: Response = await fetch(pageUrl, {
-      headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
+      headers: {
+        "X-Shopify-Access-Token": token,
+        "Content-Type": "application/json",
+      },
       cache: "no-store",
     });
 
@@ -138,7 +201,7 @@ export async function fetchShopifyOrders(params: {
     const json = await res.json() as { orders: ShopifyOrder[] };
     allOrders.push(...(json.orders ?? []));
 
-    // Follow the cursor-based pagination Link header
+    // Follow cursor-based pagination via the Link response header
     const linkHeader = res.headers.get("Link") ?? "";
     const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
     nextUrl = nextMatch ? nextMatch[1] : null;
