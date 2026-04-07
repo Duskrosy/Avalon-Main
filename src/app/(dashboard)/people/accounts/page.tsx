@@ -9,24 +9,36 @@ export default async function AccountsPage() {
 
   if (!currentUser || !isManagerOrAbove(currentUser)) redirect("/");
 
-  // Fetch users
-  let query = supabase
+  const fields = `*, department:departments(id, name, slug), role:roles(id, name, slug, tier)`;
+
+  // Active users
+  let activeQuery = supabase
     .from("profiles")
-    .select(`
-      *,
-      department:departments(id, name, slug),
-      role:roles(id, name, slug, tier)
-    `)
+    .select(fields)
     .eq("status", "active")
     .is("deleted_at", null)
     .order("first_name");
 
+  // Deactivated users (soft-deleted)
+  let deactivatedQuery = supabase
+    .from("profiles")
+    .select(fields)
+    .eq("status", "inactive")
+    .order("first_name");
+
   if (!isOps(currentUser)) {
-    query = query.eq("department_id", currentUser.department_id);
+    activeQuery      = activeQuery.eq("department_id", currentUser.department_id);
+    deactivatedQuery = deactivatedQuery.eq("department_id", currentUser.department_id);
   }
 
-  const [{ data: users }, { data: departments }, { data: roles }] = await Promise.all([
-    query,
+  const [
+    { data: users },
+    { data: deactivatedUsers },
+    { data: departments },
+    { data: roles },
+  ] = await Promise.all([
+    activeQuery,
+    deactivatedQuery,
     supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
     supabase.from("roles").select("id, name, slug, tier").eq("is_active", true).order("tier"),
   ]);
@@ -34,6 +46,7 @@ export default async function AccountsPage() {
   return (
     <AccountsView
       users={users ?? []}
+      deactivatedUsers={deactivatedUsers ?? []}
       departments={departments ?? []}
       roles={roles ?? []}
       currentUserId={currentUser.id}

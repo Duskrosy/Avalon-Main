@@ -63,7 +63,13 @@ export async function PATCH(
   if (role_id !== undefined) updates.role_id = role_id;
   if (birthday !== undefined) updates.birthday = birthday || null;
   if (phone !== undefined) updates.phone = phone || null;
-  if (status !== undefined && isOps(currentUser)) updates.status = status;
+  if (status !== undefined && isOps(currentUser)) {
+    updates.status = status;
+    if (status === "active") {
+      updates.deleted_at = null;
+      updates.deleted_by = null;
+    }
+  }
 
   const { error } = await admin.from("profiles").update(updates).eq("id", id);
 
@@ -74,9 +80,10 @@ export async function PATCH(
   return NextResponse.json({ message: "User updated" });
 }
 
-// DELETE /api/users/[id] — soft-delete (deactivate) a user
+// DELETE /api/users/[id] — soft-delete (deactivate) or permanently delete a user
+// ?permanent=true requires user to already be inactive
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -88,11 +95,42 @@ export async function DELETE(
   }
 
   if (id === currentUser.id) {
-    return NextResponse.json({ error: "You cannot deactivate yourself" }, { status: 400 });
+    return NextResponse.json({ error: "You cannot delete yourself" }, { status: 400 });
   }
 
   const admin = createAdminClient();
+  const url = new URL(request.url);
+  const permanent = url.searchParams.get("permanent") === "true";
 
+  if (permanent) {
+    // Verify user is already inactive before allowing hard delete
+    const { data: target } = await admin
+      .from("profiles")
+      .select("status")
+      .eq("id", id)
+      .single();
+
+    if (!target) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (target.status !== "inactive") {
+      return NextResponse.json(
+        { error: "User must be deactivated before permanent deletion" },
+        { status: 400 }
+      );
+    }
+
+    // Hard delete from Supabase Auth — cascades to profiles via FK
+    const { error: authError } = await admin.auth.admin.deleteUser(id);
+    if (authError) {
+      return NextResponse.json({ error: authError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: "User permanently deleted" });
+  }
+
+  // Soft-delete: mark inactive with timestamp
   const { error } = await admin.from("profiles").update({
     status: "inactive",
     deleted_at: new Date().toISOString(),
