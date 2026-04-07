@@ -134,31 +134,44 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+/**
+ * Resolves which nav groups and items a user can see.
+ *
+ * navOverrides (optional) — per-user overrides from the nav_page_overrides table:
+ *   slug → true  (Grant)   forces the item visible even if tier/dept gates would hide it
+ *   slug → false (Deny)    forces the item hidden even if tier/dept gates would show it
+ *   slug absent  (Inherit) applies default tier + dept logic
+ *
+ * Grant overrides also bypass group-level gates — if an item in a normally
+ * dept-restricted group is granted, that group becomes visible just for that item.
+ */
 export function resolveNavigation(
   userTier: number,
-  departmentSlug: string
+  departmentSlug: string,
+  navOverrides: Record<string, boolean> = {}
 ): NavGroup[] {
   const ops = userTier <= 1;
 
   return NAV_GROUPS
-    .filter((group) => {
-      // Tier gate
-      if (group.minTier !== undefined && userTier > group.minTier) return false;
-      // Department gate — OPS sees everything
-      if (group.departments && !ops) {
-        if (!group.departments.includes(departmentSlug)) return false;
-      }
-      return true;
-    })
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
+    .map((group) => {
+      const items = group.items.filter((item) => {
+        // Explicit deny always wins
+        if (navOverrides[item.slug] === false) return false;
+        // Explicit grant bypasses all gates
+        if (navOverrides[item.slug] === true) return true;
+        // Item-level tier gate
         if (item.minTier !== undefined && userTier > item.minTier) return false;
-        if (item.departments && !ops) {
-          if (!item.departments.includes(departmentSlug)) return false;
-        }
+        // Item-level dept gate
+        if (item.departments && !ops && !item.departments.includes(departmentSlug)) return false;
+        // Group-level tier gate
+        if (group.minTier !== undefined && userTier > group.minTier) return false;
+        // Group-level dept gate
+        if (group.departments && !ops && !group.departments.includes(departmentSlug)) return false;
         return true;
-      }),
-    }))
-    .filter((group) => group.items.length > 0);
+      });
+
+      if (items.length === 0) return null;
+      return { ...group, items };
+    })
+    .filter((g): g is NavGroup => g !== null);
 }

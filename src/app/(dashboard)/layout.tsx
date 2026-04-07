@@ -77,7 +77,18 @@ export default async function DashboardLayout({
   const userTier = user.role.tier;
   const deptSlug = user.department?.slug ?? "";
 
-  const navigation = resolveNavigation(userTier, deptSlug);
+  // Fetch per-user nav overrides (set via the Permissions page by OPS)
+  const { data: overrideRows } = await supabase
+    .from("nav_page_overrides")
+    .select("nav_slug, visible")
+    .eq("user_id", user.id);
+
+  const navOverrides: Record<string, boolean> = {};
+  for (const row of overrideRows ?? []) {
+    navOverrides[row.nav_slug] = row.visible;
+  }
+
+  const navigation = resolveNavigation(userTier, deptSlug, navOverrides);
 
   const [unreadCount, birthdayBanner] = await Promise.all([
     getUnreadCount(supabase, user.id),
