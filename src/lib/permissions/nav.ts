@@ -88,6 +88,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Incentive Payouts", slug: "incentive-payouts", route: "/sales-ops/incentive-payouts" },
       { name: "Weekly Report", slug: "weekly-report", route: "/sales-ops/weekly-agent-report" },
       { name: "Monthly Summary", slug: "monthly-summary", route: "/sales-ops/monthly-summary" },
+      { name: "Shopify", slug: "shopify", route: "/sales-ops/shopify", minTier: 2 },
     ],
   },
   {

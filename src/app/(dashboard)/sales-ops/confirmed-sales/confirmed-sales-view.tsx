@@ -18,6 +18,11 @@ function agentName(a: Agent) {
   return `${a.first_name} ${a.last_name}`;
 }
 
+type ShopifyLookup = {
+  status: "idle" | "loading" | "found" | "not_found" | "error";
+  source?: "db" | "shopify_live";
+};
+
 export function ConfirmedSalesView({ agents, currentUserId, canManage }: Props) {
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [selectedAgent, setSelectedAgent] = useState("all");
@@ -26,6 +31,7 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage }: Props) 
   const [showModal, setShowModal] = useState(false);
   const [editRow, setEditRow] = useState<ConfirmedSale | null>(null);
   const [saving, setSaving] = useState(false);
+  const [shopifyLookup, setShopifyLookup] = useState<ShopifyLookup>({ status: "idle" });
   const [form, setForm] = useState({
     confirmed_date: format(new Date(), "yyyy-MM-dd"),
     agent_id: currentUserId,
@@ -52,8 +58,46 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage }: Props) 
 
   useEffect(() => { fetchRows(); }, [fetchRows]);
 
+  // ── Shopify order auto-fill ───────────────────────────────────────────────
+  useEffect(() => {
+    if (!showModal || editRow) {
+      // Only auto-fill for new sales; reset state when modal closes
+      setShopifyLookup({ status: "idle" });
+      return;
+    }
+    const cleaned = form.order_id.replace(/[^0-9]/g, "").trim();
+    if (!cleaned || cleaned.length < 3) {
+      setShopifyLookup({ status: "idle" });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setShopifyLookup({ status: "loading" });
+      try {
+        const res = await fetch(`/api/sales/shopify-order?order_number=${cleaned}`);
+        if (!res.ok) { setShopifyLookup({ status: "error" }); return; }
+        const data = await res.json();
+        if (!data.found || !data.order) {
+          setShopifyLookup({ status: "not_found" });
+          return;
+        }
+        setForm((f) => ({
+          ...f,
+          quantity:     String(data.order.quantity  ?? f.quantity),
+          net_value:    String(data.order.net_value  ?? f.net_value),
+          design:       data.order.design            ?? f.design,
+          payment_mode: data.order.payment_mode      ?? f.payment_mode,
+        }));
+        setShopifyLookup({ status: "found", source: data.source });
+      } catch {
+        setShopifyLookup({ status: "error" });
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [form.order_id, showModal, editRow]);
+
   function openCreate() {
     setEditRow(null);
+    setShopifyLookup({ status: "idle" });
     setForm({
       confirmed_date: format(new Date(), "yyyy-MM-dd"),
       agent_id: currentUserId,
@@ -263,9 +307,31 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage }: Props) 
                   type="text"
                   value={form.order_id}
                   onChange={(e) => setForm((f) => ({ ...f, order_id: e.target.value }))}
-                  placeholder="e.g. SHOP-12345"
+                  placeholder="e.g. 1234"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
+                {/* Shopify auto-fill indicator — create mode only */}
+                {!editRow && (
+                  <div className="mt-1 h-4">
+                    {shopifyLookup.status === "loading" && (
+                      <span className="text-[11px] text-gray-400">Looking up Shopify order…</span>
+                    )}
+                    {shopifyLookup.status === "found" && (
+                      <span className="text-[11px] text-emerald-600 flex items-center gap-1">
+                        ✓ Filled from Shopify
+                        {shopifyLookup.source === "shopify_live" && (
+                          <span className="text-gray-400">(live)</span>
+                        )}
+                      </span>
+                    )}
+                    {shopifyLookup.status === "not_found" && (
+                      <span className="text-[11px] text-amber-500">⚠ Order not found in Shopify</span>
+                    )}
+                    {shopifyLookup.status === "error" && (
+                      <span className="text-[11px] text-red-400">Shopify lookup unavailable</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
