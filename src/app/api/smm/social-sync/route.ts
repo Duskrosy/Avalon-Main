@@ -303,12 +303,15 @@ async function syncPosts(
         const postType = mapIgMediaType(item.media_type);
         const isVideo  = postType === "video" || postType === "reel";
 
-        const [reach, impressions, engagements, video_plays] = await Promise.all([
+        // Note: `impressions` is deprecated for IG media as of v22.0.
+        // Use `views` for video/reel (total plays), `reach` as the main exposure metric for images.
+        const [reach, views, engagements, video_plays] = await Promise.all([
           fetchIgPostMetric(item.id, "reach"),
-          fetchIgPostMetric(item.id, "impressions"),
+          isVideo ? fetchIgPostMetric(item.id, "views") : fetchIgPostMetric(item.id, "reach"),
           fetchIgPostMetric(item.id, "total_interactions"),
           isVideo ? fetchIgPostMetric(item.id, "plays") : Promise.resolve(0),
         ]);
+        const impressions = views;
 
         return {
           platform_id:        platformId,
@@ -617,10 +620,10 @@ async function syncOnePlatform(
 
     if (upsertErr) throw new Error(upsertErr.message);
 
-    // ── Post-level stats (Facebook & Instagram only) ────────────────────────
-    if (platform.platform === "facebook" || platform.platform === "instagram") {
+    // ── Post-level stats (Facebook, Instagram, YouTube) ───────────────────────
+    if (["facebook", "instagram", "youtube"].includes(platform.platform)) {
       try {
-        await syncPosts(platform.platform, pageId, token!, platform.id, admin);
+        await syncPosts(platform.platform, pageId, token ?? "", platform.id, admin);
       } catch (postErr: unknown) {
         // Non-fatal: page-level data already written
         const msg = postErr instanceof Error ? postErr.message : String(postErr);
