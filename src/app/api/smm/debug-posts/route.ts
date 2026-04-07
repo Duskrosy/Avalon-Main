@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   // ── Check existing smm_top_posts for this platform ──────────────────────────
   const { data: existingPosts, count } = await admin
     .from("smm_top_posts")
-    .select("id, post_external_id, published_at, impressions, reach", { count: "exact" })
+    .select("id, post_external_id, published_at, impressions, reach, engagements", { count: "exact" })
     .eq("platform_id", platformId)
     .order("published_at", { ascending: false })
     .limit(3);
@@ -87,15 +87,16 @@ export async function GET(req: NextRequest) {
     const mediaUrl =
       `${META_BASE}/${igUserId}/media` +
       `?fields=id,caption,timestamp,media_type,thumbnail_url,media_url,permalink` +
-      `&limit=5&access_token=${token}`;
+      `&limit=3&access_token=${token}`;
     const mediaRes = await fetch(mediaUrl);
     const mediaJson = await mediaRes.json();
+    const mediaItems = mediaJson.data ?? [];
     report.step3_ig_media_fetch = {
       ok: mediaRes.ok,
       status: mediaRes.status,
       error: mediaJson.error ?? null,
-      post_count: (mediaJson.data ?? []).length,
-      sample: (mediaJson.data ?? []).slice(0, 2).map((m: Record<string, unknown>) => ({
+      post_count: mediaItems.length,
+      sample: mediaItems.slice(0, 2).map((m: Record<string, unknown>) => ({
         id: m.id,
         media_type: m.media_type,
         timestamp: m.timestamp,
@@ -103,31 +104,70 @@ export async function GET(req: NextRequest) {
       })),
     };
 
-    // Step 4: test insights on first media item (if any)
-    const firstMedia = mediaJson.data?.[0];
+    // Step 4: test each metric individually on first media item — show RAW response
+    const firstMedia = mediaItems[0];
     if (firstMedia?.id) {
-      const insRes = await fetch(
-        `${META_BASE}/${firstMedia.id}/insights?metric=reach,impressions,total_interactions&access_token=${token}`
-      );
-      const insJson = await insRes.json();
-      report.step4_first_post_insights = {
-        ok: insRes.ok,
-        status: insRes.status,
-        error: insJson.error ?? null,
-        data: insJson.data ?? null,
+      const metricsToTest = ["reach", "views", "total_interactions", "plays", "saved"];
+      const insightResults: Record<string, unknown> = {};
+
+      for (const metric of metricsToTest) {
+        const insRes = await fetch(
+          `${META_BASE}/${firstMedia.id}/insights?metric=${metric}&access_token=${token}`
+        );
+        const insJson = await insRes.json();
+        insightResults[metric] = {
+          ok: insRes.ok,
+          status: insRes.status,
+          error: insJson.error?.message ?? null,
+          // Show both possible value shapes — some API versions use total_value, others use values[]
+          values_array: insJson.data?.[0]?.values ?? null,
+          total_value:  insJson.data?.[0]?.total_value ?? null,
+          raw_data_0:   insJson.data?.[0] ?? null,
+        };
+      }
+
+      report.step4_per_metric_insights = {
+        media_id: firstMedia.id,
+        media_type: firstMedia.media_type,
+        results: insightResults,
       };
 
-      // Also test plays (video only) to see if it errors
-      if (firstMedia.media_type === "VIDEO" || firstMedia.media_type === "REELS") {
-        const playsRes = await fetch(
-          `${META_BASE}/${firstMedia.id}/insights?metric=plays&access_token=${token}`
-        );
-        const playsJson = await playsRes.json();
-        report.step4b_plays_insight = {
-          ok: playsRes.ok,
-          error: playsJson.error ?? null,
-          data: playsJson.data ?? null,
-        };
+      // Step 5: attempt a real upsert of this one post to test DB writes
+      const testRow = {
+        platform_id:        platformId,
+        post_external_id:   `DEBUG_TEST_${firstMedia.id}`,
+        post_url:           firstMedia.permalink ?? null,
+        thumbnail_url:      firstMedia.media_url ?? null,
+        caption_preview:    "DEBUG TEST ROW — safe to delete",
+        post_type:          "image",
+        published_at:       firstMedia.timestamp ?? null,
+        impressions:        0,
+        reach:              0,
+        engagements:        0,
+        video_plays:        0,
+        avg_play_time_secs: null,
+        metric_date:        new Date().toISOString().split("T")[0],
+      };
+
+      const { error: upsertErr } = await admin
+        .from("smm_top_posts")
+        .upsert(testRow, { onConflict: "platform_id,post_external_id" });
+
+      report.step5_test_upsert = {
+        ok: !upsertErr,
+        error: upsertErr?.message ?? null,
+        hint: upsertErr?.hint ?? null,
+        details: upsertErr?.details ?? null,
+      };
+
+      // Clean up test row immediately
+      if (!upsertErr) {
+        await admin
+          .from("smm_top_posts")
+          .delete()
+          .eq("platform_id", platformId)
+          .eq("post_external_id", `DEBUG_TEST_${firstMedia.id}`);
+        (report.step5_test_upsert as Record<string, unknown>).cleaned_up = true;
       }
     }
 
@@ -140,7 +180,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ...report, error: "YOUTUBE_API_KEY not set in environment variables" });
     }
 
-    // Step 1: fetch channel info + contentDetails (uploads playlist ID)
     const channelUrl =
       `https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&id=${pageId}&key=${apiKey}`;
     const channelRes = await fetch(channelUrl);
@@ -163,44 +202,68 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Step 2: fetch recent videos from uploads playlist
     const playlistUrl =
       `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=5&key=${apiKey}`;
     const playlistRes = await fetch(playlistUrl);
     const playlistJson = await playlistRes.json();
     const videoIds = (playlistJson.items ?? [])
-      .map((i: Record<string, unknown>) => (i.snippet as Record<string, unknown> | undefined)?.resourceId)
-      .filter(Boolean)
-      .map((r: unknown) => (r as Record<string, unknown>).videoId)
+      .map((i: Record<string, unknown>) => ((i.snippet as Record<string, unknown>)?.resourceId as Record<string, unknown>)?.videoId)
       .filter(Boolean);
 
     report.step2_playlist_items = {
       ok: playlistRes.ok,
-      status: playlistRes.status,
       error: playlistJson.error ?? null,
       items_count: (playlistJson.items ?? []).length,
       video_ids: videoIds,
-      sample: (playlistJson.items ?? []).slice(0, 2).map((i: Record<string, unknown>) => ({
-        title: (i.snippet as Record<string, unknown> | undefined)?.title,
-        publishedAt: (i.snippet as Record<string, unknown> | undefined)?.publishedAt,
-        videoId: ((i.snippet as Record<string, unknown> | undefined)?.resourceId as Record<string, unknown> | undefined)?.videoId,
-      })),
     };
 
-    // Step 3: fetch video statistics
     if (videoIds.length > 0) {
       const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds.join(",")}&key=${apiKey}`;
       const statsRes = await fetch(statsUrl);
       const statsJson = await statsRes.json();
       report.step3_video_stats = {
         ok: statsRes.ok,
-        status: statsRes.status,
         error: statsJson.error ?? null,
         sample: (statsJson.items ?? []).slice(0, 2).map((v: Record<string, unknown>) => ({
           id: v.id,
           statistics: v.statistics,
         })),
       };
+
+      // Step 4: test DB upsert for first YouTube video
+      const firstVideoId = videoIds[0] as string;
+      const testRow = {
+        platform_id:        platformId,
+        post_external_id:   `DEBUG_TEST_${firstVideoId}`,
+        post_url:           `https://www.youtube.com/watch?v=${firstVideoId}`,
+        thumbnail_url:      null,
+        caption_preview:    "DEBUG TEST ROW — safe to delete",
+        post_type:          "video",
+        published_at:       null,
+        impressions:        0,
+        reach:              0,
+        engagements:        0,
+        video_plays:        0,
+        avg_play_time_secs: null,
+        metric_date:        new Date().toISOString().split("T")[0],
+      };
+
+      const { error: upsertErr } = await admin
+        .from("smm_top_posts")
+        .upsert(testRow, { onConflict: "platform_id,post_external_id" });
+
+      report.step4_test_upsert = {
+        ok: !upsertErr,
+        error: upsertErr?.message ?? null,
+        hint: upsertErr?.hint ?? null,
+      };
+
+      if (!upsertErr) {
+        await admin.from("smm_top_posts").delete()
+          .eq("platform_id", platformId)
+          .eq("post_external_id", `DEBUG_TEST_${firstVideoId}`);
+        (report.step4_test_upsert as Record<string, unknown>).cleaned_up = true;
+      }
     }
 
   // ── Facebook post-level debug ────────────────────────────────────────────────
@@ -210,7 +273,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ...report, error: "No Meta access token" });
     }
 
-    // Fetch recent posts
     const postsUrl =
       `${META_BASE}/${pageId}/posts?fields=id,message,created_time,full_picture,permalink_url&limit=3&access_token=${token}`;
     const postsRes = await fetch(postsUrl);
@@ -222,21 +284,21 @@ export async function GET(req: NextRequest) {
       post_count: (postsJson.data ?? []).length,
     };
 
-    // Test insights on first post using NEW query-param format
     const firstPost = postsJson.data?.[0];
     if (firstPost?.id) {
-      const insUrl =
-        `${META_BASE}/${firstPost.id}/insights?metric=post_impressions_unique,post_engaged_users&period=lifetime&access_token=${token}`;
-      const insRes = await fetch(insUrl);
-      const insJson = await insRes.json();
-      report.fb_first_post_insights = {
-        post_id: firstPost.id,
-        created_time: firstPost.created_time,
-        ok: insRes.ok,
-        status: insRes.status,
-        error: insJson.error ?? null,
-        data: insJson.data ?? null,
-      };
+      // Test both metrics individually with query-param format
+      for (const metric of ["post_impressions_unique", "post_engaged_users"]) {
+        const insUrl =
+          `${META_BASE}/${firstPost.id}/insights?metric=${metric}&period=lifetime&access_token=${token}`;
+        const insRes = await fetch(insUrl);
+        const insJson = await insRes.json();
+        (report as Record<string, unknown>)[`fb_insight_${metric}`] = {
+          ok: insRes.ok,
+          status: insRes.status,
+          error: insJson.error?.message ?? null,
+          raw_data_0: insJson.data?.[0] ?? null,
+        };
+      }
     }
   }
 

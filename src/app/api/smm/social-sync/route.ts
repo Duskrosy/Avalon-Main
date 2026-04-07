@@ -240,9 +240,7 @@ async function syncPosts(
       .from("smm_top_posts")
       .upsert(rows, { onConflict: "platform_id,post_external_id" });
 
-    if (error) {
-      console.warn("[social-sync] FB smm_top_posts upsert error:", error.message);
-    }
+    if (error) throw new Error(`FB smm_top_posts upsert: ${error.message}`);
 
   } else if (platformType === "instagram") {
     // Resolve Instagram Business Account User ID.
@@ -335,9 +333,7 @@ async function syncPosts(
       .from("smm_top_posts")
       .upsert(rows, { onConflict: "platform_id,post_external_id" });
 
-    if (error) {
-      console.warn("[social-sync] IG smm_top_posts upsert error:", error.message);
-    }
+    if (error) throw new Error(`IG smm_top_posts upsert: ${error.message}`);
 
   } else if (platformType === "youtube") {
     // YouTube Data API v3 — fetch recent channel uploads and their stats.
@@ -434,9 +430,7 @@ async function syncPosts(
         .from("smm_top_posts")
         .upsert(rows, { onConflict: "platform_id,post_external_id" });
 
-      if (error) {
-        console.warn("[social-sync] YT smm_top_posts upsert error:", error.message);
-      }
+      if (error) throw new Error(`YT smm_top_posts upsert: ${error.message}`);
     } catch (ytErr) {
       console.warn("[social-sync] YT post sync failed:", ytErr instanceof Error ? ytErr.message : ytErr);
     }
@@ -621,17 +615,18 @@ async function syncOnePlatform(
     if (upsertErr) throw new Error(upsertErr.message);
 
     // ── Post-level stats (Facebook, Instagram, YouTube) ───────────────────────
+    let postSyncError: string | null = null;
     if (["facebook", "instagram", "youtube"].includes(platform.platform)) {
       try {
         await syncPosts(platform.platform, pageId, token ?? "", platform.id, admin);
       } catch (postErr: unknown) {
-        // Non-fatal: page-level data already written
-        const msg = postErr instanceof Error ? postErr.message : String(postErr);
-        console.warn(`[social-sync] post sync failed for platform ${platform.id}:`, msg);
+        // Non-fatal: page-level analytics already written
+        postSyncError = postErr instanceof Error ? postErr.message : String(postErr);
+        console.warn(`[social-sync] post sync failed for platform ${platform.id}:`, postSyncError);
       }
     }
 
-    return { ok: true, synced_date: syncDate, data_source: "api", data: row };
+    return { ok: true, synced_date: syncDate, data_source: "api", data: row, post_sync_error: postSyncError };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Sync failed";
     return { ok: false, needs_manual: true, error: message };
