@@ -74,6 +74,17 @@ type MetricCard = {
   format: "currency" | "multiplier" | "percent" | "number" | "compact";
 };
 
+type AdRow = { ad_id: string; ad_name: string | null; adset_name: string | null } & CampaignTotals;
+
+type ColDef = {
+  id: string;
+  label: string;
+  render: (ad: AdRow, currency: string) => string;
+  className?: (ad: AdRow) => string;
+};
+
+type AdColumnConfig = { id: string; visible: boolean };
+
 type Props = {
   campaigns: Campaign[];
   accounts: Account[];
@@ -245,6 +256,55 @@ function formatMetricValue(value: number | null, format: MetricCard["format"], c
   }
 }
 
+// ─── Ad table column definitions ─────────────────────────────────────────────
+
+const AD_COL_DEFS: ColDef[] = [
+  { id: "spend",             label: "Spend",
+    render: (ad, cur) => fmtMoney(ad.spend, cur) },
+  { id: "roas",              label: "ROAS",
+    render: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null ? `${fmt(r)}x` : "—"; },
+    className: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null && r >= 2 ? "text-green-700 font-medium" : r != null && r < 1 ? "text-red-500 font-medium" : "text-gray-700 font-medium"; } },
+  { id: "hook_rate",         label: "Hook Rate",
+    render: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null ? `${fmt(h, 1)}%` : "—"; },
+    className: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null && h >= 4 ? "text-green-700" : "text-gray-600"; } },
+  { id: "ctr",               label: "CTR",
+    render: (ad) => { const c = ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : null; return c != null ? `${fmt(c, 2)}%` : "—"; } },
+  { id: "impressions",       label: "Impressions",
+    render: (ad) => fmtK(ad.impressions) },
+  { id: "clicks",            label: "Clicks",
+    render: (ad) => fmtK(ad.clicks) },
+  { id: "conversions",       label: "Conv.",
+    render: (ad) => ad.conversions.toString() },
+  { id: "conversion_value",  label: "Conv. Value",
+    render: (ad, cur) => fmtMoney(ad.conversion_value, cur) },
+  { id: "reach",             label: "Reach",
+    render: (ad) => fmtK(ad.reach ?? 0) },
+  { id: "video_plays",       label: "Video 3s",
+    render: (ad) => fmtK(ad.video_plays) },
+  { id: "video_plays_25pct", label: "Video 25%",
+    render: (ad) => fmtK(ad.video_plays_25pct) },
+  { id: "cpm",               label: "CPM",
+    render: (ad, cur) => { const v = ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+  { id: "cpp",               label: "CPP",
+    render: (ad, cur) => { const v = ad.conversions > 0 ? ad.spend / ad.conversions : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+];
+
+const DEFAULT_AD_COLUMNS: AdColumnConfig[] = [
+  { id: "spend",             visible: true  },
+  { id: "roas",              visible: true  },
+  { id: "hook_rate",         visible: true  },
+  { id: "ctr",               visible: true  },
+  { id: "impressions",       visible: true  },
+  { id: "clicks",            visible: true  },
+  { id: "conversions",       visible: true  },
+  { id: "conversion_value",  visible: true  },
+  { id: "reach",             visible: false },
+  { id: "video_plays",       visible: false },
+  { id: "video_plays_25pct", visible: false },
+  { id: "cpm",               visible: false },
+  { id: "cpp",               visible: false },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
@@ -296,6 +356,21 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [newFormat, setNewFormat] = useState<MetricCard["format"]>("number");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const formulaInputRef = useRef<HTMLInputElement>(null);
+
+  // Ad table columns state (localStorage-persisted)
+  const [adColumns, setAdColumns] = useState<AdColumnConfig[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_AD_COLUMNS;
+    try {
+      const stored = localStorage.getItem("avalon_ad_columns");
+      if (stored) return JSON.parse(stored) as AdColumnConfig[];
+    } catch { /* ignore */ }
+    return DEFAULT_AD_COLUMNS;
+  });
+  const [colEditorOpen, setColEditorOpen] = useState(false);
+  const [editCols, setEditCols] = useState<AdColumnConfig[]>([]);
+
+  // Messenger tab
+  const [activeTab, setActiveTab] = useState<"main" | "messenger">("main");
 
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -458,6 +533,29 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     }
   }
 
+  // ── Ad column helpers ─────────────────────────────────────────────────────
+  function saveAdColumns(cols: AdColumnConfig[]) {
+    setAdColumns(cols);
+    try { localStorage.setItem("avalon_ad_columns", JSON.stringify(cols)); } catch { /* ignore */ }
+  }
+
+  function openColEditor() {
+    setEditCols([...adColumns]);
+    setColEditorOpen(true);
+  }
+
+  function moveCol(i: number, dir: -1 | 1) {
+    const next = [...editCols];
+    const swap = i + dir;
+    if (swap < 0 || swap >= next.length) return;
+    [next[i], next[swap]] = [next[swap], next[i]];
+    setEditCols(next);
+  }
+
+  function toggleCol(id: string) {
+    setEditCols(editCols.map((c) => c.id === id ? { ...c, visible: !c.visible } : c));
+  }
+
   // ── Stats aggregation ─────────────────────────────────────────────────────
   const cutoff = useMemo(() => {
     const d = new Date();
@@ -587,6 +685,29 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
   }, [filterAccount, accountMap, visibleCampaigns]);
 
+  // Active column defs in user-defined order
+  const activeAdCols = useMemo(
+    () => adColumns
+      .filter((c) => c.visible)
+      .map((c) => AD_COL_DEFS.find((d) => d.id === c.id))
+      .filter(Boolean) as ColDef[],
+    [adColumns],
+  );
+
+  // Messenger auto-grouping
+  const hasMessengerCampaigns = useMemo(
+    () => visibleCampaigns.some((c) => c.campaign_name.toLowerCase().includes("messenger")),
+    [visibleCampaigns],
+  );
+
+  const tabCampaigns = useMemo(
+    () => visibleCampaigns.filter((c) => {
+      const isMessenger = c.campaign_name.toLowerCase().includes("messenger");
+      return activeTab === "messenger" ? isMessenger : !isMessenger;
+    }),
+    [visibleCampaigns, activeTab],
+  );
+
   // Unique statuses for filter dropdown
   const availableStatuses = useMemo(
     () => [...new Set(campaigns.map((c) => c.effective_status))].sort(),
@@ -594,8 +715,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   );
 
   // ── Per-campaign ad drill-down ────────────────────────────────────────────
-  function getAdsForCampaign(campaign: Campaign) {
-    const adMap = new Map<string, { ad_id: string; ad_name: string | null; adset_name: string | null } & CampaignTotals>();
+  function getAdsForCampaign(campaign: Campaign): AdRow[] {
+    const adMap = new Map<string, AdRow>();
     filteredStats
       .filter((s) => s.campaign_id === campaign.campaign_id && s.meta_account_id === campaign.meta_account_id)
       .forEach((s) => {
@@ -877,6 +998,28 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         </div>
       )}
 
+      {/* ── Messenger tabs ──────────────────────────────────────────────────── */}
+      {hasMessengerCampaigns && campaigns.length > 0 && (
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+          {(["main", "messenger"] as const).map((tab) => {
+            const count = tab === "messenger"
+              ? visibleCampaigns.filter((c) => c.campaign_name.toLowerCase().includes("messenger")).length
+              : visibleCampaigns.filter((c) => !c.campaign_name.toLowerCase().includes("messenger")).length;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  activeTab === tab ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab === "main" ? `Campaigns (${count})` : `Messenger (${count})`}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── Campaign list ───────────────────────────────────────────────────── */}
       {campaigns.length === 0 ? (
         <div className="bg-gray-50 rounded-xl p-16 text-center">
@@ -892,7 +1035,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             </button>
           )}
         </div>
-      ) : visibleCampaigns.length === 0 ? (
+      ) : tabCampaigns.length === 0 ? (
         <div className="bg-gray-50 rounded-xl p-12 text-center">
           <p className="text-sm text-gray-400">No campaigns match the current filters</p>
           <button
@@ -904,7 +1047,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         </div>
       ) : (
         <div className="space-y-2">
-          {visibleCampaigns.map((campaign) => {
+          {tabCampaigns.map((campaign) => {
             const key     = `${campaign.meta_account_id}__${campaign.campaign_id}`;
             const totals  = campaignTotals.get(key);
             const account = accountMap[campaign.meta_account_id];
@@ -984,8 +1127,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                 {isExpanded && (
                   <div className="border-t border-gray-100">
                     {(() => {
-                      const ads = getAdsForCampaign(campaign);
-                      if (ads.length === 0) {
+                      const adRows = getAdsForCampaign(campaign);
+                      if (adRows.length === 0) {
                         return (
                           <div className="px-5 py-6 text-center text-sm text-gray-400">
                             No ad-level data for this period
@@ -993,55 +1136,50 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         );
                       }
                       return (
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-gray-400 bg-gray-50 border-b border-gray-100">
-                                <th className="px-5 py-2.5 text-left font-medium">Ad</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Spend</th>
-                                <th className="px-4 py-2.5 text-right font-medium">ROAS</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Hook Rate</th>
-                                <th className="px-4 py-2.5 text-right font-medium">CTR</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Impressions</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Clicks</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Conv.</th>
-                                <th className="px-4 py-2.5 text-right font-medium">Conv. Value</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                              {ads.map((ad) => {
-                                const adRoas = ad.spend > 0 ? ad.conversion_value / ad.spend : null;
-                                const adHook = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null;
-                                const adCtr  = ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : null;
-                                return (
+                        <div>
+                          {/* Table header row with Columns button */}
+                          <div className="flex items-center justify-between px-5 py-2 bg-gray-50 border-b border-gray-100">
+                            <span className="text-xs text-gray-400 font-medium">{adRows.length} ad{adRows.length !== 1 ? "s" : ""}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openColEditor(); }}
+                              className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                              </svg>
+                              Columns
+                            </button>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-gray-400 border-b border-gray-100">
+                                  <th className="px-5 py-2.5 text-left font-medium">Ad</th>
+                                  {activeAdCols.map((col) => (
+                                    <th key={col.id} className="px-4 py-2.5 text-right font-medium whitespace-nowrap">{col.label}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {adRows.map((ad) => (
                                   <tr key={ad.ad_id} className="hover:bg-gray-50">
                                     <td className="px-5 py-2.5">
                                       <p className="text-gray-800 font-medium truncate max-w-[220px]">{ad.ad_name ?? ad.ad_id}</p>
                                       {ad.adset_name && <p className="text-gray-400 truncate max-w-[220px]">{ad.adset_name}</p>}
                                     </td>
-                                    <td className="px-4 py-2.5 text-right text-gray-700 font-medium">
-                                      {fmtMoney(ad.spend, account?.currency)}
-                                    </td>
-                                    <td className={`px-4 py-2.5 text-right font-medium ${adRoas != null && adRoas >= 2 ? "text-green-700" : adRoas != null && adRoas < 1 ? "text-red-500" : "text-gray-700"}`}>
-                                      {adRoas != null ? `${fmt(adRoas)}x` : "—"}
-                                    </td>
-                                    <td className={`px-4 py-2.5 text-right ${adHook != null && adHook >= 4 ? "text-green-700" : "text-gray-600"}`}>
-                                      {adHook != null ? `${fmt(adHook, 1)}%` : "—"}
-                                    </td>
-                                    <td className="px-4 py-2.5 text-right text-gray-600">
-                                      {adCtr != null ? `${fmt(adCtr, 2)}%` : "—"}
-                                    </td>
-                                    <td className="px-4 py-2.5 text-right text-gray-600">{fmtK(ad.impressions)}</td>
-                                    <td className="px-4 py-2.5 text-right text-gray-600">{fmtK(ad.clicks)}</td>
-                                    <td className="px-4 py-2.5 text-right text-gray-600">{ad.conversions}</td>
-                                    <td className="px-4 py-2.5 text-right text-gray-600">
-                                      {fmtMoney(ad.conversion_value, account?.currency)}
-                                    </td>
+                                    {activeAdCols.map((col) => (
+                                      <td
+                                        key={col.id}
+                                        className={`px-4 py-2.5 text-right ${col.className ? col.className(ad) : "text-gray-600"}`}
+                                      >
+                                        {col.render(ad, account?.currency ?? "USD")}
+                                      </td>
+                                    ))}
                                   </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       );
                     })()}
@@ -1253,6 +1391,72 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                 className="bg-gray-900 text-white text-sm px-5 py-1.5 rounded-lg hover:bg-gray-700 transition-colors"
               >
                 Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Column editor modal ──────────────────────────────────────────────── */}
+      {colEditorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setColEditorOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Ad Table Columns</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Applies to all campaign drill-downs</p>
+              </div>
+              <button onClick={() => setColEditorOpen(false)} className="text-gray-400 hover:text-gray-700 rounded-lg p-1">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-5 py-4">
+              <div className="space-y-1">
+                {editCols.map((col, i) => {
+                  const def = AD_COL_DEFS.find((d) => d.id === col.id);
+                  if (!def) return null;
+                  return (
+                    <div key={col.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${col.visible ? "bg-gray-50" : "bg-white opacity-50"}`}>
+                      {/* Reorder */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button onClick={() => moveCol(i, -1)} disabled={i === 0}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▲</button>
+                        <button onClick={() => moveCol(i, 1)} disabled={i === editCols.length - 1}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▼</button>
+                      </div>
+                      {/* Toggle */}
+                      <button
+                        onClick={() => toggleCol(col.id)}
+                        className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-gray-900" : "bg-gray-300"}`}
+                      >
+                        <span className={`block w-3 h-3 bg-white rounded-full shadow transition-transform mx-0.5 ${col.visible ? "translate-x-4" : "translate-x-0"}`} />
+                      </button>
+                      {/* Label */}
+                      <span className="flex-1 text-sm text-gray-800">{def.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => setEditCols([...DEFAULT_AD_COLUMNS])}
+                className="text-xs text-gray-400 hover:text-gray-700 underline transition-colors"
+              >
+                Reset to defaults
+              </button>
+              <button
+                onClick={() => { saveAdColumns(editCols); setColEditorOpen(false); }}
+                className="bg-gray-900 text-white text-sm px-5 py-1.5 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Save for all
               </button>
             </div>
           </div>

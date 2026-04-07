@@ -94,6 +94,7 @@ export function LiveAdsView() {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [days, setDays] = useState<7 | 14 | 30>(7);
   const [filter, setFilter] = useState<"all" | "active" | "paused">("all");
+  const [msgTab, setMsgTab] = useState<"main" | "messenger">("main");
 
   // Accordion
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
@@ -354,9 +355,16 @@ export function LiveAdsView() {
 
   // ── Filtered list ──────────────────────────────────────────────────────────
 
+  const hasMessenger = ads.some((a) => a.campaign_name?.toLowerCase().includes("messenger"));
+
   const filtered = ads.filter((a) => {
-    if (filter === "active") return a.status === "active";
-    if (filter === "paused") return a.status === "paused";
+    if (filter === "active") { if (a.status !== "active") return false; }
+    else if (filter === "paused") { if (a.status !== "paused") return false; }
+    if (hasMessenger) {
+      const isMsg = a.campaign_name?.toLowerCase().includes("messenger") ?? false;
+      if (msgTab === "messenger" && !isMsg) return false;
+      if (msgTab === "main" && isMsg) return false;
+    }
     return true;
   });
 
@@ -414,15 +422,36 @@ export function LiveAdsView() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
-        {(["all", "active", "paused"] as const).map((tab) => (
-          <button key={tab} onClick={() => setFilter(tab)}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors capitalize ${
-              filter === tab ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}>
-            {tab === "all" ? `All (${ads.length})` : tab === "active" ? `Active (${activeCount})` : `Paused (${pausedCount})`}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+          {(["all", "active", "paused"] as const).map((tab) => (
+            <button key={tab} onClick={() => setFilter(tab)}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors capitalize ${
+                filter === tab ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}>
+              {tab === "all" ? `All (${ads.length})` : tab === "active" ? `Active (${activeCount})` : `Paused (${pausedCount})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Messenger auto-tab */}
+        {hasMessenger && (
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+            {(["main", "messenger"] as const).map((tab) => {
+              const count = tab === "messenger"
+                ? ads.filter((a) => a.campaign_name?.toLowerCase().includes("messenger")).length
+                : ads.filter((a) => !a.campaign_name?.toLowerCase().includes("messenger")).length;
+              return (
+                <button key={tab} onClick={() => setMsgTab(tab)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    msgTab === tab ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  }`}>
+                  {tab === "main" ? `Campaigns (${count})` : `Messenger (${count})`}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Skeleton */}
