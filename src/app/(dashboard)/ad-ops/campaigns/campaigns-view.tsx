@@ -83,7 +83,14 @@ type ColDef = {
   className?: (ad: AdRow) => string;
 };
 
-type AdColumnConfig = { id: string; visible: boolean };
+type AdColumnConfig = {
+  id: string;
+  visible: boolean;
+  custom?: boolean;
+  label?: string;
+  formula?: string;
+  format?: MetricCard["format"];
+};
 
 type Props = {
   campaigns: Campaign[];
@@ -368,6 +375,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   });
   const [colEditorOpen, setColEditorOpen] = useState(false);
   const [editCols, setEditCols] = useState<AdColumnConfig[]>([]);
+  const [newColLabel, setNewColLabel] = useState("");
+  const [newColFormula, setNewColFormula] = useState("");
+  const [newColFormat, setNewColFormat] = useState<MetricCard["format"]>("number");
+  const [colSuggestions, setColSuggestions] = useState<string[]>([]);
+  const colFormulaRef = useRef<HTMLInputElement>(null);
 
   // Messenger tab
   const [activeTab, setActiveTab] = useState<"main" | "messenger">("main");
@@ -556,6 +568,61 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     setEditCols(editCols.map((c) => c.id === id ? { ...c, visible: !c.visible } : c));
   }
 
+  function removeCustomCol(id: string) {
+    setEditCols(editCols.filter((c) => c.id !== id));
+  }
+
+  function addCustomCol() {
+    if (!newColLabel.trim() || !newColFormula.trim()) return;
+    const col: AdColumnConfig = {
+      id: `custom_${Date.now()}`,
+      visible: true,
+      custom: true,
+      label: newColLabel.trim(),
+      formula: newColFormula.trim(),
+      format: newColFormat,
+    };
+    setEditCols([...editCols, col]);
+    setNewColLabel("");
+    setNewColFormula("");
+    setNewColFormat("number");
+    setColSuggestions([]);
+  }
+
+  function insertColVar(varName: string) {
+    const input = colFormulaRef.current;
+    const curPos = input?.selectionStart ?? newColFormula.length;
+    let wordStart = curPos;
+    while (wordStart > 0 && /[a-zA-Z0-9_]/.test(newColFormula[wordStart - 1])) wordStart--;
+    const next = newColFormula.slice(0, wordStart) + varName + newColFormula.slice(curPos);
+    setNewColFormula(next);
+    setColSuggestions([]);
+    const newPos = wordStart + varName.length;
+    requestAnimationFrame(() => { input?.focus(); input?.setSelectionRange(newPos, newPos); });
+  }
+
+  function handleColFormulaChange(val: string) {
+    setNewColFormula(val);
+    const input = colFormulaRef.current;
+    const curPos = input?.selectionStart ?? val.length;
+    let wordStart = curPos;
+    while (wordStart > 0 && /[a-zA-Z0-9_]/.test(val[wordStart - 1])) wordStart--;
+    const word = val.slice(wordStart, curPos).toLowerCase();
+    if (word.length >= 2) {
+      const allVars = VARIABLE_GROUPS.flatMap((g) => g.vars.map((v) => v.name));
+      setColSuggestions(allVars.filter((v) => v.includes(word) && v !== word));
+    } else {
+      setColSuggestions([]);
+    }
+  }
+
+  function applyColPreset(p: typeof PRESET_FORMULAS[number]) {
+    setNewColLabel(p.label);
+    setNewColFormula(p.formula);
+    setNewColFormat(p.format);
+    setColSuggestions([]);
+  }
+
   // ── Stats aggregation ─────────────────────────────────────────────────────
   const cutoff = useMemo(() => {
     const d = new Date();
@@ -685,11 +752,30 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
   }, [filterAccount, accountMap, visibleCampaigns]);
 
-  // Active column defs in user-defined order
+  // Active column defs in user-defined order (supports built-in + custom formula cols)
   const activeAdCols = useMemo(
     () => adColumns
       .filter((c) => c.visible)
-      .map((c) => AD_COL_DEFS.find((d) => d.id === c.id))
+      .map((c): ColDef | undefined => {
+        if (c.custom && c.formula && c.label) {
+          const formula = c.formula;
+          const format  = c.format ?? "number";
+          return {
+            id: c.id,
+            label: c.label,
+            render: (ad, cur) => {
+              const vars = {
+                spend: ad.spend, impressions: ad.impressions, clicks: ad.clicks,
+                reach: ad.reach ?? 0, conversions: ad.conversions,
+                conversion_value: ad.conversion_value,
+                video_plays: ad.video_plays, video_plays_25pct: ad.video_plays_25pct,
+              };
+              return formatMetricValue(evaluateFormula(formula, vars), format, cur);
+            },
+          };
+        }
+        return AD_COL_DEFS.find((d) => d.id === c.id);
+      })
       .filter(Boolean) as ColDef[],
     [adColumns],
   );
@@ -1401,7 +1487,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       {colEditorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setColEditorOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden">
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div>
@@ -1415,32 +1501,164 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               </button>
             </div>
 
-            <div className="overflow-y-auto flex-1 px-5 py-4">
-              <div className="space-y-1">
-                {editCols.map((col, i) => {
-                  const def = AD_COL_DEFS.find((d) => d.id === col.id);
-                  if (!def) return null;
-                  return (
-                    <div key={col.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${col.visible ? "bg-gray-50" : "bg-white opacity-50"}`}>
-                      {/* Reorder */}
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <button onClick={() => moveCol(i, -1)} disabled={i === 0}
-                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▲</button>
-                        <button onClick={() => moveCol(i, 1)} disabled={i === editCols.length - 1}
-                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▼</button>
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+              {/* Column list */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Columns</p>
+                <div className="space-y-1">
+                  {editCols.map((col, i) => {
+                    const def = col.custom ? null : AD_COL_DEFS.find((d) => d.id === col.id);
+                    const displayLabel = col.custom ? col.label : def?.label;
+                    if (!displayLabel) return null;
+                    return (
+                      <div key={col.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${col.visible ? "bg-gray-50" : "bg-white opacity-50"}`}>
+                        {/* Reorder */}
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <button onClick={() => moveCol(i, -1)} disabled={i === 0}
+                            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▲</button>
+                          <button onClick={() => moveCol(i, 1)} disabled={i === editCols.length - 1}
+                            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▼</button>
+                        </div>
+                        {/* Toggle */}
+                        <button
+                          onClick={() => toggleCol(col.id)}
+                          className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-gray-900" : "bg-gray-300"}`}
+                        >
+                          <span className={`block w-3 h-3 bg-white rounded-full shadow transition-transform mx-0.5 ${col.visible ? "translate-x-4" : "translate-x-0"}`} />
+                        </button>
+                        {/* Label + formula preview */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm text-gray-800">{displayLabel}</span>
+                            {col.custom && (
+                              <span className="text-xs bg-blue-50 text-blue-600 rounded px-1.5 py-0.5 shrink-0">custom</span>
+                            )}
+                          </div>
+                          {col.custom && col.formula && (
+                            <p className="text-xs text-gray-400 font-mono truncate">{col.formula}</p>
+                          )}
+                        </div>
+                        {/* Delete (custom only) */}
+                        {col.custom && (
+                          <button onClick={() => removeCustomCol(col.id)}
+                            className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
-                      {/* Toggle */}
-                      <button
-                        onClick={() => toggleCol(col.id)}
-                        className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-gray-900" : "bg-gray-300"}`}
-                      >
-                        <span className={`block w-3 h-3 bg-white rounded-full shadow transition-transform mx-0.5 ${col.visible ? "translate-x-4" : "translate-x-0"}`} />
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Add custom column */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add Custom Column</p>
+
+                {/* Presets */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-400 mb-1.5">Quick presets:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_FORMULAS.map((p) => (
+                      <button key={p.formula} onClick={() => applyColPreset(p)}
+                        className="text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-400 text-gray-600 transition-colors">
+                        {p.label}
                       </button>
-                      {/* Label */}
-                      <span className="flex-1 text-sm text-gray-800">{def.label}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Label */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Column label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. CPP"
+                      value={newColLabel}
+                      onChange={(e) => setNewColLabel(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    />
+                  </div>
+                  {/* Formula */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs text-gray-500">Formula (per ad)</label>
+                      <select
+                        defaultValue=""
+                        onChange={(e) => { if (e.target.value) { insertColVar(e.target.value); e.target.value = ""; } }}
+                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none text-gray-600"
+                      >
+                        <option value="" disabled>Insert variable…</option>
+                        {VARIABLE_GROUPS.map((group) => (
+                          <optgroup key={group.label} label={`── ${group.label} ──`}>
+                            {group.vars.map((v) => (
+                              <option key={v.name} value={v.name} title={v.desc}>{v.name}</option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
                     </div>
-                  );
-                })}
+                    <div className="relative">
+                      <input
+                        ref={colFormulaRef}
+                        type="text"
+                        placeholder="e.g. spend / conversions"
+                        value={newColFormula}
+                        onChange={(e) => handleColFormulaChange(e.target.value)}
+                        onBlur={() => setTimeout(() => setColSuggestions([]), 150)}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      />
+                      {colSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                          {colSuggestions.map((s) => (
+                            <button key={s} onMouseDown={(e) => { e.preventDefault(); insertColVar(s); }}
+                              className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-gray-50 text-gray-700">
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {/* Format + preview */}
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-gray-500 mb-1 block">Format</label>
+                      <select
+                        value={newColFormat}
+                        onChange={(e) => setNewColFormat(e.target.value as MetricCard["format"])}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                      >
+                        <option value="currency">Currency (₱1,234)</option>
+                        <option value="multiplier">Multiplier (1.23x)</option>
+                        <option value="percent">Percent (12.3%)</option>
+                        <option value="compact">Compact (12.3K)</option>
+                        <option value="number">Number (1,234)</option>
+                      </select>
+                    </div>
+                    {newColFormula.trim() && (
+                      <div className="shrink-0 text-right pb-1.5">
+                        <p className="text-xs text-gray-400">Preview*</p>
+                        <p className="text-sm font-bold text-gray-900">
+                          {formatMetricValue(evaluateFormula(newColFormula, formulaVars), newColFormat, overallCurrency)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {newColFormula.trim() && (
+                    <p className="text-xs text-gray-400">* Preview uses aggregate totals — actual values are per-ad</p>
+                  )}
+                  <button
+                    onClick={addCustomCol}
+                    disabled={!newColLabel.trim() || !newColFormula.trim()}
+                    className="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-40"
+                  >
+                    Add Column
+                  </button>
+                </div>
               </div>
             </div>
 
