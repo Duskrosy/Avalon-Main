@@ -325,7 +325,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [filterAccount, setFilterAccount] = useState<string>("all");
   const [filterStatus,  setFilterStatus]  = useState<string>("all");
   const [sortBy,        setSortBy]        = useState<string>("spend");
-  const [dateRange,     setDateRange]     = useState<"7" | "14" | "30">("7");
+  const [datePreset, setDatePreset] = useState<"today" | "yesterday" | "7" | "14" | "30" | "custom">("7");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd,   setCustomEnd]   = useState("");
 
   // Expand state
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -624,15 +626,28 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   }
 
   // ── Stats aggregation ─────────────────────────────────────────────────────
-  const cutoff = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - parseInt(dateRange));
-    return d.toISOString().split("T")[0];
-  }, [dateRange]);
+  const { startDate, endDate } = useMemo(() => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    const yest = new Date(); yest.setDate(yest.getDate() - 1);
+    const yesterdayStr = yest.toISOString().split("T")[0];
+    switch (datePreset) {
+      case "today":     return { startDate: todayStr,     endDate: todayStr };
+      case "yesterday": return { startDate: yesterdayStr, endDate: yesterdayStr };
+      case "custom":    return {
+        startDate: customStart || yesterdayStr,
+        endDate:   customEnd   || todayStr,
+      };
+      default: {
+        const d = new Date();
+        d.setDate(d.getDate() - parseInt(datePreset));
+        return { startDate: d.toISOString().split("T")[0], endDate: todayStr };
+      }
+    }
+  }, [datePreset, customStart, customEnd]);
 
   const filteredStats = useMemo(
-    () => stats.filter((s) => s.metric_date >= cutoff),
-    [stats, cutoff],
+    () => stats.filter((s) => s.metric_date >= startDate && s.metric_date <= endDate),
+    [stats, startDate, endDate],
   );
 
   const campaignTotals = useMemo(() => {
@@ -845,17 +860,63 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
         {/* Right controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Date range toggle */}
-          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
-            {(["7", "14", "30"] as const).map((d) => (
+          {/* Date range presets */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+              {([
+                { key: "today",     label: "Today"   },
+                { key: "yesterday", label: "Yest."   },
+                { key: "7",         label: "7d"      },
+                { key: "14",        label: "14d"     },
+                { key: "30",        label: "30d"     },
+              ] as const).map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setDatePreset(key)}
+                  className={`px-3 py-1.5 transition-colors ${datePreset === key ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                >
+                  {label}
+                </button>
+              ))}
               <button
-                key={d}
-                onClick={() => setDateRange(d)}
-                className={`px-3 py-1.5 ${dateRange === d ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                onClick={() => {
+                  if (datePreset !== "custom") {
+                    // Pre-fill custom range with current range boundaries
+                    setCustomEnd(endDate);
+                    setCustomStart(startDate);
+                  }
+                  setDatePreset("custom");
+                }}
+                className={`px-3 py-1.5 flex items-center gap-1 transition-colors ${datePreset === "custom" ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
               >
-                {d}d
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Custom
               </button>
-            ))}
+            </div>
+
+            {/* Custom date inputs — visible only when custom is active */}
+            {datePreset === "custom" && (
+              <div className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="date"
+                  value={customStart}
+                  max={customEnd || new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setCustomStart(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                />
+                <span className="text-gray-400 text-xs">→</span>
+                <input
+                  type="date"
+                  value={customEnd}
+                  min={customStart}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => setCustomEnd(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                />
+              </div>
+            )}
           </div>
 
           {/* Account settings gear */}
