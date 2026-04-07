@@ -172,10 +172,14 @@ async function syncPosts(
   const today = new Date().toISOString().split("T")[0];
 
   if (platformType === "facebook") {
-    // Fetch recent posts
+    // Fetch recent posts including engagement counts directly on the post object.
+    // reactions/comments/shares are always available regardless of page type (NPE or classic).
+    // post_impressions_unique via the insights API is deprecated for New Pages Experience
+    // and silently returns 0 — so we use it as a best-effort reach fallback only.
     const postsUrl =
       `${META_BASE}/${pageId}/posts` +
       `?fields=id,message,created_time,full_picture,permalink_url` +
+      `,reactions.summary(true),comments.summary(true),shares` +
       `&limit=20&access_token=${token}`;
     const postsRes = await fetch(postsUrl);
     const postsJson = await postsRes.json();
@@ -190,19 +194,20 @@ async function syncPosts(
       created_time?: string;
       full_picture?: string;
       permalink_url?: string;
+      reactions?: { summary?: { total_count?: number } };
+      comments?:  { summary?: { total_count?: number } };
+      shares?:    { count?: number };
     }> = postsJson.data ?? [];
 
     if (posts.length === 0) return;
 
-    // Fetch a single insight metric for one FB post. Returns 0 on any error.
-    // Use ?metric= query param format — /{post}/insights/{metric} path is
-    // deprecated for New Pages Experience and silently returns 0.
-    const fbMetric = async (postId: string, metric: string): Promise<number> => {
+    // Best-effort reach via insights API (works for classic pages, returns 0 for NPE)
+    const fbReach = async (postId: string): Promise<number> => {
       try {
-        const res  = await fetch(`${META_BASE}/${postId}/insights?metric=${metric}&period=lifetime&access_token=${token}`);
+        const res  = await fetch(`${META_BASE}/${postId}/insights?metric=post_impressions_unique&period=lifetime&access_token=${token}`);
         const json = await res.json();
         if (!res.ok || json.error) return 0;
-        const entry = (json.data ?? []).find((d: { name: string }) => d.name === metric);
+        const entry = (json.data ?? []).find((d: { name: string }) => d.name === "post_impressions_unique");
         return entry?.values?.[0]?.value ?? 0;
       } catch {
         return 0;
@@ -211,25 +216,28 @@ async function syncPosts(
 
     const rows = await Promise.all(
       posts.map(async (post) => {
-        const [impressions, engagements] = await Promise.all([
-          fbMetric(post.id, "post_impressions_unique"),
-          fbMetric(post.id, "post_engaged_users"),
-        ]);
+        // Engagements = reactions + comments + shares (always reliable, no insights API needed)
+        const engagements =
+          (post.reactions?.summary?.total_count ?? 0) +
+          (post.comments?.summary?.total_count  ?? 0) +
+          (post.shares?.count                   ?? 0);
+
+        const reach = await fbReach(post.id);
 
         return {
-          platform_id:      platformId,
-          post_external_id: post.id,
-          post_url:         post.permalink_url ?? null,
-          thumbnail_url:    post.full_picture ?? null,
-          caption_preview:  post.message ? post.message.slice(0, 120) : null,
-          post_type:        post.full_picture ? "image" : "video",
-          published_at:     post.created_time ?? null,
-          impressions,
-          reach:            impressions, // post_impressions_unique = unique reach
+          platform_id:        platformId,
+          post_external_id:   post.id,
+          post_url:           post.permalink_url ?? null,
+          thumbnail_url:      post.full_picture  ?? null,
+          caption_preview:    post.message ? post.message.slice(0, 120) : null,
+          post_type:          post.full_picture ? "image" : "video",
+          published_at:       post.created_time  ?? null,
+          impressions:        reach,
+          reach,
           engagements,
-          video_plays:      0,
+          video_plays:        0,
           avg_play_time_secs: null,
-          metric_date:      today,
+          metric_date:        today,
         };
       })
     );
