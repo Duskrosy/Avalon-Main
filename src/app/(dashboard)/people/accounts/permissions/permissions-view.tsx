@@ -359,6 +359,14 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
 
   const hasPendingChanges = Object.keys(pending).length > 0;
 
+  // Super admins (tier 0) are protected — their page access cannot be changed
+  const isBlocked = useMemo(() => {
+    if (!selectedTarget) return false;
+    if (selectedTarget.type === "user") return selectedTarget.user.role.tier === 0;
+    if (selectedTarget.type === "role") return selectedTarget.role.tier === 0;
+    return false; // departments are never fully blocked
+  }, [selectedTarget]);
+
   function handleToggle(slug: string, v: boolean | null) {
     setPending((prev) => {
       // If new value matches saved, remove from pending (no change needed)
@@ -597,10 +605,10 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                 </div>
                 <button
                   onClick={handleSave}
-                  disabled={!hasPendingChanges || saving}
+                  disabled={!hasPendingChanges || saving || isBlocked}
                   className={cn(
                     "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                    hasPendingChanges && !saving
+                    hasPendingChanges && !saving && !isBlocked
                       ? "bg-gray-900 text-white hover:bg-gray-700"
                       : "bg-gray-100 text-gray-400 cursor-not-allowed"
                   )}
@@ -609,49 +617,68 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                 </button>
               </div>
 
+              {/* Super admin blocker */}
+              {isBlocked && (
+                <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800 mb-1">Protected — cannot be modified</p>
+                  <p className="text-sm text-gray-500 max-w-xs">
+                    Super Admin accounts have unrestricted access by design. Their page visibility cannot be overridden.
+                  </p>
+                </div>
+              )}
+
               {/* Info banners */}
-              {selectedTarget.type !== "user" && mixedOverrides && (
+              {!isBlocked && selectedTarget.type !== "user" && mixedOverrides && (
                 <div className="mx-5 mt-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
                   <strong>Note:</strong> Some users in this group have individual overrides that differ. Saving will apply these changes to all {targetIds.length} users uniformly.
                 </div>
               )}
 
-              {selectedTarget.type === "role" && (
+              {!isBlocked && selectedTarget.type === "role" && (
                 <div className="mx-5 mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
                   <strong>Tip:</strong> The &quot;default&quot; dots reflect tier-based access with no department applied. Department-restricted pages are shown as hidden by default for this role.
                 </div>
               )}
 
-              {/* Legend */}
-              <div className="flex items-center gap-5 px-5 pt-4 pb-3">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <div className="w-2 h-2 rounded-full bg-green-400" />
-                  Visible by default
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <div className="w-2 h-2 rounded-full bg-gray-300" />
-                  Hidden by default
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <span className="w-4 h-4 flex items-center justify-center rounded border border-amber-400 text-amber-500 font-bold text-[10px]">!</span>
-                  Unsaved change
-                </div>
-              </div>
+              {/* Legend + nav groups (hidden when blocked) */}
+              {!isBlocked && (
+                <>
+                  <div className="flex items-center gap-5 px-5 pt-4 pb-3">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <div className="w-2 h-2 rounded-full bg-green-400" />
+                      Visible by default
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <div className="w-2 h-2 rounded-full bg-gray-300" />
+                      Hidden by default
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                      <span className="w-4 h-4 flex items-center justify-center rounded border border-amber-400 text-amber-500 font-bold text-[10px]">!</span>
+                      Unsaved change
+                    </div>
+                  </div>
 
-              {/* Nav groups */}
-              <div className="px-5 pb-5 space-y-3">
-                {NAV_GROUPS.map((group, i) => (
-                  <PageGroupSection
-                    key={group.slug}
-                    group={group}
-                    defaultVisible={defaultVisible}
-                    savedOverrides={savedOverrides}
-                    pending={pending}
-                    onToggle={handleToggle}
-                    defaultOpen={i === 0}
-                  />
-                ))}
-              </div>
+                  {/* Nav groups */}
+                  <div className="px-5 pb-5 space-y-3">
+                    {NAV_GROUPS.map((group, i) => (
+                      <PageGroupSection
+                        key={group.slug}
+                        group={group}
+                        defaultVisible={defaultVisible}
+                        savedOverrides={savedOverrides}
+                        pending={pending}
+                        onToggle={handleToggle}
+                        defaultOpen={i === 0}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
