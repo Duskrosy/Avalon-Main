@@ -561,7 +561,7 @@ export function ContentManager({
               ) : livePosts.length === 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   <p className="text-sm text-gray-400 col-span-full text-center py-8">
-                    No published posts synced yet. Hit Sync Now on the Analytics page.
+                    No published posts synced yet. Hit the ↻ Sync button above to pull from Meta / YouTube.
                   </p>
                 </div>
               ) : (

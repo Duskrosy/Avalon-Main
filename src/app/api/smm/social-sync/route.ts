@@ -64,7 +64,9 @@ async function syncFacebook(pageId: string, token: string, date: string) {
 
 // ─── Instagram Business Insights ───────────────────────────────────────────────
 // v21.0: impressions removed (use views), accounts_engaged needs metric_type=total_value
-async function syncInstagram(igUserId: string, token: string, date: string) {
+// pageId may be a Facebook Page ID — auto-resolve to the linked Instagram Business Account ID.
+async function syncInstagram(pageId: string, token: string, date: string) {
+  const igUserId = await resolveInstagramUserId(pageId, token);
   const since = date;
   const until = dayAfter(date);
 
@@ -137,6 +139,26 @@ async function syncYouTube(channelId: string, date: string) {
   };
 }
 
+// ─── Resolve Instagram Business Account ID ────────────────────────────────────
+// The page_id stored in smm_group_platforms for Instagram is sometimes a
+// Facebook Page ID (not an Instagram Business Account User ID). These are
+// different IDs. This helper resolves the correct IG User ID from either.
+async function resolveInstagramUserId(pageId: string, token: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `${META_BASE}/${pageId}?fields=instagram_business_account&access_token=${token}`
+    );
+    const json = await res.json();
+    if (json.instagram_business_account?.id) {
+      console.info(`[social-sync] Resolved IG account: ${pageId} → ${json.instagram_business_account.id}`);
+      return json.instagram_business_account.id;
+    }
+  } catch {
+    // fall through — assume pageId is already an Instagram User ID
+  }
+  return pageId;
+}
+
 // ─── Individual Post Stats Sync ───────────────────────────────────────────────
 // Fetches recent posts and upserts individual stats into smm_top_posts.
 // Non-fatal: errors are logged but do not fail the parent sync.
@@ -172,14 +194,18 @@ async function syncPosts(
 
     if (posts.length === 0) return;
 
-    // Fetch insights for each post (non-fatal per-post)
+    // Fetch insights for each post (non-fatal per-post).
+    // Use ?metric= query param format — the /{post}/insights/{metric} path format
+    // is deprecated for New Pages Experience and returns 0 for those pages.
     async function fetchPostMetric(postId: string, metric: string): Promise<number> {
       try {
-        const url = `${META_BASE}/${postId}/insights/${metric}?period=lifetime&access_token=${token}`;
+        const url = `${META_BASE}/${postId}/insights?metric=${metric}&period=lifetime&access_token=${token}`;
         const res = await fetch(url);
         const json = await res.json();
         if (!res.ok || json.error) return 0;
-        return json.data?.[0]?.values?.[0]?.value ?? 0;
+        // Response shape: { data: [{ name, values: [{ value }] }] }
+        const entry = json.data?.find((d: { name: string }) => d.name === metric);
+        return entry?.values?.[0]?.value ?? 0;
       } catch {
         return 0;
       }
@@ -219,9 +245,13 @@ async function syncPosts(
     }
 
   } else if (platformType === "instagram") {
+    // Resolve Instagram Business Account User ID.
+    // page_id may be a Facebook Page ID — auto-resolve the linked IG account.
+    const igUserId = await resolveInstagramUserId(pageId, token);
+
     // Fetch recent media
     const mediaUrl =
-      `${META_BASE}/${pageId}/media` +
+      `${META_BASE}/${igUserId}/media` +
       `?fields=id,caption,timestamp,media_type,thumbnail_url,media_url,permalink` +
       `&limit=20&access_token=${token}`;
     const mediaRes = await fetch(mediaUrl);
@@ -254,36 +284,31 @@ async function syncPosts(
 
     const rows = await Promise.all(
       mediaItems.map(async (item) => {
-        // Fetch insights — some metrics only apply to certain media types (e.g. plays for video/reel)
-        const insightsUrl =
-          `${META_BASE}/${item.id}/insights` +
-          `?metric=impressions,reach,total_interactions,plays,saved&access_token=${token}`;
-
-        let impressions = 0;
-        let reach = 0;
-        let engagements = 0;
-        let video_plays = 0;
-
-        try {
-          const insRes = await fetch(insightsUrl);
-          const insJson = await insRes.json();
-          if (insRes.ok && !insJson.error) {
-            const metricsArr: Array<{ name: string; values?: Array<{ value: number }> }> =
-              insJson.data ?? [];
-            for (const m of metricsArr) {
-              const val = m.values?.[0]?.value ?? 0;
-              if (m.name === "impressions")        impressions  = val;
-              if (m.name === "reach")              reach        = val;
-              if (m.name === "total_interactions") engagements  = val;
-              if (m.name === "plays")              video_plays  = val;
-            }
+        // Fetch insights per media item.
+        // Request metrics individually so one unsupported metric (e.g. plays on image)
+        // doesn't block reach/engagements for that post.
+        async function fetchIgPostMetric(mediaId: string, metric: string): Promise<number> {
+          try {
+            const url = `${META_BASE}/${mediaId}/insights?metric=${metric}&access_token=${token}`;
+            const res = await fetch(url);
+            const json = await res.json();
+            if (!res.ok || json.error) return 0;
+            const entry = json.data?.find((d: { name: string }) => d.name === metric);
+            return entry?.values?.[0]?.value ?? 0;
+          } catch {
+            return 0;
           }
-        } catch {
-          // non-fatal — leave all metrics as 0
         }
 
         const postType = mapIgMediaType(item.media_type);
         const isVideo  = postType === "video" || postType === "reel";
+
+        const [reach, impressions, engagements, video_plays] = await Promise.all([
+          fetchIgPostMetric(item.id, "reach"),
+          fetchIgPostMetric(item.id, "impressions"),
+          fetchIgPostMetric(item.id, "total_interactions"),
+          isVideo ? fetchIgPostMetric(item.id, "plays") : Promise.resolve(0),
+        ]);
 
         return {
           platform_id:        platformId,
@@ -310,8 +335,110 @@ async function syncPosts(
     if (error) {
       console.warn("[social-sync] IG smm_top_posts upsert error:", error.message);
     }
+
+  } else if (platformType === "youtube") {
+    // YouTube Data API v3 — fetch recent channel uploads and their stats.
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.warn("[social-sync] YOUTUBE_API_KEY not set — skipping YouTube post sync");
+      return;
+    }
+
+    try {
+      // Step 1: Get the uploads playlist ID for the channel
+      const channelRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=${pageId}&key=${apiKey}`
+      );
+      const channelJson = await channelRes.json();
+      if (!channelRes.ok || channelJson.error) {
+        console.warn("[social-sync] YT channel fetch failed:", channelJson.error?.message ?? channelRes.status);
+        return;
+      }
+
+      const uploadsPlaylistId =
+        channelJson.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploadsPlaylistId) {
+        console.warn("[social-sync] YT uploads playlist not found for channel:", pageId);
+        return;
+      }
+
+      // Step 2: Fetch the 20 most recent videos from the uploads playlist
+      const playlistRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/playlistItems` +
+        `?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=20&key=${apiKey}`
+      );
+      const playlistJson = await playlistRes.json();
+      if (!playlistRes.ok || playlistJson.error) {
+        console.warn("[social-sync] YT playlist fetch failed:", playlistJson.error?.message ?? playlistRes.status);
+        return;
+      }
+
+      const playlistItems: Array<{
+        snippet: {
+          title?: string;
+          publishedAt?: string;
+          thumbnails?: { medium?: { url?: string } };
+          resourceId?: { videoId?: string };
+        };
+      }> = playlistJson.items ?? [];
+
+      if (playlistItems.length === 0) return;
+
+      // Step 3: Batch-fetch statistics for all video IDs
+      const videoIds = playlistItems
+        .map((i) => i.snippet.resourceId?.videoId)
+        .filter(Boolean)
+        .join(",");
+
+      const statsRes = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoIds}&key=${apiKey}`
+      );
+      const statsJson = await statsRes.json();
+      const statsMap: Record<string, { viewCount?: string; likeCount?: string; commentCount?: string }> = {};
+      for (const item of statsJson.items ?? []) {
+        statsMap[item.id] = item.statistics;
+      }
+
+      const rows = playlistItems
+        .map((item) => {
+          const videoId = item.snippet.resourceId?.videoId;
+          if (!videoId) return null;
+          const stats = statsMap[videoId] ?? {};
+          const views = parseInt(stats.viewCount ?? "0", 10);
+          const likes = parseInt(stats.likeCount ?? "0", 10);
+
+          return {
+            platform_id:        platformId,
+            post_external_id:   videoId,
+            post_url:           `https://www.youtube.com/watch?v=${videoId}`,
+            thumbnail_url:      item.snippet.thumbnails?.medium?.url ?? null,
+            caption_preview:    item.snippet.title ? item.snippet.title.slice(0, 120) : null,
+            post_type:          "video" as const,
+            published_at:       item.snippet.publishedAt ?? null,
+            impressions:        0,   // requires YouTube Analytics API (OAuth) — not available via Data API
+            reach:              views,
+            engagements:        likes,
+            video_plays:        views,
+            avg_play_time_secs: null,
+            metric_date:        today,
+          };
+        })
+        .filter(Boolean);
+
+      if (rows.length === 0) return;
+
+      const { error } = await admin
+        .from("smm_top_posts")
+        .upsert(rows, { onConflict: "platform_id,post_external_id" });
+
+      if (error) {
+        console.warn("[social-sync] YT smm_top_posts upsert error:", error.message);
+      }
+    } catch (ytErr) {
+      console.warn("[social-sync] YT post sync failed:", ytErr instanceof Error ? ytErr.message : ytErr);
+    }
   }
-  // YouTube and TikTok: no per-post stats synced
+  // TikTok: no automated post sync available
 }
 
 // ─── POST /api/smm/social-sync ─────────────────────────────────────────────────
