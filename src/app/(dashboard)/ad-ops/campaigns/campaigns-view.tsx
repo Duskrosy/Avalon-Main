@@ -59,11 +59,19 @@ type CampaignTotals = {
   spend: number;
   impressions: number;
   clicks: number;
+  reach: number;
   conversions: number;
   conversion_value: number;
   video_plays: number;
   video_plays_25pct: number;
   adCount: number;
+};
+
+type MetricCard = {
+  id: string;
+  label: string;
+  formula: string;
+  format: "currency" | "multiplier" | "percent" | "number" | "compact";
 };
 
 type Props = {
@@ -95,6 +103,30 @@ const CURRENCIES = [
   "USD","PHP","AUD","GBP","EUR","SGD","CAD","HKD","NZD","MYR","IDR","THB","JPY","KRW",
 ];
 
+const DEFAULT_METRIC_CARDS: MetricCard[] = [
+  { id: "spend",       label: "Total Spend",  formula: "spend",                        format: "currency"   },
+  { id: "conv_value",  label: "Conv. Value",  formula: "conversion_value",             format: "currency"   },
+  { id: "roas",        label: "ROAS",         formula: "conversion_value / spend",     format: "multiplier" },
+  { id: "impressions", label: "Impressions",  formula: "impressions",                  format: "compact"    },
+  { id: "conversions", label: "Conversions",  formula: "conversions",                  format: "number"     },
+];
+
+const PRESET_FORMULAS: Array<{ label: string; formula: string; format: MetricCard["format"] }> = [
+  { label: "ROAS",              formula: "conversion_value / spend",          format: "multiplier" },
+  { label: "Cost Per Purchase", formula: "spend / conversions",               format: "currency"   },
+  { label: "CTR",               formula: "clicks / impressions * 100",        format: "percent"    },
+  { label: "Hook Rate (25%)",   formula: "video_plays_25pct / impressions * 100", format: "percent" },
+  { label: "Hook Rate (3s)",    formula: "video_plays / impressions * 100",   format: "percent"    },
+  { label: "CPM",               formula: "spend / impressions * 1000",        format: "currency"   },
+  { label: "CPC",               formula: "spend / clicks",                    format: "currency"   },
+  { label: "Conv. Rate",        formula: "conversions / clicks * 100",        format: "percent"    },
+  { label: "Reach",             formula: "reach",                             format: "compact"    },
+  { label: "Video Plays (3s)",  formula: "video_plays",                       format: "compact"    },
+  { label: "25% Video Plays",   formula: "video_plays_25pct",                 format: "compact"    },
+  { label: "Total Clicks",      formula: "clicks",                            format: "compact"    },
+  { label: "Conv. Value",       formula: "conversion_value",                  format: "currency"   },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmt(n: number, dec = 2) { return n.toFixed(dec); }
@@ -107,6 +139,29 @@ function fmtMoney(n: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
     style: "currency", currency, maximumFractionDigits: 0,
   }).format(n);
+}
+
+function evaluateFormula(formula: string, vars: Record<string, number>): number | null {
+  try {
+    const keys = Object.keys(vars);
+    const vals = Object.values(vars);
+    // eslint-disable-next-line no-new-func
+    const fn = new Function(...keys, `"use strict"; return (${formula});`);
+    const result = fn(...vals);
+    if (typeof result !== "number" || !isFinite(result) || isNaN(result)) return null;
+    return result;
+  } catch { return null; }
+}
+
+function formatMetricValue(value: number | null, format: MetricCard["format"], currency: string): string {
+  if (value === null) return "—";
+  switch (format) {
+    case "currency":   return fmtMoney(value, currency);
+    case "multiplier": return `${fmt(value)}x`;
+    case "percent":    return `${fmt(value, 1)}%`;
+    case "compact":    return fmtK(value);
+    case "number":     return value.toLocaleString();
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -141,6 +196,23 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     Object.fromEntries(accounts.map((a) => [a.id, { id: a.primary_conversion_id ?? null, name: a.primary_conversion_name ?? null }]))
   );
   const [savingConversion, setSavingConversion] = useState<string | null>(null);
+
+  // Metric cards state (localStorage-persisted)
+  const [metricCards, setMetricCards] = useState<MetricCard[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_METRIC_CARDS;
+    try {
+      const stored = localStorage.getItem("avalon_metric_cards");
+      if (stored) return JSON.parse(stored) as MetricCard[];
+    } catch { /* ignore */ }
+    return DEFAULT_METRIC_CARDS;
+  });
+
+  // Customize modal state
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [editCards, setEditCards] = useState<MetricCard[]>([]);
+  const [newLabel, setNewLabel] = useState("");
+  const [newFormula, setNewFormula] = useState("");
+  const [newFormat, setNewFormat] = useState<MetricCard["format"]>("number");
 
   const settingsRef = useRef<HTMLDivElement>(null);
 
@@ -223,6 +295,52 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     }
   }
 
+  // ── Metric cards helpers ──────────────────────────────────────────────────
+  function saveMetricCards(cards: MetricCard[]) {
+    setMetricCards(cards);
+    try { localStorage.setItem("avalon_metric_cards", JSON.stringify(cards)); } catch { /* ignore */ }
+  }
+
+  function openCustomize() {
+    setEditCards([...metricCards]);
+    setNewLabel("");
+    setNewFormula("");
+    setNewFormat("number");
+    setCustomizeOpen(true);
+  }
+
+  function moveCard(index: number, dir: -1 | 1) {
+    const next = [...editCards];
+    const swap = index + dir;
+    if (swap < 0 || swap >= next.length) return;
+    [next[index], next[swap]] = [next[swap], next[index]];
+    setEditCards(next);
+  }
+
+  function removeCard(index: number) {
+    setEditCards(editCards.filter((_, i) => i !== index));
+  }
+
+  function addCard() {
+    if (!newLabel.trim() || !newFormula.trim()) return;
+    const card: MetricCard = {
+      id: `custom_${Date.now()}`,
+      label: newLabel.trim(),
+      formula: newFormula.trim(),
+      format: newFormat,
+    };
+    setEditCards([...editCards, card]);
+    setNewLabel("");
+    setNewFormula("");
+    setNewFormat("number");
+  }
+
+  function applyPreset(preset: typeof PRESET_FORMULAS[number]) {
+    setNewLabel(preset.label);
+    setNewFormula(preset.formula);
+    setNewFormat(preset.format);
+  }
+
   // ── Stats aggregation ─────────────────────────────────────────────────────
   const cutoff = useMemo(() => {
     const d = new Date();
@@ -240,15 +358,16 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     for (const s of filteredStats) {
       const key = `${s.meta_account_id}__${s.campaign_id}`;
       const t = map.get(key) ?? {
-        spend: 0, impressions: 0, clicks: 0, conversions: 0,
+        spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
         conversion_value: 0, video_plays: 0, video_plays_25pct: 0, adCount: 0,
       };
-      t.spend            += s.spend;
-      t.impressions      += s.impressions;
-      t.clicks           += s.clicks;
-      t.conversions      += s.conversions;
-      t.conversion_value += s.conversion_value;
-      t.video_plays      += s.video_plays;
+      t.spend             += s.spend;
+      t.impressions       += s.impressions;
+      t.clicks            += s.clicks;
+      t.reach             += (s.reach ?? 0);
+      t.conversions       += s.conversions;
+      t.conversion_value  += s.conversion_value;
+      t.video_plays       += s.video_plays;
       t.video_plays_25pct += s.video_plays_25pct;
       map.set(key, t);
     }
@@ -306,19 +425,34 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         const t = campaignTotals.get(`${c.meta_account_id}__${c.campaign_id}`);
         if (!t) return acc;
         return {
-          spend:            acc.spend + t.spend,
-          impressions:      acc.impressions + t.impressions,
-          clicks:           acc.clicks + t.clicks,
-          conversions:      acc.conversions + t.conversions,
-          conversion_value: acc.conversion_value + t.conversion_value,
+          spend:             acc.spend + t.spend,
+          impressions:       acc.impressions + t.impressions,
+          clicks:            acc.clicks + t.clicks,
+          reach:             acc.reach + (t.reach ?? 0),
+          conversions:       acc.conversions + t.conversions,
+          conversion_value:  acc.conversion_value + t.conversion_value,
+          video_plays:       acc.video_plays + t.video_plays,
+          video_plays_25pct: acc.video_plays_25pct + t.video_plays_25pct,
         };
       },
-      { spend: 0, impressions: 0, clicks: 0, conversions: 0, conversion_value: 0 },
+      { spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
+        conversion_value: 0, video_plays: 0, video_plays_25pct: 0 },
     );
   }, [visibleCampaigns, campaignTotals]);
 
   const overallROAS = overallTotals.spend > 0
     ? overallTotals.conversion_value / overallTotals.spend : null;
+
+  const formulaVars = useMemo(() => ({
+    spend:             overallTotals.spend,
+    impressions:       overallTotals.impressions,
+    clicks:            overallTotals.clicks,
+    reach:             overallTotals.reach,
+    conversions:       overallTotals.conversions,
+    conversion_value:  overallTotals.conversion_value,
+    video_plays:       overallTotals.video_plays,
+    video_plays_25pct: overallTotals.video_plays_25pct,
+  }), [overallTotals]);
 
   // Derive display currency from visible campaigns (use filtered account's currency,
   // or the currency that appears most often across visible campaigns)
@@ -598,19 +732,31 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
       {/* ── Summary cards ───────────────────────────────────────────────────── */}
       {campaigns.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-5">
-          {[
-            { label: "Total Spend",   value: fmtMoney(overallTotals.spend, overallCurrency) },
-            { label: "Conv. Value",   value: fmtMoney(overallTotals.conversion_value, overallCurrency) },
-            { label: "ROAS",          value: overallROAS != null ? `${fmt(overallROAS)}x` : "—" },
-            { label: "Impressions",   value: fmtK(overallTotals.impressions) },
-            { label: "Conversions",   value: overallTotals.conversions.toLocaleString() },
-          ].map((card) => (
-            <div key={card.label} className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">{card.label}</p>
-              <p className="text-xl font-bold text-gray-900">{card.value}</p>
-            </div>
-          ))}
+        <div className="mb-5">
+          <div className={`grid gap-3 mb-1.5`} style={{ gridTemplateColumns: `repeat(${metricCards.length}, minmax(0, 1fr))` }}>
+            {metricCards.map((card) => {
+              const value = evaluateFormula(card.formula, formulaVars);
+              return (
+                <div key={card.id} className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
+                  <p className="text-xs text-gray-500 mb-1 truncate">{card.label}</p>
+                  <p className="text-xl font-bold text-gray-900 truncate">
+                    {formatMetricValue(value, card.format, overallCurrency)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={openCustomize}
+              className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Customize cards
+            </button>
+          </div>
         </div>
       )}
 
@@ -787,6 +933,171 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Customize metric cards modal ─────────────────────────────────────── */}
+      {customizeOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCustomizeOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <h2 className="text-base font-semibold text-gray-900">Customize Metric Cards</h2>
+              <button onClick={() => setCustomizeOpen(false)} className="text-gray-400 hover:text-gray-700 rounded-lg p-1 transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+              {/* Current cards list */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Current Cards</p>
+                {editCards.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-4">No cards yet. Add one below.</p>
+                )}
+                <div className="space-y-1.5">
+                  {editCards.map((card, i) => (
+                    <div key={card.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                      {/* Reorder buttons */}
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          onClick={() => moveCard(i, -1)}
+                          disabled={i === 0}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs"
+                        >▲</button>
+                        <button
+                          onClick={() => moveCard(i, 1)}
+                          disabled={i === editCards.length - 1}
+                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs"
+                        >▼</button>
+                      </div>
+                      {/* Label + formula */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{card.label}</p>
+                        <p className="text-xs text-gray-400 font-mono truncate">{card.formula}</p>
+                      </div>
+                      {/* Format badge */}
+                      <span className="text-xs bg-gray-200 text-gray-600 rounded px-1.5 py-0.5 shrink-0">{card.format}</span>
+                      {/* Live value preview */}
+                      <span className="text-xs font-semibold text-gray-700 shrink-0 min-w-[3rem] text-right">
+                        {formatMetricValue(evaluateFormula(card.formula, formulaVars), card.format, overallCurrency)}
+                      </span>
+                      {/* Delete */}
+                      <button
+                        onClick={() => removeCard(i)}
+                        className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add new card */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add a Card</p>
+
+                {/* Quick presets */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-400 mb-1.5">Quick presets:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {PRESET_FORMULAS.map((p) => (
+                      <button
+                        key={p.formula}
+                        onClick={() => applyPreset(p)}
+                        className="text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-400 text-gray-600 transition-colors"
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  {/* Label */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Label</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ROAS"
+                      value={newLabel}
+                      onChange={(e) => setNewLabel(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    />
+                  </div>
+                  {/* Formula */}
+                  <div>
+                    <label className="text-xs text-gray-500 mb-1 block">Formula</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. conversion_value / spend"
+                      value={newFormula}
+                      onChange={(e) => setNewFormula(e.target.value)}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                      Variables: <span className="font-mono">spend, impressions, clicks, reach, conversions, conversion_value, video_plays, video_plays_25pct</span>
+                    </p>
+                  </div>
+                  {/* Format + preview row */}
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-gray-500 mb-1 block">Format</label>
+                      <select
+                        value={newFormat}
+                        onChange={(e) => setNewFormat(e.target.value as MetricCard["format"])}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                      >
+                        <option value="currency">Currency (₱1,234)</option>
+                        <option value="multiplier">Multiplier (1.23x)</option>
+                        <option value="percent">Percent (12.3%)</option>
+                        <option value="compact">Compact (12.3K)</option>
+                        <option value="number">Number (1,234)</option>
+                      </select>
+                    </div>
+                    {/* Live preview */}
+                    {newFormula.trim() && (
+                      <div className="shrink-0 text-right pb-1.5">
+                        <p className="text-xs text-gray-400">Preview</p>
+                        <p className="text-sm font-bold text-gray-900">
+                          {formatMetricValue(evaluateFormula(newFormula, formulaVars), newFormat, overallCurrency)}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={addCard}
+                    disabled={!newLabel.trim() || !newFormula.trim()}
+                    className="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-40"
+                  >
+                    Add Card
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => setEditCards([...DEFAULT_METRIC_CARDS])}
+                className="text-xs text-gray-400 hover:text-gray-700 underline transition-colors"
+              >
+                Reset to defaults
+              </button>
+              <button
+                onClick={() => { saveMetricCards(editCards); setCustomizeOpen(false); }}
+                className="bg-gray-900 text-white text-sm px-5 py-1.5 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
