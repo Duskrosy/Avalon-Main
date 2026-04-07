@@ -110,16 +110,25 @@ function KpiBar({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function ExecutiveOverviewPage() {
+export default async function ExecutiveOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string; preset?: string }>;
+}) {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
   if (!user) redirect("/login");
 
-  const admin = createAdminClient();
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const sp          = await searchParams;
+  const admin       = createAdminClient();
+  const today       = new Date().toISOString().slice(0, 10);
+  const yesterday   = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const sevenDaysAgo   = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
   const thisMonthStart = `${today.slice(0, 7)}-01`;
+
+  // Date range from picker (defaults to today)
+  const dateFrom = sp.from ?? today;
+  const dateTo   = sp.to   ?? today;
 
   // ── Parallel data fetch ───────────────────────────────────────────────────
   const [
@@ -155,10 +164,11 @@ export default async function ExecutiveOverviewPage() {
       .gte("confirmed_date", thisMonthStart)
       .eq("status", "confirmed"),
 
-    // Ad stats 7d
+    // Ad stats for selected date range
     admin.from("meta_ad_stats")
       .select("spend, impressions, clicks, conversions, conversion_value, campaign_id, campaign_name, metric_date")
-      .gte("metric_date", sevenDaysAgo),
+      .gte("metric_date", dateFrom)
+      .lte("metric_date", dateTo),
 
     // Active meta campaigns
     admin.from("meta_campaigns")
@@ -215,6 +225,23 @@ export default async function ExecutiveOverviewPage() {
       .select("id, platform, page_name")
       .eq("is_active", true),
   ]);
+
+  // ── Shopify summary (selected date range) ─────────────────────────────────
+  const manilaFrom = new Date(`${dateFrom}T00:00:00+08:00`).toISOString();
+  const manilaTo   = new Date(`${dateTo}T23:59:59+08:00`).toISOString();
+  const manilaFromPrev = new Date(`${new Date(Date.now() - (new Date(dateTo).getTime() - new Date(dateFrom).getTime() + 86400000)).toISOString().slice(0,10)}T00:00:00+08:00`).toISOString();
+  const manilaFromPrevTo = new Date(`${new Date(new Date(dateFrom).getTime() - 86400000).toISOString().slice(0,10)}T23:59:59+08:00`).toISOString();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [{ data: shopifyOrdersCur }, { data: shopifyOrdersPrev }] = await Promise.all([
+    (admin as any).from("shopify_orders").select("total_price").gte("created_at_shopify", manilaFrom).lte("created_at_shopify", manilaTo),
+    (admin as any).from("shopify_orders").select("total_price").gte("created_at_shopify", manilaFromPrev).lte("created_at_shopify", manilaFromPrevTo),
+  ]);
+
+  const shopifyRevenue   = (shopifyOrdersCur ?? []).reduce((s: number, o: { total_price: string }) => s + Number(o.total_price ?? 0), 0);
+  const shopifyCount     = (shopifyOrdersCur ?? []).length;
+  const shopifyRevPrev   = (shopifyOrdersPrev ?? []).reduce((s: number, o: { total_price: string }) => s + Number(o.total_price ?? 0), 0);
+  const shopifyRevChange = shopifyRevPrev > 0 ? ((shopifyRevenue - shopifyRevPrev) / shopifyRevPrev) * 100 : null;
 
   // ── Compute sales metrics ─────────────────────────────────────────────────
   const totalPairsToday = (salesTodayRows ?? []).reduce((s, r) => s + (r.confirmed_regular ?? 0), 0);
@@ -353,8 +380,8 @@ export default async function ExecutiveOverviewPage() {
           badge="Sales"
         />
         <MetricCard
-          label="Ad spend · 7 days"
-          value={`$${totalSpend7d.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          label={`Ad spend · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : "Today"}`}
+          value={fmtMoney(totalSpend7d)}
           sub={`ROAS ${overallRoas.toFixed(2)}x · ${fmtK(totalImpr7d)} impressions`}
           accent={roasAccent as "green" | "amber" | "red" | "none"}
           href="/executive/ad-ops"
@@ -382,6 +409,18 @@ export default async function ExecutiveOverviewPage() {
           accent={(pendingLeaves ?? 0) > 3 ? "amber" : "none"}
           href="/executive/people"
           badge="People"
+        />
+        <MetricCard
+          label={`Shopify revenue · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : "Today"}`}
+          value={shopifyRevenue > 0 ? fmtMoney(shopifyRevenue) : "—"}
+          sub={
+            shopifyRevChange !== null
+              ? `${shopifyRevChange >= 0 ? "+" : ""}${shopifyRevChange.toFixed(1)}% vs prev · ${shopifyCount} orders`
+              : `${shopifyCount} orders`
+          }
+          accent={shopifyRevChange !== null ? (shopifyRevChange >= 5 ? "green" : shopifyRevChange < -5 ? "red" : "none") : "none"}
+          href="/sales-ops/shopify"
+          badge="Sales"
         />
       </div>
 
@@ -442,8 +481,8 @@ export default async function ExecutiveOverviewPage() {
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Ad Operations · 7-day</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Spend ${totalSpend7d.toLocaleString("en-US", {maximumFractionDigits:0})} · ROAS {overallRoas.toFixed(2)}x</p>
+              <h2 className="text-sm font-semibold text-gray-900">Ad Operations</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Spend {fmtMoney(totalSpend7d)} · ROAS {overallRoas.toFixed(2)}x</p>
             </div>
             <Link href="/executive/ad-ops" className="text-xs text-gray-400 hover:text-gray-700">More →</Link>
           </div>
@@ -464,7 +503,7 @@ export default async function ExecutiveOverviewPage() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-semibold text-gray-900">
-                        ${c.spend.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                        {fmtMoney(c.spend)}
                       </p>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${roasBadge}`}>
                         {c.roas.toFixed(2)}x ROAS

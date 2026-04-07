@@ -52,7 +52,7 @@ function agentName(agents: Agent[], id: string): string {
 }
 
 function fmtCurrency(n: number) {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `₱${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function MonthlySummaryView({ agents }: { agents: Agent[] }) {

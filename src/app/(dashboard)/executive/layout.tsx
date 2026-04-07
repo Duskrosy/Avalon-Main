@@ -2,7 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
+import { Suspense } from "react";
 import { TabNav } from "./tab-nav";
+import { DateRangeBar } from "./date-range-bar";
 
 export default async function ExecutiveLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -21,11 +23,16 @@ export default async function ExecutiveLayout({ children }: { children: React.Re
           </div>
           <p className="text-sm text-gray-500">{format(new Date(), "EEEE, d MMMM yyyy")}</p>
         </div>
+        <Suspense fallback={<div className="pb-4 h-8 w-52" />}>
+          <DateRangeBar />
+        </Suspense>
       </div>
 
       {/* Tab navigation */}
       <div className="border-b border-gray-200 mb-6">
-        <TabNav />
+        <Suspense fallback={<div className="h-10" />}>
+          <TabNav />
+        </Suspense>
       </div>
 
       {children}
