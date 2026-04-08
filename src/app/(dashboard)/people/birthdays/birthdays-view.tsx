@@ -429,12 +429,12 @@ function BirthdayCardModal({
                     </div>
                     <p className="text-white text-sm leading-relaxed">{m.message}</p>
                     {m.gif_url && (
-                      <div className="rounded-lg overflow-hidden">
+                      <div className="rounded-lg overflow-hidden max-h-64">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={m.gif_url}
                           alt="attachment"
-                          className="w-full h-auto"
+                          className="w-full h-full object-cover"
                           loading="lazy"
                         />
                       </div>
@@ -471,12 +471,12 @@ function BirthdayCardModal({
 
               {/* Attachment preview — GIF or photo */}
               {(selectedGif || photoPreview) && (
-                <div className="relative rounded-lg overflow-hidden bg-white/5">
+                <div className="relative rounded-lg overflow-hidden max-h-52 bg-white/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={selectedGif ? selectedGif.preview : photoPreview!}
                     alt="Attachment"
-                    className="w-full h-auto"
+                    className="w-full h-full object-cover"
                   />
                   <button
                     onClick={clearAttachment}
