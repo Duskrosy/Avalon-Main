@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * POST /api/auth/forgot-password
  * Body: { email: string }
- *
- * Sends a Supabase password-reset email.
- * Returns { contact_manager: true } only when allow_password_change is
- * explicitly false for that user. Every other failure path still sends
- * the email (or lets Supabase silently no-op for unknown addresses).
  */
 export async function POST(request: Request) {
   const { email } = await request.json();
@@ -20,33 +16,40 @@ export async function POST(request: Request) {
   const clean = email.toLowerCase().trim();
   const admin = createAdminClient();
 
-  // Only block the email if allow_password_change is explicitly false.
-  // Use a try/catch so a missing column (migration 00028 not yet run) never
-  // prevents the reset from going out.
+  // Only block if allow_password_change is explicitly false
   try {
     const { data: profile } = await admin
       .from("profiles")
       .select("allow_password_change")
       .eq("email", clean)
       .is("deleted_at", null)
-      .maybeSingle(); // won't error on zero rows
+      .maybeSingle();
 
     if (profile && profile.allow_password_change === false) {
       return NextResponse.json({ contact_manager: true });
     }
   } catch (err) {
-    // Table column missing or DB error — don't block the reset
-    console.warn("[forgot-password] allow_password_change check failed, proceeding:", err);
+    console.warn("[forgot-password] allow_password_change check skipped:", err);
   }
 
   const origin     = request.headers.get("origin") ?? "http://localhost:3000";
   const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent("/account/settings?tab=security")}`;
 
-  const { error } = await admin.auth.resetPasswordForEmail(clean, { redirectTo });
+  // Use a plain anon client — resetPasswordForEmail is a public auth endpoint
+  // and behaves incorrectly when called with the service role key.
+  const anonClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { error } = await anonClient.auth.resetPasswordForEmail(clean, { redirectTo });
 
   if (error) {
-    console.error("[forgot-password] resetPasswordForEmail failed:", error.message);
-    // Don't expose the reason — just tell them to contact their manager
+    console.error("[forgot-password] resetPasswordForEmail error:", error.message, error);
+    // Return the raw message in development so we can debug, contact_manager in prod
+    if (process.env.NODE_ENV !== "production") {
+      return NextResponse.json({ debug_error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ contact_manager: true });
   }
 
