@@ -22,16 +22,18 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Step 1: check user exists
-  const { data: profile } = await admin
+  // Step 1: check user exists and isn't soft-deleted
+  // Note: we intentionally do NOT filter by status — a user in 'pending' or
+  // 'inactive' state should still be able to reset their password.
+  const { data: profile, error: profileError } = await admin
     .from("profiles")
     .select("id")
     .eq("email", email.toLowerCase().trim())
-    .eq("status", "active")
     .is("deleted_at", null)
     .single();
 
-  if (!profile) {
+  if (profileError || !profile) {
+    console.error("[forgot-password] profile lookup failed:", profileError?.message ?? "not found");
     return NextResponse.json({ contact_manager: true });
   }
 
