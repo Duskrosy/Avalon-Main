@@ -278,5 +278,31 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ message: "Leave rejected" });
   }
 
+  if (action === "rescind") {
+    // Only OPS can rescind already-approved leaves
+    if (!isOps(currentUser)) {
+      return NextResponse.json({ error: "Only OPS Admin can rescind approved leaves" }, { status: 403 });
+    }
+    if (leave.status !== "approved") {
+      return NextResponse.json({ error: "Only approved leaves can be rescinded" }, { status: 400 });
+    }
+    await admin.from("leaves").update({
+      status: "cancelled",
+      reviewed_by: currentUser.id,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", leave_id);
+
+    await admin.from("notifications").insert({
+      user_id: profile.id,
+      type: "leave_rejected",
+      title: "Approved leave rescinded",
+      body: `Your approved ${leave.leave_type} leave (${leave.start_date} → ${leave.end_date}) has been rescinded by ${currentUser.first_name} ${currentUser.last_name}.`,
+      link_url: "/people/leaves",
+    });
+
+    trackEventServer(supabase, currentUser.id, "leave.rescinded", { module: "people", category: "audit", properties: { leave_id } });
+    return NextResponse.json({ message: "Leave rescinded" });
+  }
+
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }

@@ -21,7 +21,7 @@ export const leavePostSchema = z.object({
 // Employee action: cancel (own pending → cancelled)
 export const leavePatchSchema = z.object({
   leave_id: uuid,
-  action: z.enum(["pre_approve", "approve", "reject", "cancel"]),
+  action: z.enum(["pre_approve", "approve", "reject", "cancel", "rescind"]),
 });
 
 export const leaveCreditsSchema = z.object({

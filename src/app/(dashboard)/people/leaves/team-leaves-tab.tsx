@@ -44,6 +44,8 @@ type DocRecord = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+const DEFAULT_CREDITS = { sick: 5, vacation: 5, emergency: 5 };
+
 const STATUS_STYLES: Record<string, string> = {
   pending:      "bg-amber-100 text-amber-700",
   pre_approved: "bg-blue-100 text-blue-700",
@@ -66,6 +68,12 @@ const TYPE_LABELS: Record<string, string> = {
   emergency: "Emergency",
 };
 
+const TYPE_COLORS: Record<string, string> = {
+  sick:      "bg-red-100 text-red-700",
+  vacation:  "bg-blue-100 text-blue-700",
+  emergency: "bg-orange-100 text-orange-700",
+};
+
 // ─── Credits Modal ─────────────────────────────────────────────────────────────
 
 function CreditsModal({
@@ -80,6 +88,8 @@ function CreditsModal({
   const [rows, setRows]       = useState<CreditRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [deptFilter, setDeptFilter] = useState("all");
+  const [search, setSearch]   = useState("");
+  const [view, setView]       = useState<"limit" | "balance">("limit");
 
   // Per-row edits: user_id → { sick, vacation, emergency }
   const [edits, setEdits]   = useState<Record<string, { sick: number; vacation: number; emergency: number }>>({});
@@ -109,33 +119,27 @@ function CreditsModal({
   function setVal(userId: string, type: "sick" | "vacation" | "emergency", val: number) {
     setEdits((prev) => ({
       ...prev,
-      [userId]: { ...(prev[userId] ?? {}), [type]: val },
+      [userId]: { ...(prev[userId] ?? {}), [type]: Math.max(0, Math.min(365, val)) },
     }));
-    // Clear saved indicator when editing
     setSaved((prev) => ({ ...prev, [userId]: false }));
   }
 
   async function saveRow(row: CreditRow) {
     const rowEdits = edits[row.user_id];
-    if (!rowEdits) return; // nothing changed
-
+    if (!rowEdits) return;
     setSaving((prev) => ({ ...prev, [row.user_id]: true }));
-
     await fetch("/api/leaves/credits", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_id:        row.user_id,
-        sick_total:     rowEdits.sick      ?? row.totals.sick,
-        vacation_total: rowEdits.vacation  ?? row.totals.vacation,
-        emergency_total:rowEdits.emergency ?? row.totals.emergency,
+        user_id:         row.user_id,
+        sick_total:      rowEdits.sick      ?? row.totals.sick,
+        vacation_total:  rowEdits.vacation  ?? row.totals.vacation,
+        emergency_total: rowEdits.emergency ?? row.totals.emergency,
       }),
     });
-
     setSaving((prev) => ({ ...prev, [row.user_id]: false }));
     setSaved((prev)  => ({ ...prev, [row.user_id]: true }));
-
-    // Update base row so edits are now the "saved" state
     setRows((prev) =>
       prev.map((r) =>
         r.user_id === row.user_id
@@ -144,14 +148,34 @@ function CreditsModal({
       )
     );
     setEdits((prev) => { const n = { ...prev }; delete n[row.user_id]; return n; });
+    setTimeout(() => setSaved((prev) => ({ ...prev, [row.user_id]: false })), 2000);
+  }
 
+  async function resetRow(row: CreditRow) {
+    if (!confirm(`Reset ${row.first_name} ${row.last_name}'s credit limits to defaults (${DEFAULT_CREDITS.sick} sick / ${DEFAULT_CREDITS.vacation} vacation / ${DEFAULT_CREDITS.emergency} emergency)?`)) return;
+    setSaving((prev) => ({ ...prev, [row.user_id]: true }));
+    await fetch("/api/leaves/credits", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id:         row.user_id,
+        sick_total:      DEFAULT_CREDITS.sick,
+        vacation_total:  DEFAULT_CREDITS.vacation,
+        emergency_total: DEFAULT_CREDITS.emergency,
+      }),
+    });
+    setSaving((prev) => ({ ...prev, [row.user_id]: false }));
+    setSaved((prev)  => ({ ...prev, [row.user_id]: true }));
+    setRows((prev) =>
+      prev.map((r) => r.user_id === row.user_id ? { ...r, totals: { ...DEFAULT_CREDITS } } : r)
+    );
+    setEdits((prev) => { const n = { ...prev }; delete n[row.user_id]; return n; });
     setTimeout(() => setSaved((prev) => ({ ...prev, [row.user_id]: false })), 2000);
   }
 
   async function applyBulk() {
     const targetIds = filtered.map((r) => r.user_id);
     if (targetIds.length === 0) return;
-
     setApplyingBulk(true);
     await fetch("/api/leaves/credits", {
       method: "PATCH",
@@ -165,15 +189,19 @@ function CreditsModal({
     });
     setApplyingBulk(false);
     setBulkSaved(true);
-    // Refresh rows to reflect new values
     fetchCredits();
     setEdits({});
     setTimeout(() => setBulkSaved(false), 2000);
   }
 
-  const filtered = rows.filter((r) =>
-    deptFilter === "all" || r.department?.id === deptFilter
-  );
+  const filtered = rows.filter((r) => {
+    if (deptFilter !== "all" && r.department?.id !== deptFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!`${r.first_name} ${r.last_name}`.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -183,86 +211,143 @@ function CreditsModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-gray-900">Manage Leave Credits</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Set how many days each employee gets per year. Changes take effect immediately.
-            </p>
+            <p className="text-xs text-gray-500 mt-0.5">Control how many leave days each employee is entitled to per year.</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 transition-colors p-1">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M18 6L6 18M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Apply-to-all section */}
-        <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 shrink-0">
-          <div className="flex items-end gap-4 flex-wrap">
-            <div>
-              <p className="text-xs font-medium text-gray-700 mb-2">
-                Apply same credits to {deptFilter === "all" ? "all employees" : "this department"}
-              </p>
-              <div className="flex items-center gap-3">
-                {(["sick", "vacation", "emergency"] as const).map((t) => (
-                  <div key={t} className="flex items-center gap-1.5">
-                    <label className="text-xs text-gray-500 capitalize w-16">{t}</label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={365}
-                      value={bulk[t]}
-                      onChange={(e) => setBulk((b) => ({ ...b, [t]: Number(e.target.value) }))}
-                      className="w-14 border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-gray-900"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+        {/* View toggle + filters */}
+        <div className="px-6 py-3 border-b border-gray-100 shrink-0 space-y-3">
+          {/* View tabs */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 w-fit">
             <button
-              onClick={applyBulk}
-              disabled={applyingBulk || filtered.length === 0}
+              onClick={() => setView("limit")}
               className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors shrink-0",
-                bulkSaved
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50"
+                "px-4 py-1.5 rounded-md text-sm font-medium transition-colors",
+                view === "limit" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
               )}
             >
-              {applyingBulk ? "Applying…" : bulkSaved ? "Applied ✓" : `Apply to ${filtered.length} employee${filtered.length !== 1 ? "s" : ""}`}
+              Credit Limit
             </button>
+            <button
+              onClick={() => setView("balance")}
+              className={cn(
+                "px-4 py-1.5 rounded-md text-sm font-medium transition-colors",
+                view === "balance" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              Current Balance
+            </button>
+          </div>
+
+          {/* Search + dept filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+              </svg>
+              <input
+                type="search"
+                placeholder="Search employee…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 pr-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 w-48"
+              />
+            </div>
+            {isOps && departments.length > 0 && (
+              <select
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
+              >
+                <option value="all">All departments</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
-        {/* Dept filter (OPS only) */}
-        {isOps && departments.length > 0 && (
-          <div className="px-6 py-3 border-b border-gray-100 shrink-0">
-            <select
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900"
-            >
-              <option value="all">All departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
+        {/* Credit Limit view — bulk apply bar */}
+        {view === "limit" && (
+          <div className="px-6 py-3 bg-blue-50 border-b border-blue-100 shrink-0">
+            <p className="text-xs font-semibold text-blue-800 mb-2 uppercase tracking-wide">
+              Apply same limit to {deptFilter === "all" ? "all employees" : "this department"} ({filtered.length})
+            </p>
+            <div className="flex items-center gap-3 flex-wrap">
+              {(["sick", "vacation", "emergency"] as const).map((t) => (
+                <div key={t} className="flex items-center gap-1.5">
+                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", TYPE_COLORS[t])}>{TYPE_LABELS[t]}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={365}
+                    value={bulk[t]}
+                    onChange={(e) => setBulk((b) => ({ ...b, [t]: Number(e.target.value) }))}
+                    className="w-14 border border-gray-300 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  />
+                  <span className="text-xs text-gray-500">days</span>
+                </div>
               ))}
-            </select>
+              <button
+                onClick={applyBulk}
+                disabled={applyingBulk || filtered.length === 0}
+                className={cn(
+                  "px-4 py-1.5 rounded-lg text-sm font-medium transition-colors shrink-0",
+                  bulkSaved ? "bg-green-600 text-white" : "bg-blue-700 text-white hover:bg-blue-800 disabled:opacity-50"
+                )}
+              >
+                {applyingBulk ? "Applying…" : bulkSaved ? "Applied ✓" : "Apply to All"}
+              </button>
+            </div>
           </div>
         )}
 
+        {/* Current Balance view — legend */}
+        {view === "balance" && (
+          <div className="px-6 py-2.5 bg-gray-50 border-b border-gray-100 shrink-0">
+            <p className="text-xs text-gray-500">
+              Shows each employee's <strong>remaining days</strong> for this year (limit minus days already taken). Green = plenty left, amber = running low, red = nearly gone.
+            </p>
+          </div>
+        )}
+
+        {/* Column headers */}
+        <div className={cn(
+          "grid gap-2 items-center px-6 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 shrink-0",
+          view === "limit"
+            ? "grid-cols-[1fr_70px_70px_80px_90px_56px]"
+            : "grid-cols-[1fr_1fr_1fr_1fr]"
+        )}>
+          <span>Employee</span>
+          {view === "limit" ? (
+            <>
+              <span className="text-center">Sick</span>
+              <span className="text-center">Vacation</span>
+              <span className="text-center">Emergency</span>
+              <span className="text-center">Reset</span>
+              <span />
+            </>
+          ) : (
+            <>
+              <span className="text-center">Sick</span>
+              <span className="text-center">Vacation</span>
+              <span className="text-center">Emergency</span>
+            </>
+          )}
+        </div>
+
         {/* Employee list */}
         <div className="flex-1 overflow-y-auto">
-          {/* Column headers */}
-          <div className="grid grid-cols-[1fr_80px_80px_80px_80px] gap-2 items-center px-6 py-2 bg-gray-50 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider sticky top-0">
-            <span>Employee</span>
-            <span className="text-center">Sick</span>
-            <span className="text-center">Vacation</span>
-            <span className="text-center">Emergency</span>
-            <span />
-          </div>
-
           {loading ? (
             <div className="p-6 space-y-3">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+                <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -270,24 +355,64 @@ function CreditsModal({
           ) : (
             <div className="divide-y divide-gray-50">
               {filtered.map((row) => {
-                const isDirty = !!edits[row.user_id];
+                const isDirty  = !!edits[row.user_id];
                 const isSaving = saving[row.user_id];
                 const isSaved  = saved[row.user_id];
 
+                // Remaining = limit - used (clamped to 0)
+                const remaining = {
+                  sick:      Math.max(0, row.totals.sick - row.used.sick),
+                  vacation:  Math.max(0, row.totals.vacation - row.used.vacation),
+                  emergency: Math.max(0, row.totals.emergency - row.used.emergency),
+                };
+
+                function balanceColor(rem: number, total: number) {
+                  if (total === 0) return "text-gray-400";
+                  const pct = rem / total;
+                  if (pct > 0.5) return "text-green-700 font-semibold";
+                  if (pct > 0.2) return "text-amber-600 font-semibold";
+                  return "text-red-600 font-semibold";
+                }
+
+                if (view === "balance") {
+                  return (
+                    <div
+                      key={row.user_id}
+                      className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-2 items-center px-6 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {row.first_name} {row.last_name}
+                        </p>
+                        <p className="text-xs text-gray-400">{row.department?.name ?? "No dept"}</p>
+                      </div>
+                      {(["sick", "vacation", "emergency"] as const).map((t) => (
+                        <div key={t} className="text-center">
+                          <p className={cn("text-base", balanceColor(remaining[t], row.totals[t]))}>
+                            {remaining[t]}
+                          </p>
+                          <p className="text-xs text-gray-400">of {row.totals[t]} · {row.used[t]} used</p>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                }
+
+                // Credit Limit view
                 return (
                   <div
                     key={row.user_id}
-                    className="grid grid-cols-[1fr_80px_80px_80px_80px] gap-2 items-center px-6 py-3 hover:bg-gray-50 transition-colors"
+                    className={cn(
+                      "grid grid-cols-[1fr_70px_70px_80px_90px_56px] gap-2 items-center px-6 py-3 hover:bg-gray-50 transition-colors",
+                      isDirty && "bg-amber-50"
+                    )}
                   >
-                    {/* Name + dept + used */}
+                    {/* Name */}
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">
                         {row.first_name} {row.last_name}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {row.department?.name ?? "No dept"}
-                        {" · "}used: {row.used.sick}s / {row.used.vacation}v / {row.used.emergency}e
-                      </p>
+                      <p className="text-xs text-gray-400">{row.department?.name ?? "No dept"}</p>
                     </div>
 
                     {/* Credit inputs */}
@@ -301,12 +426,24 @@ function CreditsModal({
                         onChange={(e) => setVal(row.user_id, t, Number(e.target.value))}
                         className={cn(
                           "w-full border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-gray-900 transition-colors",
-                          isDirty ? "border-amber-400 bg-amber-50" : "border-gray-200"
+                          isDirty ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white"
                         )}
                       />
                     ))}
 
-                    {/* Save button */}
+                    {/* Reset to defaults */}
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => resetRow(row)}
+                        disabled={isSaving}
+                        title="Reset to defaults (5/5/5)"
+                        className="text-xs px-2 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors disabled:opacity-40 whitespace-nowrap"
+                      >
+                        ↺ Reset
+                      </button>
+                    </div>
+
+                    {/* Save */}
                     <div className="flex justify-center">
                       {isSaved ? (
                         <span className="text-xs text-green-600 font-medium">Saved ✓</span>
@@ -330,6 +467,13 @@ function CreditsModal({
               })}
             </div>
           )}
+        </div>
+
+        {/* Footer note */}
+        <div className="px-6 py-3 border-t border-gray-100 shrink-0">
+          <p className="text-xs text-gray-400">
+            Default is {DEFAULT_CREDITS.sick} sick · {DEFAULT_CREDITS.vacation} vacation · {DEFAULT_CREDITS.emergency} emergency days per year. Changes take effect immediately.
+          </p>
         </div>
       </div>
     </div>
@@ -401,6 +545,7 @@ function LeaveRow({ leave, isOps, onRefresh }: { leave: Leave; isOps: boolean; o
   const [docLoaded, setDocLoaded]   = useState(false);
   const [showDocModal, setShowDocModal] = useState(false);
   const [expanded, setExpanded]     = useState(false);
+  const [rescinding, setRescinding] = useState(false);
 
   const needsDocs = leave.leave_type === "sick" || leave.leave_type === "emergency";
 
@@ -414,6 +559,18 @@ function LeaveRow({ leave, isOps, onRefresh }: { leave: Leave; isOps: boolean; o
   function handleExpand() {
     setExpanded((v) => !v);
     if (!expanded && needsDocs) loadDoc();
+  }
+
+  async function handleRescind() {
+    if (!confirm("Rescind this approved leave? The employee will be notified and their leave credits will be restored.")) return;
+    setRescinding(true);
+    await fetch("/api/leaves", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leave_id: leave.id, action: "rescind" }),
+    });
+    setRescinding(false);
+    onRefresh();
   }
 
   const profile = leave.profile;
@@ -474,6 +631,8 @@ function LeaveRow({ leave, isOps, onRefresh }: { leave: Leave; isOps: boolean; o
                 </p>
               )}
             </div>
+
+            {/* Document section */}
             {needsDocs && (
               <div className="border-t border-gray-50 pt-3">
                 {!docLoaded ? (
@@ -493,6 +652,20 @@ function LeaveRow({ leave, isOps, onRefresh }: { leave: Leave; isOps: boolean; o
                     Request supporting document
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Rescind — OPS only, approved leaves */}
+            {isOps && leave.status === "approved" && (
+              <div className="border-t border-gray-50 pt-3">
+                <button
+                  onClick={handleRescind}
+                  disabled={rescinding}
+                  className="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                >
+                  {rescinding ? "Rescinding…" : "Rescind approved leave"}
+                </button>
+                <p className="text-xs text-gray-400 mt-1">Removes approval and notifies the employee.</p>
               </div>
             )}
           </div>
@@ -568,15 +741,13 @@ export function TeamLeavesTab({ isOps, departments }: { isOps: boolean; departme
             />
           </div>
 
-          {/* Credits button — OPS only */}
           {isOps && (
             <button
               onClick={() => setShowCredits(true)}
               className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
+                <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
               </svg>
               Manage Credits
             </button>
