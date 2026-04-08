@@ -29,7 +29,33 @@ export async function POST(
   }
 
   const admin = createAdminClient();
-  const year = new Date().getFullYear();
+
+  // Signing is only allowed on the actual birthday day
+  const { data: person } = await admin
+    .from("profiles")
+    .select("birthday")
+    .eq("id", personId)
+    .maybeSingle();
+
+  if (!person?.birthday) {
+    return NextResponse.json({ error: "Person not found" }, { status: 404 });
+  }
+
+  const now  = new Date();
+  const bday = new Date(person.birthday);
+  const bdayThisYear = new Date(now.getFullYear(), bday.getMonth(), bday.getDate());
+  bdayThisYear.setHours(0, 0, 0, 0);
+  const todayMidnight = new Date(now);
+  todayMidnight.setHours(0, 0, 0, 0);
+
+  if (bdayThisYear.getTime() !== todayMidnight.getTime()) {
+    return NextResponse.json(
+      { error: "The birthday has passed — the card is now closed for new messages" },
+      { status: 410 }
+    );
+  }
+
+  const year = now.getFullYear();
 
   // Get the card for this year
   const { data: card } = await admin
@@ -41,10 +67,6 @@ export async function POST(
 
   if (!card) {
     return NextResponse.json({ error: "Birthday card not found" }, { status: 404 });
-  }
-
-  if (new Date(card.expires_at) < new Date()) {
-    return NextResponse.json({ error: "This birthday card has expired" }, { status: 410 });
   }
 
   // Upsert — one message per author per card

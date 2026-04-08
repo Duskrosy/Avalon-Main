@@ -86,6 +86,32 @@ export default async function BirthdaysPage() {
       })()
     : false;
 
+  // Did the current user's birthday pass 1–7 days ago? (card still readable by them)
+  let myRecentBirthdayDaysAgo: number | null = null;
+  let myRecentBirthdayPerson: BirthdayPerson | null = null;
+  if (!currentUserBirthday && currentUser.birthday) {
+    const b = new Date(currentUser.birthday);
+    const bdayThisYear = new Date(today.getFullYear(), b.getMonth(), b.getDate());
+    const msAgo = today.getTime() - bdayThisYear.getTime();
+    const daysAgo = Math.floor(msAgo / (1000 * 60 * 60 * 24));
+    if (daysAgo >= 1 && daysAgo <= 7) {
+      myRecentBirthdayDaysAgo = daysAgo;
+      // Build a synthetic BirthdayPerson so the modal can open
+      const age = differenceInYears(bdayThisYear, b);
+      myRecentBirthdayPerson = {
+        id:           currentUser.id,
+        first_name:   currentUser.first_name,
+        last_name:    currentUser.last_name,
+        birthday:     currentUser.birthday,
+        avatar_url:   (currentUser as unknown as { avatar_url?: string | null }).avatar_url ?? null,
+        department:   currentUser.department ? { name: currentUser.department.name } : null,
+        daysUntil:    -daysAgo,          // negative = days ago
+        age:          age >= 1 && age <= 119 ? age : null,
+        nextBirthday: bdayThisYear.toISOString(),
+      };
+    }
+  }
+
   return (
     <BirthdaysView
       todayPeople={todayPeople}
@@ -94,6 +120,8 @@ export default async function BirthdaysPage() {
       upcoming={upcoming}
       currentUserId={currentUser.id}
       currentUserHasBirthday={currentUserBirthday}
+      myRecentBirthdayDaysAgo={myRecentBirthdayDaysAgo}
+      myRecentBirthdayPerson={myRecentBirthdayPerson}
     />
   );
 }

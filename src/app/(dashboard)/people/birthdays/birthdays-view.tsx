@@ -31,6 +31,13 @@ type BirthdayCard = {
   created_at: string;
 };
 
+type CardResponse = {
+  card: BirthdayCard | null;
+  messages: BirthdayMessage[];
+  canSign: boolean;
+  birthdayStatus: "today" | "past" | "future" | "expired";
+};
+
 type GifResult = {
   id: string;
   url: string;
@@ -181,6 +188,7 @@ function BirthdayCardModal({
 }) {
   const [card, setCard]         = useState<BirthdayCard | null>(null);
   const [messages, setMessages] = useState<BirthdayMessage[]>([]);
+  const [canSign, setCanSign]   = useState(false);
   const [loading, setLoading]   = useState(true);
   const [tab, setTab]           = useState<"messages" | "sign">("messages");
 
@@ -201,10 +209,12 @@ function BirthdayCardModal({
     setLoading(true);
     try {
       const res  = await fetch(`/api/birthday-cards/${person.id}`);
-      const json = await res.json();
+      if (!res.ok) { setLoading(false); return; }
+      const json: CardResponse = await res.json();
       if (json.card) {
         setCard(json.card);
         setMessages(json.messages ?? []);
+        setCanSign(json.canSign ?? false);
       }
     } catch {
       // silently ignore
@@ -216,7 +226,8 @@ function BirthdayCardModal({
   // Load on mount
   useEffect(() => { loadCard(); }, [loadCard]);
 
-  const myMessage = messages.find((m) => m.author_id === currentUserId);
+  const myMessage   = messages.find((m) => m.author_id === currentUserId);
+  const showSignTab = canSign && !isCelebrant;
 
   const clearAttachment = () => {
     setSelectedGif(null);
@@ -308,8 +319,6 @@ function BirthdayCardModal({
     }
   };
 
-  const isExpired = card ? new Date(card.expires_at) < new Date() : false;
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -355,7 +364,7 @@ function BirthdayCardModal({
           >
             Messages {messages.length > 0 && `(${messages.length})`}
           </button>
-          {!isCelebrant && !isExpired && (
+          {showSignTab && (
             <button
               onClick={() => { setTab("sign"); if (myMessage) { setMsgText(myMessage.message); setSelectedGif(myMessage.gif_url ? { id: "", url: myMessage.gif_url, preview: myMessage.gif_url, title: "" } : null); } }}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
@@ -377,7 +386,17 @@ function BirthdayCardModal({
             </div>
           ) : tab === "messages" ? (
             <>
-              {messages.length === 0 ? (
+              {!canSign && !isCelebrant && messages.length === 0 && (
+                <p className="text-center text-white/30 text-xs py-2 pb-0">
+                  This card is now closed — no messages were left.
+                </p>
+              )}
+              {!canSign && messages.length > 0 && (
+                <p className="text-center text-white/30 text-xs pb-1">
+                  This card is read-only — signing closed after the birthday.
+                </p>
+              )}
+              {messages.length === 0 && canSign ? (
                 <p className="text-center text-white/40 text-sm py-8">
                   {isCelebrant
                     ? "No messages yet — wait for your teammates to sign! 🎉"
@@ -628,6 +647,8 @@ export function BirthdaysView({
   upcoming,
   currentUserId,
   currentUserHasBirthday,
+  myRecentBirthdayDaysAgo,
+  myRecentBirthdayPerson,
 }: {
   todayPeople: BirthdayPerson[];
   thisWeek: BirthdayPerson[];
@@ -635,7 +656,10 @@ export function BirthdaysView({
   upcoming: BirthdayPerson[];
   currentUserId: string;
   currentUserHasBirthday: boolean;
+  myRecentBirthdayDaysAgo: number | null;
+  myRecentBirthdayPerson: BirthdayPerson | null;
 }) {
+  const [myCardOpen, setMyCardOpen] = useState(false);
   return (
     <div>
       <div className="mb-6">
@@ -652,6 +676,37 @@ export function BirthdaysView({
             Happy Birthday! Your teammates can leave you a birthday card message today.
           </p>
         </div>
+      )}
+
+      {myRecentBirthdayDaysAgo !== null && myRecentBirthdayPerson && (
+        <>
+          <div className="mb-6 rounded-xl bg-gray-50 border border-gray-200 px-5 py-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🎂</span>
+              <p className="text-gray-700 text-sm">
+                Your birthday was{" "}
+                <span className="font-medium">
+                  {myRecentBirthdayDaysAgo === 1 ? "yesterday" : `${myRecentBirthdayDaysAgo} days ago`}
+                </span>
+                . Your card closes in{" "}
+                <span className="font-medium">{7 - myRecentBirthdayDaysAgo} more {7 - myRecentBirthdayDaysAgo === 1 ? "day" : "days"}</span>.
+              </p>
+            </div>
+            <button
+              onClick={() => setMyCardOpen(true)}
+              className="shrink-0 text-sm font-medium text-[#3A5635] hover:underline"
+            >
+              View my card →
+            </button>
+          </div>
+          {myCardOpen && (
+            <BirthdayCardModal
+              person={myRecentBirthdayPerson}
+              currentUserId={currentUserId}
+              onClose={() => setMyCardOpen(false)}
+            />
+          )}
+        </>
       )}
 
       <div className="space-y-8">
