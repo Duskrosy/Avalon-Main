@@ -60,6 +60,18 @@ function AuthConfirmInner() {
             router.replace("/login?error=no_account");
             return;
           }
+
+          // Redirect to password change if flagged
+          const { data: secProfile } = await supabase
+            .from("profiles")
+            .select("must_change_password")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (secProfile?.must_change_password) {
+            router.replace("/account/settings?tab=security");
+            return;
+          }
         }
 
         router.replace(safeNext);

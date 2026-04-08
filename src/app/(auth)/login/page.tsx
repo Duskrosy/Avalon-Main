@@ -79,6 +79,21 @@ function LoginInner() {
       }
     }
 
+    // Check must_change_password — redirect to security settings if set
+    const { data: { user: loggedInUser } } = await supabase.auth.getUser();
+    if (loggedInUser) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("must_change_password")
+        .eq("id", loggedInUser.id)
+        .maybeSingle();
+      if (prof?.must_change_password) {
+        router.push("/account/settings?tab=security");
+        router.refresh();
+        return;
+      }
+    }
+
     router.push("/");
     router.refresh();
   }
