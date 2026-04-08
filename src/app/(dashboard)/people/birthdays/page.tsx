@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/permissions";
+import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { differenceInYears } from "date-fns";
 import { BirthdaysView } from "./birthdays-view";
@@ -122,6 +122,7 @@ export default async function BirthdaysPage() {
       pastPeople={pastPeople}
       upcoming={upcoming}
       currentUserId={currentUser.id}
+      currentUserIsOps={isOps(currentUser)}
       currentUserHasBirthday={currentUserBirthday}
       myRecentBirthdayDaysAgo={myRecentBirthdayDaysAgo}
       myRecentBirthdayPerson={myRecentBirthdayPerson}

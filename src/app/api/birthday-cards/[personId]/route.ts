@@ -104,7 +104,7 @@ export async function GET(
 
   const { data: msgs } = await admin
     .from("birthday_messages")
-    .select("id, author_id, message, gif_url, emoji, created_at, updated_at, author:profiles!author_id(id, first_name, last_name, avatar_url)")
+    .select("id, author_id, message, gif_url, emoji, reactions, created_at, updated_at, author:profiles!author_id(id, first_name, last_name, avatar_url)")
     .eq("card_id", resolvedCard.id)
     .order("created_at");
 

@@ -14,10 +14,13 @@ type BirthdayMessage = {
   message: string;
   gif_url: string | null;
   emoji: string | null;
+  reactions: Record<string, string[]>;
   created_at: string;
   updated_at: string;
   author: { id: string; first_name: string; last_name: string; avatar_url: string | null } | null;
 };
+
+const REACTION_EMOJIS = ["❤️", "😂", "🎉", "🔥", "🥳", "👏"] as const;
 
 type BirthdayCard = { id: string; expires_at: string; created_at: string };
 
@@ -112,7 +115,14 @@ function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
 
 // ─── Birthday card modal ──────────────────────────────────────────────────────
 
-function BirthdayCardModal({ person, currentUserId, onClose }: { person: BirthdayPerson; currentUserId: string; onClose: () => void }) {
+function BirthdayCardModal({
+  person, currentUserId, currentUserIsOps, onClose,
+}: {
+  person: BirthdayPerson;
+  currentUserId: string;
+  currentUserIsOps: boolean;
+  onClose: () => void;
+}) {
   const [card, setCard]           = useState<BirthdayCard | null>(null);
   const [messages, setMessages]   = useState<BirthdayMessage[]>([]);
   const [canSign, setCanSign]     = useState(false);
@@ -126,6 +136,7 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
   const [uploading, setUploading]   = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [deletingAll, setDeletingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isCelebrant = person.id === currentUserId;
 
@@ -183,9 +194,33 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
     finally { setSubmitting(false); setUploading(false); }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteOwn = async () => {
     try { await fetch(`/api/birthday-cards/${person.id}/messages`, { method: "DELETE" }); await loadCard(); setMsgText(""); clearAttachment(); }
     catch { /* ignore */ }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try { await fetch(`/api/birthday-cards/${person.id}/messages?messageId=${messageId}`, { method: "DELETE" }); await loadCard(); }
+    catch { /* ignore */ }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!confirm("Delete all messages on this birthday card? This cannot be undone.")) return;
+    setDeletingAll(true);
+    try { await fetch(`/api/birthday-cards/${person.id}/messages?all=true`, { method: "DELETE" }); await loadCard(); }
+    catch { /* ignore */ } finally { setDeletingAll(false); }
+  };
+
+  const handleReaction = async (messageId: string, emoji: string) => {
+    try {
+      const res = await fetch(`/api/birthday-cards/${person.id}/messages`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, emoji }),
+      });
+      if (!res.ok) return;
+      const { reactions } = await res.json();
+      setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, reactions } : m));
+    } catch { /* ignore */ }
   };
 
   return (
@@ -208,8 +243,8 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-white/10 bg-gray-900 shrink-0">
+        {/* Tabs + OPS delete-all */}
+        <div className="flex items-center border-b border-white/10 bg-gray-900 shrink-0 px-1">
           <button onClick={() => setTab("messages")} className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === "messages" ? "text-amber-400 border-b-2 border-amber-400" : "text-white/40 hover:text-white/70"}`}>
             Messages {messages.length > 0 && `(${messages.length})`}
           </button>
@@ -219,6 +254,15 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
               className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === "sign" ? "text-amber-400 border-b-2 border-amber-400" : "text-white/40 hover:text-white/70"}`}
             >
               {myMessage ? "Edit my message" : "Sign the card ✍️"}
+            </button>
+          )}
+          {currentUserIsOps && messages.length > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              disabled={deletingAll}
+              className="ml-auto mr-2 text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-300/50 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {deletingAll ? "Deleting…" : "Delete all"}
             </button>
           )}
         </div>
@@ -237,25 +281,68 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
                   {isCelebrant ? "No messages yet — wait for your teammates to sign! 🎉" : canSign ? "No messages yet. Be the first to sign the card!" : "No messages were left on this card."}
                 </p>
               ) : (
-                messages.map((m) => (
-                  <div key={m.id} className="bg-white/5 rounded-xl p-4 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <Avatar url={m.author?.avatar_url ?? null} initials={m.author ? `${m.author.first_name[0]}${m.author.last_name[0]}` : "?"} size="xs" />
-                      <span className="text-white/80 text-xs font-medium">{m.author ? `${m.author.first_name} ${m.author.last_name}` : "Anonymous"}</span>
-                      <span className="text-white/30 text-xs ml-auto">{format(new Date(m.created_at), "MMM d")}</span>
-                    </div>
-                    <p className="text-white text-sm leading-relaxed">{m.message}</p>
-                    {m.gif_url && (
-                      <div className="rounded-lg overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.gif_url} alt="attachment" className="max-h-72 w-auto max-w-full mx-auto block" loading="lazy" />
+                messages.map((m) => {
+                  const reactions: Record<string, string[]> = m.reactions ?? {};
+                  const isOwnMessage = m.author_id === currentUserId;
+                  const canDeleteThis = isOwnMessage || currentUserIsOps;
+
+                  return (
+                    <div key={m.id} className="bg-white/5 rounded-xl p-4">
+                      {/* Author row */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <Avatar url={m.author?.avatar_url ?? null} initials={m.author ? `${m.author.first_name[0]}${m.author.last_name[0]}` : "?"} size="xs" />
+                        <span className="text-white/80 text-xs font-medium">{m.author ? `${m.author.first_name} ${m.author.last_name}` : "Anonymous"}</span>
+                        <span className="text-white/30 text-xs ml-auto">{format(new Date(m.created_at), "MMM d")}</span>
+                        {canDeleteThis && (
+                          <button
+                            onClick={() => isOwnMessage ? handleDeleteOwn() : handleDeleteMessage(m.id)}
+                            className="text-white/20 hover:text-red-400 transition-colors ml-1"
+                            title="Delete message"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
+                              <path fillRule="evenodd" d="M5 3.25V4H2.75a.75.75 0 0 0 0 1.5h.3l.815 8.15A1.5 1.5 0 0 0 5.357 15h5.285a1.5 1.5 0 0 0 1.493-1.35l.815-8.15h.3a.75.75 0 0 0 0-1.5H11v-.75A2.25 2.25 0 0 0 8.75 1h-1.5A2.25 2.25 0 0 0 5 3.25Zm2.25-.75a.75.75 0 0 0-.75.75V4h3v-.75a.75.75 0 0 0-.75-.75h-1.5ZM6.05 6a.75.75 0 0 1 .787.713l.275 5.5a.75.75 0 0 1-1.498.075l-.275-5.5A.75.75 0 0 1 6.05 6Zm3.9 0a.75.75 0 0 1 .712.787l-.275 5.5a.75.75 0 0 1-1.498-.075l.275-5.5a.75.75 0 0 1 .786-.711Z" clipRule="evenodd" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
-                    )}
-                    {m.author_id === currentUserId && canSign && (
-                      <button onClick={handleDelete} className="text-xs text-red-400 hover:text-red-300 transition-colors">Remove my message</button>
-                    )}
-                  </div>
-                ))
+
+                      {/* Social layout: image left, text right */}
+                      {m.gif_url ? (
+                        <div className="flex gap-3">
+                          <div className="w-28 shrink-0 rounded-lg overflow-hidden bg-white/5 self-start">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={m.gif_url} alt="attachment" className="w-full h-auto" loading="lazy" />
+                          </div>
+                          <p className="text-white text-sm leading-relaxed flex-1 min-w-0">{m.message}</p>
+                        </div>
+                      ) : (
+                        <p className="text-white text-sm leading-relaxed">{m.message}</p>
+                      )}
+
+                      {/* Reactions row */}
+                      <div className="flex items-center gap-1 mt-3 flex-wrap">
+                        {REACTION_EMOJIS.map((emoji) => {
+                          const users = reactions[emoji] ?? [];
+                          const hasReacted = users.includes(currentUserId);
+                          return (
+                            <button
+                              key={emoji}
+                              onClick={() => handleReaction(m.id, emoji)}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all border ${
+                                hasReacted
+                                  ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
+                                  : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white/80"
+                              }`}
+                            >
+                              <span>{emoji}</span>
+                              {users.length > 0 && <span className={hasReacted ? "text-amber-300" : "text-white/40"}>{users.length}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </>
           ) : (
@@ -303,7 +390,7 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
 
 // ─── Per-variant card ─────────────────────────────────────────────────────────
 
-function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPerson; variant: Variant; currentUserId: string }) {
+function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { person: BirthdayPerson; variant: Variant; currentUserId: string; currentUserIsOps: boolean }) {
   const [open, setOpen] = useState(false);
   const initials = `${person.first_name[0]}${person.last_name[0]}`;
 
@@ -334,7 +421,7 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-sm text-gray-400 mt-0.5">{dateStr}</p>
           </div>
         </div>
-        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
       </>
     );
   }
@@ -357,7 +444,7 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-xs text-gray-400 mt-0.5">in {daysUntil}d</p>
           </div>
         </div>
-        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
       </>
     );
   }
@@ -377,7 +464,7 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-xs text-gray-400">in {daysUntil}d</p>
           </div>
         </div>
-        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
       </>
     );
   }
@@ -399,7 +486,7 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-[10px] text-gray-400">{daysAgo === 1 ? "yesterday" : `${daysAgo}d ago`}</p>
           </div>
         </div>
-        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
       </>
     );
   }
@@ -418,7 +505,7 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
           <p className="text-[10px] text-gray-400">in {daysUntil}d</p>
         </div>
       </div>
-      {open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+      {open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -433,8 +520,8 @@ const GRID: Record<Variant, string> = {
   compact: "grid-cols-2 lg:grid-cols-4 xl:grid-cols-5",
 };
 
-function Section({ title, people, variant, emptyMsg, currentUserId }: {
-  title: string; people: BirthdayPerson[]; variant: Variant; emptyMsg: string; currentUserId: string;
+function Section({ title, people, variant, emptyMsg, currentUserId, currentUserIsOps }: {
+  title: string; people: BirthdayPerson[]; variant: Variant; emptyMsg: string; currentUserId: string; currentUserIsOps: boolean;
 }) {
   return (
     <div>
@@ -443,7 +530,7 @@ function Section({ title, people, variant, emptyMsg, currentUserId }: {
         <p className="text-sm text-gray-400 py-1">{emptyMsg}</p>
       ) : (
         <div className={`grid ${GRID[variant]} gap-3`}>
-          {people.map((p) => <BirthdayCard key={p.id} person={p} variant={variant} currentUserId={currentUserId} />)}
+          {people.map((p) => <BirthdayCard key={p.id} person={p} variant={variant} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />)}
         </div>
       )}
     </div>
@@ -454,7 +541,7 @@ function Section({ title, people, variant, emptyMsg, currentUserId }: {
 
 export function BirthdaysView({
   todayPeople, thisWeek, thisMonth, pastPeople, upcoming,
-  currentUserId, currentUserHasBirthday, myRecentBirthdayDaysAgo, myRecentBirthdayPerson,
+  currentUserId, currentUserIsOps, currentUserHasBirthday, myRecentBirthdayDaysAgo, myRecentBirthdayPerson,
 }: {
   todayPeople: BirthdayPerson[];
   thisWeek: BirthdayPerson[];
@@ -462,6 +549,7 @@ export function BirthdaysView({
   pastPeople: BirthdayPerson[];
   upcoming: BirthdayPerson[];
   currentUserId: string;
+  currentUserIsOps: boolean;
   currentUserHasBirthday: boolean;
   myRecentBirthdayDaysAgo: number | null;
   myRecentBirthdayPerson: BirthdayPerson | null;
@@ -496,18 +584,18 @@ export function BirthdaysView({
             </div>
             <button onClick={() => setMyCardOpen(true)} className="shrink-0 text-sm font-medium text-[#3A5635] hover:underline">View my card →</button>
           </div>
-          {myCardOpen && <BirthdayCardModal person={myRecentBirthdayPerson} currentUserId={currentUserId} onClose={() => setMyCardOpen(false)} />}
+          {myCardOpen && <BirthdayCardModal person={myRecentBirthdayPerson} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setMyCardOpen(false)} />}
         </>
       )}
 
       <div className="space-y-8">
-        <Section title="🎂 Today" people={todayPeople} variant="hero"    emptyMsg="No birthdays today"           currentUserId={currentUserId} />
-        <Section title="This week" people={thisWeek}  variant="large"   emptyMsg="No birthdays this week"        currentUserId={currentUserId} />
-        <Section title="This month" people={thisMonth} variant="medium"  emptyMsg="No more birthdays this month"  currentUserId={currentUserId} />
+        <Section title="🎂 Today" people={todayPeople} variant="hero"    emptyMsg="No birthdays today"           currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        <Section title="This week" people={thisWeek}  variant="large"   emptyMsg="No birthdays this week"        currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        <Section title="This month" people={thisMonth} variant="medium"  emptyMsg="No more birthdays this month"  currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
         {pastPeople.length > 0 && (
-          <Section title="Past 7 days" people={pastPeople} variant="small" emptyMsg="" currentUserId={currentUserId} />
+          <Section title="Past 7 days" people={pastPeople} variant="small" emptyMsg="" currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
         )}
-        <Section title="Upcoming" people={upcoming}   variant="compact" emptyMsg="Nothing further ahead"         currentUserId={currentUserId} />
+        <Section title="Upcoming" people={upcoming}   variant="compact" emptyMsg="Nothing further ahead"         currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
       </div>
     </div>
   );
