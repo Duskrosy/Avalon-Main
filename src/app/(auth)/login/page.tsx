@@ -36,11 +36,16 @@ function LoginInner() {
   const searchParams = useSearchParams();
   const oauthError   = searchParams.get("error");
 
-  // If user already has a session but must change password, skip to that step
+  // Track whether must_change_password is set so we can block SSO early
+  const [mustChangePw, setMustChangePw] = useState(false);
+
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user?.app_metadata?.must_change_password) setStep("force_change");
+      if (user?.app_metadata?.must_change_password) {
+        setMustChangePw(true);
+        setStep("force_change");
+      }
     });
   }, []);
 
@@ -237,8 +242,10 @@ function LoginInner() {
                 </div>
               )}
               {oauthError && oauthError !== "no_account" && (
-                <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
-                  {decodeURIComponent(oauthError)}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                  {oauthError.includes("PKCE") || oauthError.includes("code verifier")
+                    ? "You need to set a new password before signing in with SSO. Please sign in with your email and password first."
+                    : decodeURIComponent(oauthError)}
                 </div>
               )}
               <form onSubmit={handleLogin} className="space-y-4">
@@ -297,9 +304,10 @@ function LoginInner() {
               {/* Discord */}
               <button
                 type="button"
-                onClick={handleDiscord}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50"
+                onClick={mustChangePw ? undefined : handleDiscord}
+                disabled={loading || mustChangePw}
+                title={mustChangePw ? "Change your password first before signing in with SSO" : undefined}
+                className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: "#5865F2" }}
               >
                 {/* Discord logo */}
