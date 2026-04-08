@@ -109,8 +109,6 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setForgotResult(null);
-
     await fetch("/api/auth/forgot-password", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
