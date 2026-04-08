@@ -25,10 +25,14 @@ export const leavePatchSchema = z.object({
 });
 
 export const leaveCreditsSchema = z.object({
-  user_id: uuid,
-  sick_total: z.number().int().min(0).max(365).optional(),
-  vacation_total: z.number().int().min(0).max(365).optional(),
+  // Single user OR bulk update — one of these must be present
+  user_id:  uuid.optional(),
+  user_ids: z.array(uuid).min(1).optional(),
+  sick_total:      z.number().int().min(0).max(365).optional(),
+  vacation_total:  z.number().int().min(0).max(365).optional(),
   emergency_total: z.number().int().min(0).max(365).optional(),
+}).refine((d) => d.user_id || (d.user_ids && d.user_ids.length > 0), {
+  message: "Either user_id or user_ids is required",
 });
 
 // ─── Users ───────────────────────────────────────────────────────────────────
