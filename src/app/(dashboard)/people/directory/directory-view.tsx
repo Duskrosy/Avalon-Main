@@ -261,30 +261,73 @@ function ProfileDrawer({
   onClose: () => void;
   onProfileUpdated: (id: string, changes: Partial<Profile>) => void;
 }) {
-  const initials = `${person.first_name[0]}${person.last_name[0]}`.toUpperCase();
-
-  // Managers can manage profiles in same dept; OPS can manage all
-  // canManageProfiles already accounts for dept/role checks from server
+  const initials  = `${person.first_name[0]}${person.last_name[0]}`.toUpperCase();
   const canManage = canManageProfiles || isOps;
 
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    first_name: person.first_name,
+    last_name:  person.last_name,
+    job_title:  person.job_title  ?? "",
+    bio:        person.bio        ?? "",
+    fun_fact:   person.fun_fact   ?? "",
+    phone:      person.phone      ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    const res = await fetch(`/api/users/${person.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        first_name: editForm.first_name,
+        last_name:  editForm.last_name,
+        job_title:  editForm.job_title  || null,
+        bio:        editForm.bio        || null,
+        fun_fact:   editForm.fun_fact   || null,
+        phone:      editForm.phone      || null,
+      }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) { setSaveError(data.error); return; }
+    onProfileUpdated(person.id, {
+      first_name: editForm.first_name,
+      last_name:  editForm.last_name,
+      job_title:  editForm.job_title  || null,
+      bio:        editForm.bio        || null,
+      fun_fact:   editForm.fun_fact   || null,
+      phone:      editForm.phone      || null,
+    });
+    setEditing(false);
+  }
+
   const tierLabel = (tier: number) => {
-    if (tier <= 1) return { label: "OPS", color: "bg-purple-100 text-purple-700" };
+    if (tier <= 1) return { label: "OPS",     color: "bg-purple-100 text-purple-700" };
     if (tier === 2) return { label: "Manager", color: "bg-blue-100 text-blue-700" };
     return { label: "Staff", color: "bg-gray-100 text-gray-600" };
   };
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/20 z-40"
-        onClick={onClose}
-      />
-      {/* Drawer panel */}
+      <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl z-50 overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white">
-          <h2 className="text-sm font-semibold text-gray-900">Profile</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">Profile</h2>
+            {canManage && !editing && (
+              <button
+                onClick={() => { setEditing(true); setSaveError(null); }}
+                className="text-xs text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Edit
+              </button>
+            )}
+          </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
@@ -296,7 +339,7 @@ function ProfileDrawer({
         </div>
 
         <div className="p-5 space-y-6">
-          {/* Avatar section */}
+          {/* Avatar */}
           <DrawerAvatarUploader
             targetId={person.id}
             currentUrl={person.avatar_url}
@@ -308,76 +351,156 @@ function ProfileDrawer({
             onApprovalToggled={(val) => onProfileUpdated(person.id, { avatar_require_approval: val })}
           />
 
-          {/* Identity */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {person.first_name} {person.last_name}
-            </h3>
-            {person.job_title && (
-              <p className="text-sm text-gray-500 mt-0.5">{person.job_title}</p>
-            )}
-            <div className="flex flex-wrap gap-2 mt-2">
-              {person.role && (() => {
-                const { label, color } = tierLabel(person.role.tier);
-                return (
-                  <>
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${color}`}>{label}</span>
-                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">{person.role.name}</span>
-                  </>
-                );
-              })()}
-              {person.department && (
-                <span className="px-2 py-0.5 text-xs rounded-full bg-gray-50 text-gray-500 border border-gray-200">
-                  {person.department.name}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact</h4>
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                </svg>
-                <a href={`mailto:${person.email}`} className="hover:text-gray-900 truncate">{person.email}</a>
+          {editing ? (
+            /* ── Edit mode ──────────────────────────────────────── */
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">First name</label>
+                  <input
+                    value={editForm.first_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, first_name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Last name</label>
+                  <input
+                    value={editForm.last_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, last_name: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                </div>
               </div>
-              {person.phone && (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                  </svg>
-                  <span>{person.phone}</span>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Phone</label>
+                <input
+                  value={editForm.phone}
+                  onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="e.g. +63 912 345 6789"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Display title <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  maxLength={100}
+                  value={editForm.job_title}
+                  onChange={(e) => setEditForm((f) => ({ ...f, job_title: e.target.value }))}
+                  placeholder="e.g. Senior Sales Agent"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Bio <span className="text-gray-400 font-normal">(optional)</span></label>
+                <textarea
+                  rows={3}
+                  maxLength={300}
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm((f) => ({ ...f, bio: e.target.value }))}
+                  placeholder="A short intro…"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                />
+                <p className="text-xs text-gray-400 mt-1 text-right">{editForm.bio.length}/300</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Fun fact <span className="text-gray-400 font-normal">(optional)</span></label>
+                <input
+                  maxLength={150}
+                  value={editForm.fun_fact}
+                  onChange={(e) => setEditForm((f) => ({ ...f, fun_fact: e.target.value }))}
+                  placeholder="e.g. Can solve a Rubik's cube in under 2 minutes"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              {saveError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-lg">{saveError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditing(false)}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+                >
+                  {saving ? "Saving…" : "Save changes"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* ── View mode ──────────────────────────────────────── */
+            <>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {person.first_name} {person.last_name}
+                </h3>
+                {person.job_title && (
+                  <p className="text-sm text-gray-500 mt-0.5">{person.job_title}</p>
+                )}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {person.role && (() => {
+                    const { label, color } = tierLabel(person.role.tier);
+                    return (
+                      <>
+                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${color}`}>{label}</span>
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">{person.role.name}</span>
+                      </>
+                    );
+                  })()}
+                  {person.department && (
+                    <span className="px-2 py-0.5 text-xs rounded-full bg-gray-50 text-gray-500 border border-gray-200">
+                      {person.department.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact</h4>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                    </svg>
+                    <a href={`mailto:${person.email}`} className="hover:text-gray-900 truncate">{person.email}</a>
+                  </div>
+                  {person.phone && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                      </svg>
+                      <span>{person.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {person.bio && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">About</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">{person.bio}</p>
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* Bio */}
-          {person.bio && (
-            <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">About</h4>
-              <p className="text-sm text-gray-600 leading-relaxed">{person.bio}</p>
-            </div>
-          )}
+              {person.fun_fact && (
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-amber-700 mb-1">Fun fact</p>
+                  <p className="text-sm text-amber-800">{person.fun_fact}</p>
+                </div>
+              )}
 
-          {/* Fun fact */}
-          {person.fun_fact && (
-            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
-              <p className="text-xs font-semibold text-amber-700 mb-1">Fun fact</p>
-              <p className="text-sm text-amber-800">{person.fun_fact}</p>
-            </div>
-          )}
-
-          {/* Empty state for personalizations */}
-          {!person.bio && !person.fun_fact && !person.job_title && (
-            <div className="text-center py-4">
-              <p className="text-xs text-gray-400">
-                {person.first_name} hasn&apos;t added any personalizations yet.
-              </p>
-            </div>
+              {!person.bio && !person.fun_fact && !person.job_title && (
+                <div className="text-center py-4">
+                  <p className="text-xs text-gray-400">
+                    {person.first_name} hasn&apos;t added any personalizations yet.
+                    {canManage && " Click Edit above to fill them in."}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

@@ -50,6 +50,7 @@ export default async function AccountsPage() {
       departments={departments ?? []}
       roles={roles ?? []}
       currentUserId={currentUser.id}
+      currentUserTier={currentUser.role.tier}
       isOps={isOps(currentUser)}
     />
   );

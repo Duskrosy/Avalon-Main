@@ -16,26 +16,17 @@ export async function GET() {
 
   let query = supabase
     .from("profiles")
-    .select(`
-      *,
-      department:departments(id, name, slug),
-      role:roles(id, name, slug, tier)
-    `)
+    .select(`*, department:departments(id, name, slug), role:roles(id, name, slug, tier)`)
     .eq("status", "active")
     .is("deleted_at", null)
     .order("first_name");
 
-  // Managers (non-OPS) see only their department
   if (!isOps(currentUser) && isManagerOrAbove(currentUser)) {
     query = query.eq("department_id", currentUser.department_id);
   }
 
   const { data, error } = await query;
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ users: data });
 }
 
@@ -52,40 +43,49 @@ export async function POST(request: Request) {
   const { data: body, error: validationError } = validateBody(userPostSchema, raw);
   if (validationError) return validationError;
 
-  const { email, password, first_name, last_name, department_id, role_id, birthday, phone } = body;
+  const {
+    email, password, first_name, last_name, department_id, role_id, birthday, phone,
+    must_change_password = true,
+    require_mfa          = true,
+    allow_password_change = true,
+  } = body as typeof body & {
+    must_change_password?: boolean;
+    require_mfa?: boolean;
+    allow_password_change?: boolean;
+  };
 
-  // Managers can only create users in their own department
   if (!isOps(currentUser) && department_id !== currentUser.department_id) {
     return NextResponse.json({ error: "You can only create users in your own department" }, { status: 403 });
   }
 
-  // Managers cannot create OPS-tier users (tier <= 1)
-  if (!isOps(currentUser)) {
-    const { data: targetRole } = await supabase
-      .from("roles")
-      .select("tier")
-      .eq("id", role_id)
-      .single();
+  const admin = createAdminClient();
 
-    if (targetRole && targetRole.tier <= 1) {
+  // Validate the role tier
+  const { data: targetRole } = await admin.from("roles").select("tier").eq("id", role_id).single();
+
+  if (targetRole) {
+    // Cannot assign a role with strictly higher privilege than yourself
+    if (targetRole.tier < currentUser.role.tier) {
+      return NextResponse.json({ error: "You cannot assign a role with higher privileges than your own" }, { status: 403 });
+    }
+    // Non-OPS cannot assign OPS-tier roles
+    if (!isOps(currentUser) && targetRole.tier <= 1) {
       return NextResponse.json({ error: "You cannot assign OPS-level roles" }, { status: 403 });
+    }
+    // Require MFA must be on if role is OPS+
+    if (targetRole.tier <= 1 && !require_mfa) {
+      return NextResponse.json({ error: "MFA is required for OPS-level roles" }, { status: 400 });
     }
   }
 
-  const admin = createAdminClient();
-
-  // Create auth user
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
   });
 
-  if (authError) {
-    return NextResponse.json({ error: authError.message }, { status: 400 });
-  }
+  if (authError) return NextResponse.json({ error: authError.message }, { status: 400 });
 
-  // Create profile
   const { error: profileError } = await admin.from("profiles").insert({
     id: authData.user.id,
     email,
@@ -97,10 +97,12 @@ export async function POST(request: Request) {
     birthday: birthday || null,
     phone: phone || null,
     created_by: currentUser.id,
+    must_change_password,
+    require_mfa,
+    allow_password_change,
   });
 
   if (profileError) {
-    // Rollback: delete the auth user if profile creation fails
     await admin.auth.admin.deleteUser(authData.user.id);
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
