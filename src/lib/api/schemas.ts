@@ -10,15 +10,25 @@ const optUrl = z.string().url().optional().nullable();
 
 // ─── People / Leaves ─────────────────────────────────────────────────────────
 export const leavePostSchema = z.object({
-  leave_type: nonEmptyStr,
+  leave_type: z.enum(["sick", "vacation", "emergency"]),
   start_date: dateStr,
   end_date: dateStr,
   reason: optStr,
 });
 
+// Manager action: pre_approve (pending → pre_approved) or reject
+// OPS action: approve (pre_approved → approved) or reject
+// Employee action: cancel (own pending → cancelled)
 export const leavePatchSchema = z.object({
   leave_id: uuid,
-  action: z.enum(["approved", "rejected"]),
+  action: z.enum(["pre_approve", "approve", "reject", "cancel"]),
+});
+
+export const leaveCreditsSchema = z.object({
+  user_id: uuid,
+  sick_total: z.number().int().min(0).max(365).optional(),
+  vacation_total: z.number().int().min(0).max(365).optional(),
+  emergency_total: z.number().int().min(0).max(365).optional(),
 });
 
 // ─── Users ───────────────────────────────────────────────────────────────────
