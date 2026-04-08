@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import Image from "next/image";
 import { Avatar } from "@/components/ui/avatar";
+import { createClient } from "@/lib/supabase/client";
 import type { BirthdayPerson } from "./page";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -79,19 +80,20 @@ function BirthdayAvatar({
 // ─── Giphy search ─────────────────────────────────────────────────────────────
 
 function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
-  const [query, setQuery]   = useState("");
-  const [gifs, setGifs]     = useState<GifResult[]>([]);
+  const [query, setQuery]     = useState("");
+  const [gifs, setGifs]       = useState<GifResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [noKey, setNoKey]     = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const search = useCallback(async (q: string) => {
     const apiKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
-    if (!apiKey || q.trim().length < 2) { setGifs([]); return; }
+    if (!apiKey) { setNoKey(true); return; }
 
     setLoading(true);
     try {
       const endpoint = q.trim()
-        ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(q)}&limit=12&rating=g`
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(q.trim())}&limit=12&rating=g`
         : `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=12&rating=g`;
 
       const res  = await fetch(endpoint);
@@ -110,17 +112,28 @@ function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
     }
   }, []);
 
+  // Load trending immediately on mount
+  useEffect(() => { search(""); }, [search]);
+
   const handleChange = (v: string) => {
     setQuery(v);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => search(v), 400);
   };
 
+  if (noKey) {
+    return (
+      <p className="text-white/40 text-xs text-center py-3">
+        NEXT_PUBLIC_GIPHY_API_KEY not set — GIF search unavailable.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <input
         type="text"
-        placeholder="Search GIFs… (powered by Giphy)"
+        placeholder="Search GIFs…"
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -130,26 +143,27 @@ function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
           <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
-      {gifs.length > 0 && (
-        <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto">
+      {!loading && gifs.length > 0 && (
+        <div className="grid grid-cols-3 gap-1.5 max-h-52 overflow-y-auto rounded-lg">
           {gifs.map((g) => (
             <button
               key={g.id}
               onClick={() => onSelect(g)}
-              className="aspect-video rounded overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all"
+              className="aspect-video rounded overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all bg-white/5"
             >
-              <Image
+              {/* plain img — next/image doesn't handle animated GIFs well */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={g.preview}
                 alt={g.title}
-                width={120}
-                height={90}
                 className="w-full h-full object-cover"
-                unoptimized
+                loading="lazy"
               />
             </button>
           ))}
         </div>
       )}
+      <p className="text-white/20 text-[10px] text-right">Powered by Giphy</p>
     </div>
   );
 }
@@ -174,8 +188,12 @@ function BirthdayCardModal({
   const [msgText, setMsgText] = useState("");
   const [selectedGif, setSelectedGif] = useState<GifResult | null>(null);
   const [showGifPicker, setShowGifPicker] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const [photoFile, setPhotoFile]         = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview]   = useState<string | null>(null);
+  const [uploading, setUploading]         = useState(false);
+  const [submitting, setSubmitting]       = useState(false);
+  const [submitError, setSubmitError]     = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCelebrant = person.id === currentUserId;
 
@@ -200,18 +218,65 @@ function BirthdayCardModal({
 
   const myMessage = messages.find((m) => m.author_id === currentUserId);
 
+  const clearAttachment = () => {
+    setSelectedGif(null);
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setShowGifPicker(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setSubmitError("Image must be under 10 MB");
+      return;
+    }
+    setSelectedGif(null);
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+    setShowGifPicker(false);
+    setSubmitError("");
+  };
+
   const handleSubmit = async () => {
     if (!msgText.trim()) return;
     setSubmitting(true);
     setSubmitError("");
 
     try {
+      let attachmentUrl: string | null = selectedGif?.url ?? null;
+
+      // Upload photo if one was chosen
+      if (photoFile) {
+        setUploading(true);
+        const supabase = createClient();
+        const ext      = photoFile.name.split(".").pop() ?? "jpg";
+        const path     = `${person.id}/${Date.now()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("birthday-photos")
+          .upload(path, photoFile, { upsert: true });
+        setUploading(false);
+
+        if (uploadError) {
+          setSubmitError("Photo upload failed: " + uploadError.message);
+          setSubmitting(false);
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("birthday-photos")
+          .getPublicUrl(path);
+        attachmentUrl = urlData.publicUrl;
+      }
+
       const res = await fetch(`/api/birthday-cards/${person.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: msgText.trim(),
-          gif_url: selectedGif?.url ?? null,
+          gif_url: attachmentUrl,
           emoji: null,
         }),
       });
@@ -223,12 +288,12 @@ function BirthdayCardModal({
       await loadCard();
       setTab("messages");
       setMsgText("");
-      setSelectedGif(null);
-      setShowGifPicker(false);
+      clearAttachment();
     } catch {
       setSubmitError("Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   };
 
@@ -237,7 +302,7 @@ function BirthdayCardModal({
       await fetch(`/api/birthday-cards/${person.id}/messages`, { method: "DELETE" });
       await loadCard();
       setMsgText("");
-      setSelectedGif(null);
+      clearAttachment();
     } catch {
       // ignore
     }
@@ -337,13 +402,12 @@ function BirthdayCardModal({
                     <p className="text-white text-sm leading-relaxed">{m.message}</p>
                     {m.gif_url && (
                       <div className="rounded-lg overflow-hidden max-h-40">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={m.gif_url}
-                          alt="GIF"
-                          width={400}
-                          height={160}
-                          className="w-full object-cover"
-                          unoptimized
+                          alt="attachment"
+                          className="w-full object-cover max-h-40"
+                          loading="lazy"
                         />
                       </div>
                     )}
@@ -376,37 +440,53 @@ function BirthdayCardModal({
                 />
               </div>
 
-              {/* Selected GIF preview */}
-              {selectedGif && (
-                <div className="relative rounded-lg overflow-hidden max-h-36">
-                  <Image
-                    src={selectedGif.preview}
-                    alt="Selected GIF"
-                    width={400}
-                    height={144}
-                    className="w-full object-cover"
-                    unoptimized
+              {/* Attachment preview — GIF or photo */}
+              {(selectedGif || photoPreview) && (
+                <div className="relative rounded-lg overflow-hidden max-h-40 bg-white/5">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedGif ? selectedGif.preview : photoPreview!}
+                    alt="Attachment"
+                    className="w-full object-cover max-h-40"
                   />
                   <button
-                    onClick={() => { setSelectedGif(null); setShowGifPicker(false); }}
-                    className="absolute top-2 right-2 bg-black/60 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-black/80"
+                    onClick={clearAttachment}
+                    className="absolute top-2 right-2 bg-black/70 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-black/90"
                   >
                     ✕
                   </button>
                 </div>
               )}
 
-              {/* GIF toggle */}
-              {!selectedGif && (
-                <button
-                  onClick={() => setShowGifPicker(!showGifPicker)}
-                  className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
-                >
-                  {showGifPicker ? "Hide GIF picker" : "Add a GIF 🎞️"}
-                </button>
+              {/* Attachment buttons — only shown when nothing is selected */}
+              {!selectedGif && !photoPreview && (
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowGifPicker(!showGifPicker)}
+                    className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                  >
+                    {showGifPicker ? "Hide GIFs" : "Add GIF 🎞️"}
+                  </button>
+                  <span className="text-white/20 text-xs">or</span>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-sm text-amber-400 hover:text-amber-300 transition-colors"
+                  >
+                    Upload photo 📷
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
+                </div>
               )}
 
-              {showGifPicker && !selectedGif && (
+              {showGifPicker && !selectedGif && !photoPreview && (
                 <GifPicker
                   onSelect={(g) => {
                     setSelectedGif(g);
@@ -421,14 +501,13 @@ function BirthdayCardModal({
 
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !msgText.trim()}
+                disabled={submitting || uploading || !msgText.trim()}
                 className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
               >
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Saving…
-                  </>
+                {uploading ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Uploading photo…</>
+                ) : submitting ? (
+                  <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving…</>
                 ) : myMessage ? "Update message" : "Sign the card ✍️"}
               </button>
             </div>
