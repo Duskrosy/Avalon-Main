@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -19,7 +19,7 @@ import { createClient } from "@/lib/supabase/client";
  * is missing (e.g. different browser, incognito). A client component reads the
  * verifier cookie directly and is far more reliable.
  */
-export default function AuthConfirmPage() {
+function AuthConfirmInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const didRun = useRef(false);
@@ -89,5 +89,22 @@ export default function AuthConfirmPage() {
         <p className="text-sm text-gray-500">Signing you in…</p>
       </div>
     </div>
+  );
+}
+
+export default function AuthConfirmPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="w-8 h-8 border-2 border-[#3A5635] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Signing you in…</p>
+          </div>
+        </div>
+      }
+    >
+      <AuthConfirmInner />
+    </Suspense>
   );
 }
