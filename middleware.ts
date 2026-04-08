@@ -113,11 +113,13 @@ export default async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+
   const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/forgot-password") ||
-    request.nextUrl.pathname.startsWith("/auth/") ||
-    request.nextUrl.pathname.startsWith("/api/auth/");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/auth/") ||
+    pathname.startsWith("/api/auth/");
 
   if (!user && !isAuthRoute) {
     if (isApiRoute) {
@@ -126,6 +128,18 @@ export default async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  // ── Force password change ────────────────────────────────────────────────
+  // app_metadata is set by the PATCH /api/users/[id] route when a manager
+  // enables "must_change_password". Block all dashboard navigation until done.
+  if (user?.app_metadata?.must_change_password) {
+    // Allow auth routes and API calls (password update needs to reach the API)
+    if (!isAuthRoute && !isApiRoute) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
   }
 
   // ── Force sign-out: detected via app_metadata flag set by /api/users/[id]/signout ──

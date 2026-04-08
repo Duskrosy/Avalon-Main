@@ -106,6 +106,14 @@ export async function PATCH(
   const { error } = await admin.from("profiles").update(updates).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Keep app_metadata in sync so middleware can enforce must_change_password
+  // without a DB query on every request.
+  if (must_change_password !== undefined && "must_change_password" in updates) {
+    await admin.auth.admin.updateUserById(id, {
+      app_metadata: { must_change_password: updates.must_change_password ? true : null },
+    });
+  }
+
   return NextResponse.json({ message: "User updated" });
 }
 

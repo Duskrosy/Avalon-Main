@@ -4,7 +4,7 @@ import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Step = "credentials" | "mfa" | "forgot" | "magic";
+type Step = "credentials" | "mfa" | "forgot" | "magic" | "force_change";
 
 function LoginInner() {
   const router = useRouter();
@@ -28,9 +28,21 @@ function LoginInner() {
   // Magic link result
   const [magicSent, setMagicSent] = useState(false);
 
+  // Force change password
+  const [forceNew,     setForceNew]     = useState("");
+  const [forceConfirm, setForceConfirm] = useState("");
+
   // Error from OAuth redirect (e.g. no Avalon account)
   const searchParams = useSearchParams();
   const oauthError   = searchParams.get("error");
+
+  // If user already has a session but must change password, skip to that step
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.app_metadata?.must_change_password) setStep("force_change");
+    });
+  }, []);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -79,19 +91,12 @@ function LoginInner() {
       }
     }
 
-    // Check must_change_password — redirect to security settings if set
+    // Check must_change_password — show inline step instead of redirecting
     const { data: { user: loggedInUser } } = await supabase.auth.getUser();
-    if (loggedInUser) {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("must_change_password")
-        .eq("id", loggedInUser.id)
-        .maybeSingle();
-      if (prof?.must_change_password) {
-        router.push("/account/settings?tab=security");
-        router.refresh();
-        return;
-      }
+    if (loggedInUser?.app_metadata?.must_change_password) {
+      setLoading(false);
+      setStep("force_change");
+      return;
     }
 
     router.push("/");
@@ -176,6 +181,33 @@ function LoginInner() {
     setMagicSent(true);
   }
 
+  // ── Force change password ─────────────────────────────────────────────────
+
+  async function handleForceChange(e: React.FormEvent) {
+    e.preventDefault();
+    if (forceNew !== forceConfirm) { setError("Passwords don't match."); return; }
+    if (forceNew.length < 8) { setError("Password must be at least 8 characters."); return; }
+    setLoading(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: pwError } = await supabase.auth.updateUser({ password: forceNew });
+    if (pwError) { setError(pwError.message); setLoading(false); return; }
+
+    // Clear the flag on the profile (also clears app_metadata via the API route)
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await fetch(`/api/users/${user.id}`, {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ must_change_password: false }),
+      });
+    }
+
+    router.push("/");
+    router.refresh();
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -187,10 +219,11 @@ function LoginInner() {
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-gray-900">Avalon</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {step === "credentials" && "Sign in to your account"}
-              {step === "mfa"         && "Two-factor authentication"}
-              {step === "forgot"      && "Reset your password"}
-              {step === "magic"       && "Sign in with email link"}
+              {step === "credentials"  && "Sign in to your account"}
+              {step === "mfa"          && "Two-factor authentication"}
+              {step === "forgot"       && "Reset your password"}
+              {step === "magic"        && "Sign in with email link"}
+              {step === "force_change" && "Set a new password"}
             </p>
           </div>
 
@@ -442,6 +475,51 @@ function LoginInner() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* ── Force change password ───────────────────────────────────── */}
+          {step === "force_change" && (
+            <form onSubmit={handleForceChange} className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-sm text-amber-800 font-medium">Password change required</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Your account requires a new password before you can continue. You cannot skip this step.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={forceNew}
+                  onChange={(e) => setForceNew(e.target.value)}
+                  placeholder="At least 8 characters"
+                  autoFocus
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={forceConfirm}
+                  onChange={(e) => setForceConfirm(e.target.value)}
+                  placeholder="Repeat your new password"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              >
+                {loading ? "Saving…" : "Set new password"}
+              </button>
+            </form>
           )}
 
         </div>

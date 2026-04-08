@@ -61,15 +61,10 @@ function AuthConfirmInner() {
             return;
           }
 
-          // Redirect to password change if flagged
-          const { data: secProfile } = await supabase
-            .from("profiles")
-            .select("must_change_password")
-            .eq("id", user.id)
-            .maybeSingle();
-
-          if (secProfile?.must_change_password) {
-            router.replace("/account/settings?tab=security");
+          // Redirect to login (force_change step) if flagged — app_metadata
+          // is checked there so the step appears immediately.
+          if (user.app_metadata?.must_change_password) {
+            router.replace("/login");
             return;
           }
         }
