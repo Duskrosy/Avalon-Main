@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
@@ -56,13 +55,12 @@ export async function POST(request: Request) {
   const origin     = request.headers.get("origin") ?? "http://localhost:3000";
   const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent("/account/settings?tab=security")}`;
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+  const { error } = await admin.auth.resetPasswordForEmail(email.trim(), {
     redirectTo,
   });
 
   if (error) {
-    // Email send failed — show contact manager message
+    console.error("[forgot-password] resetPasswordForEmail failed:", error.message);
     return NextResponse.json({ contact_manager: true });
   }
 
