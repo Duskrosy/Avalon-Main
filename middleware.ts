@@ -50,7 +50,7 @@ function buildCsp(supabaseHost: string): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
-    `connect-src 'self' https://${supabaseHost} wss://${supabaseHost}`,
+    `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.giphy.com`,
     "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",

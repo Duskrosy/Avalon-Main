@@ -151,19 +151,19 @@ function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
         </div>
       )}
       {!loading && gifs.length > 0 && (
-        <div className="grid grid-cols-3 gap-1.5 max-h-52 overflow-y-auto rounded-lg">
+        <div className="grid grid-cols-3 gap-1.5 rounded-lg">
           {gifs.map((g) => (
             <button
               key={g.id}
               onClick={() => onSelect(g)}
-              className="aspect-video rounded overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all bg-white/5"
+              className="rounded overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all bg-white/5"
             >
               {/* plain img — next/image doesn't handle animated GIFs well */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={g.preview}
                 alt={g.title}
-                className="w-full h-full object-cover"
+                className="w-full h-auto"
                 loading="lazy"
               />
             </button>
@@ -186,11 +186,12 @@ function BirthdayCardModal({
   currentUserId: string;
   onClose: () => void;
 }) {
-  const [card, setCard]         = useState<BirthdayCard | null>(null);
-  const [messages, setMessages] = useState<BirthdayMessage[]>([]);
-  const [canSign, setCanSign]   = useState(false);
-  const [loading, setLoading]   = useState(true);
-  const [tab, setTab]           = useState<"messages" | "sign">("messages");
+  const [card, setCard]           = useState<BirthdayCard | null>(null);
+  const [messages, setMessages]   = useState<BirthdayMessage[]>([]);
+  const [canSign, setCanSign]     = useState(false);
+  const [forbidden, setForbidden] = useState(false);
+  const [loading, setLoading]     = useState(true);
+  const [tab, setTab]             = useState<"messages" | "sign">("messages");
 
   // Sign form state
   const [msgText, setMsgText] = useState("");
@@ -208,7 +209,8 @@ function BirthdayCardModal({
   const loadCard = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`/api/birthday-cards/${person.id}`);
+      const res = await fetch(`/api/birthday-cards/${person.id}`);
+      if (res.status === 403) { setForbidden(true); setLoading(false); return; }
       if (!res.ok) { setLoading(false); return; }
       const json: CardResponse = await res.json();
       if (json.card) {
@@ -328,7 +330,7 @@ function BirthdayCardModal({
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative w-full max-w-lg bg-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-white/10 max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-2xl bg-gray-900 rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "90vh" }}>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-5">
@@ -378,11 +380,18 @@ function BirthdayCardModal({
           )}
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        {/* Body — scrolls independently, header + tabs stay fixed */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
           {loading ? (
             <div className="flex justify-center py-8">
               <div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : forbidden ? (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <span className="text-3xl">🔒</span>
+              <p className="text-white/50 text-sm">
+                This card is now private — only visible to the birthday person.
+              </p>
             </div>
           ) : tab === "messages" ? (
             <>
@@ -420,17 +429,18 @@ function BirthdayCardModal({
                     </div>
                     <p className="text-white text-sm leading-relaxed">{m.message}</p>
                     {m.gif_url && (
-                      <div className="rounded-lg overflow-hidden max-h-40">
+                      <div className="rounded-lg overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={m.gif_url}
                           alt="attachment"
-                          className="w-full object-cover max-h-40"
+                          className="w-full h-auto"
                           loading="lazy"
                         />
                       </div>
                     )}
-                    {m.author_id === currentUserId && (
+                    {/* Only show remove button on the birthday day itself */}
+                    {m.author_id === currentUserId && canSign && (
                       <button
                         onClick={handleDelete}
                         className="text-xs text-red-400 hover:text-red-300 transition-colors"
@@ -461,12 +471,12 @@ function BirthdayCardModal({
 
               {/* Attachment preview — GIF or photo */}
               {(selectedGif || photoPreview) && (
-                <div className="relative rounded-lg overflow-hidden max-h-40 bg-white/5">
+                <div className="relative rounded-lg overflow-hidden bg-white/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={selectedGif ? selectedGif.preview : photoPreview!}
                     alt="Attachment"
-                    className="w-full object-cover max-h-40"
+                    className="w-full h-auto"
                   />
                   <button
                     onClick={clearAttachment}
