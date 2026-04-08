@@ -347,6 +347,17 @@ export function AccountsView({
     return targetTier >= currentUserTier; // cannot edit users with strictly higher privilege
   }
 
+  // ── Force sign out ────────────────────────────────────────────────────────
+
+  async function handleForceSignOut(userId: string, name: string) {
+    if (!confirm(`Force sign out ${name}?\n\nThis will end all their active sessions immediately. They will need to sign in again.`)) return;
+
+    const res  = await fetch(`/api/users/${userId}/signout`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error); return; }
+    alert(`${name} has been signed out of all devices.`);
+  }
+
   // ── Deactivate ────────────────────────────────────────────────────────────
 
   async function handleDeactivate(userId: string, name: string) {
@@ -530,6 +541,14 @@ export function AccountsView({
                           className="text-xs text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100"
                         >
                           Edit
+                        </button>
+                      )}
+                      {user.id !== currentUserId && canEdit(user) && (
+                        <button
+                          onClick={() => handleForceSignOut(user.id, `${user.first_name} ${user.last_name}`)}
+                          className="text-xs text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50"
+                        >
+                          Sign out
                         </button>
                       )}
                       {isOps && user.id !== currentUserId && canEdit(user) && (
