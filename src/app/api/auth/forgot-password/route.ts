@@ -5,13 +5,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * POST /api/auth/forgot-password
  * Body: { email: string }
  *
- * Checks allow_password_change before sending a reset email.
- * Returns { contact_manager: true } instead of sending email when:
- *   - User is not found
- *   - allow_password_change is false
- *   - Email send fails
- *
- * Never reveals whether an email exists (returns contact_manager in all failure cases).
+ * Sends a Supabase password-reset email.
+ * Returns { contact_manager: true } only when allow_password_change is
+ * explicitly false for that user. Every other failure path still sends
+ * the email (or lets Supabase silently no-op for unknown addresses).
  */
 export async function POST(request: Request) {
   const { email } = await request.json();
@@ -20,49 +17,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
+  const clean = email.toLowerCase().trim();
   const admin = createAdminClient();
 
-  // Step 1: check user exists and isn't soft-deleted
-  // Note: we intentionally do NOT filter by status — a user in 'pending' or
-  // 'inactive' state should still be able to reset their password.
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("email", email.toLowerCase().trim())
-    .is("deleted_at", null)
-    .single();
-
-  if (profileError || !profile) {
-    console.error("[forgot-password] profile lookup failed:", profileError?.message ?? "not found");
-    return NextResponse.json({ contact_manager: true });
-  }
-
-  // Step 2: check allow_password_change (column may not exist yet if migration 00028
-  // hasn't been run — treat missing column as "allowed")
+  // Only block the email if allow_password_change is explicitly false.
+  // Use a try/catch so a missing column (migration 00028 not yet run) never
+  // prevents the reset from going out.
   try {
-    const { data: secData } = await admin
+    const { data: profile } = await admin
       .from("profiles")
       .select("allow_password_change")
-      .eq("id", profile.id)
-      .single();
+      .eq("email", clean)
+      .is("deleted_at", null)
+      .maybeSingle(); // won't error on zero rows
 
-    if (secData && secData.allow_password_change === false) {
+    if (profile && profile.allow_password_change === false) {
       return NextResponse.json({ contact_manager: true });
     }
-  } catch {
-    // Column doesn't exist yet — default to allowing password reset
+  } catch (err) {
+    // Table column missing or DB error — don't block the reset
+    console.warn("[forgot-password] allow_password_change check failed, proceeding:", err);
   }
 
-  // Build redirect URL from the incoming request origin
   const origin     = request.headers.get("origin") ?? "http://localhost:3000";
   const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent("/account/settings?tab=security")}`;
 
-  const { error } = await admin.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo,
-  });
+  const { error } = await admin.auth.resetPasswordForEmail(clean, { redirectTo });
 
   if (error) {
     console.error("[forgot-password] resetPasswordForEmail failed:", error.message);
+    // Don't expose the reason — just tell them to contact their manager
     return NextResponse.json({ contact_manager: true });
   }
 
