@@ -91,8 +91,10 @@ function CreditsModal({
   const [search, setSearch]   = useState("");
   const [view, setView]       = useState<"limit" | "balance">("limit");
 
-  // Per-row edits: user_id → { sick, vacation, emergency }
+  // Credit Limit edits (edit the total allocation)
   const [edits, setEdits]   = useState<Record<string, { sick: number; vacation: number; emergency: number }>>({});
+  // Current Balance edits (edit the remaining days directly — computes new total = used + remaining)
+  const [balanceEdits, setBalanceEdits] = useState<Record<string, { sick: number; vacation: number; emergency: number }>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saved, setSaved]   = useState<Record<string, boolean>>({});
 
@@ -173,6 +175,33 @@ function CreditsModal({
     setTimeout(() => setSaved((prev) => ({ ...prev, [row.user_id]: false })), 2000);
   }
 
+  // Save balance: compute new total = used + desired_remaining, then PATCH
+  async function saveBalance(row: CreditRow) {
+    const be = balanceEdits[row.user_id];
+    if (!be) return;
+    setSaving((prev) => ({ ...prev, [row.user_id]: true }));
+    const newTotals = {
+      sick_total:      row.used.sick      + (be.sick      ?? Math.max(0, row.totals.sick - row.used.sick)),
+      vacation_total:  row.used.vacation  + (be.vacation  ?? Math.max(0, row.totals.vacation - row.used.vacation)),
+      emergency_total: row.used.emergency + (be.emergency ?? Math.max(0, row.totals.emergency - row.used.emergency)),
+    };
+    await fetch("/api/leaves/credits", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: row.user_id, ...newTotals }),
+    });
+    setSaving((prev) => ({ ...prev, [row.user_id]: false }));
+    setSaved((prev)  => ({ ...prev, [row.user_id]: true }));
+    setRows((prev) =>
+      prev.map((r) => r.user_id === row.user_id
+        ? { ...r, totals: { sick: newTotals.sick_total, vacation: newTotals.vacation_total, emergency: newTotals.emergency_total } }
+        : r
+      )
+    );
+    setBalanceEdits((prev) => { const n = { ...prev }; delete n[row.user_id]; return n; });
+    setTimeout(() => setSaved((prev) => ({ ...prev, [row.user_id]: false })), 2000);
+  }
+
   async function applyBulk() {
     const targetIds = filtered.map((r) => r.user_id);
     if (targetIds.length === 0) return;
@@ -191,6 +220,7 @@ function CreditsModal({
     setBulkSaved(true);
     fetchCredits();
     setEdits({});
+    setBalanceEdits({});
     setTimeout(() => setBulkSaved(false), 2000);
   }
 
@@ -312,7 +342,7 @@ function CreditsModal({
         {view === "balance" && (
           <div className="px-6 py-2.5 bg-gray-50 border-b border-gray-100 shrink-0">
             <p className="text-xs text-gray-500">
-              Shows each employee's <strong>remaining days</strong> for this year (limit minus days already taken). Green = plenty left, amber = running low, red = nearly gone.
+              Shows <strong>remaining days</strong> for this year. Edit any number to manually set someone&apos;s balance — it adjusts their credit limit accordingly. Green = plenty, amber = low, red = nearly gone.
             </p>
           </div>
         )}
@@ -322,24 +352,14 @@ function CreditsModal({
           "grid gap-2 items-center px-6 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider sticky top-0 shrink-0",
           view === "limit"
             ? "grid-cols-[1fr_70px_70px_80px_90px_56px]"
-            : "grid-cols-[1fr_1fr_1fr_1fr]"
+            : "grid-cols-[1fr_70px_70px_80px_56px]"
         )}>
           <span>Employee</span>
-          {view === "limit" ? (
-            <>
-              <span className="text-center">Sick</span>
-              <span className="text-center">Vacation</span>
-              <span className="text-center">Emergency</span>
-              <span className="text-center">Reset</span>
-              <span />
-            </>
-          ) : (
-            <>
-              <span className="text-center">Sick</span>
-              <span className="text-center">Vacation</span>
-              <span className="text-center">Emergency</span>
-            </>
-          )}
+          <span className="text-center">Sick</span>
+          <span className="text-center">Vacation</span>
+          <span className="text-center">Emergency</span>
+          {view === "limit" ? <span className="text-center">Reset</span> : null}
+          <span />
         </div>
 
         {/* Employee list */}
@@ -374,26 +394,73 @@ function CreditsModal({
                   return "text-red-600 font-semibold";
                 }
 
+                const isBalanceDirty = !!balanceEdits[row.user_id];
+
                 if (view === "balance") {
                   return (
                     <div
                       key={row.user_id}
-                      className="grid grid-cols-[1fr_1fr_1fr_1fr] gap-2 items-center px-6 py-3 hover:bg-gray-50 transition-colors"
+                      className={cn(
+                        "grid grid-cols-[1fr_70px_70px_80px_56px] gap-2 items-center px-6 py-3 hover:bg-gray-50 transition-colors",
+                        isBalanceDirty && "bg-amber-50"
+                      )}
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {row.first_name} {row.last_name}
                         </p>
-                        <p className="text-xs text-gray-400">{row.department?.name ?? "No dept"}</p>
+                        <p className="text-xs text-gray-400">{row.department?.name ?? "No dept"} · {row.used.sick}s / {row.used.vacation}v / {row.used.emergency}e used</p>
                       </div>
-                      {(["sick", "vacation", "emergency"] as const).map((t) => (
-                        <div key={t} className="text-center">
-                          <p className={cn("text-base", balanceColor(remaining[t], row.totals[t]))}>
-                            {remaining[t]}
-                          </p>
-                          <p className="text-xs text-gray-400">of {row.totals[t]} · {row.used[t]} used</p>
-                        </div>
-                      ))}
+                      {(["sick", "vacation", "emergency"] as const).map((t) => {
+                        const currentRemaining = balanceEdits[row.user_id]?.[t] ?? remaining[t];
+                        return (
+                          <div key={t} className="text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={365}
+                              value={currentRemaining}
+                              onChange={(e) => {
+                                setBalanceEdits((prev) => ({
+                                  ...prev,
+                                  [row.user_id]: {
+                                    sick:      prev[row.user_id]?.sick      ?? remaining.sick,
+                                    vacation:  prev[row.user_id]?.vacation  ?? remaining.vacation,
+                                    emergency: prev[row.user_id]?.emergency ?? remaining.emergency,
+                                    [t]: Math.max(0, Number(e.target.value)),
+                                  },
+                                }));
+                                setSaved((prev) => ({ ...prev, [row.user_id]: false }));
+                              }}
+                              className={cn(
+                                "w-full border rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-gray-900 transition-colors",
+                                isBalanceDirty ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white",
+                                balanceColor(currentRemaining, row.totals[t]).replace("font-semibold", "")
+                              )}
+                            />
+                            <p className="text-xs text-gray-400 mt-0.5">{row.used[t]} used</p>
+                          </div>
+                        );
+                      })}
+                      {/* Save */}
+                      <div className="flex justify-center">
+                        {isSaved ? (
+                          <span className="text-xs text-green-600 font-medium">Saved ✓</span>
+                        ) : (
+                          <button
+                            onClick={() => saveBalance(row)}
+                            disabled={!isBalanceDirty || isSaving}
+                            className={cn(
+                              "text-xs px-3 py-1.5 rounded-lg font-medium transition-colors",
+                              isBalanceDirty
+                                ? "bg-gray-900 text-white hover:bg-gray-700"
+                                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            )}
+                          >
+                            {isSaving ? "…" : "Save"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 }

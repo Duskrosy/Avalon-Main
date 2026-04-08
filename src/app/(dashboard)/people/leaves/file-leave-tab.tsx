@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { format, isWithinInterval, parseISO, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -12,10 +13,34 @@ type Credits = {
 
 type LeaveType = "sick" | "vacation" | "emergency";
 
-const TYPE_CONFIG: Record<LeaveType, { label: string; color: string; description: string }> = {
-  sick:      { label: "Sick Leave",      color: "blue",   description: "Illness or medical appointment" },
-  vacation:  { label: "Vacation Leave",  color: "green",  description: "Planned time off" },
-  emergency: { label: "Emergency Leave", color: "red",    description: "Unexpected urgent situation" },
+type TeamLeave = {
+  id: string;
+  leave_type: LeaveType;
+  start_date: string;
+  end_date: string;
+  status: string;
+  profile?: { first_name: string; last_name: string } | null;
+};
+
+const TYPE_CONFIG: Record<LeaveType, { label: string; description: string; policy: string; icon: string }> = {
+  sick:      {
+    label:       "Sick Leave",
+    description: "Illness or medical appointment",
+    policy:      "Can be backdated up to 5 days. Supporting documents may be requested.",
+    icon:        "🤒",
+  },
+  vacation:  {
+    label:       "Vacation Leave",
+    description: "Planned time off",
+    policy:      "Must be filed in advance. Cannot start in the past.",
+    icon:        "🏖️",
+  },
+  emergency: {
+    label:       "Emergency Leave",
+    description: "Unexpected urgent situation",
+    policy:      "Can be filed for any date. No advance notice required.",
+    icon:        "🚨",
+  },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -24,17 +49,16 @@ function toDateStr(d: Date): string {
   return d.toISOString().split("T")[0];
 }
 
-/** Returns the min selectable date string based on leave type */
 function getMinDate(type: LeaveType): string | undefined {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (type === "emergency") return undefined; // no restriction
+  if (type === "emergency") return undefined;
   if (type === "sick") {
     const d = new Date(today);
     d.setDate(d.getDate() - 5);
     return toDateStr(d);
   }
-  return toDateStr(today); // vacation: today and future only
+  return toDateStr(today);
 }
 
 function getBarColor(remaining: number, total: number): string {
@@ -73,6 +97,118 @@ function CreditBar({ type, totals, used }: { type: LeaveType; totals: Credits["t
   );
 }
 
+// ─── Who's off panel ─────────────────────────────────────────────────────────
+
+function WhoIsOffPanel() {
+  const [leaves, setLeaves] = useState<TeamLeave[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/leaves?scope=department")
+      .then((r) => r.json())
+      .then((d) => {
+        // Show approved + pre_approved leaves
+        setLeaves((d.leaves ?? []).filter((l: TeamLeave) =>
+          l.status === "approved" || l.status === "pre_approved"
+        ));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const twoWeeks = addDays(today, 14);
+
+  const upcoming = leaves.filter((l) => {
+    try {
+      const end = parseISO(l.end_date);
+      return end >= today && parseISO(l.start_date) <= twoWeeks;
+    } catch { return false; }
+  }).sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+  const onLeaveToday = upcoming.filter((l) => {
+    try {
+      return isWithinInterval(today, { start: parseISO(l.start_date), end: parseISO(l.end_date) });
+    } catch { return false; }
+  });
+
+  const soonLeaves = upcoming.filter((l) => !onLeaveToday.find((o) => o.id === l.id));
+
+  function leaveChip(l: TeamLeave) {
+    const name = l.profile ? `${l.profile.first_name} ${l.profile.last_name}` : "Someone";
+    const isPre = l.status === "pre_approved";
+    const sameDay = l.start_date === l.end_date;
+    const dateLabel = sameDay
+      ? format(parseISO(l.start_date), "MMM d")
+      : `${format(parseISO(l.start_date), "MMM d")} – ${format(parseISO(l.end_date), "MMM d")}`;
+
+    return (
+      <div key={l.id} className="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
+        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-500 shrink-0">
+          {(l.profile?.first_name?.[0] ?? "") + (l.profile?.last_name?.[0] ?? "")}
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-gray-800 truncate">{name}</p>
+          <p className="text-xs text-gray-400">
+            {TYPE_CONFIG[l.leave_type]?.label} · {dateLabel}
+            {isPre && <span className="ml-1 text-amber-500">· awaiting approval</span>}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* On leave today */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">
+          On leave today
+          {!loading && <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">{onLeaveToday.length}</span>}
+        </h3>
+        {loading ? (
+          <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}</div>
+        ) : onLeaveToday.length === 0 ? (
+          <p className="text-xs text-gray-400">Everyone is in today.</p>
+        ) : (
+          <div>{onLeaveToday.map(leaveChip)}</div>
+        )}
+      </div>
+
+      {/* Upcoming in next 14 days */}
+      {!loading && soonLeaves.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Coming up (14 days)</h3>
+          <div>{soonLeaves.slice(0, 5).map(leaveChip)}</div>
+        </div>
+      )}
+
+      {/* Leave policy quick reference */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Leave policies</h3>
+        <div className="space-y-3">
+          {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => {
+            const cfg = TYPE_CONFIG[t];
+            return (
+              <div key={t} className="flex gap-2.5">
+                <span className="text-base shrink-0 mt-0.5">{cfg.icon}</span>
+                <div>
+                  <p className="text-xs font-semibold text-gray-800">{cfg.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{cfg.policy}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-50">
+          All leave requests go through a two-step approval: manager pre-approval, then OPS final approval.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
@@ -99,7 +235,6 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
 
   useEffect(() => { fetchCredits(); }, [fetchCredits]);
 
-  // Reset dates when leave type changes (different min-date rules)
   function handleTypeChange(type: LeaveType) {
     setForm((f) => ({ ...f, leave_type: type, start_date: "", end_date: "" }));
     setError(null);
@@ -135,145 +270,154 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
     setTimeout(() => { setSuccess(false); onSubmitted(); }, 1500);
   }
 
-  const minDate = getMinDate(form.leave_type);
+  const minDate   = getMinDate(form.leave_type);
   const remaining = credits
     ? Math.max(0, credits.totals[form.leave_type] - credits.used[form.leave_type])
     : null;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
 
-      {/* ── Credit Mini-Dashboard ── */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Leave Balance · {new Date().getFullYear()}</h2>
-        {creditsLoading ? (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />
-            ))}
-          </div>
-        ) : credits ? (
-          <div className="space-y-4">
-            {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => (
-              <CreditBar key={t} type={t} totals={credits.totals} used={credits.used} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-400">Could not load credits.</p>
-        )}
-      </div>
+      {/* ── Left column ── */}
+      <div className="space-y-6">
 
-      {/* ── Leave Request Form ── */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">File a Leave</h2>
-
-        {success && (
-          <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
-            ✓ Leave request submitted successfully
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-
-          {/* Leave type — card selector */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-2">Leave type</label>
-            <div className="grid grid-cols-3 gap-2">
-              {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => {
-                const cfg = TYPE_CONFIG[t];
-                const active = form.leave_type === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => handleTypeChange(t)}
-                    className={cn(
-                      "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
-                      active
-                        ? "border-gray-900 bg-gray-900 text-white"
-                        : "border-gray-200 hover:border-gray-400 text-gray-700"
-                    )}
-                  >
-                    <span className="text-sm font-semibold">{cfg.label}</span>
-                    <span className={cn("text-xs mt-0.5", active ? "text-gray-300" : "text-gray-400")}>
-                      {cfg.description}
-                    </span>
-                  </button>
-                );
-              })}
+        {/* Credit Dashboard */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">
+            Leave Balance · {new Date().getFullYear()}
+          </h2>
+          {creditsLoading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+              ))}
             </div>
-
-            {/* Hint for date restriction */}
-            <p className="mt-2 text-xs text-gray-400">
-              {form.leave_type === "vacation" && "Vacation leave must be filed in advance."}
-              {form.leave_type === "sick"      && "Sick leave can be backdated up to 5 days."}
-              {form.leave_type === "emergency" && "Emergency leave can be filed for any date."}
-            </p>
-
-            {remaining !== null && remaining <= 1 && (
-              <p className={cn(
-                "mt-1 text-xs font-medium",
-                remaining === 0 ? "text-red-600" : "text-amber-600"
-              )}>
-                {remaining === 0
-                  ? `No ${TYPE_CONFIG[form.leave_type].label} credits remaining — request will still be submitted.`
-                  : `Only ${remaining} day remaining.`}
-              </p>
-            )}
-          </div>
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
-              <input
-                type="date"
-                required
-                min={minDate}
-                value={form.start_date}
-                onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-              />
+          ) : credits ? (
+            <div className="space-y-4">
+              {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => (
+                <CreditBar key={t} type={t} totals={credits.totals} used={credits.used} />
+              ))}
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">End date</label>
-              <input
-                type="date"
-                required
-                min={form.start_date || minDate}
-                value={form.end_date}
-                onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-              />
+          ) : (
+            <p className="text-sm text-gray-400">Could not load credits.</p>
+          )}
+        </div>
+
+        {/* Leave Request Form */}
+        <div className="bg-white border border-gray-200 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">File a Leave</h2>
+
+          {success && (
+            <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
+              ✓ Leave request submitted — you&apos;ll be notified once it&apos;s reviewed.
             </div>
-          </div>
-
-          {/* Reason */}
-          <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Reason <span className="text-gray-400 font-normal">(optional)</span>
-            </label>
-            <textarea
-              rows={3}
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value })}
-              placeholder="Add any context for your manager…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
-            />
-          </div>
-
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            {submitting ? "Submitting…" : "Submit leave request"}
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="space-y-5">
+
+            {/* Leave type */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-2">Leave type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => {
+                  const cfg = TYPE_CONFIG[t];
+                  const active = form.leave_type === t;
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => handleTypeChange(t)}
+                      className={cn(
+                        "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
+                        active
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 hover:border-gray-400 text-gray-700"
+                      )}
+                    >
+                      <span className="text-base mb-1">{cfg.icon}</span>
+                      <span className="text-sm font-semibold leading-tight">{cfg.label}</span>
+                      <span className={cn("text-xs mt-0.5", active ? "text-gray-300" : "text-gray-400")}>
+                        {cfg.description}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="mt-2 text-xs text-gray-400">
+                {TYPE_CONFIG[form.leave_type].policy}
+              </p>
+
+              {remaining !== null && remaining <= 1 && (
+                <p className={cn(
+                  "mt-1 text-xs font-medium",
+                  remaining === 0 ? "text-red-600" : "text-amber-600"
+                )}>
+                  {remaining === 0
+                    ? `No ${TYPE_CONFIG[form.leave_type].label} days remaining — you can still submit.`
+                    : `Only ${remaining} day remaining.`}
+                </p>
+              )}
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+                <input
+                  type="date"
+                  required
+                  min={minDate}
+                  value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">End date</label>
+                <input
+                  type="date"
+                  required
+                  min={form.start_date || minDate}
+                  value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Reason <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                rows={3}
+                value={form.reason}
+                onChange={(e) => setForm({ ...form, reason: e.target.value })}
+                placeholder="Add context for your manager…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {submitting ? "Submitting…" : "Submit leave request"}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      {/* ── Right column ── */}
+      <div className="lg:sticky lg:top-4">
+        <WhoIsOffPanel />
       </div>
     </div>
   );

@@ -52,15 +52,13 @@ export async function GET(req: NextRequest) {
 
   const events: CalendarEvent[] = [];
 
-  // --- LEAVES ---
-  let leavesQuery = supabase
+  // --- LEAVES (approved + pre_approved) ---
+  const { data: leaves } = await supabase
     .from("leaves")
-    .select("id, leave_type, start_date, end_date, profile:profiles!user_id(id, first_name, last_name, department_id)")
-    .eq("status", "approved")
+    .select("id, leave_type, start_date, end_date, status, profile:profiles!user_id(id, first_name, last_name, department_id)")
+    .in("status", ["approved", "pre_approved"])
     .lte("start_date", lastStr)
     .gte("end_date", firstStr);
-
-  const { data: leaves } = await leavesQuery;
 
   for (const l of leaves ?? []) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,13 +66,14 @@ export async function GET(req: NextRequest) {
     // Non-OPS: only show leaves from own department
     if (!ops && profile?.department_id && profile.department_id !== deptId) continue;
     const name = profile ? `${profile.first_name} ${profile.last_name}` : "Someone";
+    const isPreApproved = l.status === "pre_approved";
     events.push({
       id: l.id,
-      title: `${name} — ${l.leave_type.replace(/_/g, " ")}`,
+      title: `${name} — ${l.leave_type.replace(/_/g, " ")}${isPreApproved ? " (pending)" : ""}`,
       date: l.start_date,
       end_date: l.end_date,
       type: "leave",
-      color: "#f59e0b",
+      color: isPreApproved ? "#fcd34d" : "#f59e0b",
     });
   }
 

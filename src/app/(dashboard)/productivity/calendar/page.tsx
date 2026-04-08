@@ -35,11 +35,11 @@ export default async function CalendarPage() {
   const firstStr = `${month}-01`;
   const lastStr  = new Date(year, mon, 0).toISOString().split("T")[0];
 
-  // Leaves
+  // Leaves (approved + pre_approved)
   let leavesQ = supabase
     .from("leaves")
-    .select("id, leave_type, start_date, end_date, profile:profiles!user_id(first_name, last_name, department_id)")
-    .eq("status", "approved")
+    .select("id, leave_type, start_date, end_date, status, profile:profiles!user_id(first_name, last_name, department_id)")
+    .in("status", ["approved", "pre_approved"])
     .lte("start_date", lastStr)
     .gte("end_date", firstStr);
 
@@ -99,7 +99,15 @@ export default async function CalendarPage() {
     const p = l.profile as any;
     if (!ops && p?.department_id && p.department_id !== deptId) continue;
     const name = p ? `${p.first_name} ${p.last_name}` : "Someone";
-    events.push({ id: l.id, title: `${name} — ${l.leave_type.replace(/_/g, " ")}`, date: l.start_date, end_date: l.end_date, type: "leave", color: "#f59e0b" });
+    const isPreApproved = l.status === "pre_approved";
+    events.push({
+      id: l.id,
+      title: `${name} — ${l.leave_type.replace(/_/g, " ")}${isPreApproved ? " (pending)" : ""}`,
+      date: l.start_date,
+      end_date: l.end_date,
+      type: "leave",
+      color: isPreApproved ? "#fcd34d" : "#f59e0b",
+    });
   }
 
   for (const p of birthdaysRes.data ?? []) {
