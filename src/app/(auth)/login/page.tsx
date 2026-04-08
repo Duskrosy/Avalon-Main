@@ -23,7 +23,7 @@ export default function LoginPage() {
   const mfaInputRef = useRef<HTMLInputElement>(null);
 
   // Forgot password result
-  const [forgotResult, setForgotResult] = useState<"sent" | "contact_manager" | null>(null);
+  const [forgotSent, setForgotSent] = useState(false);
 
   // Magic link result
   const [magicSent, setMagicSent] = useState(false);
@@ -33,7 +33,7 @@ export default function LoginPage() {
   function goTo(s: Step) {
     setStep(s);
     setError(null);
-    setForgotResult(null);
+    setForgotSent(false);
     setMagicSent(false);
   }
 
@@ -111,19 +111,13 @@ export default function LoginPage() {
     setError(null);
     setForgotResult(null);
 
-    const res  = await fetch("/api/auth/forgot-password", {
+    await fetch("/api/auth/forgot-password", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ email }),
     });
-    const data = await res.json();
     setLoading(false);
-
-    if (data.contact_manager) {
-      setForgotResult("contact_manager");
-    } else {
-      setForgotResult("sent");
-    }
+    setForgotSent(true);
   }
 
   // ── Magic link ────────────────────────────────────────────────────────────
@@ -288,7 +282,7 @@ export default function LoginPage() {
                 <span aria-hidden="true">←</span> Back to sign in
               </button>
 
-              {!forgotResult ? (
+              {!forgotSent ? (
                 <form onSubmit={handleForgot} className="space-y-4">
                   <p className="text-sm text-gray-500">
                     Enter your registered email and we&apos;ll send you a reset link.
@@ -313,32 +307,22 @@ export default function LoginPage() {
                     {loading ? "Sending…" : "Send reset link"}
                   </button>
                 </form>
-              ) : forgotResult === "sent" ? (
-                <div className="text-center space-y-3 py-2">
+              ) : (
+                <div className="text-center space-y-4 py-2">
                   <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto">
                     <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">Check your email</p>
-                  <p className="text-xs text-gray-500">
-                    We sent a password reset link to <strong>{email}</strong>. Click the link in the email to set a new password.
-                  </p>
-                </div>
-              ) : (
-                /* contact_manager */
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-4 space-y-2">
-                  <div className="flex items-start gap-2">
-                    <svg className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-semibold text-amber-800">Please notify your manager to change your password.</p>
-                      <p className="text-xs text-amber-700 mt-1">
-                        We weren&apos;t able to send a reset link to this email. Your manager or an OPS Admin can update your password from the User Accounts page.
-                      </p>
-                    </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Check your email</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      If a reset link was sent, it will arrive at <strong>{email}</strong> shortly.
+                    </p>
                   </div>
+                  <p className="text-xs text-gray-400 border-t border-gray-100 pt-3">
+                    If you don&apos;t have an active email address linked to your Avalon account, or you&apos;re not allowed to change your password, please contact your manager.
+                  </p>
                 </div>
               )}
             </div>
