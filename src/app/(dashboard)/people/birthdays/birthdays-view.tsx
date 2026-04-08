@@ -246,9 +246,9 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
                     </div>
                     <p className="text-white text-sm leading-relaxed">{m.message}</p>
                     {m.gif_url && (
-                      <div className="rounded-lg overflow-hidden max-h-64">
+                      <div className="rounded-lg overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={m.gif_url} alt="attachment" className="w-full h-full object-cover" loading="lazy" />
+                        <img src={m.gif_url} alt="attachment" className="max-h-72 w-auto max-w-full mx-auto block" loading="lazy" />
                       </div>
                     )}
                     {m.author_id === currentUserId && canSign && (
@@ -268,9 +268,9 @@ function BirthdayCardModal({ person, currentUserId, onClose }: { person: Birthda
                 />
               </div>
               {(selectedGif || photoPreview) && (
-                <div className="relative rounded-lg overflow-hidden max-h-52 bg-white/5">
+                <div className="relative rounded-lg overflow-hidden bg-white/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={selectedGif ? selectedGif.preview : photoPreview!} alt="Attachment" className="w-full h-full object-cover" />
+                  <img src={selectedGif ? selectedGif.preview : photoPreview!} alt="Attachment" className="max-h-64 w-auto max-w-full mx-auto block" />
                   <button onClick={clearAttachment} className="absolute top-2 right-2 bg-black/70 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-black/90">✕</button>
                 </div>
               )}
