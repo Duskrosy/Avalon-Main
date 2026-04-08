@@ -266,10 +266,11 @@ function DiscordSection({ userId }: { userId: string }) {
     setError(null);
     const supabase   = createClient();
     const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/account/settings")}`;
-    const { error: linkError } = await supabase.auth.linkIdentity({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: linkError } = await (supabase.auth.linkIdentity as any)({
       provider: "discord",
       options:  { redirectTo },
-    } as Parameters<typeof supabase.auth.linkIdentity>[0]);
+    });
     if (linkError) { setError(linkError.message); setWorking(false); }
     // On success the browser redirects to Discord — no further handling needed
   }
@@ -280,9 +281,8 @@ function DiscordSection({ userId }: { userId: string }) {
     setWorking(true);
     setError(null);
     const supabase = createClient();
-    const { error: unlinkError } = await supabase.auth.unlinkIdentity(
-      identity as Parameters<typeof supabase.auth.unlinkIdentity>[0]
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: unlinkError } = await (supabase.auth.unlinkIdentity as any)(identity);
     if (unlinkError) {
       setError(unlinkError.message);
     } else {
