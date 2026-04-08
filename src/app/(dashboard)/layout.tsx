@@ -109,6 +109,7 @@ export default async function DashboardLayout({
 
   const userName = `${user.first_name} ${user.last_name}`;
   const userInitials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
+  const userAvatarUrl = user.avatar_url ?? null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,6 +117,7 @@ export default async function DashboardLayout({
         navigation={navigation}
         userName={userName}
         userInitials={userInitials}
+        userAvatarUrl={userAvatarUrl}
         departmentName={user.department?.name ?? ""}
         isOps={userIsOps}
         departments={departments}

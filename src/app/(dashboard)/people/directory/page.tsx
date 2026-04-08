@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/permissions";
+import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { DirectoryView } from "./directory-view";
 
@@ -9,11 +9,15 @@ export default async function DirectoryPage() {
 
   if (!currentUser) redirect("/login");
 
+  const canManageProfiles =
+    isManagerOrAbove(currentUser) || currentUser.department?.slug === "ad-ops";
+
   const [{ data: profiles }, { data: departments }] = await Promise.all([
     supabase
       .from("profiles")
       .select(`
         id, first_name, last_name, email, phone,
+        avatar_url, bio, job_title, fun_fact, avatar_require_approval,
         department:departments(id, name, slug),
         role:roles(name, tier)
       `)
@@ -23,6 +27,15 @@ export default async function DirectoryPage() {
     supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
   ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return <DirectoryView profiles={(profiles ?? []) as any} departments={departments ?? []} />;
+  return (
+    <DirectoryView
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      profiles={(profiles ?? []) as any}
+      departments={departments ?? []}
+      currentUserId={currentUser.id}
+      currentDeptId={currentUser.department_id ?? null}
+      canManageProfiles={canManageProfiles}
+      isOps={isOps(currentUser)}
+    />
+  );
 }

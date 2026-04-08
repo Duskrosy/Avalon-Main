@@ -12,12 +12,16 @@ export async function PATCH(
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
 
-  if (!currentUser || !isManagerOrAbove(currentUser)) {
+  const isSelf = currentUser?.id === id;
+  // Self can update own personalization fields; managers+ can update others
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!isSelf && !isManagerOrAbove(currentUser)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await request.json();
-  const { first_name, last_name, department_id, role_id, birthday, phone, status } = body;
+  const { first_name, last_name, department_id, role_id, birthday, phone, status,
+          bio, job_title, fun_fact, avatar_require_approval } = body;
 
   const admin = createAdminClient();
 
@@ -57,17 +61,30 @@ export async function PATCH(
   }
 
   const updates: Record<string, unknown> = { updated_by: currentUser.id };
-  if (first_name !== undefined) updates.first_name = first_name;
-  if (last_name !== undefined) updates.last_name = last_name;
-  if (department_id !== undefined) updates.department_id = department_id;
-  if (role_id !== undefined) updates.role_id = role_id;
-  if (birthday !== undefined) updates.birthday = birthday || null;
-  if (phone !== undefined) updates.phone = phone || null;
-  if (status !== undefined && isOps(currentUser)) {
-    updates.status = status;
-    if (status === "active") {
-      updates.deleted_at = null;
-      updates.deleted_by = null;
+
+  // Personalization fields — anyone can update their own
+  if (bio          !== undefined) updates.bio        = bio || null;
+  if (job_title    !== undefined) updates.job_title  = job_title || null;
+  if (fun_fact     !== undefined) updates.fun_fact   = fun_fact || null;
+
+  // Structural fields — manager/OPS only, and only if not a self-update of just personalization
+  if (!isSelf || isManagerOrAbove(currentUser)) {
+    if (first_name    !== undefined) updates.first_name    = first_name;
+    if (last_name     !== undefined) updates.last_name     = last_name;
+    if (department_id !== undefined) updates.department_id = department_id;
+    if (role_id       !== undefined) updates.role_id       = role_id;
+    if (birthday      !== undefined) updates.birthday      = birthday || null;
+    if (phone         !== undefined) updates.phone         = phone || null;
+    // avatar_require_approval — manager/OPS only (not self)
+    if (avatar_require_approval !== undefined && !isSelf) {
+      updates.avatar_require_approval = avatar_require_approval;
+    }
+    if (status !== undefined && isOps(currentUser)) {
+      updates.status = status;
+      if (status === "active") {
+        updates.deleted_at = null;
+        updates.deleted_by = null;
+      }
     }
   }
 

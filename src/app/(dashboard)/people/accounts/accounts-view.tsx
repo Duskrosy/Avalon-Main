@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
+import { Avatar } from "@/components/ui/avatar";
 
 type Department = { id: string; name: string; slug: string };
 type Role = { id: string; name: string; slug: string; tier: number };
@@ -416,9 +417,11 @@ export function AccountsView({
                     <>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gray-900 flex items-center justify-center text-white text-xs font-medium shrink-0">
-                            {user.first_name[0]}{user.last_name[0]}
-                          </div>
+                          <Avatar
+                            url={(user as Record<string, unknown>).avatar_url as string | null ?? null}
+                            initials={`${user.first_name[0]}${user.last_name[0]}`.toUpperCase()}
+                            size="xs"
+                          />
                           <span className="font-medium text-gray-900">
                             {user.first_name} {user.last_name}
                           </span>
@@ -505,9 +508,11 @@ export function AccountsView({
                 <tr key={user.id} className="opacity-60 bg-gray-50/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gray-400 flex items-center justify-center text-white text-xs font-medium shrink-0">
-                        {user.first_name[0]}{user.last_name[0]}
-                      </div>
+                      <Avatar
+                        url={(user as Record<string, unknown>).avatar_url as string | null ?? null}
+                        initials={`${user.first_name[0]}${user.last_name[0]}`.toUpperCase()}
+                        size="xs"
+                      />
                       <div>
                         <span className="font-medium text-gray-600 line-through decoration-gray-400">
                           {user.first_name} {user.last_name}
