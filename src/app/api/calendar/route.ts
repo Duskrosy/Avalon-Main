@@ -85,11 +85,6 @@ export async function GET(req: NextRequest) {
     .is("deleted_at", null)
     .not("birthday", "is", null);
 
-  // Non-OPS: only own department
-  if (!ops && deptId) {
-    birthdaysQuery = birthdaysQuery.eq("department_id", deptId);
-  }
-
   const { data: birthdays } = await birthdaysQuery;
 
   for (const p of birthdays ?? []) {

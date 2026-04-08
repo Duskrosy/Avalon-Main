@@ -4,6 +4,7 @@ import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
+import { ConfettiBirthday } from "@/components/ui/confetti-birthday";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,14 @@ export default async function DashboardPage() {
   const deptId = user.department_id;
   const deptSlug = user.department?.slug ?? "";
   const today = new Date().toISOString().slice(0, 10);
+
+  // Check if today is the current user's birthday
+  let isBirthday = false;
+  if (user.birthday) {
+    const bday = new Date(user.birthday);
+    const now  = new Date();
+    isBirthday = bday.getMonth() === now.getMonth() && bday.getDate() === now.getDate();
+  }
 
   // ── 1. Unread notifications (own) ─────────────────────────────────────────
   const { count: unreadCount } = await supabase
@@ -245,6 +254,19 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {isBirthday && <ConfettiBirthday />}
+
+      {/* Birthday banner */}
+      {isBirthday && (
+        <div className="rounded-xl bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-4 flex items-center gap-3">
+          <span className="text-2xl">🎂</span>
+          <div>
+            <p className="text-white font-semibold text-base">Happy Birthday, {user.first_name}!</p>
+            <p className="text-white/70 text-sm">Wishing you a wonderful day from the whole team.</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">
