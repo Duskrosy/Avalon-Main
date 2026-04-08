@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -115,12 +116,38 @@ export default async function middleware(request: NextRequest) {
   const isAuthRoute =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/forgot-password") ||
-    request.nextUrl.pathname.startsWith("/auth/");
+    request.nextUrl.pathname.startsWith("/auth/") ||
+    request.nextUrl.pathname.startsWith("/api/auth/");
 
   if (!user && !isAuthRoute) {
     if (isApiRoute) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // ── Force sign-out: detected via app_metadata flag set by /api/users/[id]/signout ──
+  // We have the user's session in hand here, so we can truly revoke it.
+  if (user?.app_metadata?.force_logout_at) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const adminClient = createAdminClient();
+
+      if (session?.access_token) {
+        // Revoke all sessions for this user (global scope)
+        await adminClient.auth.admin.signOut(session.access_token, "global");
+      }
+
+      // Clear the flag so they can log back in normally
+      await adminClient.auth.admin.updateUserById(user.id, {
+        app_metadata: { ...user.app_metadata, force_logout_at: null },
+      });
+    } catch (err) {
+      console.error("[middleware] force sign-out error:", err);
+    }
+
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
