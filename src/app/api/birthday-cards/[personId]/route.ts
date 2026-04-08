@@ -63,11 +63,6 @@ export async function GET(
     return NextResponse.json({ card: null, messages: [] });
   }
 
-  // Birthday has passed (1–7 days ago) — only the birthday person can view
-  if (status === "past" && currentUser.id !== personId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   // Upsert card (cron creates it at midnight; this handles the case where cron hasn't run yet)
   const bday = new Date(person.birthday);
   const bdayThisYear = new Date(year, bday.getMonth(), bday.getDate());

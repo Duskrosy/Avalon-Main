@@ -11,9 +11,10 @@ export type BirthdayPerson = {
   birthday: string;
   avatar_url: string | null;
   department: { name: string } | null;
-  daysUntil: number;
+  daysUntil: number;        // ≥0 = future/today; negative = days ago
+  daysAgo: number | null;   // 1–7 if birthday was recent, null otherwise
   age: number | null;
-  nextBirthday: string; // ISO date string (safe to pass to client)
+  nextBirthday: string;     // ISO — this year's birthday date for past people
 };
 
 export default async function BirthdaysPage() {
@@ -34,51 +35,67 @@ export default async function BirthdaysPage() {
 
   const people: BirthdayPerson[] = (profiles ?? []).map((p) => {
     const bday = new Date(p.birthday!);
-    const nextBday = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
-    if (nextBday < today) nextBday.setFullYear(today.getFullYear() + 1);
+    const bdayThisYear = new Date(today.getFullYear(), bday.getMonth(), bday.getDate());
+    bdayThisYear.setHours(0, 0, 0, 0);
 
-    const daysUntil = Math.ceil(
-      (nextBday.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const age = differenceInYears(nextBday, bday);
+    const msAgo    = today.getTime() - bdayThisYear.getTime();
+    const daysAgo  = Math.floor(msAgo / 86400000); // positive = in the past
+    const isRecent = daysAgo >= 1 && daysAgo <= 7;
+
+    // For past people use this year's date; for future use next year if needed
+    const displayDate = isRecent
+      ? new Date(bdayThisYear)
+      : (() => {
+          const d = new Date(bdayThisYear);
+          if (d < today) d.setFullYear(today.getFullYear() + 1);
+          return d;
+        })();
+
+    const daysUntil = isRecent
+      ? -daysAgo
+      : Math.ceil((displayDate.getTime() - today.getTime()) / 86400000);
+
+    const age     = differenceInYears(bdayThisYear, bday);
     const safeAge = age >= 1 && age <= 119 ? age : null;
 
     return {
-      id: p.id,
-      first_name: p.first_name,
-      last_name: p.last_name,
-      birthday: p.birthday!,
-      avatar_url: p.avatar_url ?? null,
-      department: p.department as unknown as { name: string } | null,
+      id:          p.id,
+      first_name:  p.first_name,
+      last_name:   p.last_name,
+      birthday:    p.birthday!,
+      avatar_url:  p.avatar_url ?? null,
+      department:  p.department as unknown as { name: string } | null,
       daysUntil,
-      age: safeAge,
-      nextBirthday: nextBday.toISOString(),
+      daysAgo:     isRecent ? daysAgo : null,
+      age:         safeAge,
+      nextBirthday: displayDate.toISOString(),
     };
-  }).sort((a, b) => a.daysUntil - b.daysUntil);
-
-  // ── Correct calendar-month bucketing ──────────────────────────────────────
-  // "This Month" = same calendar month as today, more than 7 days away.
-  // "Upcoming"   = anything beyond the current calendar month.
-  const todayPeople  = people.filter((p) => p.daysUntil === 0);
-  const thisWeek     = people.filter((p) => p.daysUntil > 0 && p.daysUntil <= 7);
-  const thisMonth    = people.filter((p) => {
-    if (p.daysUntil <= 7) return false;
-    const nb = new Date(p.nextBirthday);
-    return (
-      nb.getMonth()    === today.getMonth() &&
-      nb.getFullYear() === today.getFullYear()
-    );
-  });
-  const upcoming     = people.filter((p) => {
-    if (p.daysUntil <= 7) return false;
-    const nb = new Date(p.nextBirthday);
-    return (
-      nb.getMonth()    !== today.getMonth() ||
-      nb.getFullYear() !== today.getFullYear()
-    );
   });
 
-  // Is today the current user's birthday?
+  // ── Buckets ───────────────────────────────────────────────────────────────
+  const pastPeople = people
+    .filter((p) => p.daysAgo !== null)
+    .sort((a, b) => a.daysAgo! - b.daysAgo!);   // most recent first
+
+  const todayPeople = people.filter((p) => p.daysUntil === 0);
+
+  const thisWeek = people.filter((p) => p.daysUntil > 0 && p.daysUntil <= 7);
+
+  const thisMonth = people.filter((p) => {
+    if (p.daysUntil <= 7 || p.daysAgo !== null) return false;
+    const nb = new Date(p.nextBirthday);
+    return nb.getMonth() === today.getMonth() && nb.getFullYear() === today.getFullYear();
+  });
+
+  const upcoming = people
+    .filter((p) => {
+      if (p.daysUntil <= 7 || p.daysAgo !== null) return false;
+      const nb = new Date(p.nextBirthday);
+      return nb.getMonth() !== today.getMonth() || nb.getFullYear() !== today.getFullYear();
+    })
+    .sort((a, b) => a.daysUntil - b.daysUntil);
+
+  // ── Current user's birthday status ────────────────────────────────────────
   const currentUserBirthday = currentUser.birthday
     ? (() => {
         const b = new Date(currentUser.birthday);
@@ -86,29 +103,14 @@ export default async function BirthdaysPage() {
       })()
     : false;
 
-  // Did the current user's birthday pass 1–7 days ago? (card still readable by them)
+  // Celebrant banner — birthday passed 1–7 days ago
   let myRecentBirthdayDaysAgo: number | null = null;
   let myRecentBirthdayPerson: BirthdayPerson | null = null;
   if (!currentUserBirthday && currentUser.birthday) {
-    const b = new Date(currentUser.birthday);
-    const bdayThisYear = new Date(today.getFullYear(), b.getMonth(), b.getDate());
-    const msAgo = today.getTime() - bdayThisYear.getTime();
-    const daysAgo = Math.floor(msAgo / (1000 * 60 * 60 * 24));
-    if (daysAgo >= 1 && daysAgo <= 7) {
-      myRecentBirthdayDaysAgo = daysAgo;
-      // Build a synthetic BirthdayPerson so the modal can open
-      const age = differenceInYears(bdayThisYear, b);
-      myRecentBirthdayPerson = {
-        id:           currentUser.id,
-        first_name:   currentUser.first_name,
-        last_name:    currentUser.last_name,
-        birthday:     currentUser.birthday,
-        avatar_url:   (currentUser as unknown as { avatar_url?: string | null }).avatar_url ?? null,
-        department:   currentUser.department ? { name: currentUser.department.name } : null,
-        daysUntil:    -daysAgo,          // negative = days ago
-        age:          age >= 1 && age <= 119 ? age : null,
-        nextBirthday: bdayThisYear.toISOString(),
-      };
+    const existing = pastPeople.find((p) => p.id === currentUser.id);
+    if (existing && existing.daysAgo !== null) {
+      myRecentBirthdayDaysAgo = existing.daysAgo;
+      myRecentBirthdayPerson  = existing;
     }
   }
 
@@ -117,6 +119,7 @@ export default async function BirthdaysPage() {
       todayPeople={todayPeople}
       thisWeek={thisWeek}
       thisMonth={thisMonth}
+      pastPeople={pastPeople}
       upcoming={upcoming}
       currentUserId={currentUser.id}
       currentUserHasBirthday={currentUserBirthday}
