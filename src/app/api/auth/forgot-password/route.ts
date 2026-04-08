@@ -23,23 +23,38 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Look up the user profile by email
+  // Step 1: check user exists
   const { data: profile } = await admin
     .from("profiles")
-    .select("id, allow_password_change")
+    .select("id")
     .eq("email", email.toLowerCase().trim())
     .eq("status", "active")
     .is("deleted_at", null)
     .single();
 
-  // If not found or password change is not allowed, tell them to contact manager
-  if (!profile || profile.allow_password_change === false) {
+  if (!profile) {
     return NextResponse.json({ contact_manager: true });
+  }
+
+  // Step 2: check allow_password_change (column may not exist yet if migration 00028
+  // hasn't been run — treat missing column as "allowed")
+  try {
+    const { data: secData } = await admin
+      .from("profiles")
+      .select("allow_password_change")
+      .eq("id", profile.id)
+      .single();
+
+    if (secData && secData.allow_password_change === false) {
+      return NextResponse.json({ contact_manager: true });
+    }
+  } catch {
+    // Column doesn't exist yet — default to allowing password reset
   }
 
   // Build redirect URL from the incoming request origin
   const origin     = request.headers.get("origin") ?? "http://localhost:3000";
-  const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/account/settings?tab=security")}`;
+  const redirectTo = `${origin}/auth/confirm?next=${encodeURIComponent("/account/settings?tab=security")}`;
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

@@ -134,7 +134,7 @@ export default function LoginPage() {
     setError(null);
 
     const supabase   = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent("/")}`;
+    const redirectTo = `${window.location.origin}/auth/confirm?next=${encodeURIComponent("/")}`;
 
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
