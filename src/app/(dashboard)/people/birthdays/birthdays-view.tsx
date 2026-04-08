@@ -226,7 +226,7 @@ function BirthdayCardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-2xl bg-gray-900 rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "90vh" }}>
+      <div className="relative w-full max-w-3xl bg-gray-900 rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "92vh" }}>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-5 rounded-t-2xl shrink-0">
@@ -306,17 +306,13 @@ function BirthdayCardModal({
                         )}
                       </div>
 
-                      {/* Social layout: image left, text right */}
-                      {m.gif_url ? (
-                        <div className="flex gap-3">
-                          <div className="w-28 shrink-0 rounded-lg overflow-hidden bg-white/5 self-start">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={m.gif_url} alt="attachment" className="w-full h-auto" loading="lazy" />
-                          </div>
-                          <p className="text-white text-sm leading-relaxed flex-1 min-w-0">{m.message}</p>
+                      {/* Message text always on top, image below */}
+                      <p className="text-white text-sm leading-relaxed mb-3">{m.message}</p>
+                      {m.gif_url && (
+                        <div className="w-40 rounded-lg overflow-hidden bg-white/5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={m.gif_url} alt="attachment" className="w-full h-auto" loading="lazy" />
                         </div>
-                      ) : (
-                        <p className="text-white text-sm leading-relaxed">{m.message}</p>
                       )}
 
                       {/* Reactions row */}
