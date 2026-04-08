@@ -1,11 +1,32 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine,
   ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { format, parseISO } from "date-fns";
+
+// ─── Category icons ────────────────────────────────────────────────────────────
+const CATEGORY_ICONS: Record<string, string> = {
+  "Performance":            "📊",
+  "Ad Content Performance": "🎬",
+  "Stills Performance":     "🖼️",
+  "Organic Performance":    "🌱",
+  "Output":                 "📦",
+  "Stills Output":          "🗂️",
+  "Service Quality":        "⭐",
+  "Inventory":              "📦",
+  "Stock Control":          "🗄️",
+  "Stock Levels":           "📈",
+  "Operations":             "⚙️",
+  "Compliance":             "✅",
+  "Volume":                 "📊",
+  "Quality":                "🎯",
+  "Marketing":              "📣",
+  "Activity":               "⚡",
+};
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Unit = "percent" | "number" | "currency_php" | "days" | "weeks" | "seconds";
@@ -83,14 +104,41 @@ const RAG_STYLES = {
   none:  { bg: "bg-gray-50",    border: "border-gray-200",   badge: "bg-gray-100 text-gray-500",    dot: "bg-gray-300",   label: "No data"   },
 };
 
+// ─── Target Meter ─────────────────────────────────────────────────────────────
+function TargetMeter({ value, def }: { value: number; def: KpiDef }) {
+  let pct: number;
+  if (def.direction === "higher_better") {
+    pct = Math.min((value / def.threshold_green) * 100, 110);
+  } else {
+    pct = value > 0 ? Math.min((def.threshold_green / value) * 100, 110) : 0;
+  }
+  const status = rag(value, def);
+  const fillColor = status === "green" ? "bg-green-500" : status === "amber" ? "bg-amber-400" : "bg-red-500";
+  const amberPct = def.direction === "higher_better"
+    ? Math.min((def.threshold_amber / def.threshold_green) * 100, 100)
+    : Math.min((def.threshold_green / def.threshold_amber) * 100, 100);
+
+  return (
+    <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div
+        className={`absolute left-0 top-0 h-full rounded-full transition-all ${fillColor}`}
+        style={{ width: `${Math.min(pct, 100)}%` }}
+      />
+      {/* Amber threshold marker */}
+      <div
+        className="absolute top-0 h-full w-px bg-amber-400/50"
+        style={{ left: `${amberPct}%` }}
+      />
+    </div>
+  );
+}
+
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 function Sparkline({ entries, def }: { entries: KpiEntry[]; def: KpiDef }) {
   const last8 = entries.slice(-8);
   if (last8.length < 2) return <div className="h-8 flex items-center text-xs text-gray-300">—</div>;
 
   const data = last8.map((e) => ({ v: e.value_numeric }));
-  const color = entries.length ? RAG_STYLES[rag(last8[last8.length - 1].value_numeric, def)].dot.replace("bg-", "") : "gray-300";
-  const strokeColor = color === "bg-green-500" ? "#22c55e" : color === "bg-amber-400" ? "#f59e0b" : color === "bg-red-500" ? "#ef4444" : "#d1d5db";
   const latestRag = rag(last8[last8.length - 1].value_numeric, def);
   const strokeMap = { green: "#22c55e", amber: "#f59e0b", red: "#ef4444" };
 
@@ -131,7 +179,6 @@ function TrendChart({ entries, def }: { entries: KpiEntry[]; def: KpiDef }) {
           labelStyle={{ fontSize: 11 }}
           contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
         />
-        {/* Green threshold reference line */}
         <ReferenceLine
           y={def.threshold_green}
           stroke={ragColor.green}
@@ -139,7 +186,6 @@ function TrendChart({ entries, def }: { entries: KpiEntry[]; def: KpiDef }) {
           strokeWidth={1.5}
           label={{ value: "Target", position: "right", fontSize: 10, fill: ragColor.green }}
         />
-        {/* Amber threshold reference line */}
         <ReferenceLine
           y={def.threshold_amber}
           stroke={ragColor.amber}
@@ -156,6 +202,41 @@ function TrendChart({ entries, def }: { entries: KpiEntry[]; def: KpiDef }) {
           activeDot={{ r: 5 }}
         />
       </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ─── Trend bar chart in detail panel ─────────────────────────────────────────
+function TrendBarChart({ entries, def }: { entries: KpiEntry[]; def: KpiDef }) {
+  const data = entries.map((e) => ({
+    period: formatPeriod(e.period_date, def.frequency),
+    value: e.value_numeric,
+    fill: rag(e.value_numeric, def) === "green"
+      ? "#22c55e"
+      : rag(e.value_numeric, def) === "amber"
+      ? "#f59e0b"
+      : "#ef4444",
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+        <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#9ca3af" }} tickLine={false} axisLine={false} />
+        <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} tickLine={false} axisLine={false} width={40}
+          tickFormatter={(v) => formatValue(v, def.unit)} />
+        <Tooltip
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          formatter={(v: any) => [formatValue(Number(v), def.unit), def.name]}
+          labelStyle={{ fontSize: 11 }}
+          contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
+        />
+        <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+          {data.map((entry, index) => (
+            <rect key={index} fill={entry.fill} />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   );
 }
@@ -321,13 +402,16 @@ function KpiCard({
         )}
       </div>
 
+      {/* Target progress meter */}
+      {latest && <TargetMeter value={latest.value_numeric} def={def} />}
+
       {/* Sparkline */}
       <Sparkline entries={entries} def={def} />
 
       {/* Actions */}
       <div className="flex items-center justify-between">
         {def.is_platform_tracked && (
-          <span className="text-xs text-blue-400 bg-blue-50 px-2 py-0.5 rounded-full">Auto (Phase 6)</span>
+          <span className="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">⚡ Partial integration</span>
         )}
         {canLog && (
           <button
@@ -356,6 +440,7 @@ function DetailPanel({
   onClose: () => void;
   canLog: boolean;
 }) {
+  const [trendMode, setTrendMode] = useState<"line" | "bar">("line");
   const latest = entries[entries.length - 1] ?? null;
   const status = latest ? rag(latest.value_numeric, def) : "none";
   const style  = RAG_STYLES[status];
@@ -409,8 +494,27 @@ function DetailPanel({
           {/* Trend chart */}
           {entries.length > 0 ? (
             <div className="mb-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Trend</p>
-              <TrendChart entries={entries} def={def} />
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Trend</p>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+                  <button
+                    onClick={() => setTrendMode("line")}
+                    className={`px-2.5 py-1 transition-colors ${trendMode === "line" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                  >
+                    Line
+                  </button>
+                  <button
+                    onClick={() => setTrendMode("bar")}
+                    className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${trendMode === "bar" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                  >
+                    Bar
+                  </button>
+                </div>
+              </div>
+              {trendMode === "line"
+                ? <TrendChart entries={entries} def={def} />
+                : <TrendBarChart entries={entries} def={def} />
+              }
             </div>
           ) : (
             <div className="mb-5 bg-gray-50 rounded-xl p-6 text-center text-sm text-gray-400">
@@ -547,6 +651,13 @@ export function KpiDashboard({
 
   return (
     <div>
+      {/* Back to overview breadcrumb */}
+      <div className="mb-4">
+        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+          ← Overview
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -571,17 +682,22 @@ export function KpiDashboard({
       {/* RAG Summary Bar */}
       {summary.total > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
-          <div className="flex items-center gap-6 mb-3">
+          <div className="flex items-center gap-6 mb-3 flex-wrap">
             {[
               { label: "On Track",    count: summary.green,  color: "text-green-600",  bg: "bg-green-500"  },
               { label: "Monitor",     count: summary.amber,  color: "text-amber-600",  bg: "bg-amber-400"  },
               { label: "Critical",    count: summary.red,    color: "text-red-600",    bg: "bg-red-500"    },
               { label: "No Data",     count: summary.noData, color: "text-gray-400",   bg: "bg-gray-200"   },
             ].map((s) => (
-              <div key={s.label} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${s.bg}`} />
-                <span className={`text-sm font-semibold ${s.color}`}>{s.count}</span>
-                <span className="text-xs text-gray-400">{s.label}</span>
+              <div key={s.label} className="flex flex-col items-center gap-0.5 min-w-[56px]">
+                <div className="flex items-center gap-2">
+                  <div className={`w-3 h-3 rounded-full ${s.bg}`} />
+                  <span className={`text-sm font-semibold ${s.color}`}>{s.count}</span>
+                  <span className="text-xs text-gray-400">{s.label}</span>
+                </div>
+                <span className="text-xs text-gray-300">
+                  {summary.total > 0 ? Math.round((s.count / summary.total) * 100) : 0}%
+                </span>
               </div>
             ))}
           </div>
@@ -606,7 +722,9 @@ export function KpiDashboard({
         <div className="space-y-8">
           {Object.entries(byCategory).map(([category, defs]) => (
             <div key={category}>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{category}</h2>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                {CATEGORY_ICONS[category] ?? "📋"} {category}
+              </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {defs.map((def) => (
                   <KpiCard
