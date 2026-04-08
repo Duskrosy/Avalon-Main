@@ -311,6 +311,9 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
   const daysAgo    = person.daysAgo;
   const daysUntil  = person.daysUntil;
 
+  // Only today (hero) and past 7 days (small) are clickable
+  const clickable = variant === "hero" || variant === "small";
+
   // ── hero ──
   if (variant === "hero") {
     return (
@@ -331,16 +334,16 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-sm text-gray-400 mt-0.5">{dateStr}</p>
           </div>
         </div>
-        {open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
       </>
     );
   }
 
-  // ── large (this week) ──
+  // ── large (this week) — not clickable ──
   if (variant === "large") {
     return (
       <>
-        <div onClick={() => setOpen(true)} className="cursor-pointer bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3 hover:shadow-md hover:border-gray-300 transition-all">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
           <BirthdayAvatar person={person} size="md" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
@@ -354,16 +357,16 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-xs text-gray-400 mt-0.5">in {daysUntil}d</p>
           </div>
         </div>
-        {open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
       </>
     );
   }
 
-  // ── medium (this month) ──
+  // ── medium (this month) — not clickable ──
   if (variant === "medium") {
     return (
       <>
-        <div onClick={() => setOpen(true)} className="cursor-pointer bg-white border border-gray-100 rounded-xl p-3.5 flex items-center gap-2.5 hover:shadow-sm hover:border-gray-200 transition-all">
+        <div className="bg-white border border-gray-100 rounded-xl p-3.5 flex items-center gap-2.5">
           <BirthdayAvatar person={person} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-800 truncate">{person.first_name} {person.last_name}</p>
@@ -374,16 +377,16 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-xs text-gray-400">in {daysUntil}d</p>
           </div>
         </div>
-        {open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
       </>
     );
   }
 
-  // ── small (past 7 days) ──
+  // ── small (past 7 days) — clickable, dotted border ──
   if (variant === "small") {
     return (
       <>
-        <div onClick={() => setOpen(true)} className="cursor-pointer bg-gray-50 border border-gray-100 rounded-xl p-3 flex items-center gap-2.5 hover:bg-gray-100 transition-all">
+        <div onClick={() => setOpen(true)} className="cursor-pointer bg-gray-50 border border-dashed border-gray-300 rounded-xl p-3 flex items-center gap-2.5 hover:bg-gray-100 hover:border-gray-400 transition-all">
           <div className="relative shrink-0">
             <Avatar url={person.avatar_url} initials={initials} size="sm" className="opacity-80" />
           </div>
@@ -396,15 +399,15 @@ function BirthdayCard({ person, variant, currentUserId }: { person: BirthdayPers
             <p className="text-[10px] text-gray-400">{daysAgo === 1 ? "yesterday" : `${daysAgo}d ago`}</p>
           </div>
         </div>
-        {open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
+        {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} onClose={() => setOpen(false)} />}
       </>
     );
   }
 
-  // ── compact (upcoming) ──
+  // ── compact (upcoming) — not clickable ──
   return (
     <>
-      <div onClick={() => setOpen(true)} className="cursor-pointer bg-white border border-gray-100 rounded-lg p-2.5 flex items-center gap-2 hover:bg-gray-50 transition-all">
+      <div className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center gap-2">
         <Avatar url={person.avatar_url} initials={initials} size="xs" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-gray-600 truncate">{person.first_name} {person.last_name}</p>
