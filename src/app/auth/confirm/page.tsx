@@ -43,15 +43,33 @@ function AuthConfirmInner() {
           router.replace(`/login?error=${encodeURIComponent(error.message)}`);
           return;
         }
+
+        // Guard: make sure this user has an Avalon profile.
+        // New OAuth sign-ins (e.g. Discord with no matching account) must be
+        // blocked — only existing Avalon users may use social login.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (!profile) {
+            await supabase.auth.signOut();
+            router.replace("/login?error=no_account");
+            return;
+          }
+        }
+
         router.replace(safeNext);
         return;
       }
 
       // ── Flow 2: Implicit (tokens in hash fragment) ───────────────────────
-      // Hash is only available in the browser — read it here, not in the server.
       const hash = window.location.hash;
       if (hash) {
-        const params = new URLSearchParams(hash.slice(1)); // strip leading #
+        const params = new URLSearchParams(hash.slice(1));
         const accessToken  = params.get("access_token");
         const refreshToken = params.get("refresh_token");
 
