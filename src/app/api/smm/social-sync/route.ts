@@ -467,7 +467,8 @@ async function syncPosts(
     // Sandbox note: video.list returns inconsistent results (0–9 videos per call).
     // To work around this, we also re-fetch stats for all video IDs already stored
     // in smm_top_posts, so known videos are always kept up-to-date.
-    try {
+    // No inner try/catch — errors propagate to syncOnePlatform so post_sync_error is populated.
+    {
       type Stub  = Awaited<ReturnType<typeof fetchTikTokVideoList>>["videos"][number];
       type Stats = Awaited<ReturnType<typeof fetchTikTokVideoStats>>[number];
 
@@ -506,14 +507,30 @@ async function syncPosts(
       }
 
       // ── 3. Fetch fresh stats for ALL known IDs in batches of 20 ───────────
+      // Inline the API call using minimal fields — matches what the debug endpoint
+      // confirmed works. fetchTikTokVideoStats requests extra fields that may
+      // cause sandbox to return empty data.
       const statsMap: Record<string, Stats> = {};
       for (let i = 0; i < allIds.length; i += 20) {
-        const batch   = allIds.slice(i, i + 20);
-        const results = await fetchTikTokVideoStats(token, batch);
-        console.info(`[social-sync] TikTok video.query batch ${i / 20 + 1}: got ${results.length} stats`);
-        for (const s of results) statsMap[s.id] = s;
+        const batch = allIds.slice(i, i + 20);
+        const res   = await fetch(
+          "https://open.tiktokapis.com/v2/video/query/?fields=id,title,cover_image_url,like_count,comment_count,share_count,view_count,create_time",
+          {
+            method:  "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body:    JSON.stringify({ filters: { video_ids: batch } }),
+            cache:   "no-store",
+          }
+        );
+        const json = await res.json() as { data?: { videos?: Stats[] }; error?: { code?: string; message?: string } };
+        if (!res.ok) throw new Error(`TikTok video.query HTTP ${res.status}`);
+        if (json.error?.code && json.error.code !== "ok") {
+          throw new Error(`TikTok video.query error: ${json.error.message ?? json.error.code}`);
+        }
+        const videos = json.data?.videos ?? [];
+        console.info(`[social-sync] TikTok video.query batch got ${videos.length} stats for ids: ${batch.join(",")}`);
+        for (const s of videos) statsMap[s.id] = s;
       }
-      console.info(`[social-sync] TikTok statsMap keys: ${Object.keys(statsMap).join(", ") || "none"}`);
 
       // ── 4. Build upsert rows ───────────────────────────────────────────────
       const rows = allIds.map((id) => {
@@ -553,8 +570,6 @@ async function syncPosts(
 
       if (error) throw new Error(`TikTok smm_top_posts upsert: ${error.message}`);
       console.info(`[social-sync] TikTok upserted ${rows.length} posts`);
-    } catch (ttErr) {
-      console.warn("[social-sync] TikTok post sync failed:", ttErr instanceof Error ? ttErr.message : ttErr);
     }
   }
 }
