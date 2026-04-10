@@ -460,26 +460,48 @@ async function syncPosts(
       console.warn("[social-sync] YT post sync failed:", ytErr instanceof Error ? ytErr.message : ytErr);
     }
   } else if (platformType === "tiktok") {
-    // Fetch up to 20 most recent public videos + their engagement stats.
+    // Paginate through ALL available videos (up to 200 / 10 pages).
     // Two-call pattern required by Display API v2:
-    //   1. /v2/video/list/ → video IDs + cover images
-    //   2. /v2/video/query/ → per-video engagement counts
+    //   1. /v2/video/list/ (paginated)  → stubs with cover images
+    //   2. /v2/video/query/ (batched ≤20) → engagement stats per video
     try {
-      const { videos: stubs } = await fetchTikTokVideoList(token, 20);
-      if (!stubs.length) return;
+      // ── Collect all stubs via pagination ──────────────────────────────────
+      type Stub = Awaited<ReturnType<typeof fetchTikTokVideoList>>["videos"][number];
+      const allStubs: Stub[] = [];
+      let cursor    = 0;
+      let has_more  = true;
+      const MAX_PAGES = 10; // cap at 200 videos (10 × 20) per sync
 
-      // Best-effort stats fetch — video.query may be unavailable in sandbox mode.
-      // If it fails or returns empty we still upsert using the stub data from video.list.
-      const videoIds = stubs.map((v) => v.id);
-      let statsMap: Record<string, Awaited<ReturnType<typeof fetchTikTokVideoStats>>[number]> = {};
+      for (let page = 0; page < MAX_PAGES && has_more; page++) {
+        const result = await fetchTikTokVideoList(token, 20, cursor);
+        allStubs.push(...result.videos);
+        has_more = result.has_more;
+        cursor   = result.cursor;
+        if (!result.videos.length) break;
+      }
+
+      if (!allStubs.length) {
+        console.info("[social-sync] TikTok video.list returned 0 videos");
+        return;
+      }
+
+      console.info(`[social-sync] TikTok fetched ${allStubs.length} video stubs across pages`);
+
+      // ── Fetch stats in batches of 20 (API limit) ──────────────────────────
+      type Stats = Awaited<ReturnType<typeof fetchTikTokVideoStats>>[number];
+      const statsMap: Record<string, Stats> = {};
       try {
-        const statsArr = await fetchTikTokVideoStats(token, videoIds);
-        for (const s of statsArr) statsMap[s.id] = s;
+        for (let i = 0; i < allStubs.length; i += 20) {
+          const batch   = allStubs.slice(i, i + 20).map((v) => v.id);
+          const results = await fetchTikTokVideoStats(token, batch);
+          for (const s of results) statsMap[s.id] = s;
+        }
       } catch {
         console.warn("[social-sync] TikTok video.query failed — using stub data only (normal in sandbox)");
       }
 
-      const rows = stubs.map((stub) => {
+      // ── Build rows (stubs as base, stats layered on top) ──────────────────
+      const rows = allStubs.map((stub) => {
         const stats       = statsMap[stub.id];
         const engagements = stats
           ? (stats.like_count ?? 0) + (stats.comment_count ?? 0) + (stats.share_count ?? 0)
@@ -492,7 +514,7 @@ async function syncPosts(
         return {
           platform_id:        platformId,
           post_external_id:   stub.id,
-          post_url:           stats?.share_url ?? `https://www.tiktok.com/@finncottonofficial/video/${stub.id}`,
+          post_url:           stats?.share_url ?? `https://www.tiktok.com/video/${stub.id}`,
           thumbnail_url:      stats?.cover_image_url ?? stub.cover_image_url ?? null,
           caption_preview:    (stats?.title ?? stub.title ?? "").slice(0, 120) || null,
           post_type:          "video" as const,
@@ -511,6 +533,7 @@ async function syncPosts(
         .upsert(rows, { onConflict: "platform_id,post_external_id" });
 
       if (error) throw new Error(`TikTok smm_top_posts upsert: ${error.message}`);
+      console.info(`[social-sync] TikTok upserted ${rows.length} posts`);
     } catch (ttErr) {
       console.warn("[social-sync] TikTok post sync failed:", ttErr instanceof Error ? ttErr.message : ttErr);
     }
