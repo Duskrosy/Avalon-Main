@@ -1,6 +1,5 @@
 // Temporary debug endpoint — remove after TikTok diagnosis.
 // GET /api/tiktok/debug?platform_id=<uuid>
-// Returns the raw TikTok API responses so we can see what's failing.
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -30,31 +29,73 @@ export async function GET(req: NextRequest) {
 
   try {
     const token = await getValidTikTokToken(platform, admin);
+    const today = new Date().toISOString().split("T")[0];
 
-    // 1. Raw user info call
-    const userRes = await fetch("https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,follower_count,video_count", {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-    const userJson = await userRes.json();
-
-    // 2. Raw video list call
+    // 1. Video list
     const videoRes = await fetch("https://open.tiktokapis.com/v2/video/list/?fields=id,title,cover_image_url,create_time", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ max_count: 10 }),
+      body: JSON.stringify({ max_count: 3 }),
       cache: "no-store",
     });
     const videoJson = await videoRes.json();
+    const stubs: Array<{ id: string; title?: string; cover_image_url?: string; create_time?: number }> =
+      videoJson?.data?.videos ?? [];
+
+    // 2. Try video.query for stats
+    let queryResult: unknown = "skipped (no stubs)";
+    if (stubs.length > 0) {
+      const statsRes = await fetch("https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ filters: { video_ids: stubs.map((v) => v.id) } }),
+        cache: "no-store",
+      });
+      queryResult = await statsRes.json();
+    }
+
+    // 3. Attempt upsert with one stub row and capture the exact error
+    let upsertResult: unknown = "skipped (no stubs)";
+    if (stubs.length > 0) {
+      const testRow = {
+        platform_id:        platformId,
+        post_external_id:   stubs[0].id,
+        post_url:           `https://www.tiktok.com/video/${stubs[0].id}`,
+        thumbnail_url:      stubs[0].cover_image_url ?? null,
+        caption_preview:    stubs[0].title?.slice(0, 120) ?? null,
+        post_type:          "video",
+        published_at:       stubs[0].create_time ? new Date(stubs[0].create_time * 1000).toISOString() : null,
+        impressions:        0,
+        reach:              0,
+        engagements:        0,
+        video_plays:        0,
+        avg_play_time_secs: null,
+        metric_date:        today,
+      };
+      const { data: upsertData, error: upsertErr } = await admin
+        .from("smm_top_posts")
+        .upsert(testRow, { onConflict: "platform_id,post_external_id" })
+        .select();
+      upsertResult = upsertErr
+        ? { error: upsertErr.message, code: upsertErr.code, details: upsertErr.details, hint: upsertErr.hint }
+        : { ok: true, row: upsertData };
+    }
+
+    // 4. Read back what's in smm_top_posts for this platform
+    const { data: existingPosts, error: readErr } = await admin
+      .from("smm_top_posts")
+      .select("id, post_external_id, caption_preview, metric_date, impressions, engagements")
+      .eq("platform_id", platformId)
+      .limit(5);
 
     return NextResponse.json({
-      platform_id: platformId,
-      page_id: platform.page_id,
-      token_expires_at: platform.token_expires_at,
-      user_info_status: userRes.status,
-      user_info: userJson,
+      platform_id:       platformId,
+      stubs_returned:    stubs.length,
       video_list_status: videoRes.status,
-      video_list: videoJson,
+      video_query_raw:   queryResult,
+      upsert_result:     upsertResult,
+      existing_posts:    existingPosts ?? [],
+      read_error:        readErr?.message ?? null,
     });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
