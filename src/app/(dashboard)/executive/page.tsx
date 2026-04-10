@@ -130,10 +130,26 @@ export default async function ExecutiveOverviewPage({
   const dateFrom = sp.from ?? today;
   const dateTo   = sp.to   ?? today;
 
-  // Meta Ads data is always 1 day delayed — when the user is viewing "Live" (today),
-  // fall back to yesterday so ad stats are never blank.
-  const adStatsFrom = dateFrom === today ? yesterday : dateFrom;
-  const adStatsTo   = dateTo   === today ? yesterday : dateTo;
+  // Meta Ads data is always delayed (sync can be from any past date).
+  // For "Live" mode (today), find the most recently synced date and use that.
+  const isLiveMode = !sp.from && !sp.to; // no explicit range = Live
+  let adStatsFrom = dateFrom;
+  let adStatsTo   = dateTo;
+  let latestSyncDate: string | null = null;
+
+  if (isLiveMode) {
+    const { data: latestRow } = await admin
+      .from("meta_ad_stats")
+      .select("metric_date")
+      .order("metric_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    latestSyncDate = latestRow?.metric_date ?? null;
+    if (latestSyncDate) {
+      adStatsFrom = latestSyncDate;
+      adStatsTo   = latestSyncDate;
+    }
+  }
 
   // ── Parallel data fetch ───────────────────────────────────────────────────
   const [
@@ -385,7 +401,7 @@ export default async function ExecutiveOverviewPage({
           badge="Sales"
         />
         <MetricCard
-          label={`Ad spend · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : "Latest sync"}`}
+          label={`Ad spend · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : latestSyncDate ? `Synced ${format(new Date(latestSyncDate + "T00:00:00"), "d MMM")}` : "Live"}`}
           value={fmtMoney(totalSpend7d)}
           sub={`ROAS ${overallRoas.toFixed(2)}x · ${fmtK(totalImpr7d)} impressions`}
           accent={roasAccent as "green" | "amber" | "red" | "none"}
@@ -487,7 +503,10 @@ export default async function ExecutiveOverviewPage({
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-gray-900">Ad Operations</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Spend {fmtMoney(totalSpend7d)} · ROAS {overallRoas.toFixed(2)}x</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Spend {fmtMoney(totalSpend7d)} · ROAS {overallRoas.toFixed(2)}x
+                {isLiveMode && latestSyncDate && ` · ${format(new Date(latestSyncDate + "T00:00:00"), "d MMM")}`}
+              </p>
             </div>
             <Link href="/executive/ad-ops" className="text-xs text-gray-400 hover:text-gray-700">More →</Link>
           </div>
