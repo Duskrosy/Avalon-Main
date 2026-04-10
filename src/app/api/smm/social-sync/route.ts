@@ -541,11 +541,29 @@ async function syncPosts(
         return isFinite(n) ? n : 0;
       };
 
-      // safeStr: strips null bytes and other control chars that PostgreSQL text rejects.
+      // safeStr: strips control chars AND lone Unicode surrogates that PostgreSQL UTF-8 rejects.
+      // TikTok captions sometimes contain unpaired surrogate halves (e.g. a high surrogate
+      // without the following low surrogate), which are invalid UTF-8 and cause:
+      //   "Unicode low surrogate must follow a high surrogate" (PostgreSQL error 22P02).
       const safeStr = (v: unknown, maxLen = 120): string | null => {
         if (v == null) return null;
-        // eslint-disable-next-line no-control-regex
-        const s = String(v).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, maxLen);
+        const s = String(v)
+          // Strip ASCII control characters (keep tab \x09, LF \x0A, CR \x0D)
+          // eslint-disable-next-line no-control-regex
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+          // Remove lone surrogates — valid surrogate PAIRS (emoji) are preserved
+          .replace(/[\uD800-\uDFFF]/g, (ch, idx, str) => {
+            const cp = ch.charCodeAt(0);
+            if (cp >= 0xD800 && cp <= 0xDBFF) {
+              // High surrogate: valid only if immediately followed by a low surrogate
+              const next = (str as string).charCodeAt(idx + 1);
+              return (next >= 0xDC00 && next <= 0xDFFF) ? ch : "";
+            }
+            // Low surrogate: valid only if immediately preceded by a high surrogate
+            const prev = idx > 0 ? (str as string).charCodeAt(idx - 1) : 0;
+            return (prev >= 0xD800 && prev <= 0xDBFF) ? ch : "";
+          })
+          .slice(0, maxLen);
         return s || null;
       };
 
