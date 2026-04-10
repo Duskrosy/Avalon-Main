@@ -590,7 +590,7 @@ async function syncPosts(
         const thumbUrl =
           safeStr((stats as Record<string, unknown>)?.cover_image_url) ??
           safeStr((stub  as Record<string, unknown>)?.cover_image_url) ??
-          (existing?.thumbnail_url ?? null);
+          safeStr(existing?.thumbnail_url);
 
         const captionRaw =
           (stats as Record<string, unknown>)?.title ??
