@@ -184,7 +184,7 @@ export async function fetchTikTokVideoStats(
 ): Promise<TikTokVideoStats[]> {
   if (!videoIds.length) return [];
 
-  const fields = "id,title,cover_image_url,like_count,comment_count,share_count,view_count,create_time,share_url";
+  const fields = "id,title,cover_image_url,like_count,comment_count,share_count,view_count,create_time";
   const res = await fetch(`${TIKTOK_BASE}/video/query/?fields=${fields}`, {
     method:  "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },

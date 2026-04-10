@@ -507,15 +507,13 @@ async function syncPosts(
 
       // ── 3. Fetch fresh stats for ALL known IDs in batches of 20 ───────────
       const statsMap: Record<string, Stats> = {};
-      try {
-        for (let i = 0; i < allIds.length; i += 20) {
-          const batch   = allIds.slice(i, i + 20);
-          const results = await fetchTikTokVideoStats(token, batch);
-          for (const s of results) statsMap[s.id] = s;
-        }
-      } catch {
-        console.warn("[social-sync] TikTok video.query failed — stats will be 0");
+      for (let i = 0; i < allIds.length; i += 20) {
+        const batch   = allIds.slice(i, i + 20);
+        const results = await fetchTikTokVideoStats(token, batch);
+        console.info(`[social-sync] TikTok video.query batch ${i / 20 + 1}: got ${results.length} stats`);
+        for (const s of results) statsMap[s.id] = s;
       }
+      console.info(`[social-sync] TikTok statsMap keys: ${Object.keys(statsMap).join(", ") || "none"}`);
 
       // ── 4. Build upsert rows ───────────────────────────────────────────────
       const rows = allIds.map((id) => {
