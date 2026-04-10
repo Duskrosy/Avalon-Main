@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useTransition } from "react";
 import Link from "next/link";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine,
@@ -10,7 +10,9 @@ import { format, parseISO } from "date-fns";
 
 // ─── Category icons ────────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, string> = {
-  "Performance":            "📊",
+  "Performance":            "📈",
+  "Budget":                 "💰",
+  "Traffic":                "🚦",
   "Ad Content Performance": "🎬",
   "Stills Performance":     "🖼️",
   "Organic Performance":    "🌱",
@@ -19,13 +21,15 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Service Quality":        "⭐",
   "Inventory":              "📦",
   "Stock Control":          "🗄️",
-  "Stock Levels":           "📈",
+  "Stock Levels":           "📊",
   "Operations":             "⚙️",
   "Compliance":             "✅",
-  "Volume":                 "📊",
+  "Volume":                 "🔢",
   "Quality":                "🎯",
   "Marketing":              "📣",
   "Activity":               "⚡",
+  "AI Performance":         "🤖",
+  "Leadership":             "👥",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -56,6 +60,13 @@ type KpiEntry = {
 };
 
 type Dept = { id: string; name: string; slug: string };
+
+type SyncResult = {
+  synced: number;
+  week?: string;
+  values?: Record<string, number>;
+  message?: string;
+};
 
 type Props = {
   initialDefinitions: KpiDef[];
@@ -348,12 +359,14 @@ function KpiCard({
   onSelect,
   onLog,
   canLog,
+  isMarketing,
 }: {
   def: KpiDef;
   entries: KpiEntry[];
   onSelect: () => void;
   onLog: () => void;
   canLog: boolean;
+  isMarketing: boolean;
 }) {
   const latest = entries[entries.length - 1] ?? null;
   const prev   = entries[entries.length - 2] ?? null;
@@ -411,7 +424,9 @@ function KpiCard({
       {/* Actions */}
       <div className="flex items-center justify-between">
         {def.is_platform_tracked && (
-          <span className="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">⚡ Partial integration</span>
+          isMarketing
+            ? <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">✅ Auto-sync</span>
+            : <span className="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">⚡ Partial integration</span>
         )}
         {canLog && (
           <button
@@ -581,6 +596,8 @@ export function KpiDashboard({
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<KpiDef | null>(null);
   const [logging, setLogging] = useState<KpiDef | null>(null);
+  const [syncing, startSync] = useTransition();
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
 
   // Load KPIs for a department
   const loadDept = useCallback(async (id: string) => {
@@ -621,6 +638,43 @@ export function KpiDashboard({
       });
     }
   }, []);
+
+  // Marketing dept detection
+  const isMarketing = useMemo(
+    () => departments.find((d) => d.id === deptId)?.slug === "marketing",
+    [departments, deptId],
+  );
+
+  // Meta sync handler (Marketing dept only)
+  const handleMetaSync = useCallback(() => {
+    setSyncResult(null);
+    startSync(async () => {
+      // Default to current week (last Monday)
+      const d = new Date();
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      const weekStart = d.toISOString().slice(0, 10);
+
+      const res = await fetch("/api/kpis/marketing/meta-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ week_start: weekStart }),
+      });
+      const data: SyncResult = await res.json();
+      setSyncResult(data);
+
+      if (res.ok && data.synced > 0 && deptId) {
+        // Refresh entries for this dept
+        const refresh = await fetch(`/api/kpis?department_id=${deptId}`);
+        if (refresh.ok) {
+          const refreshed = await refresh.json();
+          setDefinitions(refreshed.definitions);
+          setEntries(refreshed.entries);
+        }
+      }
+    });
+  }, [deptId]);
 
   // RAG summary
   const summary = useMemo(() => {
@@ -666,18 +720,53 @@ export function KpiDashboard({
           </h1>
           <p className="text-sm text-gray-500 mt-1">KPI performance tracking</p>
         </div>
-        {isOps && departments.length > 0 && (
-          <select
-            value={deptId ?? ""}
-            onChange={(e) => e.target.value && loadDept(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-          >
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Meta Sync button — Marketing dept only, managers+ */}
+          {isMarketing && canLog && (
+            <button
+              onClick={handleMetaSync}
+              disabled={syncing}
+              className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+            >
+              <svg
+                className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
+                fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {syncing ? "Syncing…" : "Sync from Meta"}
+            </button>
+          )}
+          {isOps && departments.length > 0 && (
+            <select
+              value={deptId ?? ""}
+              onChange={(e) => e.target.value && loadDept(e.target.value)}
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            >
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
+
+      {/* Sync result feedback */}
+      {syncResult && (
+        <div className={`mb-4 px-4 py-3 rounded-xl text-sm flex items-center justify-between gap-3 ${
+          syncResult.synced > 0
+            ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+            : "bg-amber-50 border border-amber-200 text-amber-800"
+        }`}>
+          <span>
+            {syncResult.synced > 0
+              ? `✅ Synced ${syncResult.synced} KPI${syncResult.synced !== 1 ? "s" : ""} for ${syncResult.week}`
+              : `⚠ ${syncResult.message ?? "No data to sync"}`}
+          </span>
+          <button onClick={() => setSyncResult(null)} className="text-gray-400 hover:text-gray-600">×</button>
+        </div>
+      )}
 
       {/* RAG Summary Bar */}
       {summary.total > 0 && (
@@ -734,6 +823,7 @@ export function KpiDashboard({
                     onSelect={() => setSelected(def)}
                     onLog={() => setLogging(def)}
                     canLog={canLog}
+                    isMarketing={isMarketing}
                   />
                 ))}
               </div>
