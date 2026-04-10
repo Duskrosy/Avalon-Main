@@ -40,7 +40,7 @@ export async function GET() {
     .from("smm_groups")
     .select(`
       id, name, weekly_target, is_active, sort_order,
-      smm_group_platforms(id, platform, page_id, page_name, handle, is_active)
+      smm_group_platforms(id, platform, page_id, page_name, handle, is_active, token_expires_at)
     `)
     .order("sort_order")
     .order("name");

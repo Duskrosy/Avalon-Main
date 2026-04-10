@@ -1,9 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 const VALID_PLATFORMS = ["facebook", "instagram", "tiktok", "youtube"] as const;
 type SmmPlatform = (typeof VALID_PLATFORMS)[number];
+
+type SmmGroupPlatform = {
+  id: string;
+  platform: string;
+  page_id: string | null;
+  page_name: string | null;
+  handle: string | null;
+  is_active: boolean;
+  token_expires_at: string | null;
+};
 
 type SmmGroup = {
   id: string;
@@ -11,17 +22,13 @@ type SmmGroup = {
   weekly_target: number;
   is_active: boolean;
   sort_order: number;
-  smm_group_platforms: {
-    id: string;
-    platform: string;
-    page_id: string | null;
-    page_name: string | null;
-    handle: string | null;
-    is_active: boolean;
-  }[];
+  smm_group_platforms: SmmGroupPlatform[];
 };
 
 export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [groups, setGroups] = useState<SmmGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,17 +38,37 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
   const [creating, setCreating] = useState(false);
   const [editPlatform, setEditPlatform] = useState<{ groupId: string; platform: SmmPlatform } | null>(null);
   const [platformForm, setPlatformForm] = useState({ page_id: "", page_name: "", handle: "" });
+  const [connectingTikTok, setConnectingTikTok] = useState<string | null>(null); // groupId being connected
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/smm/groups");
-        if (res.ok) setGroups(await res.json());
-      } catch { /* ignore */ } finally {
-        setLoading(false);
-      }
-    })();
+  // TikTok OAuth callback status from URL params
+  const tiktokStatus = searchParams.get("tiktok");
+  const tiktokName   = searchParams.get("name");
+  const tiktokReason = searchParams.get("reason");
+
+  const loadGroups = useCallback(async () => {
+    try {
+      const res = await fetch("/api/smm/groups");
+      if (res.ok) setGroups(await res.json());
+    } catch { /* ignore */ } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadGroups(); }, [loadGroups]);
+
+  // Reload groups after successful TikTok connection so the card shows "Connected"
+  useEffect(() => {
+    if (tiktokStatus === "connected") loadGroups();
+  }, [tiktokStatus, loadGroups]);
+
+  // Clear TikTok status params from URL without navigating away
+  function dismissTikTokBanner() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete("tiktok");
+    url.searchParams.delete("name");
+    url.searchParams.delete("reason");
+    router.replace(url.pathname + url.search);
+  }
 
   async function createGroup() {
     if (!newGroupName.trim()) return;
@@ -90,6 +117,21 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
     if (!group) return;
     const existing = group.smm_group_platforms.find((p) => p.platform === platform);
 
+    if (platform === "tiktok") {
+      // TikTok uses OAuth — don't use the edit form; use connectTikTok instead
+      if (existing) {
+        await fetch("/api/smm/platforms", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: existing.id, is_active: !existing.is_active }),
+        });
+        await loadGroups();
+      } else {
+        await connectTikTok(groupId, null);
+      }
+      return;
+    }
+
     if (existing) {
       const res = await fetch("/api/smm/platforms", {
         method: "PATCH",
@@ -109,6 +151,30 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
     } else {
       setEditPlatform({ groupId, platform });
       setPlatformForm({ page_id: "", page_name: "", handle: "" });
+    }
+  }
+
+  // Start TikTok OAuth flow.
+  // If no platform row yet: create a stub row first, then redirect.
+  // If a row exists: redirect immediately with the existing id.
+  async function connectTikTok(groupId: string, existingId: string | null) {
+    setConnectingTikTok(groupId);
+    try {
+      let platformId = existingId;
+      if (!platformId) {
+        const res = await fetch("/api/smm/platforms", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ group_id: groupId, platform: "tiktok" }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error ?? "Failed to create TikTok platform");
+        const created = await res.json();
+        platformId = created.id;
+      }
+      window.location.href = `/api/tiktok/connect?platform_id=${platformId}`;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to start TikTok OAuth");
+      setConnectingTikTok(null);
     }
   }
 
@@ -155,6 +221,11 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
     setEditPlatform(null);
   }
 
+  function isTikTokConnected(p: SmmGroupPlatform): boolean {
+    // Connected = has a token_expires_at set (populated by OAuth callback)
+    return !!p.token_expires_at;
+  }
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -173,6 +244,24 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
           + New Group
         </button>
       </div>
+
+      {/* TikTok OAuth callback banner */}
+      {tiktokStatus === "connected" && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-emerald-700">
+            ✅ TikTok connected{tiktokName ? ` as @${tiktokName}` : ""}
+          </span>
+          <button onClick={dismissTikTokBanner} className="text-xs text-emerald-500 hover:text-emerald-700">Dismiss</button>
+        </div>
+      )}
+      {tiktokStatus === "error" && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-red-600">
+            TikTok connection failed{tiktokReason ? `: ${tiktokReason}` : ""}
+          </span>
+          <button onClick={dismissTikTokBanner} className="text-xs text-red-400 hover:text-red-600">Dismiss</button>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
@@ -257,6 +346,8 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
             {VALID_PLATFORMS.map((platform) => {
               const existing = group.smm_group_platforms.find((p) => p.platform === platform);
               const isActive = existing?.is_active ?? false;
+              const isTikTok = platform === "tiktok";
+              const tikTokConnected = isTikTok && existing ? isTikTokConnected(existing) : false;
 
               return (
                 <div
@@ -266,7 +357,9 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm font-medium text-gray-800 capitalize">{platform}</span>
+                    <span className="text-sm font-medium text-gray-800 capitalize">
+                      {platform === "tiktok" ? "TikTok" : platform}
+                    </span>
                     <button
                       onClick={() => togglePlatform(group.id, platform)}
                       className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
@@ -276,7 +369,32 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                       {isActive ? "Active" : "Enable"}
                     </button>
                   </div>
-                  {existing ? (
+
+                  {isTikTok ? (
+                    // TikTok: OAuth-managed connection
+                    <div className="space-y-1.5">
+                      {tikTokConnected && existing ? (
+                        <p className="text-xs text-emerald-600 font-medium">
+                          ✅ @{existing.handle ?? existing.page_name ?? "connected"}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-400">
+                          {existing ? "Token expired or not connected" : "Not connected"}
+                        </p>
+                      )}
+                      <button
+                        onClick={() => connectTikTok(group.id, existing?.id ?? null)}
+                        disabled={connectingTikTok === group.id}
+                        className="text-xs px-2.5 py-1 rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                      >
+                        {connectingTikTok === group.id
+                          ? "Connecting…"
+                          : tikTokConnected
+                          ? "Reconnect"
+                          : "Connect TikTok"}
+                      </button>
+                    </div>
+                  ) : existing ? (
                     <div className="text-xs text-gray-400 space-y-0.5">
                       {existing.page_name && <p className="truncate">{existing.page_name}</p>}
                       {existing.page_id && <p className="font-mono text-[10px] text-gray-300 truncate">{existing.page_id}</p>}
@@ -305,8 +423,8 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
       ))}
 
-      {/* Platform edit modal */}
-      {editPlatform && (
+      {/* Platform edit modal (non-TikTok platforms) */}
+      {editPlatform && editPlatform.platform !== "tiktok" && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
             <h2 className="text-base font-semibold text-gray-900 mb-4 capitalize">

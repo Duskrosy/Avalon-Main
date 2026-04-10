@@ -2,6 +2,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  refreshTikTokToken,
+  fetchTikTokUserInfo,
+  fetchTikTokVideoList,
+  fetchTikTokVideoStats,
+} from "@/lib/tiktok/client";
 import { z } from "zod";
 
 const socialSyncSchema = z.object({
@@ -157,6 +163,62 @@ async function resolveInstagramUserId(pageId: string, token: string): Promise<st
     // fall through — assume pageId is already an Instagram User ID
   }
   return pageId;
+}
+
+// ─── TikTok token refresh helper ─────────────────────────────────────────────
+// Checks if the stored access token is expired (or expiring in < 5 min) and
+// refreshes it automatically, updating the DB row in place.
+async function getValidTikTokToken(
+  platform: {
+    id: string;
+    access_token: string | null;
+    refresh_token?: string | null;
+    token_expires_at?: string | null;
+  },
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<string> {
+  if (!platform.access_token) {
+    throw new Error("No TikTok access token stored. Connect via Settings → ⚙ Groups → TikTok.");
+  }
+
+  const expiresAt  = platform.token_expires_at ? new Date(platform.token_expires_at) : null;
+  const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
+  if (!needsRefresh) return platform.access_token;
+
+  if (!platform.refresh_token) {
+    throw new Error("TikTok refresh token missing. Reconnect in Settings → ⚙ Groups → TikTok.");
+  }
+
+  console.info(`[social-sync] Refreshing TikTok token for platform ${platform.id}`);
+  const tokens     = await refreshTikTokToken(platform.refresh_token);
+  const newExpiry  = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+
+  await admin
+    .from("smm_group_platforms")
+    .update({
+      access_token:     tokens.access_token,
+      refresh_token:    tokens.refresh_token,
+      token_expires_at: newExpiry,
+    })
+    .eq("id", platform.id);
+
+  return tokens.access_token;
+}
+
+// ─── TikTok account-level stats ──────────────────────────────────────────────
+// Display API only provides follower_count at account level — impressions,
+// reach, and engagements are not available without Business Partner API access.
+async function syncTikTokAccount(accessToken: string) {
+  const userInfo = await fetchTikTokUserInfo(accessToken);
+  return {
+    impressions:        0,
+    reach:              0,
+    engagements:        0,
+    follower_count:     userInfo.follower_count ?? null,
+    video_plays:        0,
+    video_plays_3s:     0,
+    avg_play_time_secs: 0,
+  };
 }
 
 // ─── Individual Post Stats Sync ───────────────────────────────────────────────
@@ -437,8 +499,58 @@ async function syncPosts(
     } catch (ytErr) {
       console.warn("[social-sync] YT post sync failed:", ytErr instanceof Error ? ytErr.message : ytErr);
     }
+  } else if (platformType === "tiktok") {
+    // Fetch up to 20 most recent public videos + their engagement stats.
+    // Two-call pattern required by Display API v2:
+    //   1. /v2/video/list/ → video IDs + cover images
+    //   2. /v2/video/query/ → per-video engagement counts
+    try {
+      const { videos: stubs } = await fetchTikTokVideoList(token, 20);
+      if (!stubs.length) return;
+
+      const videoIds = stubs.map((v) => v.id);
+      const stats    = await fetchTikTokVideoStats(token, videoIds);
+
+      // Build a lookup from the list response for cover images (query may omit them)
+      const stubMap = Object.fromEntries(stubs.map((v) => [v.id, v]));
+
+      const rows = stats.map((v) => {
+        const stub        = stubMap[v.id] ?? {};
+        const engagements = (v.like_count ?? 0) + (v.comment_count ?? 0) + (v.share_count ?? 0);
+        const publishedAt = v.create_time
+          ? new Date(v.create_time * 1000).toISOString()
+          : stub.create_time
+          ? new Date(stub.create_time * 1000).toISOString()
+          : null;
+
+        return {
+          platform_id:        platformId,
+          post_external_id:   v.id,
+          post_url:           v.share_url ?? null,
+          thumbnail_url:      v.cover_image_url ?? stub.cover_image_url ?? null,
+          caption_preview:    v.title ? v.title.slice(0, 120) : null,
+          post_type:          "video" as const,
+          published_at:       publishedAt,
+          impressions:        v.view_count ?? 0,
+          reach:              v.view_count ?? 0,
+          engagements,
+          video_plays:        v.view_count ?? 0,
+          avg_play_time_secs: null,
+          metric_date:        today,
+        };
+      });
+
+      if (!rows.length) return;
+
+      const { error } = await admin
+        .from("smm_top_posts")
+        .upsert(rows, { onConflict: "platform_id,post_external_id" });
+
+      if (error) throw new Error(`TikTok smm_top_posts upsert: ${error.message}`);
+    } catch (ttErr) {
+      console.warn("[social-sync] TikTok post sync failed:", ttErr instanceof Error ? ttErr.message : ttErr);
+    }
   }
-  // TikTok: no automated post sync available
 }
 
 // ─── POST /api/smm/social-sync ─────────────────────────────────────────────────
@@ -482,7 +594,7 @@ export async function POST(req: NextRequest) {
     // Cron mode: sync all active platforms
     const { data: allPlatforms } = await admin
       .from("smm_group_platforms")
-      .select("id, platform, page_id, access_token, is_active")
+      .select("id, platform, page_id, access_token, refresh_token, token_expires_at, is_active")
       .eq("is_active", true);
 
     const results = await Promise.allSettled(
@@ -502,7 +614,7 @@ export async function POST(req: NextRequest) {
 
   const { data: platform, error: platErr } = await admin
     .from("smm_group_platforms")
-    .select("id, platform, page_id, access_token, is_active")
+    .select("id, platform, page_id, access_token, refresh_token, token_expires_at, is_active")
     .eq("id", platform_id)
     .single();
 
@@ -517,7 +629,15 @@ export async function POST(req: NextRequest) {
 // ─── Core sync logic for a single platform ────────────────────────────────────
 async function syncOnePlatform(
   admin: ReturnType<typeof createAdminClient>,
-  platform: { id: string; platform: string; page_id: string | null; access_token: string | null; is_active: boolean },
+  platform: {
+    id: string;
+    platform: string;
+    page_id: string | null;
+    access_token: string | null;
+    refresh_token?: string | null;
+    token_expires_at?: string | null;
+    is_active: boolean;
+  },
   syncDate: string
 ) {
   if (!platform.is_active) {
@@ -553,12 +673,25 @@ async function syncOnePlatform(
     // fall through to try block
   }
 
-  if (!metaPlatforms.includes(platform.platform) && platform.platform !== "youtube") {
+  if (!metaPlatforms.includes(platform.platform) && platform.platform !== "youtube" && platform.platform !== "tiktok") {
     return {
       ok: false,
       needs_manual: true,
       error: `Auto-sync for ${platform.platform} is not yet available. Please enter data manually.`,
     };
+  }
+
+  // TikTok: validate token before continuing
+  let tiktokToken: string | null = null;
+  if (platform.platform === "tiktok") {
+    if (!platform.access_token) {
+      return { ok: false, needs_manual: true, error: "TikTok not connected. Connect via Settings → ⚙ Groups → TikTok." };
+    }
+    try {
+      tiktokToken = await getValidTikTokToken(platform, admin);
+    } catch (err) {
+      return { ok: false, needs_manual: true, error: err instanceof Error ? err.message : "TikTok token error" };
+    }
   }
 
   try {
@@ -578,6 +711,8 @@ async function syncOnePlatform(
       metrics = await syncInstagram(pageId, token!, syncDate);
     } else if (platform.platform === "youtube") {
       metrics = await syncYouTube(pageId, syncDate);
+    } else if (platform.platform === "tiktok") {
+      metrics = await syncTikTokAccount(tiktokToken!);
     } else {
       metrics = await syncInstagram(pageId, token!, syncDate);
     }
@@ -617,11 +752,12 @@ async function syncOnePlatform(
 
     if (upsertErr) throw new Error(upsertErr.message);
 
-    // ── Post-level stats (Facebook, Instagram, YouTube) ───────────────────────
+    // ── Post-level stats (Facebook, Instagram, YouTube, TikTok) ──────────────
     let postSyncError: string | null = null;
-    if (["facebook", "instagram", "youtube"].includes(platform.platform)) {
+    if (["facebook", "instagram", "youtube", "tiktok"].includes(platform.platform)) {
+      const postToken = platform.platform === "tiktok" ? tiktokToken! : (token ?? "");
       try {
-        await syncPosts(platform.platform, pageId, token ?? "", platform.id, admin);
+        await syncPosts(platform.platform, pageId, postToken, platform.id, admin);
       } catch (postErr: unknown) {
         // Non-fatal: page-level analytics already written
         postSyncError = postErr instanceof Error ? postErr.message : String(postErr);
