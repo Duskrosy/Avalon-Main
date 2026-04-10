@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -26,12 +27,16 @@ export async function GET(req: NextRequest) {
 
   if (!platformId) return NextResponse.json({ error: "platform_id required" }, { status: 400 });
 
-  let query = supabase
+  // Use admin client so RLS doesn't silently filter out rows that were
+  // written by the sync (which also uses admin). Auth is enforced above.
+  const admin = createAdminClient();
+  let query = admin
     .from("smm_top_posts")
     .select("*")
     .eq("platform_id", platformId)
+    .order("metric_date", { ascending: false })
     .order("impressions", { ascending: false, nullsFirst: false })
-    .limit(10);
+    .limit(20);
 
   if (from) query = query.gte("metric_date", from);
   if (to) query = query.lte("metric_date", to);

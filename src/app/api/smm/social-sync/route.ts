@@ -468,39 +468,43 @@ async function syncPosts(
       const { videos: stubs } = await fetchTikTokVideoList(token, 20);
       if (!stubs.length) return;
 
+      // Best-effort stats fetch — video.query may be unavailable in sandbox mode.
+      // If it fails or returns empty we still upsert using the stub data from video.list.
       const videoIds = stubs.map((v) => v.id);
-      const stats    = await fetchTikTokVideoStats(token, videoIds);
+      let statsMap: Record<string, Awaited<ReturnType<typeof fetchTikTokVideoStats>>[number]> = {};
+      try {
+        const statsArr = await fetchTikTokVideoStats(token, videoIds);
+        for (const s of statsArr) statsMap[s.id] = s;
+      } catch {
+        console.warn("[social-sync] TikTok video.query failed — using stub data only (normal in sandbox)");
+      }
 
-      // Build a lookup from the list response for cover images (query may omit them)
-      const stubMap = Object.fromEntries(stubs.map((v) => [v.id, v]));
-
-      const rows = stats.map((v) => {
-        const stub        = stubMap[v.id] ?? {};
-        const engagements = (v.like_count ?? 0) + (v.comment_count ?? 0) + (v.share_count ?? 0);
-        const publishedAt = v.create_time
-          ? new Date(v.create_time * 1000).toISOString()
-          : stub.create_time
+      const rows = stubs.map((stub) => {
+        const stats       = statsMap[stub.id];
+        const engagements = stats
+          ? (stats.like_count ?? 0) + (stats.comment_count ?? 0) + (stats.share_count ?? 0)
+          : 0;
+        const viewCount   = stats?.view_count ?? 0;
+        const publishedAt = stub.create_time
           ? new Date(stub.create_time * 1000).toISOString()
           : null;
 
         return {
           platform_id:        platformId,
-          post_external_id:   v.id,
-          post_url:           v.share_url ?? null,
-          thumbnail_url:      v.cover_image_url ?? stub.cover_image_url ?? null,
-          caption_preview:    v.title ? v.title.slice(0, 120) : null,
+          post_external_id:   stub.id,
+          post_url:           stats?.share_url ?? `https://www.tiktok.com/@finncottonofficial/video/${stub.id}`,
+          thumbnail_url:      stats?.cover_image_url ?? stub.cover_image_url ?? null,
+          caption_preview:    (stats?.title ?? stub.title ?? "").slice(0, 120) || null,
           post_type:          "video" as const,
           published_at:       publishedAt,
-          impressions:        v.view_count ?? 0,
-          reach:              v.view_count ?? 0,
+          impressions:        viewCount,
+          reach:              viewCount,
           engagements,
-          video_plays:        v.view_count ?? 0,
+          video_plays:        viewCount,
           avg_play_time_secs: null,
           metric_date:        today,
         };
       });
-
-      if (!rows.length) return;
 
       const { error } = await admin
         .from("smm_top_posts")
