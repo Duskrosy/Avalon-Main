@@ -269,20 +269,39 @@ export function ContentManager({
         ? activePlatforms
         : activePlatforms.filter((p) => p.platform === activePlatform);
 
-    await Promise.allSettled(
-      platformsToSync.map((platform) =>
-        fetch("/api/smm/social-sync", {
+    const results = await Promise.allSettled(
+      platformsToSync.map(async (platform) => {
+        const res = await fetch("/api/smm/social-sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ platform_id: platform.id }),
-        })
-      )
+        });
+        const json = await res.json().catch(() => ({}));
+        return { platform: platform.platform, ...json };
+      })
     );
+
+    // Collect any errors from the sync responses
+    const errors: string[] = [];
+    for (const r of results) {
+      if (r.status === "rejected") {
+        errors.push(String(r.reason));
+      } else if (!r.value.ok) {
+        errors.push(`${r.value.platform}: ${r.value.error ?? "unknown error"}`);
+      } else if (r.value.post_sync_error) {
+        errors.push(`${r.value.platform} posts: ${r.value.post_sync_error}`);
+      }
+    }
 
     await fetchLivePosts();
     setSyncing(false);
-    setSyncMsg("✓ Synced");
-    setTimeout(() => setSyncMsg(null), 3000);
+
+    if (errors.length > 0) {
+      setSyncMsg(`⚠ ${errors[0]}`);
+    } else {
+      setSyncMsg("✓ Synced");
+    }
+    setTimeout(() => setSyncMsg(null), 6000);
   };
 
   const handleSave = async (data: Partial<Post>) => {
@@ -393,13 +412,20 @@ export function ContentManager({
             ⚙ Groups
           </button>
           {viewMode === "published" && (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 disabled:opacity-50 transition-colors"
-            >
-              {syncing ? "Syncing…" : syncMsg ?? "↻ Sync"}
-            </button>
+            <div className="flex items-center gap-2">
+              {syncMsg && !syncing && (
+                <span className={`text-xs ${syncMsg.startsWith("⚠") ? "text-amber-600" : "text-emerald-600"}`}>
+                  {syncMsg}
+                </span>
+              )}
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                className="text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 disabled:opacity-50 transition-colors"
+              >
+                {syncing ? "Syncing…" : "↻ Sync"}
+              </button>
+            </div>
           )}
           {viewMode === "planned" && (
             <button
@@ -561,7 +587,7 @@ export function ContentManager({
               ) : livePosts.length === 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   <p className="text-sm text-gray-400 col-span-full text-center py-8">
-                    No published posts synced yet. Hit the ↻ Sync button above to pull from Meta / YouTube.
+                    No published posts synced yet. Hit the ↻ Sync button above to pull from connected platforms.
                   </p>
                 </div>
               ) : (
