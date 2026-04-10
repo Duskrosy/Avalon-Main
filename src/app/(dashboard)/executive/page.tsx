@@ -130,6 +130,11 @@ export default async function ExecutiveOverviewPage({
   const dateFrom = sp.from ?? today;
   const dateTo   = sp.to   ?? today;
 
+  // Meta Ads data is always 1 day delayed — when the user is viewing "Live" (today),
+  // fall back to yesterday so ad stats are never blank.
+  const adStatsFrom = dateFrom === today ? yesterday : dateFrom;
+  const adStatsTo   = dateTo   === today ? yesterday : dateTo;
+
   // ── Parallel data fetch ───────────────────────────────────────────────────
   const [
     { data: salesTodayRows },
@@ -164,11 +169,11 @@ export default async function ExecutiveOverviewPage({
       .gte("confirmed_date", thisMonthStart)
       .eq("status", "confirmed"),
 
-    // Ad stats for selected date range
+    // Ad stats for selected date range (uses adStatsFrom/To so Live falls back to yesterday)
     admin.from("meta_ad_stats")
       .select("spend, impressions, clicks, conversions, conversion_value, campaign_id, campaign_name, metric_date")
-      .gte("metric_date", dateFrom)
-      .lte("metric_date", dateTo),
+      .gte("metric_date", adStatsFrom)
+      .lte("metric_date", adStatsTo),
 
     // Active meta campaigns
     admin.from("meta_campaigns")
@@ -380,7 +385,7 @@ export default async function ExecutiveOverviewPage({
           badge="Sales"
         />
         <MetricCard
-          label={`Ad spend · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : "Today"}`}
+          label={`Ad spend · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : "Latest sync"}`}
           value={fmtMoney(totalSpend7d)}
           sub={`ROAS ${overallRoas.toFixed(2)}x · ${fmtK(totalImpr7d)} impressions`}
           accent={roasAccent as "green" | "amber" | "red" | "none"}
