@@ -533,42 +533,88 @@ async function syncPosts(
       }
 
       // ── 4. Build upsert rows ───────────────────────────────────────────────
+      // safeInt: coerces TikTok API values to clean JS integers.
+      // TikTok sometimes returns counts as JSON strings ("4493" not 4493).
+      // Number() handles both; Math.round avoids float insertion errors.
+      const safeInt = (v: unknown): number => {
+        const n = Math.round(Number(v));
+        return isFinite(n) ? n : 0;
+      };
+
+      // safeStr: strips null bytes and other control chars that PostgreSQL text rejects.
+      const safeStr = (v: unknown, maxLen = 120): string | null => {
+        if (v == null) return null;
+        // eslint-disable-next-line no-control-regex
+        const s = String(v).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").slice(0, maxLen);
+        return s || null;
+      };
+
       const rows = allIds.map((id) => {
         const stub        = stubMap[id];
         const stats       = statsMap[id];
         const existing    = existingMap[id];
-        const engagements = stats
-          ? (stats.like_count ?? 0) + (stats.comment_count ?? 0) + (stats.share_count ?? 0)
-          : 0;
-        const viewCount   = stats?.view_count ?? 0;
-        const publishedAt = stub?.create_time
-          ? new Date(stub.create_time * 1000).toISOString()
-          : (stats as { create_time?: number } | undefined)?.create_time
-          ? new Date(((stats as { create_time?: number }).create_time ?? 0) * 1000).toISOString()
-          : existing?.published_at ?? null;
+
+        // Coerce to numbers first — TikTok sandbox may return counts as strings
+        const likes    = safeInt((stats as Record<string, unknown>)?.like_count);
+        const comments = safeInt((stats as Record<string, unknown>)?.comment_count);
+        const shares   = safeInt((stats as Record<string, unknown>)?.share_count);
+        const views    = safeInt((stats as Record<string, unknown>)?.view_count);
+        const engagements = likes + comments + shares;
+
+        // create_time is a Unix timestamp — handle both number and string forms
+        const rawTime =
+          (stub as Record<string, unknown>)?.create_time ??
+          (stats as Record<string, unknown>)?.create_time;
+        const publishedAt = rawTime
+          ? new Date(Number(rawTime) * 1000).toISOString()
+          : (existing?.published_at ?? null);
+
+        const thumbUrl =
+          safeStr((stats as Record<string, unknown>)?.cover_image_url) ??
+          safeStr((stub  as Record<string, unknown>)?.cover_image_url) ??
+          (existing?.thumbnail_url ?? null);
+
+        const captionRaw =
+          (stats as Record<string, unknown>)?.title ??
+          (stub  as Record<string, unknown>)?.title ??
+          existing?.caption_preview ??
+          "";
 
         return {
           platform_id:        platformId,
-          post_external_id:   id,
-          post_url:           stats?.share_url ?? `https://www.tiktok.com/video/${id}`,
-          thumbnail_url:      stats?.cover_image_url ?? stub?.cover_image_url ?? existing?.thumbnail_url ?? null,
-          caption_preview:    ((stats?.title ?? stub?.title ?? existing?.caption_preview ?? "") as string).slice(0, 120) || null,
-          post_type:          "video" as const,
+          post_external_id:   String(id),
+          post_url:           `https://www.tiktok.com/video/${id}`,
+          thumbnail_url:      thumbUrl,
+          caption_preview:    safeStr(captionRaw),
+          post_type:          "video",
           published_at:       publishedAt,
-          impressions:        viewCount,
-          reach:              viewCount,
+          impressions:        views,
+          reach:              views,
           engagements,
-          video_plays:        viewCount,
+          video_plays:        views,
           avg_play_time_secs: null,
           metric_date:        today,
         };
       });
 
+      // Log first row so we can diagnose type issues in server logs
+      if (rows.length > 0) {
+        console.info("[social-sync] TikTok first upsert row:", JSON.stringify(rows[0]));
+      }
+
       const { error } = await admin
         .from("smm_top_posts")
         .upsert(rows, { onConflict: "platform_id,post_external_id" });
 
-      if (error) throw new Error(`TikTok smm_top_posts upsert: ${error.message}`);
+      if (error) {
+        const detail = [
+          error.message,
+          error.code    ? `code=${error.code}`       : null,
+          error.details ? `details=${error.details}`  : null,
+          error.hint    ? `hint=${error.hint}`        : null,
+        ].filter(Boolean).join(" | ");
+        throw new Error(`TikTok smm_top_posts upsert: ${detail}`);
+      }
       console.info(`[social-sync] TikTok upserted ${rows.length} posts`);
     }
   }
