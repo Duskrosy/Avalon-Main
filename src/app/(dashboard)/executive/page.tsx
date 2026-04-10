@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
+import { LiveAdsPanel } from "./live-ads-panel";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -126,38 +127,15 @@ export default async function ExecutiveOverviewPage({
   const sevenDaysAgo   = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
   const thisMonthStart = `${today.slice(0, 7)}-01`;
 
-  // Date range from picker (defaults to today)
+  // Date range for Shopify (still used, defaults to today)
   const dateFrom = sp.from ?? today;
   const dateTo   = sp.to   ?? today;
-
-  // Meta Ads data is always delayed (sync can be from any past date).
-  // For "Live" mode (today), find the most recently synced date and use that.
-  const isLiveMode = !sp.from && !sp.to; // no explicit range = Live
-  let adStatsFrom = dateFrom;
-  let adStatsTo   = dateTo;
-  let latestSyncDate: string | null = null;
-
-  if (isLiveMode) {
-    const { data: latestRow } = await admin
-      .from("meta_ad_stats")
-      .select("metric_date")
-      .order("metric_date", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    latestSyncDate = latestRow?.metric_date ?? null;
-    if (latestSyncDate) {
-      adStatsFrom = latestSyncDate;
-      adStatsTo   = latestSyncDate;
-    }
-  }
 
   // ── Parallel data fetch ───────────────────────────────────────────────────
   const [
     { data: salesTodayRows },
     { data: salesWeekRows },
     { data: confirmedSalesMonth },
-    { data: adStats7d },
-    { count: activeCampaigns },
     { count: pendingLeaves },
     { count: obsAlerts },
     { count: headcount },
@@ -184,17 +162,6 @@ export default async function ExecutiveOverviewPage({
       .select("net_value, quantity")
       .gte("confirmed_date", thisMonthStart)
       .eq("status", "confirmed"),
-
-    // Ad stats for selected date range (uses adStatsFrom/To so Live falls back to yesterday)
-    admin.from("meta_ad_stats")
-      .select("spend, impressions, clicks, conversions, conversion_value, campaign_id, campaign_name, metric_date")
-      .gte("metric_date", adStatsFrom)
-      .lte("metric_date", adStatsTo),
-
-    // Active meta campaigns
-    admin.from("meta_campaigns")
-      .select("*", { count: "exact", head: true })
-      .eq("effective_status", "ACTIVE"),
 
     // Pending leaves
     admin.from("leaves")
@@ -291,28 +258,6 @@ export default async function ExecutiveOverviewPage({
     .sort((a, b) => b.pairs - a.pairs)
     .slice(0, 8);
 
-  // ── Compute ad metrics ────────────────────────────────────────────────────
-  const totalSpend7d     = (adStats7d ?? []).reduce((s, r) => s + Number(r.spend), 0);
-  const totalConvValue7d = (adStats7d ?? []).reduce((s, r) => s + Number(r.conversion_value), 0);
-  const totalImpr7d      = (adStats7d ?? []).reduce((s, r) => s + (r.impressions ?? 0), 0);
-  const totalConv7d      = (adStats7d ?? []).reduce((s, r) => s + (r.conversions ?? 0), 0);
-  const overallRoas      = totalSpend7d > 0 ? totalConvValue7d / totalSpend7d : 0;
-
-  // Top campaigns 7d
-  const campaignMap: Record<string, { name: string; spend: number; value: number; impressions: number }> = {};
-  for (const row of adStats7d ?? []) {
-    const id = row.campaign_id;
-    if (!id) continue;
-    if (!campaignMap[id]) campaignMap[id] = { name: row.campaign_name ?? id, spend: 0, value: 0, impressions: 0 };
-    campaignMap[id].spend       += Number(row.spend);
-    campaignMap[id].value       += Number(row.conversion_value);
-    campaignMap[id].impressions += row.impressions ?? 0;
-  }
-  const topCampaigns = Object.entries(campaignMap)
-    .map(([id, c]) => ({ id, ...c, roas: c.spend > 0 ? c.value / c.spend : 0 }))
-    .sort((a, b) => b.spend - a.spend)
-    .slice(0, 4);
-
   // ── Compute KPI health per department ────────────────────────────────────
   const latestKpiMap: Record<string, number> = {};
   for (const e of allKpiEntries ?? []) {
@@ -363,7 +308,6 @@ export default async function ExecutiveOverviewPage({
 
   // ── Render ────────────────────────────────────────────────────────────────
   const pairsAccent = totalPairsToday >= 40 ? "green" : totalPairsToday >= 25 ? "amber" : "red";
-  const roasAccent  = overallRoas >= 2 ? "green" : overallRoas >= 1 ? "amber" : "red";
   const alertAccent = (obsAlerts ?? 0) > 0 ? "red" : "none";
 
   return (
@@ -399,21 +343,6 @@ export default async function ExecutiveOverviewPage({
           sub={`${monthSalesCount} confirmed orders`}
           href="/executive/sales"
           badge="Sales"
-        />
-        <MetricCard
-          label={`Ad spend · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : latestSyncDate ? `Synced ${format(new Date(latestSyncDate + "T00:00:00"), "d MMM")}` : "Live"}`}
-          value={fmtMoney(totalSpend7d)}
-          sub={`ROAS ${overallRoas.toFixed(2)}x · ${fmtK(totalImpr7d)} impressions`}
-          accent={roasAccent as "green" | "amber" | "red" | "none"}
-          href="/executive/ad-ops"
-          badge="Ad Ops"
-        />
-        <MetricCard
-          label="Active campaigns"
-          value={activeCampaigns ?? 0}
-          sub={`${totalConv7d} conversions this week`}
-          href="/executive/ad-ops"
-          badge="Ad Ops"
         />
         <MetricCard
           label="Social followers"
@@ -498,47 +427,7 @@ export default async function ExecutiveOverviewPage({
           )}
         </div>
 
-        {/* Top campaigns */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">Ad Operations</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Spend {fmtMoney(totalSpend7d)} · ROAS {overallRoas.toFixed(2)}x
-                {isLiveMode && latestSyncDate && ` · ${format(new Date(latestSyncDate + "T00:00:00"), "d MMM")}`}
-              </p>
-            </div>
-            <Link href="/executive/ad-ops" className="text-xs text-gray-400 hover:text-gray-700">More →</Link>
-          </div>
-          {topCampaigns.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">No campaign data for this period.</p>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {topCampaigns.map((c) => {
-                const roasBadge =
-                  c.roas >= 2 ? "bg-green-50 text-green-700" :
-                  c.roas >= 1 ? "bg-amber-50 text-amber-700" :
-                  "bg-red-50 text-red-700";
-                return (
-                  <div key={c.id} className="px-5 py-3 flex items-center gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-gray-800 font-medium truncate">{c.name}</p>
-                      <p className="text-xs text-gray-400">{fmtK(c.impressions)} impressions</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-gray-900">
-                        {fmtMoney(c.spend)}
-                      </p>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${roasBadge}`}>
-                        {c.roas.toFixed(2)}x ROAS
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <LiveAdsPanel />
       </div>
 
       {/* ── KPI health across departments ────────────────────────────────── */}
