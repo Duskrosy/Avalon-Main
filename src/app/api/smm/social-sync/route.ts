@@ -3,11 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  refreshTikTokToken,
   fetchTikTokUserInfo,
   fetchTikTokVideoList,
   fetchTikTokVideoStats,
 } from "@/lib/tiktok/client";
+import { getValidTikTokToken } from "@/lib/tiktok/server";
 import { z } from "zod";
 
 const socialSyncSchema = z.object({
@@ -163,46 +163,6 @@ async function resolveInstagramUserId(pageId: string, token: string): Promise<st
     // fall through — assume pageId is already an Instagram User ID
   }
   return pageId;
-}
-
-// ─── TikTok token refresh helper ─────────────────────────────────────────────
-// Checks if the stored access token is expired (or expiring in < 5 min) and
-// refreshes it automatically, updating the DB row in place.
-async function getValidTikTokToken(
-  platform: {
-    id: string;
-    access_token: string | null;
-    refresh_token?: string | null;
-    token_expires_at?: string | null;
-  },
-  admin: ReturnType<typeof createAdminClient>,
-): Promise<string> {
-  if (!platform.access_token) {
-    throw new Error("No TikTok access token stored. Connect via Settings → ⚙ Groups → TikTok.");
-  }
-
-  const expiresAt  = platform.token_expires_at ? new Date(platform.token_expires_at) : null;
-  const needsRefresh = !expiresAt || expiresAt.getTime() - Date.now() < 5 * 60 * 1000;
-  if (!needsRefresh) return platform.access_token;
-
-  if (!platform.refresh_token) {
-    throw new Error("TikTok refresh token missing. Reconnect in Settings → ⚙ Groups → TikTok.");
-  }
-
-  console.info(`[social-sync] Refreshing TikTok token for platform ${platform.id}`);
-  const tokens     = await refreshTikTokToken(platform.refresh_token);
-  const newExpiry  = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-
-  await admin
-    .from("smm_group_platforms")
-    .update({
-      access_token:     tokens.access_token,
-      refresh_token:    tokens.refresh_token,
-      token_expires_at: newExpiry,
-    })
-    .eq("id", platform.id);
-
-  return tokens.access_token;
 }
 
 // ─── TikTok account-level stats ──────────────────────────────────────────────
