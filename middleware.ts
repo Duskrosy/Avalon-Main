@@ -121,7 +121,12 @@ export default async function middleware(request: NextRequest) {
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/api/auth/");
 
-  if (!user && !isAuthRoute) {
+  const isPublicRoute =
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/txt");
+
+  if (!user && !isAuthRoute && !isPublicRoute) {
     if (isApiRoute) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
