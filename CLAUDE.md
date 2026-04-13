@@ -139,3 +139,33 @@ Key routing rules:
 - Architecture review → invoke plan-eng-review
 - Save progress, checkpoint, resume → invoke checkpoint
 - Code quality, health check → invoke health
+
+## Session Notes
+
+After every push to main or feature branch merge, write a session summary to Obsidian.
+
+**Vault:** `obsidian-vault` (MCP) — files live at `~/Documents/Obsidian Vault/`
+
+**After every push/merge, create or update:**
+- `Avalon/Dev Log/YYYY-MM-DD.md` — what was built, key decisions, files changed, what next session needs to know
+- `Avalon/Architecture.md` — running note of current system state (update only if architecture changed)
+
+**Dev Log format:**
+```
+# Avalon Dev Log — YYYY-MM-DD
+
+## What shipped
+- [branch name] — one-line summary
+
+## Key decisions
+- Decision and why
+
+## Files changed
+- path/to/file — what changed
+
+## Next session
+- What needs to happen next
+- Any blockers or open questions
+```
+
+**Always merge feature branches into main and push after completing work.** Do not leave PRs unmerged.
