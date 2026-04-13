@@ -421,17 +421,22 @@ function KpiCard({
       {/* Sparkline */}
       <Sparkline entries={entries} def={def} />
 
-      {/* Actions */}
-      <div className="flex items-center justify-between">
-        {def.is_platform_tracked && (
-          isMarketing
-            ? <span className="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">✅ Auto-sync</span>
-            : <span className="text-xs text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">⚡ Partial integration</span>
-        )}
+      {/* Data source + actions */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {def.is_platform_tracked ? (
+            isMarketing
+              ? <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">Meta Sync</span>
+              : <span className="text-[10px] text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full font-medium border border-violet-200">Platform</span>
+          ) : (
+            <span className="text-[10px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full font-medium border border-gray-200">Manual</span>
+          )}
+          <span className="text-[10px] text-gray-400">{def.frequency}</span>
+        </div>
         {canLog && (
           <button
             onClick={(e) => { e.stopPropagation(); onLog(); }}
-            className="ml-auto text-xs text-gray-400 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-2.5 py-1 rounded-lg transition-colors"
+            className="shrink-0 text-xs text-gray-400 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-2.5 py-1 rounded-lg transition-colors"
           >
             Log value
           </button>
@@ -582,6 +587,13 @@ function DetailPanel({
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
+const DATE_RANGES = [
+  { label: "7d", days: 7 },
+  { label: "14d", days: 14 },
+  { label: "30d", days: 30 },
+  { label: "All", days: 0 },
+] as const;
+
 export function KpiDashboard({
   initialDefinitions,
   initialEntries,
@@ -598,6 +610,20 @@ export function KpiDashboard({
   const [logging, setLogging] = useState<KpiDef | null>(null);
   const [syncing, startSync] = useTransition();
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
+  const [dateRange, setDateRange] = useState<number>(0);
+
+  // Filter entries by date range
+  const filteredEntries = useMemo(() => {
+    if (dateRange === 0) return entries;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - dateRange);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    const filtered: Record<string, KpiEntry[]> = {};
+    for (const [defId, defEntries] of Object.entries(entries)) {
+      filtered[defId] = defEntries.filter((e) => e.period_date >= cutoffStr);
+    }
+    return filtered;
+  }, [entries, dateRange]);
 
   // Load KPIs for a department
   const loadDept = useCallback(async (id: string) => {
@@ -680,7 +706,7 @@ export function KpiDashboard({
   const summary = useMemo(() => {
     let green = 0, amber = 0, red = 0, noData = 0;
     for (const def of definitions) {
-      const defEntries = entries[def.id] ?? [];
+      const defEntries = filteredEntries[def.id] ?? [];
       const latest = defEntries[defEntries.length - 1];
       if (!latest) { noData++; continue; }
       const r = rag(latest.value_numeric, def);
@@ -689,7 +715,7 @@ export function KpiDashboard({
       else red++;
     }
     return { green, amber, red, noData, total: definitions.length };
-  }, [definitions, entries]);
+  }, [definitions, filteredEntries]);
 
   // Group by category
   const byCategory = useMemo(() => {
@@ -721,6 +747,22 @@ export function KpiDashboard({
           <p className="text-sm text-gray-500 mt-1">KPI performance tracking</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Date range filter */}
+          <div className="flex gap-1">
+            {DATE_RANGES.map((r) => (
+              <button
+                key={r.label}
+                onClick={() => setDateRange(r.days)}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  dateRange === r.days
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
           {/* Meta Sync button — Marketing dept only, managers+ */}
           {isMarketing && canLog && (
             <button
@@ -819,7 +861,7 @@ export function KpiDashboard({
                   <KpiCard
                     key={def.id}
                     def={def}
-                    entries={entries[def.id] ?? []}
+                    entries={filteredEntries[def.id] ?? []}
                     onSelect={() => setSelected(def)}
                     onLog={() => setLogging(def)}
                     canLog={canLog}
@@ -832,7 +874,7 @@ export function KpiDashboard({
         </div>
       )}
 
-      {/* Detail panel */}
+      {/* Detail panel — shows all entries, not filtered */}
       {selected && (
         <DetailPanel
           def={selected}
