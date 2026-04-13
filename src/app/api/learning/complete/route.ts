@@ -12,13 +12,34 @@ export async function POST(req: NextRequest) {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const raw = await req.json();
+  let raw: unknown;
+  try {
+    raw = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
   const { data: body, error: validationError } = validateBody(learningCompletePostSchema, raw);
   if (validationError) return validationError;
 
   const { material_id, completed } = body;
 
   if (completed) {
+    // Verify the user has actually viewed the material
+    const { data: view } = await supabase
+      .from("learning_views")
+      .select("id")
+      .eq("user_id", currentUser.id)
+      .eq("material_id", material_id)
+      .maybeSingle();
+
+    if (!view) {
+      return NextResponse.json(
+        { error: "You must view this material before marking it complete." },
+        { status: 400 }
+      );
+    }
+
     const { error } = await supabase.from("learning_completions").insert({
       user_id: currentUser.id,
       material_id,
