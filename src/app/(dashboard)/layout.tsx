@@ -4,6 +4,8 @@ import { getCurrentUser, isOps, resolveNavigation } from "@/lib/permissions";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MfaBanner } from "@/components/layout/mfa-banner";
+import { PostHogProvider } from "@/lib/posthog/provider";
+import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 
 async function getBirthdayBanner(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -112,21 +114,24 @@ export default async function DashboardLayout({
   const userAvatarUrl = user.avatar_url ?? null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar
-        navigation={navigation}
-        userName={userName}
-        userInitials={userInitials}
-        userAvatarUrl={userAvatarUrl}
-        departmentName={user.department?.name ?? ""}
-        isOps={userIsOps}
-        departments={departments}
-      />
-      <div className="ml-64">
-        <Topbar unreadCount={unreadCount} birthdayBanner={birthdayBanner} />
-        {userTier <= 2 && <MfaBanner />}
-        <main className="p-6">{children}</main>
+    <PostHogProvider userId={user.id} userEmail={user.email}>
+      <div className="min-h-screen bg-gray-50">
+        <Sidebar
+          navigation={navigation}
+          userName={userName}
+          userInitials={userInitials}
+          userAvatarUrl={userAvatarUrl}
+          departmentName={user.department?.name ?? ""}
+          isOps={userIsOps}
+          departments={departments}
+        />
+        <div className="ml-64">
+          <Topbar unreadCount={unreadCount} birthdayBanner={birthdayBanner} />
+          {userTier <= 2 && <MfaBanner />}
+          <main className="p-6">{children}</main>
+        </div>
+        <FeedbackWidget />
       </div>
-    </div>
+    </PostHogProvider>
   );
 }
