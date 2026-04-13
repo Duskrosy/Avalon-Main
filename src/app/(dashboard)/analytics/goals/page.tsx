@@ -10,17 +10,24 @@ export default async function GoalsPage() {
 
   const deptId = currentUser.department_id;
 
-  const [{ data: goals }, { data: departments }] = await Promise.all([
+  const [{ data: goals }, { data: departments }, { data: kpiDefs }] = await Promise.all([
     supabase
       .from("goals")
       .select(`
         id, title, description, target_value, current_value, unit, deadline, status, created_at,
+        kpi_definition_id, deadline_green_days, deadline_amber_days,
         department:departments(id, name, slug),
-        created_by_profile:profiles!created_by(first_name, last_name)
+        created_by_profile:profiles!created_by(first_name, last_name),
+        kpi_definition:kpi_definitions(id, name, unit, threshold_green, threshold_amber, direction)
       `)
       .neq("status", "cancelled")
       .order("deadline"),
     supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
+    supabase
+      .from("kpi_definitions")
+      .select("id, name, department_id, unit, category")
+      .eq("is_active", true)
+      .order("name"),
   ]);
 
   return (
@@ -28,6 +35,7 @@ export default async function GoalsPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       goals={(goals ?? []) as any}
       departments={departments ?? []}
+      kpiDefinitions={(kpiDefs ?? []) as any}
       currentDeptId={deptId}
       canManage={isManagerOrAbove(currentUser)}
       isOps={isOps(currentUser)}
