@@ -30,37 +30,56 @@ type Props = {
   canDelete: boolean;
 };
 
-export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, totalStaff, canDelete }: Props) {
+export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, totalStaff, currentUserId, canDelete }: Props) {
   const router = useRouter();
   const [signed, setSigned] = useState(initialSigned);
   const [sigCount, setSigCount] = useState(signatures.length);
   const [sigList, setSigList] = useState<Signature[]>(signatures);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const progress = totalStaff > 0 ? Math.round((sigCount / totalStaff) * 100) : 0;
 
   const handleSign = async () => {
     setLoading(true);
-    const method = signed ? "DELETE" : "POST";
+    setError(null);
+    const wasSigned = signed;
+    const method = wasSigned ? "DELETE" : "POST";
+
+    // Optimistic update
+    if (!wasSigned) {
+      setSigCount((c) => c + 1);
+      setSigned(true);
+    } else {
+      setSigCount((c) => c - 1);
+      setSigned(false);
+      setSigList((list) => list.filter((s) => s.user_id !== currentUserId));
+    }
+
     const res = await fetch(`/api/memos/${memo.id}/sign`, { method });
-    if (res.ok) {
-      if (!signed) {
-        setSigCount((c) => c + 1);
-        setSigned(true);
-      } else {
-        setSigCount((c) => c - 1);
-        setSigned(false);
-        setSigList((list) => list.filter((s) => s.user_id !== memo.id));
+    if (!res.ok) {
+      // Rollback on failure
+      setSigned(wasSigned);
+      setSigCount(wasSigned ? sigCount : sigCount);
+      if (wasSigned) {
+        setSigList(signatures);
       }
-      router.refresh();
+      setError(wasSigned ? "Failed to unsign. Please try again." : "Failed to sign. Please try again.");
     }
     setLoading(false);
   };
 
   const handleDelete = async () => {
     if (!confirm(`Delete "${memo.title}"? This cannot be undone.`)) return;
+    setDeleting(true);
     const res = await fetch(`/api/memos/${memo.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/knowledgebase/memos");
+    if (res.ok) {
+      router.push("/knowledgebase/memos");
+    } else {
+      setError("Failed to delete memo.");
+      setDeleting(false);
+    }
   };
 
   return (
@@ -97,9 +116,10 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
               {canDelete && (
                 <button
                   onClick={handleDelete}
-                  className="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 shrink-0"
+                  disabled={deleting}
+                  className="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Delete
+                  {deleting ? "Deleting..." : "Delete"}
                 </button>
               )}
             </div>
@@ -108,7 +128,10 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
               {memo.content}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100">
+            <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+              {error && (
+                <p className="text-xs text-red-600 text-center">{error}</p>
+              )}
               <button
                 onClick={handleSign}
                 disabled={loading}
