@@ -137,6 +137,9 @@ export const goalPostSchema = z.object({
   unit: z.string().max(50).optional().nullable(),
   deadline: dateStr,
   department_id: uuid.optional().nullable(),
+  kpi_definition_id: uuid.optional().nullable(),
+  deadline_green_days: z.number().int().min(1).optional().default(14),
+  deadline_amber_days: z.number().int().min(1).optional().default(7),
 });
 
 export const goalPatchSchema = z.object({
@@ -145,7 +148,10 @@ export const goalPatchSchema = z.object({
   current_value: z.number().optional(),
   target_value: z.number().optional(),
   deadline: dateStr.optional(),
-  status: z.enum(["on_track", "at_risk", "completed", "cancelled"]).optional(),
+  status: z.enum(["active", "achieved", "cancelled"]).optional(),
+  kpi_definition_id: z.string().uuid().optional().nullable(),
+  deadline_green_days: z.number().int().min(1).optional(),
+  deadline_amber_days: z.number().int().min(1).optional(),
 });
 
 // ─── KPI entries ─────────────────────────────────────────────────────────────
