@@ -5,6 +5,50 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 
+// ─── Attachment Viewer ────────────────────────────────────────────────────────
+function AttachmentViewer({ url, name }: { url: string; name: string }) {
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+
+  if (ext === "pdf") {
+    return (
+      <iframe
+        src={url}
+        className="w-full h-[60vh] rounded-lg border border-gray-200"
+        title={name}
+      />
+    );
+  }
+
+  if (["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(ext)) {
+    return (
+      <iframe
+        src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+        className="w-full h-[60vh] rounded-lg border border-gray-200"
+        title={name}
+      />
+    );
+  }
+
+  // Fallback: download link for unsupported types
+  return (
+    <div className="flex items-center justify-center h-24 bg-gray-50 rounded-lg border border-gray-200">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
+        </svg>
+        Download {name}
+      </a>
+    </div>
+  );
+}
+
 type Signature = {
   id: string;
   user_id: string;
@@ -134,21 +178,31 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
             {/* Attachment */}
             {memo.attachment_name && (
               <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-xs font-medium text-gray-500 mb-2">Attachment</p>
-                <a
-                  href={memo.attachment_signed_url ?? "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors ${
-                    memo.attachment_signed_url ? "text-gray-700" : "text-gray-400 pointer-events-none"
-                  }`}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                  {memo.attachment_name}
-                  <span className="text-xs text-gray-400">Open</span>
-                </a>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-500">Attachment</p>
+                  {memo.attachment_signed_url && (
+                    <a
+                      href={memo.attachment_signed_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                      Open in new tab
+                    </a>
+                  )}
+                </div>
+                {memo.attachment_signed_url ? (
+                  <AttachmentViewer url={memo.attachment_signed_url} name={memo.attachment_name} />
+                ) : (
+                  <p className="text-xs text-gray-400 py-4 text-center bg-gray-50 rounded-lg">
+                    Attachment unavailable. The link may have expired — try refreshing.
+                  </p>
+                )}
               </div>
             )}
 
