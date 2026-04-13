@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -27,13 +27,166 @@ type Kop = {
   created_by_profile: { first_name: string; last_name: string } | null;
 };
 
+type StaffMember = { id: string; first_name: string; last_name: string; department: { name: string } | null };
+type Assignment = { id: string; user_id: string; assigned_at: string; notes: string | null; user: { first_name: string; last_name: string; email: string } | null };
+
 type Props = {
   kop: Kop;
   versions: Version[];
   currentVersion: Version | null;
   canManage: boolean;
   canDelete: boolean;
+  staff?: StaffMember[];
 };
+
+// ─── Assignment Panel ─────────────────────────────────────────────────────────
+function AssignmentPanel({ kopId, staff, canManage }: { kopId: string; staff: StaffMember[]; canManage: boolean }) {
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAssign, setShowAssign] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [notes, setNotes] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const fetchAssignments = useCallback(async () => {
+    const res = await fetch(`/api/kops/assignments?kop_id=${kopId}`);
+    if (res.ok) setAssignments(await res.json());
+    setLoading(false);
+  }, [kopId]);
+
+  useEffect(() => { fetchAssignments(); }, [fetchAssignments]);
+
+  const assignedIds = new Set(assignments.map((a) => a.user_id));
+  const unassigned = staff.filter((s) => !assignedIds.has(s.id));
+  const filteredStaff = unassigned.filter((s) =>
+    `${s.first_name} ${s.last_name}`.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleAssign = async () => {
+    if (selected.size === 0) return;
+    setAssigning(true);
+    const res = await fetch("/api/kops/assignments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kop_id: kopId, user_ids: [...selected], notes: notes || undefined }),
+    });
+    if (res.ok) {
+      await fetchAssignments();
+      setShowAssign(false);
+      setSelected(new Set());
+      setNotes("");
+      setSearch("");
+    }
+    setAssigning(false);
+  };
+
+  const handleRemove = async (id: string) => {
+    const res = await fetch(`/api/kops/assignments?id=${id}`, { method: "DELETE" });
+    if (res.ok) setAssignments((a) => a.filter((x) => x.id !== id));
+  };
+
+  return (
+    <div className="mt-6">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          Assigned to ({assignments.length})
+        </h3>
+        {canManage && (
+          <button
+            onClick={() => setShowAssign(!showAssign)}
+            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2.5 py-1 rounded-lg"
+          >
+            {showAssign ? "Cancel" : "+ Assign"}
+          </button>
+        )}
+      </div>
+
+      {/* Assign modal inline */}
+      {showAssign && (
+        <div className="bg-gray-50 rounded-xl p-3 mb-3 space-y-2">
+          <input
+            type="text"
+            placeholder="Search staff..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-gray-900"
+          />
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {filteredStaff.length === 0 ? (
+              <p className="text-xs text-gray-400 py-2 text-center">
+                {unassigned.length === 0 ? "Everyone is assigned" : "No matches"}
+              </p>
+            ) : (
+              filteredStaff.slice(0, 20).map((s) => (
+                <label key={s.id} className="flex items-center gap-2 text-xs py-1 cursor-pointer hover:bg-white rounded px-1">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(s.id)}
+                    onChange={(e) => {
+                      const next = new Set(selected);
+                      e.target.checked ? next.add(s.id) : next.delete(s.id);
+                      setSelected(next);
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-gray-700">{s.first_name} {s.last_name}</span>
+                  {s.department && <span className="text-gray-400 ml-auto">{s.department.name}</span>}
+                </label>
+              ))
+            )}
+          </div>
+          <input
+            type="text"
+            placeholder="Notes (optional)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-gray-900"
+          />
+          <button
+            onClick={handleAssign}
+            disabled={selected.size === 0 || assigning}
+            className="w-full bg-gray-900 text-white text-xs py-1.5 rounded-lg disabled:opacity-50"
+          >
+            {assigning ? "Assigning..." : `Assign ${selected.size} user${selected.size !== 1 ? "s" : ""}`}
+          </button>
+        </div>
+      )}
+
+      {/* Assignment list */}
+      {loading ? (
+        <p className="text-xs text-gray-400 py-2">Loading...</p>
+      ) : assignments.length === 0 ? (
+        <p className="text-xs text-gray-400 py-2">No one assigned yet.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {assignments.map((a) => (
+            <div key={a.id} className="flex items-center justify-between py-1.5 border-b border-gray-50">
+              <div>
+                <p className="text-xs font-medium text-gray-800">
+                  {a.user ? `${a.user.first_name} ${a.user.last_name}` : "Unknown"}
+                </p>
+                <p className="text-[10px] text-gray-400">
+                  {format(new Date(a.assigned_at), "d MMM")}
+                  {a.notes && ` · ${a.notes}`}
+                </p>
+              </div>
+              {canManage && (
+                <button
+                  onClick={() => handleRemove(a.id)}
+                  className="text-xs text-red-400 hover:text-red-600"
+                  aria-label={`Remove assignment for ${a.user?.first_name}`}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function FileViewer({ version }: { version: Version }) {
   const url = version.signed_url;
@@ -85,7 +238,7 @@ function FileViewer({ version }: { version: Version }) {
   );
 }
 
-export function KopDetailView({ kop, versions, currentVersion, canManage, canDelete }: Props) {
+export function KopDetailView({ kop, versions, currentVersion, canManage, canDelete, staff = [] }: Props) {
   const router = useRouter();
   const [activeVersion, setActiveVersion] = useState<Version | null>(currentVersion);
   const [uploading, setUploading] = useState(false);
@@ -224,6 +377,9 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
               </p>
             </button>
           ))}
+
+          {/* Assignments */}
+          {canManage && <AssignmentPanel kopId={kop.id} staff={staff} canManage={canManage} />}
         </div>
 
         {/* Viewer */}

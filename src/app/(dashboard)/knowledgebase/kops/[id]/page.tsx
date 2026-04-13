@@ -40,6 +40,20 @@ export default async function KopDetailPage({ params }: { params: Promise<{ id: 
   );
 
   const currentVersion = versions.find((v) => v.version_number === kop.current_version) ?? versions[0];
+  const canManage = isManagerOrAbove(currentUser);
+
+  // Fetch staff list for assignment panel (managers+ only)
+  let staff: { id: string; first_name: string; last_name: string; department: { name: string } | null }[] = [];
+  if (canManage) {
+    const { data: staffData } = await admin
+      .from("profiles")
+      .select("id, first_name, last_name, department:departments(name)")
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("first_name");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    staff = (staffData ?? []) as any;
+  }
 
   return (
     <KopDetailView
@@ -47,8 +61,9 @@ export default async function KopDetailPage({ params }: { params: Promise<{ id: 
       kop={kop as any}
       versions={versions}
       currentVersion={currentVersion}
-      canManage={isManagerOrAbove(currentUser)}
+      canManage={canManage}
       canDelete={isOps(currentUser)}
+      staff={staff}
     />
   );
 }
