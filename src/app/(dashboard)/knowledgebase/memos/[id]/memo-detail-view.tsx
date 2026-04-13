@@ -91,8 +91,8 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main memo content */}
-        <div className="lg:col-span-2">
+        {/* Signature panel — shows first on mobile for visibility */}
+        <div className="lg:col-span-1 lg:order-2">
           <div className="bg-white border border-gray-200 rounded-xl p-6">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
@@ -147,8 +147,8 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
           </div>
         </div>
 
-        {/* Signature panel */}
-        <div className="lg:col-span-1">
+        {/* Main memo content */}
+        <div className="lg:col-span-2 lg:order-1">
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-1">Signatures</h3>
             <p className="text-xs text-gray-400 mb-3">{sigCount} of {totalStaff} staff</p>
