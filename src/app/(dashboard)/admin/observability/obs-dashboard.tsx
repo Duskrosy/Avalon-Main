@@ -6,8 +6,10 @@ import { ErrorsTab } from "./tabs/errors-tab";
 import { AuditTab } from "./tabs/audit-tab";
 import { AlertsTab } from "./tabs/alerts-tab";
 import { JobsTab } from "./tabs/jobs-tab";
+import { PulseTab } from "./tabs/pulse-tab";
 
 const TABS = [
+  { id: "pulse",  label: "Pulse" },
   { id: "usage",  label: "Usage" },
   { id: "errors", label: "Errors" },
   { id: "audit",  label: "Audit" },
@@ -18,7 +20,7 @@ const TABS = [
 type TabId = typeof TABS[number]["id"];
 
 export function ObsDashboard() {
-  const [activeTab, setActiveTab] = useState<TabId>("usage");
+  const [activeTab, setActiveTab] = useState<TabId>("pulse");
 
   return (
     <div>
@@ -45,6 +47,7 @@ export function ObsDashboard() {
       </div>
 
       {/* Tab content */}
+      {activeTab === "pulse"  && <PulseTab />}
       {activeTab === "usage"  && <UsageTab />}
       {activeTab === "errors" && <ErrorsTab />}
       {activeTab === "audit"  && <AuditTab />}
