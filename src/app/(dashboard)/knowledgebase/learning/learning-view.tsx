@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 type Dept = { id: string; name: string; slug: string };
 type Material = {
@@ -14,6 +14,9 @@ type Material = {
   sort_order: number;
   created_at: string;
   completed: boolean;
+  viewed: boolean;
+  viewed_at: string | null;
+  view_duration_s: number;
   department: Dept | null;
   created_by_profile: { first_name: string; last_name: string } | null;
 };
@@ -25,33 +28,75 @@ type Props = {
 };
 
 const TYPE_ICONS: Record<string, string> = {
-  pdf: "📄",
-  video: "🎬",
-  presentation: "📊",
-  document: "📝",
-  link: "🔗",
+  pdf: "📄", video: "🎬", presentation: "📊", document: "📝", link: "🔗",
 };
-
 const TYPE_LABELS: Record<string, string> = {
-  pdf: "PDF",
-  video: "Video",
-  presentation: "Presentation",
-  document: "Document",
-  link: "Link",
+  pdf: "PDF", video: "Video", presentation: "Presentation", document: "Document", link: "Link",
 };
 
-function MaterialViewer({ material, onClose }: { material: Material; onClose: () => void }) {
-  const url = material.signed_url ?? material.external_link;
+const PAGE_SIZE = 20;
 
+// ─── Material Viewer with view tracking ──────────────────────────────────────
+function MaterialViewer({
+  material,
+  onClose,
+  onViewed,
+}: {
+  material: Material;
+  onClose: () => void;
+  onViewed: (id: string) => void;
+}) {
+  const url = material.signed_url ?? material.external_link;
+  const viewTracked = useRef(false);
+  const startTime = useRef(Date.now());
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Track view on open
+  useEffect(() => {
+    if (viewTracked.current || !url) return;
+    viewTracked.current = true;
+    fetch("/api/learning/view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ material_id: material.id }),
+    }).then(() => onViewed(material.id)).catch(() => {});
+  }, [material.id, url, onViewed]);
+
+  // Track duration on close
+  useEffect(() => {
+    return () => {
+      const duration = Math.round((Date.now() - startTime.current) / 1000);
+      if (duration > 3) {
+        fetch("/api/learning/view", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ material_id: material.id, duration_s: duration }),
+        }).catch(() => {});
+      }
+    };
+  }, [material.id]);
+
+  // Escape key + focus trap
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
+    modalRef.current?.focus();
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex flex-col z-50" onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200" onClick={(e) => e.stopPropagation()}>
+    <div
+      ref={modalRef}
+      tabIndex={-1}
+      className="fixed inset-0 bg-black/80 flex flex-col z-50"
+      onClick={onClose}
+      role="dialog"
+      aria-label={`Viewing: ${material.title}`}
+    >
+      <div
+        className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div>
           <h2 className="text-sm font-semibold text-gray-900">{material.title}</h2>
           {material.department && (
@@ -60,6 +105,7 @@ function MaterialViewer({ material, onClose }: { material: Material; onClose: ()
         </div>
         <button
           onClick={onClose}
+          aria-label="Close viewer"
           className="text-gray-500 hover:text-gray-700 text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
         >
           Close
@@ -68,7 +114,7 @@ function MaterialViewer({ material, onClose }: { material: Material; onClose: ()
       <div className="flex-1 overflow-hidden bg-gray-100" onClick={(e) => e.stopPropagation()}>
         {!url ? (
           <div className="flex items-center justify-center h-full">
-            <p className="text-white text-sm">File unavailable.</p>
+            <p className="text-white text-sm">File unavailable. The link may have expired — try refreshing the page.</p>
           </div>
         ) : material.material_type === "video" ? (
           <div className="flex items-center justify-center h-full p-4">
@@ -85,7 +131,6 @@ function MaterialViewer({ material, onClose }: { material: Material; onClose: ()
             title={material.title}
           />
         ) : (
-          // pdf
           <iframe src={url} className="w-full h-full border-0" title={material.title} />
         )}
       </div>
@@ -93,14 +138,18 @@ function MaterialViewer({ material, onClose }: { material: Material; onClose: ()
   );
 }
 
+// ─── Main View ───────────────────────────────────────────────────────────────
 export function LearningView({ materials: initial, departments, canManage }: Props) {
   const [materials, setMaterials] = useState<Material[]>(initial);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<Material | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
   const [form, setForm] = useState({
     title: "", description: "", material_type: "pdf",
     department_id: "", external_link: "", sort_order: "0",
@@ -111,18 +160,37 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
     const matchSearch = [m.title, m.description]
       .some((s) => s?.toLowerCase().includes(search.toLowerCase()));
     const matchDept = deptFilter === "all"
-      ? true
-      : deptFilter === "global"
-      ? m.department === null
-      : m.department?.id === deptFilter;
+      ? true : deptFilter === "global"
+      ? m.department === null : m.department?.id === deptFilter;
     const matchType = typeFilter === "all" || m.material_type === typeFilter;
-    return matchSearch && matchDept && matchType;
+    const matchStatus = statusFilter === "all"
+      ? true : statusFilter === "completed"
+      ? m.completed : statusFilter === "viewed"
+      ? m.viewed && !m.completed : !m.viewed;
+    return matchSearch && matchDept && matchType && matchStatus;
   });
 
-  const [error, setError] = useState<string | null>(null);
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [search, deptFilter, typeFilter, statusFilter]);
+
+  const handleViewed = useCallback((materialId: string) => {
+    setMaterials((ms) => ms.map((m) =>
+      m.id === materialId ? { ...m, viewed: true, viewed_at: new Date().toISOString() } : m
+    ));
+  }, []);
 
   const toggleComplete = useCallback(async (material: Material) => {
     const next = !material.completed;
+
+    if (next && !material.viewed) {
+      setError("You must view this material before marking it complete. Click 'View' first.");
+      setTimeout(() => setError(null), 4000);
+      return;
+    }
+
     setMaterials((ms) => ms.map((m) => m.id === material.id ? { ...m, completed: next } : m));
     const res = await fetch("/api/learning/complete", {
       method: "POST",
@@ -130,9 +198,9 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
       body: JSON.stringify({ material_id: material.id, completed: next }),
     });
     if (!res.ok) {
-      // Rollback on failure
       setMaterials((ms) => ms.map((m) => m.id === material.id ? { ...m, completed: !next } : m));
-      setError("Failed to update completion status. Please try again.");
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Failed to update completion status. Please try again.");
       setTimeout(() => setError(null), 4000);
     }
   }, []);
@@ -140,6 +208,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
   const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
+    setError(null);
     const fd = new FormData();
     fd.append("title", form.title);
     if (form.description) fd.append("description", form.description);
@@ -171,12 +240,18 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
   }, []);
 
   const completedCount = materials.filter((m) => m.completed).length;
+  const viewedCount = materials.filter((m) => m.viewed).length;
   const progress = materials.length > 0 ? Math.round((completedCount / materials.length) * 100) : 0;
+  const hasFilters = search || deptFilter !== "all" || typeFilter !== "all" || statusFilter !== "all";
 
   return (
     <div>
       {selected && (
-        <MaterialViewer material={selected} onClose={() => setSelected(null)} />
+        <MaterialViewer
+          material={selected}
+          onClose={() => setSelected(null)}
+          onViewed={handleViewed}
+        />
       )}
 
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -187,6 +262,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
             {materials.length > 0 && (
               <span className="ml-2 text-xs text-gray-400">({progress}%)</span>
             )}
+            <span className="ml-2 text-xs text-gray-400">{viewedCount} viewed</span>
           </p>
         </div>
         {canManage && (
@@ -210,16 +286,29 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-3 mb-4">
         <input
           type="text"
           placeholder="Search materials..."
+          aria-label="Search materials"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
         <select
+          value={statusFilter}
+          aria-label="Filter by status"
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+        >
+          <option value="all">All statuses</option>
+          <option value="not_viewed">Not viewed</option>
+          <option value="viewed">Viewed (incomplete)</option>
+          <option value="completed">Completed</option>
+        </select>
+        <select
           value={typeFilter}
+          aria-label="Filter by type"
           onChange={(e) => setTypeFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
         >
@@ -230,6 +319,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         </select>
         <select
           value={deptFilter}
+          aria-label="Filter by department"
           onChange={(e) => setDeptFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
         >
@@ -249,18 +339,26 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         </div>
       )}
 
-      {/* Result count */}
-      {search || deptFilter !== "all" || typeFilter !== "all" ? (
-        <p className="text-xs text-gray-400 mb-3">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
-      ) : null}
+      {/* Result count when filtering */}
+      {hasFilters && (
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+          <button
+            onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all"); }}
+            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded"
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="bg-gray-50 rounded-xl p-12 text-center">
-          {search || deptFilter !== "all" || typeFilter !== "all" ? (
+          {hasFilters ? (
             <>
               <p className="text-sm text-gray-500 mb-2">No materials match your filters.</p>
               <button
-                onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); }}
+                onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all"); }}
                 className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg"
               >
                 Clear filters
@@ -275,25 +373,44 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((m) => (
+          {paginated.map((m) => (
             <div
               key={m.id}
               className={`bg-white border rounded-xl p-4 flex items-center gap-4 transition-colors ${
-                m.completed ? "border-green-200 bg-green-50/30" : "border-gray-200"
+                m.completed ? "border-green-200 bg-green-50/30"
+                : m.viewed ? "border-blue-100"
+                : "border-gray-200"
               }`}
             >
               <div className="text-2xl shrink-0">{TYPE_ICONS[m.material_type] ?? "📄"}</div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-sm font-medium text-gray-900 truncate">{m.title}</h3>
                   <span className="text-xs text-gray-400 shrink-0">{TYPE_LABELS[m.material_type]}</span>
+                  {/* View/completion status badges */}
+                  {m.completed ? (
+                    <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">Completed</span>
+                  ) : m.viewed ? (
+                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">Viewed</span>
+                  ) : (
+                    <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">Not viewed</span>
+                  )}
                 </div>
                 {m.description && (
                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{m.description}</p>
                 )}
-                {m.department && (
-                  <p className="text-xs text-gray-400 mt-0.5">{m.department.name}</p>
-                )}
+                <div className="flex items-center gap-2 mt-0.5">
+                  {m.department && (
+                    <p className="text-xs text-gray-400">{m.department.name}</p>
+                  )}
+                  {m.view_duration_s > 0 && (
+                    <p className="text-[10px] text-gray-300">
+                      {m.view_duration_s >= 60
+                        ? `${Math.round(m.view_duration_s / 60)}m viewed`
+                        : `${m.view_duration_s}s viewed`}
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -305,10 +422,13 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 </button>
                 <button
                   onClick={() => toggleComplete(m)}
+                  title={!m.viewed && !m.completed ? "View the material first" : undefined}
                   className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
                     m.completed
                       ? "bg-green-100 text-green-700 hover:bg-green-200"
-                      : "border border-gray-200 text-gray-500 hover:bg-gray-50"
+                      : m.viewed
+                      ? "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                      : "border border-gray-200 text-gray-300 cursor-not-allowed"
                   }`}
                 >
                   {m.completed ? "✓ Done" : "Mark done"}
@@ -328,17 +448,48 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         </div>
       )}
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-gray-400">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Learning Material</h2>
+
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
                 <input
                   required
                   type="text"
+                  maxLength={2000}
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
@@ -348,6 +499,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
                 <textarea
                   rows={2}
+                  maxLength={2000}
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
@@ -397,21 +549,24 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                   />
                 ) : (
-                  <input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.webm"
-                    aria-label="Upload file"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] ?? null;
-                      if (f && f.size > 100 * 1024 * 1024) {
-                        setError("File must be under 100MB.");
-                        e.target.value = "";
-                        return;
-                      }
-                      setFile(f);
-                    }}
-                    className="w-full text-sm text-gray-600"
-                  />
+                  <>
+                    <input
+                      type="file"
+                      aria-label="Upload file"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.webm"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] ?? null;
+                        if (f && f.size > 100 * 1024 * 1024) {
+                          setError("File must be under 100MB.");
+                          e.target.value = "";
+                          return;
+                        }
+                        setFile(f);
+                      }}
+                      className="w-full text-sm text-gray-600"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Max 100MB</p>
+                  </>
                 )}
               </div>
               <div>
@@ -427,7 +582,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreate(false)}
+                  onClick={() => { setShowCreate(false); setError(null); }}
                   className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
@@ -437,7 +592,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                   disabled={creating}
                   className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
                 >
-                  {creating ? "Adding..." : "Add Material"}
+                  {creating ? "Uploading..." : "Upload"}
                 </button>
               </div>
             </form>

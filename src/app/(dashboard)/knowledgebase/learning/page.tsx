@@ -9,7 +9,7 @@ export default async function LearningPage() {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
-  const [{ data: materials }, { data: departments }, { data: completions }] = await Promise.all([
+  const [{ data: materials }, { data: departments }, { data: completions }, { data: views }] = await Promise.all([
     supabase
       .from("learning_materials")
       .select(`
@@ -24,11 +24,17 @@ export default async function LearningPage() {
       .from("learning_completions")
       .select("material_id")
       .eq("user_id", currentUser.id),
+    supabase
+      .from("learning_views")
+      .select("material_id, viewed_at, duration_s")
+      .eq("user_id", currentUser.id),
   ]);
 
-  // Generate signed URLs for file-based materials
   const admin = createAdminClient();
   const completedIds = new Set((completions ?? []).map((c) => c.material_id));
+  const viewMap = new Map(
+    (views ?? []).map((v) => [v.material_id, { viewed_at: v.viewed_at, duration_s: v.duration_s }])
+  );
 
   const materialsWithUrls = await Promise.all(
     (materials ?? []).map(async (m) => {
@@ -39,7 +45,15 @@ export default async function LearningPage() {
           .createSignedUrl(m.file_url, 3600);
         signedUrl = signed?.signedUrl ?? null;
       }
-      return { ...m, signed_url: signedUrl, completed: completedIds.has(m.id) };
+      const view = viewMap.get(m.id);
+      return {
+        ...m,
+        signed_url: signedUrl,
+        completed: completedIds.has(m.id),
+        viewed: !!view,
+        viewed_at: view?.viewed_at ?? null,
+        view_duration_s: view?.duration_s ?? 0,
+      };
     })
   );
 
