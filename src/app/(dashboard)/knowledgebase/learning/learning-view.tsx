@@ -27,12 +27,63 @@ type Props = {
   canManage: boolean;
 };
 
-const TYPE_ICONS: Record<string, string> = {
-  pdf: "📄", video: "🎬", presentation: "📊", document: "📝", link: "🔗",
-};
 const TYPE_LABELS: Record<string, string> = {
   pdf: "PDF", video: "Video", presentation: "Presentation", document: "Document", link: "Link",
 };
+
+function TypeIcon({ type, className = "w-5 h-5" }: { type: string; className?: string }) {
+  const stroke = "currentColor";
+  const props = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", stroke, strokeWidth: 1.5, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, className };
+
+  switch (type) {
+    case "pdf":
+      return (
+        <svg {...props} className={`${className} text-red-500`}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <path d="M9 15v-2h2a1.5 1.5 0 0 1 0 3H9zm0 0v2" />
+        </svg>
+      );
+    case "video":
+      return (
+        <svg {...props} className={`${className} text-violet-500`}>
+          <rect x="2" y="4" width="20" height="16" rx="2" />
+          <polygon points="10 9 15 12 10 15" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "presentation":
+      return (
+        <svg {...props} className={`${className} text-orange-500`}>
+          <rect x="2" y="3" width="20" height="14" rx="2" />
+          <line x1="12" y1="17" x2="12" y2="21" />
+          <line x1="8" y1="21" x2="16" y2="21" />
+        </svg>
+      );
+    case "document":
+      return (
+        <svg {...props} className={`${className} text-blue-500`}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="8" y1="13" x2="16" y2="13" />
+          <line x1="8" y1="17" x2="12" y2="17" />
+        </svg>
+      );
+    case "link":
+      return (
+        <svg {...props} className={`${className} text-emerald-500`}>
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+        </svg>
+      );
+    default:
+      return (
+        <svg {...props} className={`${className} text-gray-400`}>
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+      );
+  }
+}
 
 const PAGE_SIZE = 20;
 
@@ -382,7 +433,9 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 : "border-gray-200"
               }`}
             >
-              <div className="text-2xl shrink-0">{TYPE_ICONS[m.material_type] ?? "📄"}</div>
+              <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
+                <TypeIcon type={m.material_type} className="w-5 h-5" />
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="text-sm font-medium text-gray-900 truncate">{m.title}</h3>

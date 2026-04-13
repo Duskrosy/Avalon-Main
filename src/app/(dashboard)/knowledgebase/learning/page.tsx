@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { LearningView } from "./learning-view";
+import { LearningPageTabs } from "./learning-tabs";
 
 export default async function LearningPage() {
   const supabase = await createClient();
@@ -57,12 +58,15 @@ export default async function LearningPage() {
     })
   );
 
+  const canManage = isManagerOrAbove(currentUser);
+
   return (
-    <LearningView
+    <LearningPageTabs
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       materials={materialsWithUrls as any}
       departments={departments ?? []}
-      canManage={isManagerOrAbove(currentUser)}
+      canManage={canManage}
+      isOps={isOps(currentUser)}
     />
   );
 }
