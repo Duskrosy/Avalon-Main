@@ -8,7 +8,7 @@ import { trackEventServer } from "@/lib/observability/track";
 const feedbackCreateSchema = z.object({
   category: z.enum(["bug", "missing_feature", "confusing", "slow", "other"]),
   body: z.string().min(1, "Feedback body is required").max(2000),
-  page_url: z.string().optional(),
+  page_url: z.string().max(500).optional(),
 });
 
 const feedbackPatchSchema = z.object({
@@ -25,7 +25,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const raw = await request.json();
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { data: body, error: validationError } = validateBody(
     feedbackCreateSchema,
     raw
@@ -67,11 +72,18 @@ export async function GET(request: Request) {
   const departmentId = searchParams.get("department_id");
   const limit = Math.min(Number(searchParams.get("limit") ?? 100), 500);
 
+  const userIsOps = isOps(currentUser);
+
   let query = supabase
     .from("feedback")
     .select("*, profiles:user_id(first_name, last_name, email)")
     .order("created_at", { ascending: false })
     .limit(limit);
+
+  // Defense-in-depth: scope to own rows for non-OPS (RLS also enforces this)
+  if (!userIsOps) {
+    query = query.eq("user_id", currentUser.id);
+  }
 
   if (status) query = query.eq("status", status);
   if (category) query = query.eq("category", category);
@@ -99,7 +111,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const raw = await request.json();
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { data: body, error: validationError } = validateBody(
     feedbackPatchSchema,
     raw

@@ -74,7 +74,8 @@ export function PulseTab() {
         prev.map((f) => (f.id === id ? { ...f, status: newStatus } : f))
       );
     } catch {
-      // Silently fail — the user can retry
+      // Refresh to get server state on failure
+      fetchFeedback();
     } finally {
       setUpdating(null);
     }
@@ -215,7 +216,9 @@ export function PulseTab() {
                     </select>
                   </td>
                   <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">
-                    {format(parseISO(f.created_at), "d MMM HH:mm")}
+                    {f.created_at
+                      ? format(parseISO(f.created_at), "d MMM HH:mm")
+                      : "-"}
                   </td>
                 </tr>
               ))}
