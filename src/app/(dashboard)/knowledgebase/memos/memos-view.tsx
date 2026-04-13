@@ -26,8 +26,10 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
   const [memos, setMemos] = useState<Memo[]>(initial);
   const [search, setSearch] = useState("");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [signedFilter, setSignedFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", content: "", department_id: "" });
 
   const filtered = memos.filter((m) => {
@@ -38,12 +40,19 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
       : deptFilter === "global"
       ? m.department === null
       : m.department?.id === deptFilter;
-    return matchSearch && matchDept;
+    const isSigned = m.memo_signatures.some((s) => s.user_id === currentUserId);
+    const matchSigned = signedFilter === "all"
+      ? true
+      : signedFilter === "signed"
+      ? isSigned
+      : !isSigned;
+    return matchSearch && matchDept && matchSigned;
   });
 
   const handleCreate = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
+    setError(null);
     const res = await fetch("/api/memos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -58,16 +67,27 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
       setMemos(await refreshed.json());
       setShowCreate(false);
       setForm({ title: "", content: "", department_id: "" });
+    } else {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Failed to create memo. Please try again.");
     }
     setCreating(false);
   }, [form]);
 
+  const unsignedCount = memos.filter((m) => !m.memo_signatures.some((s) => s.user_id === currentUserId)).length;
+  const hasFilters = search || deptFilter !== "all" || signedFilter !== "all";
+
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Memos</h1>
-          <p className="text-sm text-gray-500 mt-1">Company and department notices</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {memos.length} memo{memos.length !== 1 ? "s" : ""}
+            {unsignedCount > 0 && (
+              <span className="text-amber-600 ml-2">{unsignedCount} unsigned</span>
+            )}
+          </p>
         </div>
         {canManage && (
           <button
@@ -79,16 +99,36 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      {/* Error toast */}
+      {error && !showCreate && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">×</button>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 mb-4">
         <input
           type="text"
           placeholder="Search memos..."
+          aria-label="Search memos"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
         />
         <select
+          value={signedFilter}
+          aria-label="Filter by signature status"
+          onChange={(e) => setSignedFilter(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+        >
+          <option value="all">All memos</option>
+          <option value="unsigned">Unsigned</option>
+          <option value="signed">Signed</option>
+        </select>
+        <select
           value={deptFilter}
+          aria-label="Filter by department"
           onChange={(e) => setDeptFilter(e.target.value)}
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
         >
@@ -100,8 +140,38 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
         </select>
       </div>
 
+      {/* Result count when filtering */}
+      {hasFilters && (
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+          <button
+            onClick={() => { setSearch(""); setDeptFilter("all"); setSignedFilter("all"); }}
+            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        <p className="text-sm text-gray-400 py-8 text-center">No memos found.</p>
+        <div className="bg-gray-50 rounded-xl p-12 text-center">
+          {hasFilters ? (
+            <>
+              <p className="text-sm text-gray-500 mb-2">No memos match your filters.</p>
+              <button
+                onClick={() => { setSearch(""); setDeptFilter("all"); setSignedFilter("all"); }}
+                className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg"
+              >
+                Clear filters
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500 mb-1">No memos posted yet.</p>
+              <p className="text-xs text-gray-400">Create a memo to share important notices with your team.</p>
+            </>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((memo) => {
@@ -156,14 +226,22 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
 
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">New Memo</h2>
+
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
                 <input
                   required
                   type="text"
+                  maxLength={2000}
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
@@ -195,7 +273,7 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreate(false)}
+                  onClick={() => { setShowCreate(false); setError(null); }}
                   className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
                 >
                   Cancel
