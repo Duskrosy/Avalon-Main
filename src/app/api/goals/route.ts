@@ -17,8 +17,10 @@ export async function GET(req: NextRequest) {
     .from("goals")
     .select(`
       id, title, description, target_value, current_value, unit, deadline, status, created_at,
+      kpi_definition_id, deadline_green_days, deadline_amber_days,
       department:departments(id, name, slug),
-      created_by_profile:profiles!created_by(first_name, last_name)
+      created_by_profile:profiles!created_by(first_name, last_name),
+      kpi_definition:kpi_definitions(id, name, unit, threshold_green, threshold_amber, direction)
     `)
     .neq("status", "cancelled")
     .order("deadline");
@@ -41,7 +43,8 @@ export async function POST(req: NextRequest) {
   const { data: body, error: validationError } = validateBody(goalPostSchema, raw);
   if (validationError) return validationError;
 
-  const { title, description, target_value, current_value, unit, deadline, department_id } = body;
+  const { title, description, target_value, current_value, unit, deadline, department_id,
+    kpi_definition_id, deadline_green_days, deadline_amber_days } = body;
 
   const { data, error } = await supabase
     .from("goals")
@@ -53,6 +56,9 @@ export async function POST(req: NextRequest) {
       unit: unit || "%",
       deadline,
       department_id: department_id || null,
+      kpi_definition_id: kpi_definition_id || null,
+      deadline_green_days: deadline_green_days ?? 14,
+      deadline_amber_days: deadline_amber_days ?? 7,
       created_by: currentUser.id,
     })
     .select("id")
