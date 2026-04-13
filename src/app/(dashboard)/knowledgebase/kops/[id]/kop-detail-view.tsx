@@ -91,13 +91,20 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadNotes, setUploadNotes] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleNewVersion = async (e: React.FormEvent) => {
     e.preventDefault();
     const file = fileRef.current?.files?.[0];
     if (!file) return;
+    if (file.size > 100 * 1024 * 1024) {
+      setError("File must be under 100MB.");
+      return;
+    }
     setUploading(true);
+    setError(null);
 
     const fd = new FormData();
     fd.append("file", file);
@@ -108,14 +115,23 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
       router.refresh();
       setShowUpload(false);
       setUploadNotes("");
+    } else {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Failed to upload version. Please try again.");
     }
     setUploading(false);
   };
 
   const handleDelete = async () => {
     if (!confirm(`Delete "${kop.title}" and all versions? This cannot be undone.`)) return;
+    setDeleting(true);
     const res = await fetch(`/api/kops/${kop.id}`, { method: "DELETE" });
-    if (res.ok) router.push("/knowledgebase/kops");
+    if (res.ok) {
+      router.push("/knowledgebase/kops");
+    } else {
+      setError("Failed to delete KOP.");
+      setDeleting(false);
+    }
   };
 
   return (
@@ -163,13 +179,22 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
           {canDelete && (
             <button
               onClick={handleDelete}
-              className="border border-red-200 text-red-600 text-sm px-4 py-2 rounded-lg hover:bg-red-50"
+              disabled={deleting}
+              className="border border-red-200 text-red-600 text-sm px-4 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Delete
+              {deleting ? "Deleting..." : "Delete"}
             </button>
           )}
         </div>
       </div>
+
+      {/* Error toast */}
+      {error && !showUpload && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">×</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Version sidebar */}
@@ -216,6 +241,13 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Version</h2>
+
+            {error && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+
             <form onSubmit={handleNewVersion} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">File *</label>
@@ -223,9 +255,11 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
                   required
                   ref={fileRef}
                   type="file"
+                  aria-label="Upload new version file"
                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.mp4,.mov"
                   className="w-full text-sm text-gray-600"
                 />
+                <p className="text-[10px] text-gray-400 mt-1">Max 100MB</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Change notes</label>
