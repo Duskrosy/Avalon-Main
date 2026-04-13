@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect, notFound } from "next/navigation";
 import { MemoDetailView } from "./memo-detail-view";
@@ -12,7 +13,7 @@ export default async function MemoDetailPage({ params }: { params: Promise<{ id:
   const { data: memo, error } = await supabase
     .from("memos")
     .select(`
-      id, title, content, created_at, updated_at,
+      id, title, content, attachment_url, attachment_name, created_at, updated_at,
       department:departments(id, name, slug),
       created_by_profile:profiles!created_by(first_name, last_name),
       memo_signatures(id, user_id, signed_at,
@@ -30,6 +31,16 @@ export default async function MemoDetailPage({ params }: { params: Promise<{ id:
     .eq("status", "active")
     .is("deleted_at", null);
 
+  // Generate signed URL for attachment if present
+  let attachmentSignedUrl: string | null = null;
+  if (memo.attachment_url) {
+    const admin = createAdminClient();
+    const { data: signed } = await admin.storage
+      .from("kops")
+      .createSignedUrl(memo.attachment_url, 3600);
+    attachmentSignedUrl = signed?.signedUrl ?? null;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const signatures = (memo.memo_signatures as any[]) ?? [];
   const hasSigned = signatures.some((s) => s.user_id === currentUser.id);
@@ -37,7 +48,7 @@ export default async function MemoDetailPage({ params }: { params: Promise<{ id:
   return (
     <MemoDetailView
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      memo={memo as any}
+      memo={{ ...memo, attachment_signed_url: attachmentSignedUrl } as any}
       signatures={signatures}
       hasSigned={hasSigned}
       totalStaff={totalStaff ?? 0}

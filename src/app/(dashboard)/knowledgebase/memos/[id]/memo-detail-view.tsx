@@ -16,6 +16,9 @@ type Memo = {
   id: string;
   title: string;
   content: string;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_signed_url: string | null;
   created_at: string;
   department: { id: string; name: string } | null;
   created_by_profile: { first_name: string; last_name: string } | null;
@@ -127,6 +130,27 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
             <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap border-t border-gray-100 pt-4">
               {memo.content}
             </div>
+
+            {/* Attachment */}
+            {memo.attachment_name && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-500 mb-2">Attachment</p>
+                <a
+                  href={memo.attachment_signed_url ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-2 text-sm px-4 py-2.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors ${
+                    memo.attachment_signed_url ? "text-gray-700" : "text-gray-400 pointer-events-none"
+                  }`}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                  {memo.attachment_name}
+                  <span className="text-xs text-gray-400">Open</span>
+                </a>
+              </div>
+            )}
 
             <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
               {error && (

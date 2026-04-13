@@ -9,6 +9,8 @@ type Memo = {
   id: string;
   title: string;
   content: string;
+  attachment_url: string | null;
+  attachment_name: string | null;
   created_at: string;
   department: Dept | null;
   created_by_profile: { first_name: string; last_name: string } | null;
@@ -31,6 +33,7 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ title: "", content: "", department_id: "" });
+  const [file, setFile] = useState<File | null>(null);
 
   const filtered = memos.filter((m) => {
     const matchSearch = [m.title, m.content]
@@ -53,26 +56,25 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
     e.preventDefault();
     setCreating(true);
     setError(null);
-    const res = await fetch("/api/memos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: form.title,
-        content: form.content,
-        department_id: form.department_id || null,
-      }),
-    });
+    const fd = new FormData();
+    fd.append("title", form.title);
+    fd.append("content", form.content);
+    if (form.department_id) fd.append("department_id", form.department_id);
+    if (file) fd.append("file", file);
+
+    const res = await fetch("/api/memos", { method: "POST", body: fd });
     if (res.ok) {
       const refreshed = await fetch("/api/memos");
       setMemos(await refreshed.json());
       setShowCreate(false);
       setForm({ title: "", content: "", department_id: "" });
+      setFile(null);
     } else {
       const data = await res.json().catch(() => null);
       setError(data?.error || "Failed to create memo. Please try again.");
     }
     setCreating(false);
-  }, [form]);
+  }, [form, file]);
 
   const unsignedCount = memos.filter((m) => !m.memo_signatures.some((s) => s.user_id === currentUserId)).length;
   const hasFilters = search || deptFilter !== "all" || signedFilter !== "all";
@@ -203,7 +205,15 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
                     <p className="text-xs text-gray-400 mt-1">{sigCount} signature{sigCount !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 mt-3 text-xs text-gray-400">
+                {memo.attachment_name && (
+                  <div className="mt-2">
+                    <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
+                      {memo.attachment_name}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
                   {memo.department ? (
                     <span>{memo.department.name}</span>
                   ) : (
@@ -256,6 +266,25 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Attachment (optional)</label>
+                <input
+                  type="file"
+                  aria-label="Upload attachment"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    if (f && f.size > 50 * 1024 * 1024) {
+                      setError("Attachment must be under 50MB.");
+                      e.target.value = "";
+                      return;
+                    }
+                    setFile(f);
+                  }}
+                  className="w-full text-sm text-gray-600"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">PDF, DOC, XLS, PPT, TXT, CSV. Max 50MB.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
