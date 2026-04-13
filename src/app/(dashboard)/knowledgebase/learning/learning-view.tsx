@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 type Dept = { id: string; name: string; slug: string };
 type Material = {
@@ -43,9 +43,15 @@ const TYPE_LABELS: Record<string, string> = {
 function MaterialViewer({ material, onClose }: { material: Material; onClose: () => void }) {
   const url = material.signed_url ?? material.external_link;
 
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex flex-col z-50">
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+    <div className="fixed inset-0 bg-black/80 flex flex-col z-50" onClick={onClose}>
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200" onClick={(e) => e.stopPropagation()}>
         <div>
           <h2 className="text-sm font-semibold text-gray-900">{material.title}</h2>
           {material.department && (
@@ -59,7 +65,7 @@ function MaterialViewer({ material, onClose }: { material: Material; onClose: ()
           Close
         </button>
       </div>
-      <div className="flex-1 overflow-hidden bg-gray-100">
+      <div className="flex-1 overflow-hidden bg-gray-100" onClick={(e) => e.stopPropagation()}>
         {!url ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-white text-sm">File unavailable.</p>
@@ -113,14 +119,22 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
     return matchSearch && matchDept && matchType;
   });
 
+  const [error, setError] = useState<string | null>(null);
+
   const toggleComplete = useCallback(async (material: Material) => {
     const next = !material.completed;
     setMaterials((ms) => ms.map((m) => m.id === material.id ? { ...m, completed: next } : m));
-    await fetch("/api/learning/complete", {
+    const res = await fetch("/api/learning/complete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ material_id: material.id, completed: next }),
     });
+    if (!res.ok) {
+      // Rollback on failure
+      setMaterials((ms) => ms.map((m) => m.id === material.id ? { ...m, completed: !next } : m));
+      setError("Failed to update completion status. Please try again.");
+      setTimeout(() => setError(null), 4000);
+    }
   }, []);
 
   const handleCreate = useCallback(async (e: React.FormEvent) => {
@@ -142,6 +156,10 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
       setShowCreate(false);
       setForm({ title: "", description: "", material_type: "pdf", department_id: "", external_link: "", sort_order: "0" });
       setFile(null);
+      setError(null);
+    } else {
+      const data = await res.json().catch(() => null);
+      setError(data?.error || "Failed to create material. Please try again.");
     }
     setCreating(false);
   }, [form, file]);
@@ -223,8 +241,38 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         </select>
       </div>
 
+      {/* Error toast */}
+      {error && (
+        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">×</button>
+        </div>
+      )}
+
+      {/* Result count */}
+      {search || deptFilter !== "all" || typeFilter !== "all" ? (
+        <p className="text-xs text-gray-400 mb-3">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+      ) : null}
+
       {filtered.length === 0 ? (
-        <p className="text-sm text-gray-400 py-8 text-center">No materials found.</p>
+        <div className="bg-gray-50 rounded-xl p-12 text-center">
+          {search || deptFilter !== "all" || typeFilter !== "all" ? (
+            <>
+              <p className="text-sm text-gray-500 mb-2">No materials match your filters.</p>
+              <button
+                onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); }}
+                className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg"
+              >
+                Clear filters
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500 mb-1">No learning materials yet.</p>
+              <p className="text-xs text-gray-400">Add training videos, PDFs, or links for your team.</p>
+            </>
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((m) => (
@@ -268,6 +316,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 {canManage && (
                   <button
                     onClick={() => handleDelete(m.id, m.title)}
+                    aria-label={`Delete ${m.title}`}
                     className="text-xs text-red-400 hover:text-red-600 p-1.5"
                   >
                     ✕
@@ -351,7 +400,16 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                   <input
                     type="file"
                     accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.webm"
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    aria-label="Upload file"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      if (f && f.size > 100 * 1024 * 1024) {
+                        setError("File must be under 100MB.");
+                        e.target.value = "";
+                        return;
+                      }
+                      setFile(f);
+                    }}
                     className="w-full text-sm text-gray-600"
                   />
                 )}
