@@ -39,7 +39,10 @@ const GROUP_ICONS: Record<string, string> = {
   scheduling:     "📅",
   communications: "📢",
   "sales-ops":    "💰",
+  creatives:      "🎨",
+  marketing:      "📣",
   "ad-ops":       "🎬",
+  operations:     "📦",
   admin:          "🔧",
 };
 

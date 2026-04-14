@@ -3,8 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { ConfettiBirthday } from "@/components/ui/confetti-birthday";
+import { FeedbackButton } from "@/components/ui/feedback-button";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,13 @@ function fmtKpi(value: number, unit: string): string {
     case "seconds":      return `${value}s`;
     default:             return value.toLocaleString();
   }
+}
+
+function goalRag(deadline: string, greenDays: number | null, amberDays: number | null): "green" | "amber" | "red" {
+  const daysLeft = differenceInDays(new Date(deadline), new Date());
+  if (greenDays != null && daysLeft >= greenDays) return "green";
+  if (amberDays != null && daysLeft >= amberDays) return "amber";
+  return "red";
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
@@ -75,13 +83,33 @@ function StatCard({
 
 type RagStatus = { green: number; amber: number; red: number; noData: number; total: number };
 
-function KpiHealthBar({ status, deptName, href }: { status: RagStatus; deptName: string; href: string }) {
+function KpiHealthBar({
+  status,
+  deptName,
+  href,
+  staleDays,
+}: {
+  status: RagStatus;
+  deptName: string;
+  href: string;
+  staleDays?: number;
+}) {
   if (status.total === 0) return null;
   return (
     <Link href={href} className="block bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold text-gray-700">{deptName} KPIs</p>
-        <span className="text-xs text-gray-400">{status.total} tracked</span>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-gray-700">{deptName} KPIs</p>
+          {staleDays != null && staleDays > 2 && (
+            <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+              Data last updated {staleDays}d ago
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-400">{status.total} tracked</span>
+          <FeedbackButton pageUrl="/" />
+        </div>
       </div>
       <div className="flex items-center gap-4 mb-3">
         {[
@@ -119,6 +147,7 @@ export default async function DashboardPage() {
   const deptId = user.department_id;
   const deptSlug = user.department?.slug ?? "";
   const today = new Date().toISOString().slice(0, 10);
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   // Check if today is the current user's birthday
   let isBirthday = false;
@@ -128,13 +157,7 @@ export default async function DashboardPage() {
     isBirthday = bday.getMonth() === now.getMonth() && bday.getDate() === now.getDate();
   }
 
-  // ── 1. Unread notifications (own) ─────────────────────────────────────────
-  const { count: unreadCount } = await supabase
-    .from("notifications")
-    .select("*", { count: "exact", head: true })
-    .is("read_at", null);
-
-  // ── 2. Pending leaves ─────────────────────────────────────────────────────
+  // ── Pending leaves (depends on dept users for managers) ────────────────────
   let pendingLeavesQuery = admin
     .from("leaves")
     .select("*", { count: "exact", head: true })
@@ -151,24 +174,81 @@ export default async function DashboardPage() {
   } else if (!userIsOps && !userIsManager) {
     pendingLeavesQuery = pendingLeavesQuery.eq("user_id", user.id);
   }
-  const { count: pendingLeaves } = await pendingLeavesQuery;
 
-  // ── 3. Kanban cards assigned to me ────────────────────────────────────────
-  const { count: myCards } = await supabase
-    .from("kanban_cards")
-    .select("*", { count: "exact", head: true })
-    .eq("assigned_to", user.id);
+  // ── Parallelize independent queries with Promise.all ───────────────────────
+  const [
+    { count: unreadCount },
+    { count: pendingLeaves },
+    { count: myCards },
+    { count: activeGoals },
+  ] = await Promise.all([
+    // 1. Unread notifications (own)
+    supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .is("read_at", null),
+    // 2. Pending leaves (query already built above)
+    pendingLeavesQuery,
+    // 3. Kanban cards assigned to me
+    supabase
+      .from("kanban_cards")
+      .select("*", { count: "exact", head: true })
+      .eq("assigned_to", user.id),
+    // 4. Active goals count
+    (() => {
+      let q = supabase
+        .from("goals")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "active");
+      if (!userIsOps && deptId) q = q.eq("department_id", deptId);
+      return q;
+    })(),
+  ]);
 
-  // ── 4. Active goals ───────────────────────────────────────────────────────
-  let goalsQuery = supabase
-    .from("goals")
-    .select("*", { count: "exact", head: true })
-    .eq("status", "active");
-  if (!userIsOps && deptId) goalsQuery = goalsQuery.eq("department_id", deptId);
-  const { count: activeGoals } = await goalsQuery;
+  // ── Task velocity (managers + OPS) ─────────────────────────────────────────
+  let completedThisWeek = 0;
+  let overdueTasks = 0;
+  if (userIsManager || userIsOps) {
+    const [{ count: completed }, { count: overdue }] = await Promise.all([
+      admin
+        .from("kanban_cards")
+        .select("*", { count: "exact", head: true })
+        .gte("completed_at", sevenDaysAgo),
+      admin
+        .from("kanban_cards")
+        .select("*", { count: "exact", head: true })
+        .lt("due_date", today)
+        .is("completed_at", null),
+    ]);
+    completedThisWeek = completed ?? 0;
+    overdueTasks = overdue ?? 0;
+  }
 
-  // ── 5. Department KPI health ──────────────────────────────────────────────
+  // ── Goal progress mini-list ────────────────────────────────────────────────
+  let goalsList: {
+    id: string;
+    title: string;
+    current_value: number;
+    target_value: number;
+    deadline: string;
+    deadline_green_days: number | null;
+    deadline_amber_days: number | null;
+  }[] = [];
+  {
+    let goalsQ = supabase
+      .from("goals")
+      .select("id, title, current_value, target_value, deadline, deadline_green_days, deadline_amber_days")
+      .eq("status", "active")
+      .order("deadline", { ascending: true })
+      .limit(5);
+    if (!userIsOps && deptId) goalsQ = goalsQ.eq("department_id", deptId);
+    const { data } = await goalsQ;
+    goalsList = (data ?? []) as typeof goalsList;
+  }
+
+  // ── Department KPI health ──────────────────────────────────────────────────
   const kpiStatus: RagStatus = { green: 0, amber: 0, red: 0, noData: 0, total: 0 };
+  let kpiStaleDays: number | undefined;
   if (deptId) {
     const { data: defs } = await supabase
       .from("kpi_definitions")
@@ -186,12 +266,21 @@ export default async function DashboardPage() {
         .is("profile_id", null)
         .order("period_date", { ascending: false });
 
-      // Latest entry per definition
+      // Latest entry per definition + track most recent date for staleness
       const latestMap: Record<string, number> = {};
+      let newestDate: string | null = null;
       for (const e of latestEntries ?? []) {
         if (!(e.kpi_definition_id in latestMap)) {
           latestMap[e.kpi_definition_id] = e.value_numeric;
         }
+        if (!newestDate || e.period_date > newestDate) {
+          newestDate = e.period_date;
+        }
+      }
+
+      // Data staleness warning
+      if (newestDate) {
+        kpiStaleDays = differenceInDays(new Date(), new Date(newestDate));
       }
 
       for (const def of defs) {
@@ -203,54 +292,60 @@ export default async function DashboardPage() {
     }
   }
 
-  // ── 6. Recent announcements ───────────────────────────────────────────────
-  const { data: announcements } = await supabase
+  // ── Announcements + OPS extras + Sales — parallelized ──────────────────────
+  const announcementsPromise = supabase
     .from("announcements")
-    .select("id, title, body, priority, created_at, department_id")
+    .select("id, title, content, flair_text, flair_color, priority, created_at, department_id")
     .or(`department_id.is.null,department_id.eq.${deptId ?? "00000000-0000-0000-0000-000000000000"}`)
     .or("expires_at.is.null,expires_at.gt." + new Date().toISOString())
     .order("created_at", { ascending: false })
     .limit(3);
 
-  // ── 7. OPS extras — obs alerts + all-dept pending leaves ──────────────────
-  let obsAlertCount = 0;
-  let allPendingLeaves = 0;
-  if (userIsOps) {
-    const { count: ac } = await admin
-      .from("obs_alerts")
-      .select("*", { count: "exact", head: true })
-      .eq("acknowledged", false);
-    obsAlertCount = ac ?? 0;
+  const opsExtrasPromise = userIsOps
+    ? Promise.all([
+        admin
+          .from("obs_alerts")
+          .select("*", { count: "exact", head: true })
+          .eq("acknowledged", false),
+        admin
+          .from("leaves")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending"),
+      ])
+    : Promise.resolve([{ count: 0 }, { count: 0 }] as const);
 
-    const { count: lc } = await admin
-      .from("leaves")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "pending");
-    allPendingLeaves = lc ?? 0;
-  }
+  const salesPromise = (deptSlug === "sales" || userIsOps)
+    ? admin
+        .from("sales_daily_volume")
+        .select("agent_id, pairs_sold, profiles(first_name, last_name)")
+        .eq("date", today)
+    : Promise.resolve({ data: null });
 
-  // ── 8. Sales today snapshot ───────────────────────────────────────────────
-  let salesToday: { agent: string; pairs: number }[] = [];
-  if (deptSlug === "sales" || userIsOps) {
-    const { data: volRows } = await admin
-      .from("sales_daily_volume")
-      .select("agent_id, pairs_sold, profiles(first_name, last_name)")
-      .eq("date", today);
-    salesToday = (volRows ?? []).map((r) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const p = r.profiles as any;
-      return {
-        agent: p ? `${p.first_name} ${p.last_name}` : r.agent_id,
-        pairs: r.pairs_sold,
-      };
-    }).sort((a, b) => b.pairs - a.pairs);
-  }
+  const [
+    { data: announcements },
+    opsExtras,
+    { data: volRows },
+  ] = await Promise.all([announcementsPromise, opsExtrasPromise, salesPromise]);
+
+  const obsAlertCount = userIsOps ? ((opsExtras as { count: number | null }[])[0]?.count ?? 0) : 0;
+  const allPendingLeaves = userIsOps ? ((opsExtras as { count: number | null }[])[1]?.count ?? 0) : 0;
+
+  const salesToday = (volRows ?? []).map((r) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const p = r.profiles as any;
+    return {
+      agent: p ? `${p.first_name} ${p.last_name}` : r.agent_id,
+      pairs: r.pairs_sold,
+    };
+  }).sort((a, b) => b.pairs - a.pairs);
 
   const PRIORITY_STYLES: Record<string, string> = {
     urgent:    "border-l-4 border-red-400",
     important: "border-l-4 border-amber-400",
     normal:    "border-l-4 border-gray-200",
   };
+
+  const showVelocity = userIsManager || userIsOps;
 
   return (
     <div className="space-y-6">
@@ -279,8 +374,8 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stat cards — 6 columns when manager/OPS (velocity cards), 4 otherwise */}
+      <div className={`grid grid-cols-2 ${showVelocity ? "lg:grid-cols-6" : "lg:grid-cols-4"} gap-4`}>
         <StatCard
           label={userIsOps ? "Pending leaves (all)" : userIsManager ? "Pending leaves" : "My leave requests"}
           value={userIsOps ? allPendingLeaves ?? 0 : pendingLeaves ?? 0}
@@ -305,7 +400,73 @@ export default async function DashboardPage() {
           value={activeGoals ?? 0}
           href="/analytics/goals"
         />
+        {showVelocity && (
+          <>
+            <StatCard
+              label="Completed this week"
+              value={completedThisWeek}
+              sub="tasks finished (7d)"
+              href="/productivity/kanban"
+              accent={completedThisWeek > 0 ? "green" : undefined}
+            />
+            <StatCard
+              label="Overdue tasks"
+              value={overdueTasks}
+              sub="past due date"
+              href="/productivity/kanban"
+              accent={overdueTasks > 0 ? "red" : undefined}
+            />
+          </>
+        )}
       </div>
+
+      {/* Goal progress mini-list */}
+      {goalsList.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">Goal progress</h2>
+            <Link href="/analytics/goals" className="text-xs text-gray-400 hover:text-gray-700">
+              View all →
+            </Link>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {goalsList.map((g) => {
+              const pct = g.target_value > 0 ? Math.min(100, Math.round((g.current_value / g.target_value) * 100)) : 0;
+              const color = g.deadline
+                ? goalRag(g.deadline, g.deadline_green_days, g.deadline_amber_days)
+                : "green";
+              const barColor =
+                color === "green" ? "bg-green-500" : color === "amber" ? "bg-amber-400" : "bg-red-500";
+              const badgeColor =
+                color === "green"
+                  ? "bg-green-50 text-green-700"
+                  : color === "amber"
+                  ? "bg-amber-50 text-amber-700"
+                  : "bg-red-50 text-red-700";
+              const daysLeft = g.deadline ? differenceInDays(new Date(g.deadline), new Date()) : null;
+
+              return (
+                <div key={g.id} className="px-5 py-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-sm text-gray-700 truncate flex-1 mr-3">{g.title}</p>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs font-semibold text-gray-500">{pct}%</span>
+                      {daysLeft != null && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeColor}`}>
+                          {daysLeft > 0 ? `${daysLeft}d left` : daysLeft === 0 ? "Due today" : `${Math.abs(daysLeft)}d overdue`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* OPS: observability alert banner */}
       {userIsOps && obsAlertCount > 0 && (
@@ -329,7 +490,25 @@ export default async function DashboardPage() {
           status={kpiStatus}
           deptName={user.department?.name ?? "Department"}
           href="/analytics/kpis"
+          staleDays={kpiStaleDays}
         />
+      )}
+
+      {/* Empty state guidance when no KPIs */}
+      {kpiStatus.total === 0 && deptId && (userIsOps || userIsManager) && (
+        <Link
+          href="/analytics/kpis"
+          className="block bg-white border border-dashed border-gray-300 rounded-xl px-5 py-4 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+        >
+          <p className="text-sm text-gray-600">
+            {userIsOps
+              ? `Set up KPIs for ${user.department?.name ?? "this department"} →`
+              : `Request KPI setup from OPS →`}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            KPIs help track department performance with real-time health indicators.
+          </p>
+        </Link>
       )}
 
       {/* Sales today (sales dept or OPS) */}
@@ -395,9 +574,22 @@ export default async function DashboardPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{a.title}</p>
-                    {a.body && (
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{a.body}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{a.title}</p>
+                      {a.flair_text && (
+                        <span
+                          className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0"
+                          style={{
+                            backgroundColor: a.flair_color ? `${a.flair_color}20` : "#e5e7eb",
+                            color: a.flair_color ?? "#6b7280",
+                          }}
+                        >
+                          {a.flair_text}
+                        </span>
+                      )}
+                    </div>
+                    {a.content && (
+                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{a.content}</p>
                     )}
                   </div>
                   <span className="text-xs text-gray-400 shrink-0 mt-0.5">
