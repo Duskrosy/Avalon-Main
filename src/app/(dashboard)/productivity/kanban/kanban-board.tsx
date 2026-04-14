@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { format } from "date-fns";
+import { createClient } from "@/lib/supabase/client";
 
 const PRIORITY_COLORS = {
   low: "border-l-gray-300",
@@ -11,6 +12,45 @@ const PRIORITY_COLORS = {
 };
 
 const PRIORITY_LABELS = { low: "Low", medium: "Medium", high: "High", urgent: "Urgent" };
+
+const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  text: "Text",
+  textarea: "Long Text",
+  number: "Number",
+  date: "Date",
+  dropdown: "Dropdown",
+  multi_select: "Multi-Select",
+  checkbox: "Checkbox",
+  person: "Person",
+  url: "URL",
+  email: "Email",
+};
+
+type FieldType = "text" | "textarea" | "number" | "date" | "dropdown" | "multi_select" | "checkbox" | "person" | "url" | "email";
+
+type FieldOption = { id: string; label: string; color: string };
+
+type FieldDefinition = {
+  id: string;
+  board_id: string;
+  name: string;
+  field_type: FieldType;
+  description: string | null;
+  is_required: boolean;
+  options: FieldOption[] | null;
+  default_value: unknown;
+  sort_order: number;
+};
+
+type FieldValue = {
+  id: string;
+  field_definition_id: string;
+  value_text: string | null;
+  value_number: number | null;
+  value_date: string | null;
+  value_boolean: boolean | null;
+  value_json: unknown;
+};
 
 type Member = { id: string; first_name: string; last_name: string };
 type Card = {
@@ -22,6 +62,7 @@ type Card = {
   sort_order: number;
   assigned_to_profile: Member | null;
   created_by_profile: { first_name: string; last_name: string } | null;
+  field_values?: FieldValue[];
 };
 type Column = { id: string; name: string; sort_order: number; kanban_cards: Card[] };
 type Board = { id: string; name: string } | null;
@@ -30,20 +71,172 @@ type Props = {
   board: Board;
   initialColumns: Column[];
   members: Member[];
+  allUsers: Member[]; // All active users for cross-department assignment
   departmentId: string | null;
   canManage: boolean;
+  initialFieldDefinitions: FieldDefinition[];
 };
+
+function CustomFieldInput({
+  field,
+  value,
+  onChange,
+  allUsers,
+}: {
+  field: FieldDefinition;
+  value: FieldValue | undefined;
+  onChange: (val: Partial<FieldValue>) => void;
+  allUsers: Member[];
+}) {
+  const baseClass = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900";
+
+  switch (field.field_type) {
+    case "text":
+      return (
+        <input
+          type="text"
+          value={value?.value_text ?? ""}
+          onChange={(e) => onChange({ value_text: e.target.value })}
+          className={baseClass}
+          placeholder={field.description || field.name}
+        />
+      );
+    case "textarea":
+      return (
+        <textarea
+          rows={2}
+          value={value?.value_text ?? ""}
+          onChange={(e) => onChange({ value_text: e.target.value })}
+          className={`${baseClass} resize-none`}
+          placeholder={field.description || field.name}
+        />
+      );
+    case "number":
+      return (
+        <input
+          type="number"
+          value={value?.value_number ?? ""}
+          onChange={(e) => onChange({ value_number: e.target.value ? Number(e.target.value) : null })}
+          className={baseClass}
+        />
+      );
+    case "date":
+      return (
+        <input
+          type="date"
+          value={value?.value_date ?? ""}
+          onChange={(e) => onChange({ value_date: e.target.value || null })}
+          className={baseClass}
+        />
+      );
+    case "checkbox":
+      return (
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={value?.value_boolean ?? false}
+            onChange={(e) => onChange({ value_boolean: e.target.checked })}
+            className="w-4 h-4 rounded border-gray-300"
+          />
+          <span className="text-sm text-gray-600">{field.description || "Yes"}</span>
+        </label>
+      );
+    case "dropdown":
+      return (
+        <select
+          value={(value?.value_json as { option_id?: string })?.option_id ?? ""}
+          onChange={(e) => onChange({ value_json: e.target.value ? { option_id: e.target.value } : null })}
+          className={baseClass}
+        >
+          <option value="">Select...</option>
+          {(field.options ?? []).map((opt) => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
+          ))}
+        </select>
+      );
+    case "multi_select": {
+      const selected = (value?.value_json as { option_ids?: string[] })?.option_ids ?? [];
+      return (
+        <div className="flex flex-wrap gap-1">
+          {(field.options ?? []).map((opt) => {
+            const isSelected = selected.includes(opt.id);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  const newIds = isSelected
+                    ? selected.filter((id) => id !== opt.id)
+                    : [...selected, opt.id];
+                  onChange({ value_json: newIds.length ? { option_ids: newIds } : null });
+                }}
+                className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                  isSelected
+                    ? "bg-gray-900 text-white border-gray-900"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                }`}
+              >
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+    case "person": {
+      const selectedIds = (value?.value_json as { user_ids?: string[] })?.user_ids ?? [];
+      return (
+        <select
+          value={selectedIds[0] ?? ""}
+          onChange={(e) => onChange({ value_json: e.target.value ? { user_ids: [e.target.value] } : null })}
+          className={baseClass}
+        >
+          <option value="">Select person...</option>
+          {allUsers.map((u) => (
+            <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>
+          ))}
+        </select>
+      );
+    }
+    case "url":
+      return (
+        <input
+          type="url"
+          value={value?.value_text ?? ""}
+          onChange={(e) => onChange({ value_text: e.target.value })}
+          className={baseClass}
+          placeholder="https://..."
+        />
+      );
+    case "email":
+      return (
+        <input
+          type="email"
+          value={value?.value_text ?? ""}
+          onChange={(e) => onChange({ value_text: e.target.value })}
+          className={baseClass}
+          placeholder="email@example.com"
+        />
+      );
+    default:
+      return null;
+  }
+}
 
 function CardModal({
   card,
   members,
+  allUsers,
+  fieldDefinitions,
   onSave,
   onClose,
   onDelete,
 }: {
   card: Partial<Card> & { column_id?: string };
   members: Member[];
-  onSave: (data: Record<string, unknown>) => void;
+  allUsers: Member[];
+  fieldDefinitions: FieldDefinition[];
+  onSave: (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>) => void;
   onClose: () => void;
   onDelete?: () => void;
 }) {
@@ -55,9 +248,25 @@ function CardModal({
     priority: card.priority ?? "medium",
   });
 
+  // Initialize field values from card
+  const [fieldValues, setFieldValues] = useState<Record<string, Partial<FieldValue>>>(() => {
+    const vals: Record<string, Partial<FieldValue>> = {};
+    for (const fv of card.field_values ?? []) {
+      vals[fv.field_definition_id] = fv;
+    }
+    return vals;
+  });
+
+  const updateFieldValue = (fieldId: string, update: Partial<FieldValue>) => {
+    setFieldValues((prev) => ({
+      ...prev,
+      [fieldId]: { ...prev[fieldId], field_definition_id: fieldId, ...update },
+    }));
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+      <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-gray-900 mb-4">
           {card.id ? "Edit Card" : "New Card"}
         </h2>
@@ -108,11 +317,32 @@ function CardModal({
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
             >
               <option value="">Unassigned</option>
-              {members.map((m) => (
+              {allUsers.map((m) => (
                 <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
               ))}
             </select>
           </div>
+
+          {/* Custom Fields */}
+          {fieldDefinitions.length > 0 && (
+            <div className="pt-3 border-t border-gray-100 space-y-3">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Custom Fields</p>
+              {fieldDefinitions.map((field) => (
+                <div key={field.id}>
+                  <label className="block text-xs text-gray-500 mb-1">
+                    {field.name}
+                    {field.is_required && <span className="text-red-400 ml-0.5">*</span>}
+                  </label>
+                  <CustomFieldInput
+                    field={field}
+                    value={fieldValues[field.id] as FieldValue | undefined}
+                    onChange={(val) => updateFieldValue(field.id, val)}
+                    allUsers={allUsers}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex gap-2 mt-5">
           {onDelete && (
@@ -129,7 +359,7 @@ function CardModal({
               description: form.description || null,
               assigned_to: form.assigned_to || null,
               due_date: form.due_date || null,
-            })}
+            }, fieldValues)}
             disabled={!form.title.trim()}
             className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
           >
@@ -146,18 +376,58 @@ type SortDir = "asc" | "desc";
 
 const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-export function KanbanBoard({ board, initialColumns, members, departmentId, canManage }: Props) {
+export function KanbanBoard({ board, initialColumns, members, allUsers, departmentId, canManage, initialFieldDefinitions }: Props) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [boardState, setBoardState] = useState<Board>(board);
+  const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(initialFieldDefinitions);
   const [modal, setModal] = useState<(Partial<Card> & { column_id?: string }) | null>(null);
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColName, setNewColName] = useState("");
   const [view, setView] = useState<"board" | "list">("board");
+  const [showSettings, setShowSettings] = useState(false);
   const [listSort, setListSort] = useState<{ field: SortField; dir: SortDir }>({ field: "due_date", dir: "asc" });
   const [listFilter, setListFilter] = useState<{ priority: string; assigned: string; status: string }>({
     priority: "", assigned: "", status: "",
   });
   const dragCard = useRef<{ cardId: string; sourceColId: string } | null>(null);
+
+  // Real-time subscription for live updates
+  useEffect(() => {
+    if (!boardState?.id) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`board-${boardState.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "kanban_cards" },
+        () => {
+          // Refetch on any card change
+          fetch(`/api/kanban?department_id=${departmentId}`)
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.columns) setColumns(data.columns);
+              if (data.fieldDefinitions) setFieldDefinitions(data.fieldDefinitions);
+            });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "kanban_card_field_values" },
+        () => {
+          fetch(`/api/kanban?department_id=${departmentId}`)
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.columns) setColumns(data.columns);
+            });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [boardState?.id, departmentId]);
 
   // Flat list of all cards with their column name (status)
   const allCards = useMemo(() => {
@@ -240,17 +510,28 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
     });
   }, []);
 
-  const handleSaveCard = useCallback(async (data: Record<string, unknown>) => {
+  const handleSaveCard = useCallback(async (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>) => {
     const b = await ensureBoard();
     if (!b && !boardState) return;
 
     if (modal?.id) {
-      // Update
+      // Update card
       await fetch("/api/kanban/cards", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: modal.id, ...data }),
       });
+
+      // Save field values
+      const values = Object.values(fieldValues).filter((v) => v.field_definition_id);
+      if (values.length > 0) {
+        await fetch(`/api/kanban/cards/${modal.id}/values`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ values }),
+        });
+      }
+
       setColumns((cols) =>
         cols.map((col) => ({
           ...col,
@@ -260,15 +541,16 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
                   ...c,
                   ...data,
                   assigned_to_profile: data.assigned_to
-                    ? (members.find((m) => m.id === data.assigned_to) ?? null)
+                    ? (allUsers.find((m) => m.id === data.assigned_to) ?? null)
                     : null,
+                  field_values: Object.values(fieldValues) as FieldValue[],
                 }
               : c
           ),
         }))
       );
     } else {
-      // Create
+      // Create card
       const res = await fetch("/api/kanban/cards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -276,6 +558,17 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
       });
       if (res.ok) {
         const { id } = await res.json();
+
+        // Save field values for new card
+        const values = Object.values(fieldValues).filter((v) => v.field_definition_id);
+        if (values.length > 0) {
+          await fetch(`/api/kanban/cards/${id}/values`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ values }),
+          });
+        }
+
         const newCard: Card = {
           id,
           title: data.title as string,
@@ -284,9 +577,10 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
           due_date: (data.due_date as string) || null,
           sort_order: 0,
           assigned_to_profile: data.assigned_to
-            ? (members.find((m) => m.id === data.assigned_to) ?? null)
+            ? (allUsers.find((m) => m.id === data.assigned_to) ?? null)
             : null,
           created_by_profile: null,
+          field_values: Object.values(fieldValues) as FieldValue[],
         };
         setColumns((cols) =>
           cols.map((col) =>
@@ -298,7 +592,7 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
       }
     }
     setModal(null);
-  }, [modal, members, ensureBoard, boardState]);
+  }, [modal, allUsers, ensureBoard, boardState]);
 
   const handleDeleteCard = useCallback(async () => {
     if (!modal?.id) return;
@@ -350,24 +644,35 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
           <h1 className="text-2xl font-semibold text-gray-900">Task Board</h1>
           <p className="text-sm text-gray-500 mt-1">{allCards.length} card{allCards.length !== 1 ? "s" : ""} across {columns.length} column{columns.length !== 1 ? "s" : ""}</p>
         </div>
-        {/* View toggle */}
-        <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setView("board")}
-            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
-              view === "board" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Board
-          </button>
-          <button
-            onClick={() => setView("list")}
-            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+        <div className="flex items-center gap-3">
+          {/* Settings button (managers only) */}
+          {canManage && (
+            <button
+              onClick={() => setShowSettings(true)}
+              className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            >
+              Settings
+            </button>
+          )}
+          {/* View toggle */}
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setView("board")}
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
+                view === "board" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Board
+            </button>
+            <button
+              onClick={() => setView("list")}
+              className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
               view === "list" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
             }`}
           >
             List
           </button>
+          </div>
         </div>
       </div>
 
@@ -632,11 +937,253 @@ export function KanbanBoard({ board, initialColumns, members, departmentId, canM
         <CardModal
           card={modal}
           members={members}
+          allUsers={allUsers}
+          fieldDefinitions={fieldDefinitions}
           onSave={handleSaveCard}
           onClose={() => setModal(null)}
           onDelete={modal.id ? handleDeleteCard : undefined}
         />
       )}
+
+      {/* Settings panel */}
+      {showSettings && boardState && (
+        <FieldSettingsPanel
+          boardId={boardState.id}
+          fieldDefinitions={fieldDefinitions}
+          onUpdate={(fields) => setFieldDefinitions(fields)}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── FIELD SETTINGS PANEL ─────────────────────────────────────────────────────
+function FieldSettingsPanel({
+  boardId,
+  fieldDefinitions,
+  onUpdate,
+  onClose,
+}: {
+  boardId: string;
+  fieldDefinitions: FieldDefinition[];
+  onUpdate: (fields: FieldDefinition[]) => void;
+  onClose: () => void;
+}) {
+  const [fields, setFields] = useState<FieldDefinition[]>(fieldDefinitions);
+  const [adding, setAdding] = useState(false);
+  const [newField, setNewField] = useState({
+    name: "",
+    field_type: "text" as FieldType,
+    description: "",
+    is_required: false,
+    options: [] as FieldOption[],
+  });
+  const [saving, setSaving] = useState(false);
+
+  const handleAddField = async () => {
+    if (!newField.name.trim()) return;
+    setSaving(true);
+
+    const body: Record<string, unknown> = {
+      board_id: boardId,
+      name: newField.name.trim(),
+      field_type: newField.field_type,
+      description: newField.description || null,
+      is_required: newField.is_required,
+    };
+
+    if (["dropdown", "multi_select"].includes(newField.field_type) && newField.options.length > 0) {
+      body.options = newField.options;
+    }
+
+    const res = await fetch("/api/kanban/fields", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (res.ok) {
+      const created = await res.json();
+      const updated = [...fields, created];
+      setFields(updated);
+      onUpdate(updated);
+      setNewField({ name: "", field_type: "text", description: "", is_required: false, options: [] });
+      setAdding(false);
+    }
+    setSaving(false);
+  };
+
+  const handleDeleteField = async (id: string) => {
+    if (!confirm("Delete this field? All card values for this field will be lost.")) return;
+
+    const res = await fetch(`/api/kanban/fields/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      const updated = fields.filter((f) => f.id !== id);
+      setFields(updated);
+      onUpdate(updated);
+    } else {
+      const err = await res.json();
+      alert(err.error || "Failed to delete field");
+    }
+  };
+
+  const addOption = () => {
+    setNewField((f) => ({
+      ...f,
+      options: [...f.options, { id: crypto.randomUUID(), label: "", color: "#6b7280" }],
+    }));
+  };
+
+  const updateOption = (idx: number, label: string) => {
+    setNewField((f) => ({
+      ...f,
+      options: f.options.map((o, i) => (i === idx ? { ...o, label } : o)),
+    }));
+  };
+
+  const removeOption = (idx: number) => {
+    setNewField((f) => ({
+      ...f,
+      options: f.options.filter((_, i) => i !== idx),
+    }));
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative bg-white w-96 h-full shadow-xl overflow-y-auto z-50">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Board Settings</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          </div>
+
+          <div className="mb-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">Custom Fields</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Add custom fields to track additional data on cards. All team members can fill in field values.
+            </p>
+
+            {/* Existing fields */}
+            <div className="space-y-2 mb-4">
+              {fields.length === 0 ? (
+                <p className="text-sm text-gray-400 py-4 text-center">No custom fields yet</p>
+              ) : (
+                fields.map((field) => (
+                  <div key={field.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        {field.name}
+                        {field.is_required && <span className="text-red-400 ml-1">*</span>}
+                      </p>
+                      <p className="text-xs text-gray-500">{FIELD_TYPE_LABELS[field.field_type]}</p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteField(field.id)}
+                      className="text-xs text-gray-400 hover:text-red-500"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add field form */}
+            {adding ? (
+              <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                <input
+                  type="text"
+                  placeholder="Field name"
+                  value={newField.name}
+                  onChange={(e) => setNewField((f) => ({ ...f, name: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  autoFocus
+                />
+                <select
+                  value={newField.field_type}
+                  onChange={(e) => setNewField((f) => ({ ...f, field_type: e.target.value as FieldType, options: [] }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                >
+                  {Object.entries(FIELD_TYPE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  placeholder="Description (optional)"
+                  value={newField.description}
+                  onChange={(e) => setNewField((f) => ({ ...f, description: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                />
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={newField.is_required}
+                    onChange={(e) => setNewField((f) => ({ ...f, is_required: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  Required field
+                </label>
+
+                {/* Options for dropdown/multi_select */}
+                {["dropdown", "multi_select"].includes(newField.field_type) && (
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">Options</p>
+                    {newField.options.map((opt, idx) => (
+                      <div key={opt.id} className="flex items-center gap-2 mb-2">
+                        <input
+                          type="text"
+                          placeholder={`Option ${idx + 1}`}
+                          value={opt.label}
+                          onChange={(e) => updateOption(idx, e.target.value)}
+                          className="flex-1 border border-gray-200 rounded px-2 py-1 text-sm"
+                        />
+                        <button
+                          onClick={() => removeOption(idx)}
+                          className="text-gray-400 hover:text-red-500 text-sm"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={addOption}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      + Add option
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setAdding(false)}
+                    className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleAddField}
+                    disabled={!newField.name.trim() || saving}
+                    className="flex-1 text-sm px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  >
+                    {saving ? "..." : "Add Field"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAdding(true)}
+                className="w-full text-sm px-4 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700"
+              >
+                + Add Custom Field
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

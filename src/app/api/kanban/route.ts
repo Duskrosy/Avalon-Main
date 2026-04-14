@@ -46,20 +46,31 @@ export async function GET(req: NextRequest) {
 
   if (!board) return NextResponse.json({ error: "Failed to load board" }, { status: 500 });
 
+  // Fetch columns with cards and field values
   const { data: columns, error } = await supabase
     .from("kanban_columns")
     .select(`
       id, name, sort_order,
       kanban_cards(
-        id, title, description, priority, due_date, sort_order, created_at,
+        id, title, description, priority, due_date, sort_order, created_at, completed_at,
         assigned_to_profile:profiles!assigned_to(id, first_name, last_name),
-        created_by_profile:profiles!created_by(first_name, last_name)
+        created_by_profile:profiles!created_by(first_name, last_name),
+        field_values:kanban_card_field_values(
+          id, field_definition_id, value_text, value_number, value_date, value_boolean, value_json
+        )
       )
     `)
     .eq("board_id", board.id)
     .order("sort_order");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Fetch field definitions for this board
+  const { data: fieldDefinitions } = await supabase
+    .from("kanban_field_definitions")
+    .select("*")
+    .eq("board_id", board.id)
+    .order("sort_order");
 
   // Sort cards within each column
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,7 +82,11 @@ export async function GET(req: NextRequest) {
     ),
   }));
 
-  return NextResponse.json({ board, columns: columnsWithSortedCards });
+  return NextResponse.json({
+    board,
+    columns: columnsWithSortedCards,
+    fieldDefinitions: fieldDefinitions ?? [],
+  });
 }
 
 // POST /api/kanban/columns — add a column

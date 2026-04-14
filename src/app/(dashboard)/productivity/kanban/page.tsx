@@ -12,10 +12,8 @@ export default async function KanbanPage() {
   const departmentId = currentUser.department_id;
   if (!departmentId && !isOps(currentUser)) redirect("/");
 
-  const [boardRes, membersRes, deptsRes] = await Promise.all([
-    fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL ? "" : "http://localhost:3000"}/api/kanban?department_id=${departmentId ?? ""}`, {
-      headers: { cookie: "" }, // server fetch — use supabase directly instead
-    }).catch(() => null),
+  // Fetch department members and all active users (for cross-department assignment)
+  const [membersRes, allUsersRes] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, first_name, last_name")
@@ -23,9 +21,12 @@ export default async function KanbanPage() {
       .eq("status", "active")
       .is("deleted_at", null)
       .order("first_name"),
-    isOps(currentUser)
-      ? supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name")
-      : Promise.resolve({ data: [] }),
+    supabase
+      .from("profiles")
+      .select("id, first_name, last_name")
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("first_name"),
   ]);
 
   // Fetch board directly via supabase (avoids circular HTTP call in server component)
@@ -35,17 +36,30 @@ export default async function KanbanPage() {
     .eq("department_id", departmentId ?? "")
     .maybeSingle();
 
+  // Fetch columns with cards and field values
   const { data: columns } = boardRow
     ? await supabase
         .from("kanban_columns")
         .select(`
           id, name, sort_order,
           kanban_cards(
-            id, title, description, priority, due_date, sort_order, created_at,
+            id, title, description, priority, due_date, sort_order, created_at, completed_at,
             assigned_to_profile:profiles!assigned_to(id, first_name, last_name),
-            created_by_profile:profiles!created_by(first_name, last_name)
+            created_by_profile:profiles!created_by(first_name, last_name),
+            field_values:kanban_card_field_values(
+              id, field_definition_id, value_text, value_number, value_date, value_boolean, value_json
+            )
           )
         `)
+        .eq("board_id", boardRow.id)
+        .order("sort_order")
+    : { data: [] };
+
+  // Fetch field definitions for this board
+  const { data: fieldDefinitions } = boardRow
+    ? await supabase
+        .from("kanban_field_definitions")
+        .select("*")
         .eq("board_id", boardRow.id)
         .order("sort_order")
     : { data: [] };
@@ -63,8 +77,12 @@ export default async function KanbanPage() {
       initialColumns={sortedColumns as any}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       members={(membersRes.data ?? []) as any}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      allUsers={(allUsersRes.data ?? []) as any}
       departmentId={departmentId}
       canManage={isManagerOrAbove(currentUser)}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      initialFieldDefinitions={(fieldDefinitions ?? []) as any}
     />
   );
 }
