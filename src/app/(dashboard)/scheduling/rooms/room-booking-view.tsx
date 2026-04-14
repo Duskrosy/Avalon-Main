@@ -117,7 +117,7 @@ function UserPicker({
                 <span key={id} className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 pl-1 pr-2 py-0.5 rounded-full">
                   <Avatar user={user} size="sm" />
                   {user.first_name}
-                  <button onClick={(e) => { e.stopPropagation(); toggle(id); }} className="text-gray-400 hover:text-gray-600 ml-0.5">&times;</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); toggle(id); }} className="text-gray-400 hover:text-gray-600 ml-0.5">&times;</button>
                 </span>
               );
             })}
@@ -142,6 +142,7 @@ function UserPicker({
             ) : (
               filtered.map((user) => (
                 <button
+                  type="button"
                   key={user.id}
                   onClick={() => toggle(user.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
@@ -342,8 +343,8 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
     const eh = Math.floor(selectedRange.endMin / 60);
     const em = selectedRange.endMin % 60;
 
-    const start_time = `${dateStr}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00Z`;
-    const end_time = `${dateStr}T${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}:00Z`;
+    const start_time = `${dateStr}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00+08:00`;
+    const end_time = `${dateStr}T${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}:00+08:00`;
 
     const res = await fetch("/api/bookings", {
       method: "POST",
@@ -564,23 +565,7 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
                   <div className={`w-3 h-3 rounded-full ${roomColor(selectedRoom.id).fill}`} />
                   <h2 className="font-semibold text-gray-900">{selectedRoom.name}</h2>
                 </div>
-                <div className="flex items-center gap-3">
-                  {multiSelect ? (
-                    <button
-                      onClick={() => { setMultiSelect(false); setSelectedSlots(new Set()); }}
-                      className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200"
-                    >
-                      Done selecting
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setMultiSelect(true)}
-                      className="text-xs px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50"
-                    >
-                      Select multiple slots
-                    </button>
-                  )}
-                </div>
+                <p className="text-xs text-gray-400">Click a slot to book</p>
               </div>
             )}
 
@@ -670,41 +655,78 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
             </div>
           </div>
 
-          {/* Action bar */}
-          {selectedSlots.size > 0 && selectedRange && (
-            <div className="mt-3 bg-white rounded-2xl border border-gray-200 p-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {selectedRange.startLabel} – {selectedRange.endLabel}
-                    <span className="text-gray-400 ml-2">({durationLabel(selectedRange.duration)})</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {/* Quick duration buttons */}
-                  {!multiSelect && durationOptions.map((opt) => (
+          {/* Sticky action bar — always visible at bottom */}
+          <div className="sticky bottom-0 z-10 mt-3">
+            <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-lg">
+              {selectedSlots.size > 0 && selectedRange ? (
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <p className="text-sm font-medium text-gray-900">
+                      {selectedRange.startLabel} – {selectedRange.endLabel}
+                      <span className="text-gray-400 ml-1.5">({durationLabel(selectedRange.duration)})</span>
+                    </p>
                     <button
-                      key={opt.slots}
-                      onClick={() => { expandSelection(opt.slots); }}
+                      onClick={() => { setSelectedSlots(new Set()); setMultiSelect(false); }}
+                      className="text-xs text-gray-400 hover:text-gray-600"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {/* Quick duration buttons */}
+                    {!multiSelect && durationOptions.map((opt) => (
+                      <button
+                        key={opt.slots}
+                        onClick={() => expandSelection(opt.slots)}
+                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                          selectedSlots.size === opt.slots
+                            ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
+                            : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                    {/* Multi-select toggle */}
+                    <button
+                      onClick={() => setMultiSelect(!multiSelect)}
                       className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                        selectedSlots.size === opt.slots
-                          ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
+                        multiSelect
+                          ? "bg-amber-50 border-amber-200 text-amber-700 font-medium"
                           : "border-gray-200 text-gray-500 hover:bg-gray-50"
                       }`}
                     >
-                      {opt.label}
+                      {multiSelect ? "Multi-select on" : "Custom"}
                     </button>
-                  ))}
-                  <button
-                    onClick={openBookModal}
-                    className="text-sm px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
-                  >
-                    Book
-                  </button>
+                    <button
+                      onClick={openBookModal}
+                      className="text-sm px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
+                    >
+                      Book
+                    </button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-400">
+                    {selectedRoom ? "Select a time slot above to get started" : "Pick a room from the sidebar"}
+                  </p>
+                  {selectedRoom && (
+                    <button
+                      onClick={() => setMultiSelect(!multiSelect)}
+                      className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                        multiSelect
+                          ? "bg-amber-50 border-amber-200 text-amber-700 font-medium"
+                          : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                      }`}
+                    >
+                      {multiSelect ? "Multi-select on" : "Select multiple slots"}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
 
