@@ -67,6 +67,7 @@ type Card = {
   priority: "low" | "medium" | "high" | "urgent";
   due_date: string | null;
   start_date: string | null;
+  completed_at: string | null;
   sort_order: number;
   color: string | null;
   assignees?: Assignee[];
@@ -895,6 +896,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
           priority: (data.priority as Card["priority"]) ?? "medium",
           start_date: (data.start_date as string) || null,
           due_date: (data.due_date as string) || null,
+          completed_at: null,
           color: (data.color as string) || null,
           sort_order: 0,
           assignees: newAssignees,
@@ -968,12 +970,12 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
 
   return (
     <div className="h-full flex flex-col">
-      <div className="mb-6 flex items-center justify-between gap-4 shrink-0">
+      <div className={`${compact ? "mb-2" : "mb-6"} flex items-center justify-between gap-4 shrink-0`}>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Task Board</h1>
-          <p className="text-sm text-gray-500 mt-1">{allCards.length} card{allCards.length !== 1 ? "s" : ""} across {columns.length} column{columns.length !== 1 ? "s" : ""}</p>
+          {!compact && <h1 className="text-2xl font-semibold text-gray-900">Kanban</h1>}
+          <p className="text-xs text-gray-500">{allCards.length} card{allCards.length !== 1 ? "s" : ""} &middot; {columns.length} column{columns.length !== 1 ? "s" : ""}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {/* Settings button (managers only) */}
           {canManage && (
             <button
@@ -984,7 +986,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             </button>
           )}
           {/* View toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
             <button
               onClick={() => setView("board")}
               className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
@@ -1153,11 +1155,11 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
       )}
 
       {/* ── BOARD VIEW ──────────────────────────────────────────── */}
-      {view === "board" && <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
+      {view === "board" && <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start min-h-[400px]">
         {columns.map((col) => (
           <div
             key={col.id}
-            className="bg-gray-50 rounded-xl p-3 w-72 shrink-0 flex flex-col gap-2"
+            className="bg-gray-50 rounded-xl p-3 w-80 shrink-0 flex flex-col gap-2"
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(col.id)}
           >
@@ -1273,29 +1275,196 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
 
       {/* Settings panel */}
       {showSettings && boardState && (
-        <FieldSettingsPanel
+        <SettingsPanel
           boardId={boardState.id}
           fieldDefinitions={fieldDefinitions}
           onUpdate={(fields) => setFieldDefinitions(fields)}
           onClose={() => setShowSettings(false)}
+          canManage={canManage}
+          departmentId={departmentId}
+          columns={columns}
         />
       )}
     </div>
   );
 }
 
-// ─── FIELD SETTINGS PANEL ─────────────────────────────────────────────────────
-function FieldSettingsPanel({
+// ─── SETTINGS PANEL (WRAPPER WITH TABS) ──────────────────────────────────────
+function SettingsPanel({
   boardId,
   fieldDefinitions,
   onUpdate,
   onClose,
+  canManage,
+  departmentId,
+  columns,
 }: {
   boardId: string;
   fieldDefinitions: FieldDefinition[];
   onUpdate: (fields: FieldDefinition[]) => void;
   onClose: () => void;
+  canManage: boolean;
+  departmentId: string | null;
+  columns: Column[];
 }) {
+  const [tab, setTab] = useState<"fields" | "overview">("fields");
+
+  // Compute stats from columns data
+  const allCards = columns.flatMap((c) => c.kanban_cards);
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const completedCards = allCards.filter((c) => c.completed_at);
+  const overdueCards = allCards.filter((c) => !c.completed_at && c.due_date && new Date(c.due_date) < now);
+  const completedThisWeek = completedCards.filter((c) => new Date(c.completed_at!) >= weekAgo);
+  const dueSoonCards = allCards.filter((c) => {
+    if (c.completed_at || !c.due_date) return false;
+    const d = new Date(c.due_date);
+    return d >= now && d <= new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+  });
+
+  // Workload by assignee
+  const workloadMap = new Map<string, { name: string; open: number; overdue: number }>();
+  for (const card of allCards) {
+    if (card.completed_at) continue;
+    const isOverdue = card.due_date && new Date(card.due_date) < now;
+    for (const a of card.assignees ?? []) {
+      if (!a.profile) continue;
+      const key = a.profile.id;
+      const name = `${a.profile.first_name} ${a.profile.last_name}`;
+      const existing = workloadMap.get(key) ?? { name, open: 0, overdue: 0 };
+      existing.open++;
+      if (isOverdue) existing.overdue++;
+      workloadMap.set(key, existing);
+    }
+  }
+  const workload = Array.from(workloadMap.values()).sort((a, b) => b.overdue - a.overdue);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="relative bg-white w-96 h-full shadow-xl overflow-y-auto z-50">
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          </div>
+
+          {/* Tabs */}
+          {canManage && (
+            <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-0.5">
+              <button
+                onClick={() => setTab("fields")}
+                className={`flex-1 text-xs py-2 rounded-md transition-colors ${
+                  tab === "fields" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Custom Fields
+              </button>
+              <button
+                onClick={() => setTab("overview")}
+                className={`flex-1 text-xs py-2 rounded-md transition-colors ${
+                  tab === "overview" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Team Overview
+              </button>
+            </div>
+          )}
+
+          {tab === "fields" ? (
+            <FieldSettingsContent
+              boardId={boardId}
+              fieldDefinitions={fieldDefinitions}
+              onUpdate={onUpdate}
+            />
+          ) : (
+            <div className="space-y-6">
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-gray-900">{allCards.length}</p>
+                  <p className="text-xs text-gray-500">Total tasks</p>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-green-700">{completedThisWeek.length}</p>
+                  <p className="text-xs text-gray-500">Done this week</p>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-red-600">{overdueCards.length}</p>
+                  <p className="text-xs text-gray-500">Overdue</p>
+                </div>
+                <div className="bg-amber-50 rounded-lg p-3">
+                  <p className="text-2xl font-bold text-amber-600">{dueSoonCards.length}</p>
+                  <p className="text-xs text-gray-500">Due soon</p>
+                </div>
+              </div>
+
+              {/* Workload */}
+              {workload.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Workload</h3>
+                  <div className="space-y-2">
+                    {workload.map((w) => (
+                      <div key={w.name} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+                        <span className="text-sm text-gray-800">{w.name}</span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-gray-500">{w.open} open</span>
+                          {w.overdue > 0 && (
+                            <span className="text-red-500 font-medium">{w.overdue} overdue</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Overdue cards */}
+              {overdueCards.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Overdue Tasks</h3>
+                  <div className="space-y-2">
+                    {overdueCards.slice(0, 10).map((card) => (
+                      <div key={card.id} className="p-2 bg-red-50 rounded-lg border border-red-100">
+                        <p className="text-sm text-gray-800 font-medium">{card.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-red-500">
+                            Due {format(new Date(card.due_date!), "d MMM")}
+                          </span>
+                          {card.assignees && card.assignees.length > 0 && (
+                            <span className="text-xs text-gray-500">
+                              {card.assignees.map((a) => a.profile?.first_name).filter(Boolean).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {overdueCards.length === 0 && workload.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-8">No tasks to show yet</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FIELD SETTINGS CONTENT ──────────────────────────────────────────────────
+function FieldSettingsContent({
+  boardId,
+  fieldDefinitions,
+  onUpdate,
+}: {
+  boardId: string;
+  fieldDefinitions: FieldDefinition[];
+  onUpdate: (fields: FieldDefinition[]) => void;
+}) {
+  // NOTE: the old onClose prop was removed — SettingsPanel handles close now
   const [fields, setFields] = useState<FieldDefinition[]>(fieldDefinitions);
   const [adding, setAdding] = useState(false);
   const [newField, setNewField] = useState({
@@ -1376,20 +1545,11 @@ function FieldSettingsPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-white w-96 h-full shadow-xl overflow-y-auto z-50">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Board Settings</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
-          </div>
-
-          <div className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-3">Custom Fields</h3>
-            <p className="text-xs text-gray-500 mb-4">
-              Add custom fields to track additional data on cards. All team members can fill in field values.
-            </p>
+    <div>
+      <h3 className="text-sm font-medium text-gray-700 mb-3">Custom Fields</h3>
+      <p className="text-xs text-gray-500 mb-4">
+        Add fields to track extra data on cards.
+      </p>
 
             {/* Existing fields */}
             <div className="space-y-2 mb-4">
@@ -1507,9 +1667,6 @@ function FieldSettingsPanel({
                 + Add Custom Field
               </button>
             )}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

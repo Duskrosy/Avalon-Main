@@ -115,7 +115,7 @@ export function KanbanMultiBoard({
 
         {/* Board Content */}
         {isExpanded && (
-          <div className="p-2">
+          <div className="p-3">
             {board ? (
               <KanbanBoard
                 board={{
