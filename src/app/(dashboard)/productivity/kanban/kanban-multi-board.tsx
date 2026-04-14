@@ -37,21 +37,21 @@ type Props = {
 const SCOPE_INFO = {
   team: {
     title: "Team Board",
-    description: "Shared tasks for your department. Managers can edit columns and fields.",
+    description: "Shared with your department",
     icon: "👥",
     color: "bg-blue-50 border-blue-200",
     headerColor: "bg-blue-100",
   },
   personal: {
-    title: "Personal Board",
-    description: "Your private tasks. Only you can see and manage this board.",
+    title: "My Board",
+    description: "Private to you",
     icon: "👤",
     color: "bg-purple-50 border-purple-200",
     headerColor: "bg-purple-100",
   },
   global: {
     title: "Global Board",
-    description: "Company-wide tasks visible to everyone. Only OPS can edit columns and fields.",
+    description: "Visible to everyone",
     icon: "🌐",
     color: "bg-emerald-50 border-emerald-200",
     headerColor: "bg-emerald-100",
@@ -221,24 +221,24 @@ function EmptyBoardState({
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <span className="text-4xl mb-3">{info.icon}</span>
-      <p className="text-gray-600 mb-4">
-        {scope === "team" && "No team board exists yet for your department."}
-        {scope === "personal" && "You haven't created a personal board yet."}
-        {scope === "global" && "No global board exists yet."}
+      <p className="text-gray-500 mb-4 text-sm">
+        {scope === "team" && "No team board yet."}
+        {scope === "personal" && "Set up your personal board to track your own tasks."}
+        {scope === "global" && "No company-wide board yet."}
       </p>
       {canCreate && (
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50"
+          className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 text-sm"
         >
           {creating ? "Creating..." : `Create ${info.title}`}
         </button>
       )}
       {!canCreate && (
-        <p className="text-sm text-gray-400">
-          {scope === "team" && "Ask a manager to create a team board."}
-          {scope === "global" && "Ask OPS to create a global board."}
+        <p className="text-xs text-gray-400">
+          {scope === "team" && "Ask your manager to set this up."}
+          {scope === "global" && "Ask OPS to set this up."}
         </p>
       )}
     </div>

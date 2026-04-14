@@ -1,50 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser } from "@/lib/permissions";
 
-// GET /api/kanban?department_id=xxx — board with columns and cards
+// GET /api/kanban?board_id=xxx  OR  ?department_id=xxx
+// board_id takes priority (used by realtime refetch for any board scope)
+// department_id falls back to team board lookup + auto-create
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  const boardId = searchParams.get("board_id");
   const departmentId = searchParams.get("department_id");
 
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const deptId = departmentId ?? currentUser.department_id;
-  if (!deptId) return NextResponse.json({ error: "No department" }, { status: 400 });
+  let board: { id: string; name: string } | null = null;
 
-  // Get or auto-create board
-  let { data: board } = await supabase
-    .from("kanban_boards")
-    .select("id, name")
-    .eq("department_id", deptId)
-    .maybeSingle();
-
-  if (!board) {
-    // Auto-create board + default columns using admin client (bypasses RLS for setup)
-    const admin = createAdminClient();
-    const { data: newBoard } = await admin
+  if (boardId) {
+    // Direct board lookup (works for any scope)
+    const { data } = await supabase
       .from("kanban_boards")
-      .insert({ department_id: deptId, name: "Main Board", created_by: currentUser.id })
       .select("id, name")
-      .single();
-    board = newBoard;
+      .eq("id", boardId)
+      .maybeSingle();
+    board = data;
+  } else {
+    // Legacy: department-based team board lookup + auto-create
+    const deptId = departmentId ?? currentUser.department_id;
+    if (!deptId) return NextResponse.json({ error: "No department" }, { status: 400 });
 
-    if (board) {
-      const defaultColumns = ["To Do", "In Progress", "Review", "Done"];
-      await admin.from("kanban_columns").insert(
-        defaultColumns.map((name, i) => ({
-          board_id: board!.id,
-          name,
-          sort_order: i,
-        }))
-      );
+    const { data } = await supabase
+      .from("kanban_boards")
+      .select("id, name")
+      .eq("department_id", deptId)
+      .eq("scope", "team")
+      .maybeSingle();
+    board = data;
+
+    if (!board) {
+      // Auto-create team board + default columns
+      const admin = createAdminClient();
+      const { data: newBoard } = await admin
+        .from("kanban_boards")
+        .insert({ department_id: deptId, name: "Team Board", scope: "team", created_by: currentUser.id })
+        .select("id, name")
+        .single();
+      board = newBoard;
+
+      if (board) {
+        const defaultColumns = ["To Do", "In Progress", "Review", "Done"];
+        await admin.from("kanban_columns").insert(
+          defaultColumns.map((name, i) => ({
+            board_id: board!.id,
+            name,
+            sort_order: i,
+          }))
+        );
+      }
     }
   }
 
-  if (!board) return NextResponse.json({ error: "Failed to load board" }, { status: 500 });
+  if (!board) return NextResponse.json({ error: "Board not found" }, { status: 404 });
 
   // Fetch columns with cards, field values, and assignees
   const { data: columns, error } = await supabase

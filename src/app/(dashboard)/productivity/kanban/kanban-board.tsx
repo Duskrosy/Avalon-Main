@@ -675,6 +675,21 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
   });
   const dragCard = useRef<{ cardId: string; sourceColId: string } | null>(null);
 
+  // Debounced board refetch for realtime updates
+  const refetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refetchBoard = useCallback(() => {
+    if (refetchTimer.current) clearTimeout(refetchTimer.current);
+    refetchTimer.current = setTimeout(() => {
+      if (!boardState?.id) return;
+      fetch(`/api/kanban?board_id=${boardState.id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.columns) setColumns(data.columns);
+          if (data.fieldDefinitions) setFieldDefinitions(data.fieldDefinitions);
+        });
+    }, 500);
+  }, [boardState?.id]);
+
   // Real-time subscription for live updates
   useEffect(() => {
     if (!boardState?.id) return;
@@ -685,33 +700,24 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "kanban_cards" },
-        () => {
-          // Refetch on any card change
-          fetch(`/api/kanban?department_id=${departmentId}`)
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.columns) setColumns(data.columns);
-              if (data.fieldDefinitions) setFieldDefinitions(data.fieldDefinitions);
-            });
-        }
+        () => refetchBoard()
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "kanban_card_field_values" },
-        () => {
-          fetch(`/api/kanban?department_id=${departmentId}`)
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.columns) setColumns(data.columns);
-            });
-        }
+        () => refetchBoard()
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "kanban_columns" },
+        () => refetchBoard()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [boardState?.id, departmentId]);
+  }, [boardState?.id, refetchBoard]);
 
   // Flat list of all cards with their column name (status)
   const allCards = useMemo(() => {
@@ -756,6 +762,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
   // Auto-create board if not exists
   const ensureBoard = useCallback(async () => {
     if (boardState) return boardState;
+    // boardState is null here, fall back to department_id for team board auto-create
     const res = await fetch(`/api/kanban?department_id=${departmentId}`);
     const data = await res.json();
     if (data.board) {
@@ -929,8 +936,10 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
       body: JSON.stringify({ board_id: b.id, name: newColName.trim(), sort_order: columns.length }),
     });
     if (res.ok) {
-      const { id } = await res.json();
-      setColumns((cols) => [...cols, { id, name: newColName.trim(), sort_order: cols.length, color: "#6b7280", kanban_cards: [] }]);
+      // Refetch the full board to get the authoritative state (avoids race with realtime)
+      const boardRes = await fetch(`/api/kanban?board_id=${b.id}`);
+      const data = await boardRes.json();
+      if (data.columns) setColumns(data.columns);
     }
     setNewColName("");
     setAddingColumn(false);
@@ -939,8 +948,16 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
   const handleDeleteColumn = useCallback(async (colId: string, colName: string) => {
     if (!confirm(`Delete column "${colName}" and all its cards?`)) return;
     await fetch(`/api/kanban/columns?id=${colId}`, { method: "DELETE" });
-    setColumns((cols) => cols.filter((c) => c.id !== colId));
-  }, []);
+    // Refetch authoritative state
+    if (boardState?.id) {
+      const boardRes = await fetch(`/api/kanban?board_id=${boardState.id}`);
+      const data = await boardRes.json();
+      if (data.columns) setColumns(data.columns);
+      else setColumns((cols) => cols.filter((c) => c.id !== colId));
+    } else {
+      setColumns((cols) => cols.filter((c) => c.id !== colId));
+    }
+  }, [boardState?.id]);
 
   const isOverdue = (due: string | null) => due && new Date(due) < new Date();
 
