@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { format } from "date-fns";
+import Link from "next/link";
 
 function fmtK(n: number | null) {
   if (n == null) return "—";
@@ -111,6 +112,16 @@ export default async function ExecutiveMarketingPage() {
 
   return (
     <div className="space-y-6">
+
+      <Link href="/executive/ad-ops" className="block bg-white border border-gray-200 rounded-xl px-5 py-3 hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Ads KPI Dashboard</p>
+            <p className="text-xs text-gray-400">View the 4-tier KPI framework</p>
+          </div>
+          <span className="text-xs text-gray-400">View →</span>
+        </div>
+      </Link>
 
       {/* ── Summary ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
