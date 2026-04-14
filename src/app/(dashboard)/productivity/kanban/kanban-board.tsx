@@ -53,29 +53,267 @@ type FieldValue = {
 };
 
 type Member = { id: string; first_name: string; last_name: string };
+
+type Assignee = {
+  id: string;
+  user_id: string;
+  profile: Member | null;
+};
+
 type Card = {
   id: string;
   title: string;
   description: string | null;
   priority: "low" | "medium" | "high" | "urgent";
   due_date: string | null;
+  start_date: string | null;
   sort_order: number;
-  assigned_to_profile: Member | null;
+  color: string | null;
+  assignees?: Assignee[];
   created_by_profile: { first_name: string; last_name: string } | null;
   field_values?: FieldValue[];
 };
-type Column = { id: string; name: string; sort_order: number; kanban_cards: Card[] };
-type Board = { id: string; name: string } | null;
+
+type Column = {
+  id: string;
+  name: string;
+  sort_order: number;
+  color: string | null;
+  kanban_cards: Card[];
+};
+
+type BoardScope = "global" | "team" | "personal";
+
+type Board = {
+  id: string;
+  name: string;
+  scope: BoardScope;
+  owner_id: string | null;
+} | null;
 
 type Props = {
   board: Board;
   initialColumns: Column[];
   members: Member[];
-  allUsers: Member[]; // All active users for cross-department assignment
+  allUsers: Member[];
   departmentId: string | null;
   canManage: boolean;
+  canManageGlobal: boolean;
+  currentUserId: string;
   initialFieldDefinitions: FieldDefinition[];
 };
+
+const COLUMN_COLORS = [
+  "#6b7280", // gray
+  "#ef4444", // red
+  "#f97316", // orange
+  "#eab308", // yellow
+  "#22c55e", // green
+  "#14b8a6", // teal
+  "#3b82f6", // blue
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+];
+
+const CARD_COLORS = [
+  null, // no color
+  "#fef2f2", // red light
+  "#fff7ed", // orange light
+  "#fefce8", // yellow light
+  "#f0fdf4", // green light
+  "#f0fdfa", // teal light
+  "#eff6ff", // blue light
+  "#f5f3ff", // violet light
+  "#fdf2f8", // pink light
+];
+
+// ─── ASSIGNEE AVATAR ──────────────────────────────────────────────────────────
+function AssigneeAvatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" }) {
+  const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2);
+  const sizeClass = size === "sm" ? "w-6 h-6 text-xs" : "w-8 h-8 text-sm";
+  return (
+    <div className={`${sizeClass} rounded-full bg-gray-200 flex items-center justify-center font-medium text-gray-600 shrink-0`}>
+      {initials}
+    </div>
+  );
+}
+
+// ─── ASSIGNEE CHIPS DISPLAY ───────────────────────────────────────────────────
+function AssigneeChips({
+  assignees,
+  maxShow = 2,
+  onClick,
+}: {
+  assignees: Assignee[];
+  maxShow?: number;
+  onClick?: () => void;
+}) {
+  if (assignees.length === 0) {
+    return <span className="text-xs text-gray-400">Unassigned</span>;
+  }
+
+  const shown = assignees.slice(0, maxShow);
+  const extra = assignees.length - maxShow;
+  const firstName = shown[0]?.profile?.first_name ?? "?";
+
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+    >
+      <div className="flex -space-x-1.5">
+        {shown.map((a) => (
+          <AssigneeAvatar key={a.id} name={a.profile ? `${a.profile.first_name} ${a.profile.last_name}` : "?"} />
+        ))}
+      </div>
+      <span className="text-xs text-gray-600 ml-1">
+        {firstName}{extra > 0 && ` +${extra}`}
+      </span>
+    </button>
+  );
+}
+
+// ─── MULTI-SELECT ASSIGNEE PICKER ─────────────────────────────────────────────
+function AssigneePicker({
+  allUsers,
+  selected,
+  onChange,
+}: {
+  allUsers: Member[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const filtered = allUsers.filter((u) => {
+    const name = `${u.first_name} ${u.last_name}`.toLowerCase();
+    return name.includes(search.toLowerCase());
+  });
+
+  const toggle = (id: string) => {
+    if (selected.includes(id)) {
+      onChange(selected.filter((s) => s !== id));
+    } else {
+      onChange([...selected, id]);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <div
+        className="border border-gray-200 rounded-lg px-3 py-2 cursor-pointer"
+        onClick={() => setOpen(!open)}
+      >
+        {selected.length === 0 ? (
+          <span className="text-sm text-gray-400">Select assignees...</span>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {selected.map((id) => {
+              const user = allUsers.find((u) => u.id === id);
+              if (!user) return null;
+              return (
+                <span
+                  key={id}
+                  className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full"
+                >
+                  {user.first_name} {user.last_name}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle(id);
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-gray-100">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-44 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-gray-400 p-3 text-center">No users found</p>
+            ) : (
+              filtered.map((user) => (
+                <button
+                  key={user.id}
+                  onClick={() => toggle(user.id)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                    selected.includes(user.id) ? "bg-gray-50" : ""
+                  }`}
+                >
+                  <AssigneeAvatar name={`${user.first_name} ${user.last_name}`} />
+                  <span className="flex-1">{user.first_name} {user.last_name}</span>
+                  {selected.includes(user.id) && (
+                    <span className="text-green-500">✓</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+          <div className="p-2 border-t border-gray-100">
+            <button
+              onClick={() => setOpen(false)}
+              className="w-full text-xs text-gray-500 hover:text-gray-700"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── COLOR PICKER ─────────────────────────────────────────────────────────────
+function ColorPicker({
+  colors,
+  selected,
+  onChange,
+  label,
+}: {
+  colors: (string | null)[];
+  selected: string | null;
+  onChange: (color: string | null) => void;
+  label: string;
+}) {
+  return (
+    <div>
+      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <div className="flex flex-wrap gap-1">
+        {colors.map((color, i) => (
+          <button
+            key={i}
+            onClick={() => onChange(color)}
+            className={`w-6 h-6 rounded border-2 transition-all ${
+              selected === color ? "border-gray-900 scale-110" : "border-transparent hover:scale-105"
+            }`}
+            style={{ backgroundColor: color ?? "#ffffff" }}
+            title={color ?? "None"}
+          >
+            {color === null && <span className="text-xs text-gray-300">∅</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function CustomFieldInput({
   field,
@@ -225,7 +463,6 @@ function CustomFieldInput({
 
 function CardModal({
   card,
-  members,
   allUsers,
   fieldDefinitions,
   onSave,
@@ -233,20 +470,25 @@ function CardModal({
   onDelete,
 }: {
   card: Partial<Card> & { column_id?: string };
-  members: Member[];
   allUsers: Member[];
   fieldDefinitions: FieldDefinition[];
-  onSave: (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>) => void;
+  onSave: (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>, assigneeIds: string[]) => void;
   onClose: () => void;
   onDelete?: () => void;
 }) {
   const [form, setForm] = useState({
     title: card.title ?? "",
     description: card.description ?? "",
-    assigned_to: card.assigned_to_profile?.id ?? "",
+    start_date: card.start_date ?? "",
     due_date: card.due_date ?? "",
     priority: card.priority ?? "medium",
+    color: card.color ?? null,
   });
+
+  // Multi-assignee
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    () => (card.assignees ?? []).map((a) => a.user_id)
+  );
 
   // Initialize field values from card
   const [fieldValues, setFieldValues] = useState<Record<string, Partial<FieldValue>>>(() => {
@@ -300,28 +542,38 @@ function CardModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Due date</label>
+              <label className="block text-xs text-gray-500 mb-1">Start date</label>
               <input
                 type="date"
-                value={form.due_date}
-                onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
+                value={form.start_date}
+                onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Assign to</label>
-            <select
-              value={form.assigned_to}
-              onChange={(e) => setForm((f) => ({ ...f, assigned_to: e.target.value }))}
+            <label className="block text-xs text-gray-500 mb-1">Due date</label>
+            <input
+              type="date"
+              value={form.due_date}
+              onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-            >
-              <option value="">Unassigned</option>
-              {allUsers.map((m) => (
-                <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
-              ))}
-            </select>
+            />
           </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Assignees</label>
+            <AssigneePicker
+              allUsers={allUsers}
+              selected={assigneeIds}
+              onChange={setAssigneeIds}
+            />
+          </div>
+          <ColorPicker
+            colors={CARD_COLORS}
+            selected={form.color}
+            onChange={(c) => setForm((f) => ({ ...f, color: c }))}
+            label="Card color"
+          />
 
           {/* Custom Fields */}
           {fieldDefinitions.length > 0 && (
@@ -357,9 +609,10 @@ function CardModal({
             onClick={() => onSave({
               ...form,
               description: form.description || null,
-              assigned_to: form.assigned_to || null,
+              start_date: form.start_date || null,
               due_date: form.due_date || null,
-            }, fieldValues)}
+              color: form.color,
+            }, fieldValues, assigneeIds)}
             disabled={!form.title.trim()}
             className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
           >
@@ -376,7 +629,7 @@ type SortDir = "asc" | "desc";
 
 const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-export function KanbanBoard({ board, initialColumns, members, allUsers, departmentId, canManage, initialFieldDefinitions }: Props) {
+export function KanbanBoard({ board, initialColumns, members, allUsers, departmentId, canManage, canManageGlobal, currentUserId, initialFieldDefinitions }: Props) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [boardState, setBoardState] = useState<Board>(board);
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(initialFieldDefinitions);
@@ -439,7 +692,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
   const filteredSortedCards = useMemo(() => {
     let cards = allCards;
     if (listFilter.priority) cards = cards.filter((c) => c.priority === listFilter.priority);
-    if (listFilter.assigned) cards = cards.filter((c) => c.assigned_to_profile?.id === listFilter.assigned);
+    if (listFilter.assigned) cards = cards.filter((c) => c.assignees?.some((a) => a.profile?.id === listFilter.assigned));
     if (listFilter.status) cards = cards.filter((c) => c.columnId === listFilter.status);
 
     return [...cards].sort((a, b) => {
@@ -453,8 +706,10 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
           cmp = da - db; break;
         }
         case "assigned_to": {
-          const na = a.assigned_to_profile ? `${a.assigned_to_profile.first_name} ${a.assigned_to_profile.last_name}` : "zzz";
-          const nb = b.assigned_to_profile ? `${b.assigned_to_profile.first_name} ${b.assigned_to_profile.last_name}` : "zzz";
+          const firstA = a.assignees?.[0]?.profile;
+          const firstB = b.assignees?.[0]?.profile;
+          const na = firstA ? `${firstA.first_name} ${firstA.last_name}` : "zzz";
+          const nb = firstB ? `${firstB.first_name} ${firstB.last_name}` : "zzz";
           cmp = na.localeCompare(nb); break;
         }
         case "status": cmp = a.columnName.localeCompare(b.columnName); break;
@@ -510,7 +765,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
     });
   }, []);
 
-  const handleSaveCard = useCallback(async (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>) => {
+  const handleSaveCard = useCallback(async (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>, assigneeIds: string[]) => {
     const b = await ensureBoard();
     if (!b && !boardState) return;
 
@@ -532,6 +787,19 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
         });
       }
 
+      // Save assignees
+      await fetch(`/api/kanban/cards/${modal.id}/assignees`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_ids: assigneeIds }),
+      });
+
+      // Build assignees for optimistic update
+      const newAssignees: Assignee[] = assigneeIds.map((uid) => {
+        const user = allUsers.find((u) => u.id === uid);
+        return { id: uid, user_id: uid, profile: user ?? null };
+      });
+
       setColumns((cols) =>
         cols.map((col) => ({
           ...col,
@@ -540,9 +808,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
               ? {
                   ...c,
                   ...data,
-                  assigned_to_profile: data.assigned_to
-                    ? (allUsers.find((m) => m.id === data.assigned_to) ?? null)
-                    : null,
+                  assignees: newAssignees,
                   field_values: Object.values(fieldValues) as FieldValue[],
                 }
               : c
@@ -569,16 +835,31 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
           });
         }
 
+        // Save assignees for new card
+        if (assigneeIds.length > 0) {
+          await fetch(`/api/kanban/cards/${id}/assignees`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_ids: assigneeIds }),
+          });
+        }
+
+        // Build assignees for optimistic update
+        const newAssignees: Assignee[] = assigneeIds.map((uid) => {
+          const user = allUsers.find((u) => u.id === uid);
+          return { id: uid, user_id: uid, profile: user ?? null };
+        });
+
         const newCard: Card = {
           id,
           title: data.title as string,
           description: (data.description as string) || null,
           priority: (data.priority as Card["priority"]) ?? "medium",
+          start_date: (data.start_date as string) || null,
           due_date: (data.due_date as string) || null,
+          color: (data.color as string) || null,
           sort_order: 0,
-          assigned_to_profile: data.assigned_to
-            ? (allUsers.find((m) => m.id === data.assigned_to) ?? null)
-            : null,
+          assignees: newAssignees,
           created_by_profile: null,
           field_values: Object.values(fieldValues) as FieldValue[],
         };
@@ -618,7 +899,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
     });
     if (res.ok) {
       const { id } = await res.json();
-      setColumns((cols) => [...cols, { id, name: newColName.trim(), sort_order: cols.length, kanban_cards: [] }]);
+      setColumns((cols) => [...cols, { id, name: newColName.trim(), sort_order: cols.length, color: "#6b7280", kanban_cards: [] }]);
     }
     setNewColName("");
     setAddingColumn(false);
@@ -801,8 +1082,8 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-600">
-                        {card.assigned_to_profile
-                          ? `${card.assigned_to_profile.first_name} ${card.assigned_to_profile.last_name}`
+                        {card.assignees && card.assignees.length > 0
+                          ? <AssigneeChips assignees={card.assignees} />
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="px-4 py-3">
@@ -866,10 +1147,8 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                   <p className="text-xs text-gray-400 mb-2 line-clamp-2">{card.description}</p>
                 )}
                 <div className="flex items-center justify-between gap-1 flex-wrap">
-                  {card.assigned_to_profile && (
-                    <span className="text-xs text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded-full">
-                      {card.assigned_to_profile.first_name}
-                    </span>
+                  {card.assignees && card.assignees.length > 0 && (
+                    <AssigneeChips assignees={card.assignees} maxShow={2} />
                   )}
                   {card.due_date && (
                     <span
@@ -936,7 +1215,6 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
       {modal && (
         <CardModal
           card={modal}
-          members={members}
           allUsers={allUsers}
           fieldDefinitions={fieldDefinitions}
           onSave={handleSaveCard}

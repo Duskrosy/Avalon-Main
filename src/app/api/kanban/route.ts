@@ -46,17 +46,20 @@ export async function GET(req: NextRequest) {
 
   if (!board) return NextResponse.json({ error: "Failed to load board" }, { status: 500 });
 
-  // Fetch columns with cards and field values
+  // Fetch columns with cards, field values, and assignees
   const { data: columns, error } = await supabase
     .from("kanban_columns")
     .select(`
-      id, name, sort_order,
+      id, name, sort_order, color,
       kanban_cards(
-        id, title, description, priority, due_date, sort_order, created_at, completed_at,
-        assigned_to_profile:profiles!assigned_to(id, first_name, last_name),
+        id, title, description, priority, due_date, start_date, sort_order, created_at, completed_at, color,
         created_by_profile:profiles!created_by(first_name, last_name),
         field_values:kanban_card_field_values(
           id, field_definition_id, value_text, value_number, value_date, value_boolean, value_json
+        ),
+        assignees:kanban_card_assignees(
+          id, user_id,
+          profile:profiles!user_id(id, first_name, last_name)
         )
       )
     `)
