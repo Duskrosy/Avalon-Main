@@ -94,12 +94,13 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     name: "Creatives",
     slug: "creatives",
-    departments: ["creatives"],
+    departments: ["creatives", "ad-ops", "marketing"],
     items: [
       { name: "Dashboard",  slug: "creatives-dashboard", route: "/creatives/dashboard" },
       { name: "Content",    slug: "creatives-content",   route: "/creatives/content" },
       { name: "Analytics",  slug: "creatives-analytics", route: "/creatives/analytics" },
       { name: "Requests",   slug: "creatives-requests",  route: "/creatives/requests" },
+      { name: "Tracker",    slug: "creatives-tracker",   route: "/creatives/tracker" },
     ],
   },
   {
@@ -122,6 +123,21 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Live Campaigns", slug: "ad-campaigns",   route: "/ad-ops/campaigns" },
       { name: "Performance",    slug: "ad-performance", route: "/ad-ops/performance" },
       { name: "Settings",       slug: "ad-settings",    route: "/ad-ops/settings", minTier: 1 },
+    ],
+  },
+  {
+    name: "Operations",
+    slug: "operations",
+    departments: ["fulfillment", "inventory", "customer-service", "sales"],
+    items: [
+      { name: "Catalog",    slug: "ops-catalog",    route: "/operations/catalog" },
+      { name: "Inventory",  slug: "ops-inventory",  route: "/operations/inventory" },
+      { name: "Orders",     slug: "ops-orders",     route: "/operations/orders" },
+      { name: "Dispatch",   slug: "ops-dispatch",   route: "/operations/dispatch" },
+      { name: "Issues",     slug: "ops-issues",     route: "/operations/issues" },
+      { name: "Distressed", slug: "ops-distressed", route: "/operations/distressed" },
+      { name: "Courier",    slug: "ops-courier",    route: "/operations/courier" },
+      { name: "Remittance", slug: "ops-remittance", route: "/operations/remittance" },
     ],
   },
   {

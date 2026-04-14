@@ -145,6 +145,8 @@ export default async function ExecutiveOverviewPage({
     { data: announcements },
     { data: smmAnalytics7d },
     { data: smmPlatforms },
+    { count: tasksCompletedWeek },
+    { count: tasksOverdue },
   ] = await Promise.all([
     // Sales today
     admin.from("sales_daily_volume")
@@ -212,6 +214,17 @@ export default async function ExecutiveOverviewPage({
     admin.from("smm_group_platforms")
       .select("id, platform, page_name")
       .eq("is_active", true),
+
+    // Kanban: tasks completed this week
+    admin.from("kanban_cards")
+      .select("id", { count: "exact", head: true })
+      .gte("completed_at", sevenDaysAgo),
+
+    // Kanban: overdue tasks (due_date passed, not completed)
+    admin.from("kanban_cards")
+      .select("id", { count: "exact", head: true })
+      .lt("due_date", today)
+      .is("completed_at", null),
   ]);
 
   // ── Shopify summary (selected date range) ─────────────────────────────────
@@ -326,6 +339,36 @@ export default async function ExecutiveOverviewPage({
           <span className="text-xs text-red-500 font-medium">View →</span>
         </Link>
       )}
+
+      {/* ── Quick links + Task velocity ────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Link href="/executive/ad-ops"
+          className="flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl px-5 py-4 hover:shadow-md transition-shadow group">
+          <div>
+            <p className="text-sm font-semibold text-violet-900">Ad-Ops KPI Dashboard</p>
+            <p className="text-xs text-violet-500 mt-0.5">Spend, ROAS, CPC, impressions &amp; more</p>
+          </div>
+          <span className="text-sm text-violet-400 group-hover:text-violet-600 transition-colors">View →</span>
+        </Link>
+        <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Task Velocity</p>
+            <p className="text-xs text-gray-400 mt-0.5">Kanban board · last 7 days</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <p className="text-xl font-bold text-green-600">{tasksCompletedWeek ?? 0}</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Completed</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-xl font-bold ${(tasksOverdue ?? 0) > 0 ? "text-red-600" : "text-gray-300"}`}>
+                {tasksOverdue ?? 0}
+              </p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Overdue</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* ── Top metric cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
