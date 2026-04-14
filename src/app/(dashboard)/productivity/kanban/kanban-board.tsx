@@ -1030,16 +1030,17 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                 <option key={p} value={p}>{PRIORITY_LABELS[p as Card["priority"]]}</option>
               ))}
             </select>
-            <select
-              value={listFilter.assigned}
-              onChange={(e) => setListFilter((f) => ({ ...f, assigned: e.target.value }))}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
-            >
-              <option value="">All members</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>{m.first_name} {m.last_name}</option>
-              ))}
-            </select>
+
+            {/* Assignee filter — scope-aware */}
+            {boardState?.scope !== "personal" && (
+              <ListAssigneeFilter
+                users={boardState?.scope === "team" ? members : allUsers}
+                selected={listFilter.assigned}
+                onChange={(id) => setListFilter((f) => ({ ...f, assigned: id }))}
+                scope={boardState?.scope ?? "team"}
+              />
+            )}
+
             {(listFilter.status || listFilter.priority || listFilter.assigned) && (
               <button
                 onClick={() => setListFilter({ priority: "", assigned: "", status: "" })}
@@ -1667,6 +1668,116 @@ function FieldSettingsContent({
                 + Add Custom Field
               </button>
             )}
+    </div>
+  );
+}
+
+// ─── LIST VIEW ASSIGNEE FILTER (searchable, chip-based) ─────────────────────
+function ListAssigneeFilter({
+  users,
+  selected,
+  onChange,
+  scope,
+}: {
+  users: Member[];
+  selected: string;
+  onChange: (id: string) => void;
+  scope: string;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const filtered = users.filter((u) => {
+    const name = `${u.first_name} ${u.last_name}`.toLowerCase();
+    return name.includes(search.toLowerCase());
+  });
+
+  const selectedUser = users.find((u) => u.id === selected);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900 flex items-center gap-2 min-w-[140px]"
+      >
+        {selectedUser ? (
+          <span className="flex items-center gap-1.5">
+            <AssigneeAvatar
+              name={`${selectedUser.first_name} ${selectedUser.last_name}`}
+              avatarUrl={selectedUser.avatar_url}
+              size="sm"
+            />
+            <span className="truncate">{selectedUser.first_name} {selectedUser.last_name}</span>
+            <span
+              className="text-gray-400 hover:text-gray-600 ml-1"
+              onClick={(e) => { e.stopPropagation(); onChange(""); setOpen(false); }}
+            >
+              &times;
+            </span>
+          </span>
+        ) : (
+          <span className="text-gray-400">
+            {scope === "global" ? "All people" : "All members"}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-gray-100">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-44 overflow-y-auto">
+            <button
+              onClick={() => { onChange(""); setOpen(false); setSearch(""); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                !selected ? "bg-gray-50 font-medium" : ""
+              }`}
+            >
+              {scope === "global" ? "All people" : "All members"}
+            </button>
+            {filtered.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => { onChange(user.id); setOpen(false); setSearch(""); }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                  selected === user.id ? "bg-gray-50" : ""
+                }`}
+              >
+                <AssigneeAvatar
+                  name={`${user.first_name} ${user.last_name}`}
+                  avatarUrl={user.avatar_url}
+                  size="sm"
+                />
+                <span className="flex-1">{user.first_name} {user.last_name}</span>
+                {selected === user.id && <span className="text-green-500">&#10003;</span>}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-xs text-gray-400 p-3 text-center">No one found</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
