@@ -9,11 +9,15 @@ type Announcement = {
   id: string;
   title: string;
   content: string;
-  priority: "normal" | "important" | "urgent";
+  flair_text: string | null;
+  flair_color: string | null;
+  attachment_url: string | null;
+  attachment_name: string | null;
+  attachment_signed_url?: string | null;
   expires_at: string | null;
   created_at: string;
   department: Dept | null;
-  created_by_profile: { id: string; first_name: string; last_name: string; avatar_url?: string | null } | null;
+  created_by_profile: { id: string; first_name: string; last_name: string } | null;
 };
 
 type Props = {
@@ -28,20 +32,32 @@ type Props = {
 
 const REACTION_EMOJIS = ["👍", "❤️", "🎉", "😂", "🔥", "👀", "💯", "🙏"];
 
-const PRIORITY_ACCENT = {
-  normal: "border-gray-200",
-  important: "border-amber-400",
-  urgent: "border-red-500",
-};
-
-const PRIORITY_TAG = {
-  normal: null,
-  important: { bg: "bg-amber-50 text-amber-700 ring-1 ring-amber-200", label: "Important" },
-  urgent: { bg: "bg-red-50 text-red-700 ring-1 ring-red-200", label: "Urgent" },
-};
+const FLAIR_COLORS = [
+  { name: "Gray",    value: "#6b7280", bg: "bg-gray-100",    text: "text-gray-700",    ring: "ring-gray-200" },
+  { name: "Red",     value: "#ef4444", bg: "bg-red-50",      text: "text-red-700",     ring: "ring-red-200" },
+  { name: "Orange",  value: "#f97316", bg: "bg-orange-50",   text: "text-orange-700",  ring: "ring-orange-200" },
+  { name: "Amber",   value: "#f59e0b", bg: "bg-amber-50",    text: "text-amber-700",   ring: "ring-amber-200" },
+  { name: "Green",   value: "#22c55e", bg: "bg-green-50",    text: "text-green-700",   ring: "ring-green-200" },
+  { name: "Blue",    value: "#3b82f6", bg: "bg-blue-50",     text: "text-blue-700",    ring: "ring-blue-200" },
+  { name: "Purple",  value: "#a855f7", bg: "bg-purple-50",   text: "text-purple-700",  ring: "ring-purple-200" },
+  { name: "Pink",    value: "#ec4899", bg: "bg-pink-50",     text: "text-pink-700",    ring: "ring-pink-200" },
+];
 
 function getInitials(first: string, last: string) {
   return `${first[0]}${last[0]}`.toUpperCase();
+}
+
+function isImageFile(name: string | null) {
+  if (!name) return false;
+  return /\.(jpg|jpeg|png|webp|gif)$/i.test(name);
+}
+
+function getFlairStyle(color: string | null) {
+  if (!color) return null;
+  const preset = FLAIR_COLORS.find((c) => c.value === color);
+  if (preset) return preset;
+  // Custom color fallback
+  return { name: "", value: color, bg: "", text: "", ring: "" };
 }
 
 export function AnnouncementsView({
@@ -60,13 +76,23 @@ export function AnnouncementsView({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
   const [form, setForm] = useState({
     title: "",
     content: "",
-    priority: "normal",
     department_id: userDeptId ?? "",
     expires_at: "",
+    flair_text: "",
+    flair_color: "",
   });
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Clean up file preview URL
+  useEffect(() => {
+    return () => { if (filePreview) URL.revokeObjectURL(filePreview); };
+  }, [filePreview]);
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -86,39 +112,54 @@ export function AnnouncementsView({
       return n;
     });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setFile(f);
+    if (filePreview) URL.revokeObjectURL(filePreview);
+    if (f && f.type.startsWith("image/")) {
+      setFilePreview(URL.createObjectURL(f));
+    } else {
+      setFilePreview(null);
+    }
+  };
+
+  const clearFile = () => {
+    setFile(null);
+    if (filePreview) URL.revokeObjectURL(filePreview);
+    setFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handlePost = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setPosting(true);
-    const res = await fetch("/api/announcements", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: form.title,
-        content: form.content,
-        priority: form.priority,
-        department_id: form.department_id || null,
-        expires_at: form.expires_at || null,
-      }),
-    });
+
+    const fd = new FormData();
+    fd.append("title", form.title);
+    fd.append("content", form.content);
+    if (form.department_id) fd.append("department_id", form.department_id);
+    if (form.expires_at) fd.append("expires_at", form.expires_at);
+    if (form.flair_text.trim()) fd.append("flair_text", form.flair_text.trim());
+    if (form.flair_color) fd.append("flair_color", form.flair_color);
+    if (file) fd.append("file", file);
+
+    const res = await fetch("/api/announcements", { method: "POST", body: fd });
     if (res.ok) {
       const refreshed = await fetch("/api/announcements");
       setAnnouncements(await refreshed.json());
       setShowForm(false);
-      setForm({ title: "", content: "", priority: "normal", department_id: userDeptId ?? "", expires_at: "" });
+      setForm({ title: "", content: "", department_id: userDeptId ?? "", expires_at: "", flair_text: "", flair_color: "" });
+      clearFile();
     }
     setPosting(false);
-  }, [form, userDeptId]);
+  }, [form, file, userDeptId]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (!confirm("Delete this announcement?")) return;
     const res = await fetch(`/api/announcements?id=${id}`, { method: "DELETE" });
     if (res.ok) {
       setAnnouncements((a) => a.filter((x) => x.id !== id));
-      setReactions((r) => {
-        const next = { ...r };
-        delete next[id];
-        return next;
-      });
+      setReactions((r) => { const next = { ...r }; delete next[id]; return next; });
     }
   }, []);
 
@@ -165,14 +206,15 @@ export function AnnouncementsView({
           {announcements.map((a) => {
             const isExpanded = expanded.has(a.id);
             const canDelete = isOps || a.created_by_profile?.id === currentUserId;
-            const tag = PRIORITY_TAG[a.priority];
+            const flair = a.flair_text ? getFlairStyle(a.flair_color) : null;
             const annReactions = reactions[a.id] || {};
             const reactionEntries = Object.entries(annReactions);
+            const hasImage = isImageFile(a.attachment_name);
 
             return (
               <div
                 key={a.id}
-                className={`bg-white rounded-xl border-l-4 ${PRIORITY_ACCENT[a.priority]} border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
+                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* Thread Header */}
                 <div className="p-4 cursor-pointer" onClick={() => toggle(a.id)}>
@@ -186,7 +228,7 @@ export function AnnouncementsView({
 
                     <div className="flex-1 min-w-0">
                       {/* Author + Meta */}
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 flex-wrap">
                         <span className="font-medium text-gray-700">
                           {a.created_by_profile
                             ? `${a.created_by_profile.first_name} ${a.created_by_profile.last_name}`
@@ -209,9 +251,27 @@ export function AnnouncementsView({
                             </span>
                           </>
                         )}
-                        {tag && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${tag.bg}`}>
-                            {tag.label}
+                        {/* Flair Tag */}
+                        {a.flair_text && flair && (
+                          flair.bg ? (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ring-1 ${flair.bg} ${flair.text} ${flair.ring}`}>
+                              {a.flair_text}
+                            </span>
+                          ) : (
+                            <span
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                              style={{ backgroundColor: flair.value + "18", color: flair.value, boxShadow: `inset 0 0 0 1px ${flair.value}30` }}
+                            >
+                              {a.flair_text}
+                            </span>
+                          )
+                        )}
+                        {/* Attachment indicator */}
+                        {a.attachment_name && (
+                          <span className="text-gray-400 flex items-center gap-0.5">
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                              <path d="M10 6.5l-4.3 4.3a2.5 2.5 0 01-3.4-3.4L7.6 2a1.7 1.7 0 012.4 2.4L4.7 9.7a.8.8 0 01-1.2-1.2L8.2 3.8"/>
+                            </svg>
                           </span>
                         )}
                       </div>
@@ -263,7 +323,6 @@ export function AnnouncementsView({
                           </button>
                         );
                       })}
-                      {/* Add reaction button */}
                       <div className="relative" ref={pickerOpen === a.id ? pickerRef : undefined}>
                         <button
                           onClick={() => setPickerOpen(pickerOpen === a.id ? null : a.id)}
@@ -295,6 +354,39 @@ export function AnnouncementsView({
                   <div className="px-4 pb-4 border-t border-gray-100">
                     <div className="ml-12 pt-3">
                       <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{a.content}</p>
+
+                      {/* Attachment Preview */}
+                      {a.attachment_signed_url && (
+                        <div className="mt-3">
+                          {hasImage ? (
+                            <a href={a.attachment_signed_url} target="_blank" rel="noopener noreferrer" className="block">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={a.attachment_signed_url}
+                                alt={a.attachment_name ?? "Attachment"}
+                                className="max-w-sm max-h-64 rounded-lg border border-gray-200 object-cover hover:opacity-90 transition-opacity"
+                              />
+                            </a>
+                          ) : (
+                            <a
+                              href={a.attachment_signed_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                <path d="M4 14h8a1 1 0 001-1V5l-4-4H4a1 1 0 00-1 1v11a1 1 0 001 1z"/>
+                                <path d="M9 1v4h4"/>
+                              </svg>
+                              <span className="truncate max-w-xs">{a.attachment_name}</span>
+                              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                                <path d="M6 1v8M3 6l3 3 3-3"/>
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                      )}
+
                       {a.expires_at && (
                         <p className="text-xs text-gray-400 mt-3 flex items-center gap-1">
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1"/></svg>
@@ -302,7 +394,7 @@ export function AnnouncementsView({
                         </p>
                       )}
 
-                      {/* Reaction bar in expanded view (when no reactions yet) */}
+                      {/* Reaction bar (when no reactions yet) */}
                       {reactionEntries.length === 0 && (
                         <div className="mt-3 relative" ref={pickerOpen === a.id ? pickerRef : undefined}>
                           <button
@@ -339,7 +431,7 @@ export function AnnouncementsView({
       {/* Post Announcement Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">New Announcement</h2>
             <form onSubmit={handlePost} className="space-y-4">
               <div>
@@ -357,26 +449,74 @@ export function AnnouncementsView({
                 <label className="block text-xs font-medium text-gray-700 mb-1">Content *</label>
                 <textarea
                   required
-                  rows={5}
+                  rows={4}
                   value={form.content}
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                   placeholder="Write the full announcement details..."
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Priority</label>
-                  <select
-                    value={form.priority}
-                    onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="important">Important</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+
+              {/* Flair */}
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Flair (optional)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={form.flair_text}
+                    onChange={(e) => setForm((f) => ({ ...f, flair_text: e.target.value }))}
+                    placeholder="e.g. Policy Update, Urgent, FYI"
+                    maxLength={30}
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
                 </div>
+                {/* Color selector */}
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-[10px] text-gray-400 mr-1">Color:</span>
+                  {FLAIR_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, flair_color: f.flair_color === c.value ? "" : c.value }))}
+                      className={`w-6 h-6 rounded-full border-2 transition-all ${
+                        form.flair_color === c.value ? "border-gray-900 scale-110" : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: c.value }}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+                {/* Flair preview */}
+                {form.flair_text.trim() && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[10px] text-gray-400">Preview:</span>
+                    {form.flair_color ? (
+                      (() => {
+                        const preset = FLAIR_COLORS.find((c) => c.value === form.flair_color);
+                        return preset ? (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ring-1 ${preset.bg} ${preset.text} ${preset.ring}`}>
+                            {form.flair_text.trim()}
+                          </span>
+                        ) : (
+                          <span
+                            className="px-2 py-0.5 rounded text-xs font-medium"
+                            style={{ backgroundColor: form.flair_color + "18", color: form.flair_color }}
+                          >
+                            {form.flair_text.trim()}
+                          </span>
+                        );
+                      })()
+                    ) : (
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 ring-1 ring-gray-200">
+                        {form.flair_text.trim()}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Department + Expires */}
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
                   <select
@@ -390,20 +530,71 @@ export function AnnouncementsView({
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Expires (optional)</label>
+                  <input
+                    type="date"
+                    value={form.expires_at}
+                    onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  />
+                </div>
               </div>
+
+              {/* Attachment */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Expires (optional)</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Attachment (optional)</label>
+                {!file ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full border-2 border-dashed border-gray-200 rounded-lg py-4 text-center hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                  >
+                    <svg className="mx-auto mb-1" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M10 4v8M6 8l4-4 4 4"/>
+                      <path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/>
+                    </svg>
+                    <p className="text-xs text-gray-500">Click to upload</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Images, PDF, Office docs up to 50MB</p>
+                  </button>
+                ) : (
+                  <div className="border border-gray-200 rounded-lg p-3">
+                    {filePreview && (
+                      <div className="mb-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={filePreview} alt="Preview" className="max-h-32 rounded-lg object-cover" />
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#6b7280" strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M3.5 12h7a1 1 0 001-1V4.5l-3.5-3.5h-4.5a1 1 0 00-1 1v9a1 1 0 001 1z"/>
+                          <path d="M8 1v3.5h3.5"/>
+                        </svg>
+                        <span className="text-xs text-gray-700 truncate">{file.name}</span>
+                        <span className="text-[10px] text-gray-400 shrink-0">
+                          {(file.size / 1024 / 1024).toFixed(1)}MB
+                        </span>
+                      </div>
+                      <button type="button" onClick={clearFile} className="text-xs text-gray-400 hover:text-red-400 ml-2 shrink-0">
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <input
-                  type="date"
-                  value={form.expires_at}
-                  onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileChange}
+                  accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                  className="hidden"
                 />
               </div>
+
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => { setShowForm(false); clearFile(); }}
                   className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
                 >
                   Cancel

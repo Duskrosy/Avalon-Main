@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { AnnouncementsView } from "./announcements-view";
@@ -12,7 +13,8 @@ export default async function AnnouncementsPage() {
     supabase
       .from("announcements")
       .select(`
-        id, title, content, priority, expires_at, created_at,
+        id, title, content, flair_text, flair_color,
+        attachment_url, attachment_name, expires_at, created_at,
         department:departments(id, name, slug),
         created_by_profile:profiles!created_by(id, first_name, last_name)
       `)
@@ -23,6 +25,18 @@ export default async function AnnouncementsPage() {
       .from("announcement_reactions")
       .select("announcement_id, emoji, user_id, profiles!user_id(first_name, last_name)"),
   ]);
+
+  // Generate signed URLs for attachments
+  const admin = createAdminClient();
+  const enrichedAnnouncements = await Promise.all(
+    (announcements ?? []).map(async (a) => {
+      if (!a.attachment_url) return a;
+      const { data: signed } = await admin.storage
+        .from("announcements")
+        .createSignedUrl(a.attachment_url, 3600);
+      return { ...a, attachment_signed_url: signed?.signedUrl ?? null };
+    })
+  );
 
   // Group reactions by announcement_id → emoji → users
   const initialReactions: Record<string, Record<string, { user_id: string; name: string }[]>> = {};
@@ -40,7 +54,7 @@ export default async function AnnouncementsPage() {
   return (
     <AnnouncementsView
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      announcements={(announcements ?? []) as any}
+      announcements={enrichedAnnouncements as any}
       departments={departments ?? []}
       currentUserId={currentUser.id}
       canPost={isManagerOrAbove(currentUser)}
