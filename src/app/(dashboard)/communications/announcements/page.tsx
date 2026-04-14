@@ -8,7 +8,7 @@ export default async function AnnouncementsPage() {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
-  const [{ data: announcements }, { data: departments }] = await Promise.all([
+  const [{ data: announcements }, { data: departments }, { data: reactionRows }] = await Promise.all([
     supabase
       .from("announcements")
       .select(`
@@ -19,7 +19,23 @@ export default async function AnnouncementsPage() {
       .order("created_at", { ascending: false })
       .limit(100),
     supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
+    supabase
+      .from("announcement_reactions")
+      .select("announcement_id, emoji, user_id, profiles!user_id(first_name, last_name)"),
   ]);
+
+  // Group reactions by announcement_id → emoji → users
+  const initialReactions: Record<string, Record<string, { user_id: string; name: string }[]>> = {};
+  for (const r of reactionRows ?? []) {
+    if (!initialReactions[r.announcement_id]) initialReactions[r.announcement_id] = {};
+    const map = initialReactions[r.announcement_id];
+    if (!map[r.emoji]) map[r.emoji] = [];
+    const profile = r.profiles as unknown as { first_name: string; last_name: string } | null;
+    map[r.emoji].push({
+      user_id: r.user_id,
+      name: profile ? `${profile.first_name} ${profile.last_name}` : "Unknown",
+    });
+  }
 
   return (
     <AnnouncementsView
@@ -30,6 +46,7 @@ export default async function AnnouncementsPage() {
       canPost={isManagerOrAbove(currentUser)}
       isOps={isOps(currentUser)}
       userDeptId={currentUser.department_id}
+      initialReactions={initialReactions}
     />
   );
 }

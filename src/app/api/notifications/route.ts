@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   let query = admin
     .from("notifications")
-    .select("*")
+    .select("id, type, title, body, link_url, is_read, created_at")
     .eq("user_id", currentUser.id)
     .order("created_at", { ascending: false })
     .limit(100);

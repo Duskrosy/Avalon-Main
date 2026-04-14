@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { NotificationDropdown } from "./notification-dropdown";
 
 type TopbarProps = {
   unreadCount: number;
@@ -45,30 +46,7 @@ export function Topbar({ unreadCount, birthdayBanner }: TopbarProps) {
         <div />
 
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => router.push("/communications/notifications")}
-            className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Notifications"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M15 6.667a5 5 0 0 0-10 0c0 5.833-2.5 7.5-2.5 7.5h15S15 12.5 15 6.667" />
-              <path d="M11.442 16.667a1.667 1.667 0 0 1-2.884 0" />
-            </svg>
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-medium rounded-full w-4 h-4 flex items-center justify-center">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </button>
+          <NotificationDropdown unreadCount={unreadCount} />
 
           <button
             onClick={handleSignOut}

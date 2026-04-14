@@ -6,8 +6,9 @@ import { formatDistanceToNow, isToday, isYesterday } from "date-fns";
 
 type Notification = {
   id: string;
+  type: string;
   title: string;
-  message: string | null;
+  body: string | null;
   link_url: string | null;
   is_read: boolean;
   created_at: string;
@@ -79,8 +80,8 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
                 <p className={`text-sm ${n.is_read ? "text-gray-700" : "text-gray-900 font-medium"}`}>
                   {n.title}
                 </p>
-                {n.message && (
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.message}</p>
+                {n.body && (
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
                 )}
                 <p className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
               </div>

@@ -74,8 +74,9 @@ export async function POST(req: NextRequest) {
     await admin.from("notifications").insert(
       recipients.map((r) => ({
         user_id: r.id,
+        type: "announcement",
         title: priority === "urgent" ? "Urgent announcement" : "New announcement",
-        message: title,
+        body: title,
         link_url: `/communications/announcements`,
       }))
     );

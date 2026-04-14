@@ -77,8 +77,9 @@ export async function POST(req: NextRequest) {
     await admin.from("notifications").insert(
       user_ids.filter((uid) => uid !== currentUser.id).map((uid) => ({
         user_id: uid,
+        type: "kop",
         title: "KOP Assigned",
-        message: `"${kop.title}" has been assigned to you.`,
+        body: `"${kop.title}" has been assigned to you.`,
         link_url: `/knowledgebase/kops/${kop_id}`,
       }))
     );

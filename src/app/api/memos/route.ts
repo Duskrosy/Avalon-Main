@@ -99,8 +99,9 @@ export async function POST(req: NextRequest) {
     await admin.from("notifications").insert(
       recipients.map((r) => ({
         user_id: r.id,
+        type: "memo",
         title: "New Memo",
-        message: `"${title}" has been posted${department_id ? " for your department" : ""}.`,
+        body: `"${title}" has been posted${department_id ? " for your department" : ""}.`,
         link_url: `/knowledgebase/memos/${memo.id}`,
       }))
     );

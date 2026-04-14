@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient();
     await admin.from("notifications").insert({
       user_id: assigned_to,
+      type: "kanban",
       title: "Task assigned",
-      message: `You were assigned: "${title}"`,
+      body: `You were assigned: "${title}"`,
       link_url: null,
     });
   }
@@ -83,8 +84,9 @@ export async function PATCH(req: NextRequest) {
     if (card) {
       await admin.from("notifications").insert({
         user_id: updates.assigned_to,
+        type: "kanban",
         title: "Task assigned",
-        message: `You were assigned: "${card.title}"`,
+        body: `You were assigned: "${card.title}"`,
         link_url: null,
       });
     }
