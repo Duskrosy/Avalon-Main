@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { KanbanBoard } from "./kanban-board";
+import { KanbanMultiBoard } from "./kanban-multi-board";
 
 export default async function KanbanPage() {
   const supabase = await createClient();
@@ -12,33 +12,29 @@ export default async function KanbanPage() {
   const departmentId = currentUser.department_id;
   if (!departmentId && !isOps(currentUser)) redirect("/");
 
-  // Fetch department members and all active users (for cross-department assignment)
-  const [membersRes, allUsersRes] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .eq("department_id", departmentId ?? "")
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .order("first_name"),
-    supabase
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .order("first_name"),
-  ]);
+  // Fetch all active users (for assignment)
+  const { data: allUsersData } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, avatar_url")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .order("first_name");
 
-  // Fetch board directly via supabase (avoids circular HTTP call in server component)
-  const { data: boardRow } = await supabase
+  const allUsers = allUsersData ?? [];
+
+  // Fetch all boards the user can see:
+  // 1. Team board (scope='team', their department)
+  // 2. Personal board (scope='personal', they own)
+  // 3. Global board (scope='global')
+  const { data: boards } = await supabase
     .from("kanban_boards")
-    .select("id, name, scope, owner_id")
-    .eq("department_id", departmentId ?? "")
-    .maybeSingle();
+    .select("id, name, scope, owner_id, department_id")
+    .or(`scope.eq.global,and(scope.eq.team,department_id.eq.${departmentId ?? ""}),and(scope.eq.personal,owner_id.eq.${currentUser.id})`);
 
-  // Fetch columns with cards, assignees, and field values
-  const { data: columns } = boardRow
-    ? await supabase
+  // Helper to fetch board data
+  async function fetchBoardData(boardId: string) {
+    const [columnsRes, fieldsRes] = await Promise.all([
+      supabase
         .from("kanban_columns")
         .select(`
           id, name, sort_order, color,
@@ -47,47 +43,61 @@ export default async function KanbanPage() {
             created_by_profile:profiles!created_by(first_name, last_name),
             assignees:kanban_card_assignees(
               id, user_id,
-              profile:profiles!user_id(id, first_name, last_name)
+              profile:profiles!user_id(id, first_name, last_name, avatar_url)
             ),
             field_values:kanban_card_field_values(
               id, field_definition_id, value_text, value_number, value_date, value_boolean, value_json
             )
           )
         `)
-        .eq("board_id", boardRow.id)
-        .order("sort_order")
-    : { data: [] };
-
-  // Fetch field definitions for this board
-  const { data: fieldDefinitions } = boardRow
-    ? await supabase
+        .eq("board_id", boardId)
+        .order("sort_order"),
+      supabase
         .from("kanban_field_definitions")
         .select("*")
-        .eq("board_id", boardRow.id)
-        .order("sort_order")
-    : { data: [] };
+        .eq("board_id", boardId)
+        .order("sort_order"),
+    ]);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sortedColumns = ((columns ?? []) as any[]).map((col: any) => ({
-    ...col,
-    kanban_cards: (col.kanban_cards ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
-  }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sortedColumns = ((columnsRes.data ?? []) as any[]).map((col: any) => ({
+      ...col,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      kanban_cards: (col.kanban_cards ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+    }));
+
+    return {
+      columns: sortedColumns,
+      fieldDefinitions: fieldsRes.data ?? [],
+    };
+  }
+
+  // Organize boards by scope
+  const teamBoard = boards?.find((b) => b.scope === "team");
+  const personalBoard = boards?.find((b) => b.scope === "personal");
+  const globalBoard = boards?.find((b) => b.scope === "global");
+
+  // Fetch data for each board
+  const [teamData, personalData, globalData] = await Promise.all([
+    teamBoard ? fetchBoardData(teamBoard.id) : null,
+    personalBoard ? fetchBoardData(personalBoard.id) : null,
+    globalBoard ? fetchBoardData(globalBoard.id) : null,
+  ]);
 
   return (
-    <KanbanBoard
-      board={boardRow ?? null}
+    <KanbanMultiBoard
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      initialColumns={sortedColumns as any}
+      teamBoard={teamBoard ? { ...teamBoard, ...teamData } as any : null}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      members={(membersRes.data ?? []) as any}
+      personalBoard={personalBoard ? { ...personalBoard, ...personalData } as any : null}
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      allUsers={(allUsersRes.data ?? []) as any}
+      globalBoard={globalBoard ? { ...globalBoard, ...globalData } as any : null}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      allUsers={allUsers as any}
       departmentId={departmentId}
-      canManage={isManagerOrAbove(currentUser)}
+      canManageTeam={isManagerOrAbove(currentUser)}
       canManageGlobal={isOps(currentUser)}
       currentUserId={currentUser.id}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      initialFieldDefinitions={(fieldDefinitions ?? []) as any}
     />
   );
 }

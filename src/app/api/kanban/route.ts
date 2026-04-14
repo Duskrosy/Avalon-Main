@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
         ),
         assignees:kanban_card_assignees(
           id, user_id,
-          profile:profiles!user_id(id, first_name, last_name)
+          profile:profiles!user_id(id, first_name, last_name, avatar_url)
         )
       )
     `)

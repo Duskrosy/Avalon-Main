@@ -52,7 +52,7 @@ type FieldValue = {
   value_json: unknown;
 };
 
-type Member = { id: string; first_name: string; last_name: string };
+type Member = { id: string; first_name: string; last_name: string; avatar_url?: string | null };
 
 type Assignee = {
   id: string;
@@ -101,6 +101,7 @@ type Props = {
   canManageGlobal: boolean;
   currentUserId: string;
   initialFieldDefinitions: FieldDefinition[];
+  compact?: boolean;
 };
 
 const COLUMN_COLORS = [
@@ -117,20 +118,31 @@ const COLUMN_COLORS = [
 
 const CARD_COLORS = [
   null, // no color
-  "#fef2f2", // red light
-  "#fff7ed", // orange light
-  "#fefce8", // yellow light
-  "#f0fdf4", // green light
-  "#f0fdfa", // teal light
-  "#eff6ff", // blue light
-  "#f5f3ff", // violet light
-  "#fdf2f8", // pink light
+  "#fecaca", // red (stronger)
+  "#fed7aa", // orange (stronger)
+  "#fef08a", // yellow (stronger)
+  "#bbf7d0", // green (stronger)
+  "#99f6e4", // teal (stronger)
+  "#bfdbfe", // blue (stronger)
+  "#ddd6fe", // violet (stronger)
+  "#fbcfe8", // pink (stronger)
 ];
 
 // ─── ASSIGNEE AVATAR ──────────────────────────────────────────────────────────
-function AssigneeAvatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" }) {
+function AssigneeAvatar({ name, avatarUrl, size = "sm" }: { name: string; avatarUrl?: string | null; size?: "sm" | "md" }) {
   const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const sizeClass = size === "sm" ? "w-6 h-6 text-xs" : "w-8 h-8 text-sm";
+
+  if (avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={name}
+        className={`${sizeClass} rounded-full object-cover shrink-0`}
+      />
+    );
+  }
+
   return (
     <div className={`${sizeClass} rounded-full bg-gray-200 flex items-center justify-center font-medium text-gray-600 shrink-0`}>
       {initials}
@@ -163,7 +175,11 @@ function AssigneeChips({
     >
       <div className="flex -space-x-1.5">
         {shown.map((a) => (
-          <AssigneeAvatar key={a.id} name={a.profile ? `${a.profile.first_name} ${a.profile.last_name}` : "?"} />
+          <AssigneeAvatar
+            key={a.id}
+            name={a.profile ? `${a.profile.first_name} ${a.profile.last_name}` : "?"}
+            avatarUrl={a.profile?.avatar_url}
+          />
         ))}
       </div>
       <span className="text-xs text-gray-600 ml-1">
@@ -185,6 +201,19 @@ function AssigneePicker({
 }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Click outside to close
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
 
   const filtered = allUsers.filter((u) => {
     const name = `${u.first_name} ${u.last_name}`.toLowerCase();
@@ -200,7 +229,7 @@ function AssigneePicker({
   };
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <div
         className="border border-gray-200 rounded-lg px-3 py-2 cursor-pointer"
         onClick={() => setOpen(!open)}
@@ -215,15 +244,16 @@ function AssigneePicker({
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded-full"
+                  className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
                 >
+                  <AssigneeAvatar name={`${user.first_name} ${user.last_name}`} avatarUrl={user.avatar_url} size="sm" />
                   {user.first_name} {user.last_name}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       toggle(id);
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 ml-0.5"
                   >
                     ×
                   </button>
@@ -258,7 +288,7 @@ function AssigneePicker({
                     selected.includes(user.id) ? "bg-gray-50" : ""
                   }`}
                 >
-                  <AssigneeAvatar name={`${user.first_name} ${user.last_name}`} />
+                  <AssigneeAvatar name={`${user.first_name} ${user.last_name}`} avatarUrl={user.avatar_url} />
                   <span className="flex-1">{user.first_name} {user.last_name}</span>
                   {selected.includes(user.id) && (
                     <span className="text-green-500">✓</span>
@@ -266,14 +296,6 @@ function AssigneePicker({
                 </button>
               ))
             )}
-          </div>
-          <div className="p-2 border-t border-gray-100">
-            <button
-              onClick={() => setOpen(false)}
-              className="w-full text-xs text-gray-500 hover:text-gray-700"
-            >
-              Done
-            </button>
           </div>
         </div>
       )}
@@ -296,18 +318,27 @@ function ColorPicker({
   return (
     <div>
       <label className="block text-xs text-gray-500 mb-1">{label}</label>
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1.5">
         {colors.map((color, i) => (
           <button
             key={i}
             onClick={() => onChange(color)}
-            className={`w-6 h-6 rounded border-2 transition-all ${
-              selected === color ? "border-gray-900 scale-110" : "border-transparent hover:scale-105"
+            className={`w-7 h-7 rounded-md border-2 transition-all flex items-center justify-center ${
+              selected === color
+                ? "border-gray-900 ring-2 ring-gray-400 ring-offset-1"
+                : "border-gray-300 hover:border-gray-400 hover:scale-105"
             }`}
             style={{ backgroundColor: color ?? "#ffffff" }}
             title={color ?? "None"}
           >
-            {color === null && <span className="text-xs text-gray-300">∅</span>}
+            {selected === color && color !== null && (
+              <span className="text-gray-800 text-sm font-bold">✓</span>
+            )}
+            {color === null && (
+              <span className={`text-sm ${selected === color ? "text-gray-800 font-bold" : "text-gray-400"}`}>
+                {selected === color ? "✓" : "∅"}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -629,7 +660,7 @@ type SortDir = "asc" | "desc";
 
 const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-export function KanbanBoard({ board, initialColumns, members, allUsers, departmentId, canManage, canManageGlobal, currentUserId, initialFieldDefinitions }: Props) {
+export function KanbanBoard({ board, initialColumns, members, allUsers, departmentId, canManage, canManageGlobal, currentUserId, initialFieldDefinitions, compact = false }: Props) {
   const [columns, setColumns] = useState<Column[]>(initialColumns);
   const [boardState, setBoardState] = useState<Board>(board);
   const [fieldDefinitions, setFieldDefinitions] = useState<FieldDefinition[]>(initialFieldDefinitions);
