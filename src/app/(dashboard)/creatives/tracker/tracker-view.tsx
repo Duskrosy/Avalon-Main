@@ -50,10 +50,20 @@ type SmmPost = {
   scheduled_at: string | null;
 };
 
+type PlatformConnection = {
+  id: string;
+  group_id: string;
+  platform: string;
+  page_name: string | null;
+  is_active: boolean;
+  token_expires_at: string | null;
+};
+
 type Props = {
   items: ContentItem[];
   profiles: Profile[];
   posts: SmmPost[];
+  platforms: PlatformConnection[];
   currentUserId: string;
   isManager: boolean;
 };
@@ -123,17 +133,25 @@ function profileName(p: { first_name: string; last_name: string } | null): strin
   return `${p.first_name} ${p.last_name}`;
 }
 
+function fmtK(n: number | null | undefined): string {
+  if (n == null) return "-";
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString();
+}
+
 // ── Component ─────────────────────────────────────────────────
 export default function TrackerView({
   items: initialItems,
   profiles,
   posts,
+  platforms,
   currentUserId,
   isManager,
 }: Props) {
   const { toast, setToast } = useToast();
   const [items, setItems] = useState<ContentItem[]>(initialItems);
-  const [tab, setTab] = useState<"planned" | "published">("planned");
+  const [tab, setTab] = useState<"planned" | "published" | "live">("planned");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
@@ -141,6 +159,40 @@ export default function TrackerView({
   const [showCreate, setShowCreate] = useState(false);
   const [linkItem, setLinkItem] = useState<ContentItem | null>(null);
   const [saving, setSaving] = useState(false);
+  const [livePosts, setLivePosts] = useState<any[]>([]);
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/smm/social-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        setToast({ message: "Sync complete", type: "success" });
+        // Refresh live data
+        const topRes = await fetch("/api/smm/top-posts?from=2020-01-01&to=2099-01-01");
+        if (topRes.ok) {
+          const topData = await topRes.json();
+          const allPosts: any[] = [];
+          if (topData && typeof topData === "object") {
+            for (const posts of Object.values(topData)) {
+              if (Array.isArray(posts)) allPosts.push(...posts);
+            }
+          }
+          setLivePosts(allPosts);
+        }
+      } else {
+        setToast({ message: "Sync failed", type: "error" });
+      }
+    } catch {
+      setToast({ message: "Sync failed", type: "error" });
+    } finally {
+      setSyncing(false);
+    }
+  }, [setToast]);
 
   // ── Filtered items ────────────────────────────────────────
   const planned = useMemo(
@@ -272,6 +324,14 @@ export default function TrackerView({
             setStatusFilter("");
           }}
         />
+        <TabPill
+          label="Live Analytics"
+          active={tab === "live"}
+          onClick={() => {
+            setTab("live");
+            setStatusFilter("");
+          }}
+        />
       </div>
 
       {/* Group tabs */}
@@ -317,75 +377,195 @@ export default function TrackerView({
       </div>
 
       {/* Table (desktop) / Cards (mobile) */}
-      {active.length === 0 ? (
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
-          No items found.
+      {tab === "live" ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Published content analytics from connected platforms
+            </p>
+            <button
+              onClick={handleSync}
+              disabled={syncing}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {syncing ? "Syncing..." : "Sync"}
+            </button>
+          </div>
+          {livePosts.length === 0 ? (
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
+              No live data yet. Click Sync to pull from connected platforms.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {livePosts.map((p: any, idx: number) => (
+                <div
+                  key={p.id || p.post_external_id || idx}
+                  className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2"
+                >
+                  {p.thumbnail_url && (
+                    <img src={p.thumbnail_url} alt="" className="w-full h-32 object-cover rounded-lg" />
+                  )}
+                  <p className="text-sm text-[var(--color-text-primary)] line-clamp-2">
+                    {p.caption_preview ?? p.caption ?? "(no caption)"}
+                  </p>
+                  <div className="flex flex-wrap gap-3 text-xs text-[var(--color-text-secondary)]">
+                    {p.impressions != null && <span>Impressions: {fmtK(p.impressions)}</span>}
+                    {p.engagements != null && <span>Engagements: {fmtK(p.engagements)}</span>}
+                    {p.video_plays != null && <span>Plays: {fmtK(p.video_plays)}</span>}
+                  </div>
+                  {p.published_at && (
+                    <p className="text-xs text-[var(--color-text-tertiary)]">
+                      {fmtDate(p.published_at)}
+                    </p>
+                  )}
+                  {p.post_url && (
+                    <a
+                      href={p.post_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-indigo-600 hover:text-indigo-800"
+                    >
+                      View post
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <>
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)]">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                  <th className="px-4 py-3">Title</th>
-                  <th className="px-4 py-3">Group</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Channel</th>
-                  <th className="px-4 py-3">Funnel</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Campaign</th>
-                  <th className="px-4 py-3">Assigned</th>
-                  <th className="px-4 py-3">Planned Week</th>
-                  {tab === "published" && (
-                    <th className="px-4 py-3">Linked</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {active.map((item, idx) => (
-                  <tr
+          {active.length === 0 ? (
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
+              No items found.
+            </div>
+          ) : (
+            <>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)]">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                      <th className="px-4 py-3">Title</th>
+                      <th className="px-4 py-3">Group</th>
+                      <th className="px-4 py-3">Type</th>
+                      <th className="px-4 py-3">Channel</th>
+                      <th className="px-4 py-3">Funnel</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Campaign</th>
+                      <th className="px-4 py-3">Assigned</th>
+                      <th className="px-4 py-3">Planned Week</th>
+                      {tab === "published" && (
+                        <th className="px-4 py-3">Linked</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {active.map((item, idx) => (
+                      <tr
+                        key={item.id}
+                        onClick={() => setEditItem(item)}
+                        className={`cursor-pointer border-b border-[var(--color-border-secondary)] transition-colors hover:bg-indigo-50/40 ${
+                          idx % 2 === 0 ? "bg-[var(--color-bg-primary)]" : "bg-[var(--color-bg-secondary)]/30"
+                        }`}
+                      >
+                        <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
+                          {item.title}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                          {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                          {fmtLabel(item.content_type)}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                          {fmtLabel(item.channel_type)}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                          {item.funnel_stage ?? "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <StatusDropdown
+                            current={item.status}
+                            onChange={(s) => {
+                              // prevent row click
+                              changeStatus(item.id, s);
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-[140px] truncate">
+                          {item.campaign_label ?? "-"}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                          {profileName(item.assigned_profile)}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
+                          {fmtDate(item.planned_week_start)}
+                        </td>
+                        {tab === "published" && (
+                          <td className="px-4 py-3">
+                            {item.linked_post_id || item.linked_external_url ? (
+                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                Linked
+                              </span>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setLinkItem(item);
+                                }}
+                                className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                              >
+                                Link
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="md:hidden space-y-3">
+                {active.map((item) => (
+                  <div
                     key={item.id}
                     onClick={() => setEditItem(item)}
-                    className={`cursor-pointer border-b border-[var(--color-border-secondary)] transition-colors hover:bg-indigo-50/40 ${
-                      idx % 2 === 0 ? "bg-[var(--color-bg-primary)]" : "bg-[var(--color-bg-secondary)]/30"
-                    }`}
+                    className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2 hover:border-indigo-200 transition-colors"
                   >
-                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
-                      {item.title}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {fmtLabel(item.content_type)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {fmtLabel(item.channel_type)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {item.funnel_stage ?? "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusDropdown
-                        current={item.status}
-                        onChange={(s) => {
-                          // prevent row click
-                          changeStatus(item.id, s);
-                        }}
-                      />
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-[140px] truncate">
-                      {item.campaign_label ?? "-"}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                      {profileName(item.assigned_profile)}
-                    </td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
-                      {fmtDate(item.planned_week_start)}
-                    </td>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-[var(--color-text-primary)] text-sm leading-snug">
+                        {item.title}
+                      </p>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          STATUS_STYLES[item.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+                        }`}
+                      >
+                        {fmtLabel(item.status)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
+                      <span>{fmtLabel(item.content_type)}</span>
+                      <span>{fmtLabel(item.channel_type)}</span>
+                      {item.funnel_stage && <span>{item.funnel_stage}</span>}
+                      {item.campaign_label && (
+                        <span className="text-indigo-600">{item.campaign_label}</span>
+                      )}
+                      {item.group_label && (
+                        <span className="text-indigo-600 font-medium">
+                          {CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
+                      <span>{profileName(item.assigned_profile)}</span>
+                      <span>{fmtDate(item.planned_week_start)}</span>
+                    </div>
                     {tab === "published" && (
-                      <td className="px-4 py-3">
+                      <div className="pt-1">
                         {item.linked_post_id || item.linked_external_url ? (
                           <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                             Linked
@@ -398,76 +578,16 @@ export default function TrackerView({
                             }}
                             className="text-xs text-indigo-600 hover:text-indigo-800 underline"
                           >
-                            Link
+                            Link to published content
                           </button>
                         )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="md:hidden space-y-3">
-            {active.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setEditItem(item)}
-                className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2 hover:border-indigo-200 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-[var(--color-text-primary)] text-sm leading-snug">
-                    {item.title}
-                  </p>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                      STATUS_STYLES[item.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
-                    }`}
-                  >
-                    {fmtLabel(item.status)}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
-                  <span>{fmtLabel(item.content_type)}</span>
-                  <span>{fmtLabel(item.channel_type)}</span>
-                  {item.funnel_stage && <span>{item.funnel_stage}</span>}
-                  {item.campaign_label && (
-                    <span className="text-indigo-600">{item.campaign_label}</span>
-                  )}
-                  {item.group_label && (
-                    <span className="text-indigo-600 font-medium">
-                      {CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
-                  <span>{profileName(item.assigned_profile)}</span>
-                  <span>{fmtDate(item.planned_week_start)}</span>
-                </div>
-                {tab === "published" && (
-                  <div className="pt-1">
-                    {item.linked_post_id || item.linked_external_url ? (
-                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                        Linked
-                      </span>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setLinkItem(item);
-                        }}
-                        className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                      >
-                        Link to published content
-                      </button>
+                      </div>
                     )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </>
       )}
 

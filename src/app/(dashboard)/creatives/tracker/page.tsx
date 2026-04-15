@@ -11,7 +11,7 @@ export default async function CreativesTrackerPage() {
 
   const admin = createAdminClient();
 
-  const [{ data: items }, { data: profiles }, { data: posts }] =
+  const [{ data: items }, { data: profiles }, { data: posts }, { data: platforms }] =
     await Promise.all([
       // All content items
       admin
@@ -38,6 +38,11 @@ export default async function CreativesTrackerPage() {
         .eq("status", "published")
         .order("published_at", { ascending: false })
         .limit(100),
+      // 4. Platform connections (for sync display)
+      admin
+        .from("smm_group_platforms")
+        .select("id, group_id, platform, page_name, is_active, token_expires_at")
+        .eq("is_active", true),
     ]);
 
   return (
@@ -45,6 +50,7 @@ export default async function CreativesTrackerPage() {
       items={items ?? []}
       profiles={profiles ?? []}
       posts={posts ?? []}
+      platforms={platforms ?? []}
       currentUserId={user.id}
       isManager={isManagerOrAbove(user)}
     />
