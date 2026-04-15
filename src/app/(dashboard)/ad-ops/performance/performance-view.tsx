@@ -199,19 +199,19 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Performance</h1>
-        <p className="text-sm text-gray-500 mt-1">Daily metrics by deployment</p>
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Performance</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Daily metrics by deployment</p>
       </div>
 
       {/* Account group tabs */}
       {groups.length > 0 && (
-        <div className="flex items-center gap-1 mb-5 border-b border-gray-200 overflow-x-auto">
+        <div className="flex items-center gap-1 mb-5 border-b border-[var(--color-border-primary)] overflow-x-auto">
           <button
             onClick={() => setSelectedGroupId(null)}
             className={`px-4 py-2.5 text-sm font-medium shrink-0 border-b-2 transition-colors ${
               selectedGroupId === null
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-500 hover:text-gray-700"
+                ? "border-gray-900 text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
             All
@@ -222,8 +222,8 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
               onClick={() => setSelectedGroupId(g.id)}
               className={`px-4 py-2.5 text-sm font-medium shrink-0 border-b-2 transition-colors ${
                 selectedGroupId === g.id
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-gray-900 text-[var(--color-text-primary)]"
+                  : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               }`}
             >
               {g.name}
@@ -238,7 +238,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 flex-1 max-w-sm"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] flex-1 max-w-sm"
           >
             {filteredDeployments.length === 0 && <option value="">No deployments</option>}
             {filteredDeployments.map((d) => (
@@ -251,18 +251,18 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
         {selectedId && viewMode === "charts" && (
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + Log Metrics
           </button>
         )}
-        <div className="ml-auto flex items-center bg-gray-100 rounded-lg p-0.5">
+        <div className="ml-auto flex items-center bg-[var(--color-bg-tertiary)] rounded-lg p-0.5">
           <button
             onClick={() => setViewMode("charts")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               viewMode === "charts"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
             Charts
@@ -271,8 +271,8 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
             onClick={() => setViewMode("creatives")}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
               viewMode === "creatives"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
             Creatives
@@ -284,10 +284,10 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
       {viewMode === "creatives" && (
         <>
           {creativesLoading ? (
-            <div className="text-center py-16 text-gray-400 text-sm">Loading creatives...</div>
+            <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading creatives...</div>
           ) : filteredDeployments.length === 0 ? (
-            <div className="bg-gray-50 rounded-xl p-12 text-center">
-              <p className="text-sm text-gray-400">No deployments in this group.</p>
+            <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+              <p className="text-sm text-[var(--color-text-tertiary)]">No deployments in this group.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -298,21 +298,21 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                   : undefined;
                 const cardSym = currencySymbol(depAccount?.currency ?? null);
                 const statusColors: Record<string, string> = {
-                  active: "bg-green-100 text-green-700",
-                  paused: "bg-amber-100 text-amber-700",
-                  ended: "bg-gray-100 text-gray-500",
+                  active: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+                  paused: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+                  ended: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
                 };
-                const badgeClass = statusColors[dep.status] ?? "bg-gray-100 text-gray-500";
+                const badgeClass = statusColors[dep.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
                 const initials = dep.asset?.asset_code
                   ? dep.asset.asset_code.slice(0, 2).toUpperCase()
                   : (dep.campaign_name ?? "??").slice(0, 2).toUpperCase();
                 return (
                   <div
                     key={dep.id}
-                    className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col"
+                    className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden flex flex-col"
                   >
                     {/* Thumbnail */}
-                    <div className="relative aspect-video bg-gray-100 shrink-0">
+                    <div className="relative aspect-video bg-[var(--color-bg-tertiary)] shrink-0">
                       {dep.asset?.thumbnail_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
@@ -322,7 +322,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-xl font-bold text-gray-400 font-mono">{initials}</span>
+                          <span className="text-xl font-bold text-[var(--color-text-tertiary)] font-mono">{initials}</span>
                         </div>
                       )}
                       {/* Status badge */}
@@ -339,12 +339,12 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                       {(dep.asset?.content_type || dep.asset?.hook_type) && (
                         <div className="flex gap-1 flex-wrap">
                           {dep.asset.content_type && (
-                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded">
                               {dep.asset.content_type}
                             </span>
                           )}
                           {dep.asset.hook_type && (
-                            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                            <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded">
                               {dep.asset.hook_type}
                             </span>
                           )}
@@ -353,11 +353,11 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
 
                       {/* Asset code */}
                       {dep.asset?.asset_code && (
-                        <p className="text-[10px] font-mono text-gray-400">{dep.asset.asset_code}</p>
+                        <p className="text-[10px] font-mono text-[var(--color-text-tertiary)]">{dep.asset.asset_code}</p>
                       )}
 
                       {/* Campaign name */}
-                      <p className="text-sm text-gray-800 line-clamp-2 leading-snug">
+                      <p className="text-sm text-[var(--color-text-primary)] line-clamp-2 leading-snug">
                         {dep.campaign_name ?? dep.asset?.title ?? dep.id.slice(0, 8)}
                       </p>
 
@@ -372,13 +372,13 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                             ["Clicks", fmtK(snap.clicks)],
                           ] as [string, string][]).map(([label, value]) => (
                             <div key={label} className="flex flex-col">
-                              <span className="text-[9px] text-gray-400 uppercase tracking-wide">{label}</span>
-                              <span className="text-xs font-medium text-gray-700">{value}</span>
+                              <span className="text-[9px] text-[var(--color-text-tertiary)] uppercase tracking-wide">{label}</span>
+                              <span className="text-xs font-medium text-[var(--color-text-primary)]">{value}</span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[10px] text-gray-400 mt-1">No data yet</p>
+                        <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">No data yet</p>
                       )}
 
                       {/* View details */}
@@ -387,7 +387,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                           setSelectedId(dep.id);
                           setViewMode("charts");
                         }}
-                        className="mt-auto pt-2 text-xs text-gray-500 hover:text-gray-900 text-left transition-colors"
+                        className="mt-auto pt-2 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] text-left transition-colors"
                       >
                         View details →
                       </button>
@@ -404,40 +404,40 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
         <>
           {/* Summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Total Spend</p>
-              <p className="text-xl font-bold text-gray-900">{sym}{totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Total Spend</p>
+              <p className="text-xl font-bold text-[var(--color-text-primary)]">{sym}{totals.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Conv. Value</p>
-              <p className="text-xl font-bold text-gray-900">{sym}{totals.conversion_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Conv. Value</p>
+              <p className="text-xl font-bold text-[var(--color-text-primary)]">{sym}{totals.conversion_value.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">ROAS</p>
-              <p className="text-xl font-bold text-gray-900">{overallROAS != null ? overallROAS.toFixed(2) + "x" : "—"}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">ROAS</p>
+              <p className="text-xl font-bold text-[var(--color-text-primary)]">{overallROAS != null ? overallROAS.toFixed(2) + "x" : "—"}</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Impressions</p>
-              <p className="text-xl font-bold text-gray-900">{fmtK(totals.impressions)}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Impressions</p>
+              <p className="text-xl font-bold text-[var(--color-text-primary)]">{fmtK(totals.impressions)}</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Conversions</p>
-              <p className="text-xl font-bold text-gray-900">{totals.conversions.toLocaleString()}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Conversions</p>
+              <p className="text-xl font-bold text-[var(--color-text-primary)]">{totals.conversions.toLocaleString()}</p>
             </div>
           </div>
 
           {loading ? (
-            <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+            <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
           ) : snapshots.length === 0 ? (
-            <div className="bg-gray-50 rounded-xl p-12 text-center">
-              <p className="text-sm text-gray-400">No metrics logged yet for this deployment.</p>
+            <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+              <p className="text-sm text-[var(--color-text-tertiary)]">No metrics logged yet for this deployment.</p>
             </div>
           ) : (
             <>
               {/* Charts */}
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white border border-gray-200 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">Hook Rate & ThruPlay Rate (%)</h3>
+                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Hook Rate & ThruPlay Rate (%)</h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -451,8 +451,8 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-xl p-5">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-4">ROAS (daily)</h3>
+                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">ROAS (daily)</h3>
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -466,14 +466,14 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
               </div>
 
               {/* Daily table */}
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100">
-                  <h3 className="text-sm font-semibold text-gray-700">Daily Breakdown</h3>
+              <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+                <div className="px-5 py-3 border-b border-[var(--color-border-secondary)]">
+                  <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Daily Breakdown</h3>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="text-gray-400 border-b border-gray-100">
+                      <tr className="text-[var(--color-text-tertiary)] border-b border-[var(--color-border-secondary)]">
                         <th className="px-4 py-3 text-left font-medium">Date</th>
                         <th className="px-4 py-3 text-right font-medium">Spend</th>
                         <th className="px-4 py-3 text-right font-medium">Conv. Value</th>
@@ -490,25 +490,25 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                       {[...snapshots]
                         .sort((a, b) => b.metric_date.localeCompare(a.metric_date))
                         .map((s) => (
-                          <tr key={s.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 text-gray-700 font-medium">
+                          <tr key={s.id} className="hover:bg-[var(--color-surface-hover)]">
+                            <td className="px-4 py-3 text-[var(--color-text-primary)] font-medium">
                               {format(parseISO(s.metric_date), "d MMM yyyy")}
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-600">
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
                               {s.spend != null ? `${sym}${s.spend.toFixed(0)}` : "—"}
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-600">
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
                               {s.conversion_value != null ? `${sym}${s.conversion_value.toFixed(0)}` : "—"}
                             </td>
-                            <td className="px-4 py-3 text-right font-medium text-gray-800">
+                            <td className="px-4 py-3 text-right font-medium text-[var(--color-text-primary)]">
                               {fmt(s.roas, 2, "x")}
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-600">{fmtK(s.impressions)}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{fmtK(s.clicks)}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{fmt(s.ctr, 3, "%")}</td>
-                            <td className="px-4 py-3 text-right font-medium text-gray-800">{fmt(s.hook_rate, 1, "%")}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{fmt(s.thruplay_rate, 1, "%")}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{s.conversions ?? "—"}</td>
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">{fmtK(s.impressions)}</td>
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">{fmtK(s.clicks)}</td>
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">{fmt(s.ctr, 3, "%")}</td>
+                            <td className="px-4 py-3 text-right font-medium text-[var(--color-text-primary)]">{fmt(s.hook_rate, 1, "%")}</td>
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">{fmt(s.thruplay_rate, 1, "%")}</td>
+                            <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">{s.conversions ?? "—"}</td>
                           </tr>
                         ))}
                     </tbody>
@@ -521,24 +521,24 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
       )}
 
       {filteredDeployments.length === 0 && (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No deployments in this group.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No deployments in this group.</p>
         </div>
       )}
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Log Daily Metrics</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Log Daily Metrics</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Date *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Date *</label>
                 <input
                   required
                   type="date"
                   value={form.metric_date}
                   onChange={(e) => setForm((f) => ({ ...f, metric_date: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -552,31 +552,31 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                   ["video_plays_25pct", "25% ThruPlay"],
                 ] as [keyof typeof form, string][]).map(([key, label]) => (
                   <div key={key}>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+                    <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">{label}</label>
                     <input
                       type="number"
                       min="0"
                       step={key === "spend" || key === "conversion_value" ? "0.01" : "1"}
                       value={form[key]}
                       onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     />
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-gray-400">Hook Rate, ThruPlay Rate, CTR, and ROAS are calculated automatically.</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">Hook Rate, ThruPlay Rate, CTR, and ROAS are calculated automatically.</p>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

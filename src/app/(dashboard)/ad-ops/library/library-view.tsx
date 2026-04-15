@@ -27,17 +27,17 @@ type Props = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  draft:          "bg-gray-100 text-gray-500",
-  pending_review: "bg-amber-50 text-amber-600",
-  approved:       "bg-green-50 text-green-700",
-  needs_revision: "bg-red-50 text-red-500",
-  archived:       "bg-gray-100 text-gray-400",
+  draft:          "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  pending_review: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  approved:       "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  needs_revision: "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  archived:       "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
 };
 
 const FUNNEL_COLORS: Record<string, string> = {
-  TOF: "bg-blue-100 text-blue-700",
-  MOF: "bg-amber-100 text-amber-700",
-  BOF: "bg-green-100 text-green-700",
+  TOF: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  MOF: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  BOF: "bg-[var(--color-success-light)] text-[var(--color-success)]",
 };
 
 const STATUSES = ["draft", "pending_review", "approved", "needs_revision", "archived"];
@@ -138,12 +138,12 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Asset Library</h1>
-          <p className="text-sm text-gray-500 mt-1">{assets.length} assets</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Asset Library</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{assets.length} assets</p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Asset
         </button>
@@ -156,12 +156,12 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
           placeholder="Search assets..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 w-48"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] w-48"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All statuses</option>
           {STATUSES.map((s) => (
@@ -172,7 +172,7 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
           <select
             value={funnelFilter}
             onChange={(e) => setFunnelFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           >
             <option value="">All stages</option>
             {funnelStages.map((s) => (
@@ -184,7 +184,7 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           >
             <option value="">All types</option>
             {contentTypes.map((t) => (
@@ -195,7 +195,7 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
         {(statusFilter || funnelFilter || typeFilter || search) && (
           <button
             onClick={() => { setStatusFilter(""); setFunnelFilter(""); setTypeFilter(""); setSearch(""); }}
-            className="text-xs text-gray-400 hover:text-gray-700"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -203,39 +203,39 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : assets.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No assets found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No assets found.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {assets.map((a) => (
-            <div key={a.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors">
+            <div key={a.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden hover:border-[var(--color-border-primary)] transition-colors">
               {a.thumbnail_url ? (
-                <div className="aspect-video bg-gray-100 overflow-hidden">
+                <div className="aspect-video bg-[var(--color-bg-tertiary)] overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={a.thumbnail_url} alt={a.title} className="w-full h-full object-cover" />
                 </div>
               ) : (
-                <div className="aspect-video bg-gray-100 flex items-center justify-center">
-                  <span className="text-gray-300 text-xs">No preview</span>
+                <div className="aspect-video bg-[var(--color-bg-tertiary)] flex items-center justify-center">
+                  <span className="text-[var(--color-text-tertiary)] text-xs">No preview</span>
                 </div>
               )}
               <div className="p-4">
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className="font-mono text-xs text-gray-500">{a.asset_code}</span>
+                  <span className="font-mono text-xs text-[var(--color-text-secondary)]">{a.asset_code}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[a.status] ?? ""}`}>
                     {a.status.replace("_", " ")}
                   </span>
                   {a.funnel_stage && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${FUNNEL_COLORS[a.funnel_stage] ?? "bg-gray-100 text-gray-500"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${FUNNEL_COLORS[a.funnel_stage] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>
                       {a.funnel_stage}
                     </span>
                   )}
                 </div>
-                <p className="font-medium text-gray-900 text-sm truncate">{a.title}</p>
-                <div className="flex items-center gap-2 mt-1 text-xs text-gray-400 flex-wrap">
+                <p className="font-medium text-[var(--color-text-primary)] text-sm truncate">{a.title}</p>
+                <div className="flex items-center gap-2 mt-1 text-xs text-[var(--color-text-tertiary)] flex-wrap">
                   {a.content_type && <span>{a.content_type}</span>}
                   {a.ad_format && <><span>·</span><span>{a.ad_format}</span></>}
                   {a.creator && (
@@ -243,24 +243,24 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
                   )}
                 </div>
                 {a.request && (
-                  <p className="text-xs text-gray-400 mt-0.5 truncate">From: {a.request.title}</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5 truncate">From: {a.request.title}</p>
                 )}
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[var(--color-border-secondary)]">
                   {a.file_url && (
                     <a
                       href={a.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-gray-500 hover:text-gray-900"
+                      className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                     >
                       View file →
                     </a>
                   )}
-                  <button onClick={() => openEdit(a)} className="text-xs text-gray-400 hover:text-gray-700 ml-auto">
+                  <button onClick={() => openEdit(a)} className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] ml-auto">
                     Edit
                   </button>
                   {canManage && (
-                    <button onClick={() => handleDelete(a.id)} className="text-xs text-gray-300 hover:text-red-400">
+                    <button onClick={() => handleDelete(a.id)} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400">
                       Delete
                     </button>
                   )}
@@ -273,38 +273,38 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{editAsset ? "Edit Asset" : "New Asset"}</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">{editAsset ? "Edit Asset" : "New Asset"}</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Title *</label>
                 <input
                   required
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   placeholder="e.g. Summer UGC — testimonial v1"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Content Type</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Content Type</label>
                   <select
                     value={form.content_type}
                     onChange={(e) => setForm((f) => ({ ...f, content_type: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">None</option>
                     {contentTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Funnel Stage</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Funnel Stage</label>
                   <select
                     value={form.funnel_stage}
                     onChange={(e) => setForm((f) => ({ ...f, funnel_stage: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">None</option>
                     {funnelStages.map((s) => <option key={s} value={s}>{s}</option>)}
@@ -313,68 +313,68 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Ad Format</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Ad Format</label>
                   <select
                     value={form.ad_format}
                     onChange={(e) => setForm((f) => ({ ...f, ad_format: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">None</option>
                     {formats.map((f) => <option key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Status</label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     {STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
                   </select>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">File URL</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">File URL</label>
                 <input
                   type="url"
                   value={form.file_url}
                   onChange={(e) => setForm((f) => ({ ...f, file_url: e.target.value }))}
                   placeholder="https://..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Thumbnail URL</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Thumbnail URL</label>
                 <input
                   type="url"
                   value={form.thumbnail_url}
                   onChange={(e) => setForm((f) => ({ ...f, thumbnail_url: e.target.value }))}
                   placeholder="https://..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

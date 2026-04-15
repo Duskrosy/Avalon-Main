@@ -104,10 +104,10 @@ type Props = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<string, string> = {
-  ACTIVE:   "bg-green-50 text-green-700",
-  PAUSED:   "bg-amber-50 text-amber-600",
-  ARCHIVED: "bg-gray-100 text-gray-400",
-  DELETED:  "bg-red-50 text-red-400",
+  ACTIVE:   "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  PAUSED:   "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  ARCHIVED: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
+  DELETED:  "bg-[var(--color-error-light)] text-red-400",
 };
 
 const SORT_OPTIONS = [
@@ -272,10 +272,10 @@ const AD_COL_DEFS: ColDef[] = [
     render: (ad, cur) => fmtMoney(ad.spend, cur) },
   { id: "roas",              label: "ROAS",
     render: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null ? `${fmt(r)}x` : "—"; },
-    className: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null && r >= 2 ? "text-green-700 font-medium" : r != null && r < 1 ? "text-red-500 font-medium" : "text-gray-700 font-medium"; } },
+    className: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null && r >= 2 ? "text-[var(--color-success)] font-medium" : r != null && r < 1 ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-primary)] font-medium"; } },
   { id: "hook_rate",         label: "Hook Rate",
     render: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null ? `${fmt(h, 1)}%` : "—"; },
-    className: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null && h >= 4 ? "text-green-700" : "text-gray-600"; } },
+    className: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null && h >= 4 ? "text-[var(--color-success)]" : "text-[var(--color-text-secondary)]"; } },
   { id: "ctr",               label: "CTR",
     render: (ad) => { const c = ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : null; return c != null ? `${fmt(c, 2)}%` : "—"; } },
   { id: "impressions",       label: "Impressions",
@@ -910,8 +910,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Live Campaigns</h1>
-          <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Live Campaigns</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1 flex items-center gap-2 flex-wrap">
             <span>
               Auto-synced from Meta · {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""}
               {campaigns[0]?.last_synced_at && (
@@ -920,22 +920,22 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             </span>
             {datePreset === "today" && (
               liveFetching ? (
-                <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-warning)] bg-[var(--color-warning-light)] px-2 py-0.5 rounded-full">
                   <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                   </svg>
                   Fetching live data…
                 </span>
               ) : liveStats != null ? (
-                <span className="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="inline-flex items-center gap-1 text-xs text-[var(--color-success)] bg-[var(--color-success-light)] px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 bg-[var(--color-success-light)]0 rounded-full animate-pulse" />
                   Live from Meta
                 </span>
               ) : null
             )}
           </p>
           {syncMsg && (
-            <p className={`text-xs mt-1 ${syncMsg.type === "ok" ? "text-green-600" : "text-red-500"}`}>
+            <p className={`text-xs mt-1 ${syncMsg.type === "ok" ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}`}>
               {syncMsg.text}
             </p>
           )}
@@ -945,7 +945,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         <div className="flex items-center gap-2 flex-wrap">
           {/* Date range presets */}
           <div className="flex items-center gap-1.5 flex-wrap">
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+            <div className="flex rounded-lg border border-[var(--color-border-primary)] overflow-hidden text-sm">
               {([
                 { key: "today",     label: "Today"   },
                 { key: "yesterday", label: "Yest."   },
@@ -956,7 +956,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                 <button
                   key={key}
                   onClick={() => setDatePreset(key)}
-                  className={`px-3 py-1.5 transition-colors ${datePreset === key ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                  className={`px-3 py-1.5 transition-colors ${datePreset === key ? "bg-[var(--color-text-primary)] text-white" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
                 >
                   {label}
                 </button>
@@ -970,7 +970,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   }
                   setDatePreset("custom");
                 }}
-                className={`px-3 py-1.5 flex items-center gap-1 transition-colors ${datePreset === "custom" ? "bg-gray-900 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
+                className={`px-3 py-1.5 flex items-center gap-1 transition-colors ${datePreset === "custom" ? "bg-[var(--color-text-primary)] text-white" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -987,16 +987,16 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   value={customStart}
                   max={customEnd || new Date().toISOString().split("T")[0]}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                  className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
                 />
-                <span className="text-gray-400 text-xs">→</span>
+                <span className="text-[var(--color-text-tertiary)] text-xs">→</span>
                 <input
                   type="date"
                   value={customEnd}
                   min={customStart}
                   max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                  className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
                 />
               </div>
             )}
@@ -1008,7 +1008,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               <button
                 onClick={() => setSettingsOpen((o) => !o)}
                 title="Account settings"
-                className={`border rounded-lg p-1.5 transition-colors ${settingsOpen ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-gray-400"}`}
+                className={`border rounded-lg p-1.5 transition-colors ${settingsOpen ? "border-gray-900 bg-[var(--color-text-primary)] text-white" : "border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-gray-400"}`}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -1018,8 +1018,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
               {/* Settings dropdown */}
               {settingsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-lg z-50 p-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Account Settings</p>
+                <div className="absolute right-0 top-full mt-2 w-72 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] z-50 p-4">
+                  <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">Account Settings</p>
                   <div className="space-y-4">
                     {accounts.map((account) => {
                       const convList = customConversions[account.id];
@@ -1028,27 +1028,27 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                       const isSavingConv  = savingConversion === account.id;
 
                       return (
-                        <div key={account.id} className="space-y-2 pb-3 border-b border-gray-100 last:border-b-0 last:pb-0">
+                        <div key={account.id} className="space-y-2 pb-3 border-b border-[var(--color-border-secondary)] last:border-b-0 last:pb-0">
                           {/* Account header */}
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{account.name}</p>
-                            <p className="text-xs text-gray-400">{account.account_id}</p>
+                            <p className="text-sm font-medium text-[var(--color-text-primary)]">{account.name}</p>
+                            <p className="text-xs text-[var(--color-text-tertiary)]">{account.account_id}</p>
                           </div>
 
                           {/* Currency */}
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500">Currency</span>
+                            <span className="text-xs text-[var(--color-text-secondary)]">Currency</span>
                             <div className="flex items-center gap-1.5">
                               <select
                                 value={accountCurrencies[account.id] ?? "USD"}
                                 onChange={(e) => saveCurrency(account.id, e.target.value)}
                                 disabled={savingCurrency === account.id}
-                                className="border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-50"
+                                className="border border-[var(--color-border-primary)] rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50"
                               >
                                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                               </select>
                               {savingCurrency === account.id && (
-                                <svg className="animate-spin w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                <svg className="animate-spin w-3 h-3 text-[var(--color-text-tertiary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                                   <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                                 </svg>
                               )}
@@ -1058,19 +1058,19 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                           {/* Custom conversion */}
                           <div className="space-y-1.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500">Purchase conversion</span>
+                              <span className="text-xs text-[var(--color-text-secondary)]">Purchase conversion</span>
                               {!convList && (
                                 <button
                                   onClick={() => loadCustomConversions(account.id)}
                                   disabled={isLoadingConv}
-                                  className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                                  className="text-xs text-[var(--color-accent)] hover:text-blue-800 disabled:opacity-50"
                                 >
                                   {isLoadingConv ? "Loading…" : "Load from Meta"}
                                 </button>
                               )}
                               {convList && (
                                 <button onClick={() => loadCustomConversions(account.id)} disabled={isLoadingConv}
-                                  className="text-xs text-gray-400 hover:text-gray-600">
+                                  className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
                                   ↺
                                 </button>
                               )}
@@ -1078,7 +1078,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
                             {/* Current selection display */}
                             {!convList && currentConv?.name && (
-                              <p className="text-xs text-green-700 bg-green-50 rounded px-2 py-1">
+                              <p className="text-xs text-[var(--color-success)] bg-[var(--color-success-light)] rounded px-2 py-1">
                                 ✓ {currentConv.name}
                               </p>
                             )}
@@ -1093,7 +1093,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                                     saveConversion(account.id, selected?.id ?? null, selected?.name ?? null);
                                   }}
                                   disabled={isSavingConv}
-                                  className="flex-1 border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50 bg-white"
+                                  className="flex-1 border border-[var(--color-border-primary)] rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-50 bg-[var(--color-bg-primary)]"
                                 >
                                   <option value="">— Default (purchase event) —</option>
                                   {convList.map((c) => (
@@ -1101,7 +1101,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                                   ))}
                                 </select>
                                 {isSavingConv && (
-                                  <svg className="animate-spin w-3 h-3 text-gray-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                                  <svg className="animate-spin w-3 h-3 text-[var(--color-text-tertiary)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                                   </svg>
                                 )}
@@ -1109,7 +1109,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                             )}
 
                             {convList?.length === 0 && (
-                              <p className="text-xs text-gray-400">No custom conversions found on this account</p>
+                              <p className="text-xs text-[var(--color-text-tertiary)]">No custom conversions found on this account</p>
                             )}
                           </div>
                         </div>
@@ -1126,7 +1126,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="bg-gray-900 text-white text-sm px-4 py-1.5 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {syncing ? (
                 <>
@@ -1149,7 +1149,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             <select
               value={filterAccount}
               onChange={(e) => setFilterAccount(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+              className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
             >
               <option value="all">All accounts</option>
               {accounts.map((a) => (
@@ -1162,7 +1162,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
           >
             <option value="all">All statuses</option>
             {availableStatuses.map((s) => (
@@ -1174,7 +1174,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
           >
             {SORT_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>Sort: {o.label}</option>
@@ -1182,7 +1182,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           </select>
 
           {/* Result count */}
-          <span className="text-xs text-gray-400 ml-1">
+          <span className="text-xs text-[var(--color-text-tertiary)] ml-1">
             {visibleCampaigns.length} of {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""}
           </span>
 
@@ -1190,7 +1190,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           {(filterAccount !== "all" || filterStatus !== "all") && (
             <button
               onClick={() => { setFilterAccount("all"); setFilterStatus("all"); }}
-              className="text-xs text-gray-400 hover:text-gray-700 underline"
+              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] underline"
             >
               Clear filters
             </button>
@@ -1205,10 +1205,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             {metricCards.map((card) => {
               const value = evaluateFormula(card.formula, formulaVars);
               return (
-                <div key={card.id} className={`bg-white border border-gray-200 rounded-xl p-4 min-w-0 transition-opacity ${liveFetching ? "opacity-40" : ""}`}>
-                  <p className="text-xs text-gray-500 mb-1 truncate">{card.label}</p>
-                  <p className="text-xl font-bold text-gray-900 truncate">
-                    {liveFetching ? <span className="inline-block w-16 h-5 bg-gray-200 rounded animate-pulse" /> : formatMetricValue(value, card.format, overallCurrency)}
+                <div key={card.id} className={`bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 min-w-0 transition-opacity ${liveFetching ? "opacity-40" : ""}`}>
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-1 truncate">{card.label}</p>
+                  <p className="text-xl font-bold text-[var(--color-text-primary)] truncate">
+                    {liveFetching ? <span className="inline-block w-16 h-5 bg-[var(--color-border-primary)] rounded animate-pulse" /> : formatMetricValue(value, card.format, overallCurrency)}
                   </p>
                 </div>
               );
@@ -1217,7 +1217,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           <div className="flex justify-end">
             <button
               onClick={openCustomize}
-              className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
+              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] flex items-center gap-1 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -1230,7 +1230,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
       {/* ── Messenger tabs ──────────────────────────────────────────────────── */}
       {hasMessengerCampaigns && campaigns.length > 0 && (
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+        <div className="flex gap-1 bg-[var(--color-bg-tertiary)] rounded-lg p-1 w-fit">
           {(["main", "messenger"] as const).map((tab) => {
             const count = tab === "messenger"
               ? visibleCampaigns.filter((c) => c.campaign_name.toLowerCase().includes("messenger")).length
@@ -1240,7 +1240,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === tab ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  activeTab === tab ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
                 {tab === "main" ? `Campaigns (${count})` : `Messenger (${count})`}
@@ -1252,25 +1252,25 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
       {/* ── Campaign list ───────────────────────────────────────────────────── */}
       {campaigns.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-16 text-center">
-          <p className="text-sm font-medium text-gray-500">No campaigns synced yet</p>
-          <p className="text-xs text-gray-400 mt-2">Click <strong>Sync Now</strong> to pull your campaigns from Meta</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-16 text-center">
+          <p className="text-sm font-medium text-[var(--color-text-secondary)]">No campaigns synced yet</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-2">Click <strong>Sync Now</strong> to pull your campaigns from Meta</p>
           {canSync && (
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="mt-4 bg-gray-900 text-white text-sm px-5 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+              className="mt-4 bg-[var(--color-text-primary)] text-white text-sm px-5 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             >
               {syncing ? "Syncing…" : "Sync Now"}
             </button>
           )}
         </div>
       ) : tabCampaigns.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No campaigns match the current filters</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No campaigns match the current filters</p>
           <button
             onClick={() => { setFilterAccount("all"); setFilterStatus("all"); }}
-            className="mt-2 text-xs text-gray-500 underline hover:text-gray-800"
+            className="mt-2 text-xs text-[var(--color-text-secondary)] underline hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -1287,46 +1287,46 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               ? (totals.video_plays_25pct / totals.impressions) * 100 : null;
 
             return (
-              <div key={campaign.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div key={campaign.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : campaign.id)}
-                  className="w-full text-left px-5 py-4 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left px-5 py-4 hover:bg-[var(--color-surface-hover)] transition-colors"
                 >
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${STATUS_STYLES[campaign.effective_status] ?? "bg-gray-100 text-gray-400"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${STATUS_STYLES[campaign.effective_status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]"}`}>
                       {campaign.effective_status}
                     </span>
 
-                    <span className="flex-1 text-sm font-medium text-gray-900 min-w-0 truncate">
+                    <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)] min-w-0 truncate">
                       {campaign.campaign_name}
                     </span>
 
                     {accounts.length > 1 && account && (
-                      <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full shrink-0">
+                      <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded-full shrink-0">
                         {account.name}
                       </span>
                     )}
 
                     {totals ? (
                       <div className="flex items-center gap-4 text-xs shrink-0 flex-wrap">
-                        <span className="text-gray-500">
-                          <span className="font-semibold text-gray-800">{fmtMoney(totals.spend, account?.currency)}</span> spend
+                        <span className="text-[var(--color-text-secondary)]">
+                          <span className="font-semibold text-[var(--color-text-primary)]">{fmtMoney(totals.spend, account?.currency)}</span> spend
                         </span>
                         {isMessengerTab ? (
                           // Messenger-specific metrics
                           <>
-                            <span className="text-gray-500">
-                              <span className="font-semibold text-gray-800">{(totals.messaging_conversations ?? 0).toLocaleString()}</span> results
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className="font-semibold text-[var(--color-text-primary)]">{(totals.messaging_conversations ?? 0).toLocaleString()}</span> results
                             </span>
-                            <span className="text-gray-500">
-                              <span className="font-semibold text-gray-800">
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className="font-semibold text-[var(--color-text-primary)]">
                                 {(totals.messaging_conversations ?? 0) > 0
                                   ? fmtMoney(totals.spend / totals.messaging_conversations, account?.currency)
                                   : "—"}
                               </span> cost/result
                             </span>
-                            <span className="text-gray-500">
-                              <span className="font-semibold text-gray-800">
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className="font-semibold text-[var(--color-text-primary)]">
                                 {totals.impressions > 0 ? `${fmt((totals.clicks / totals.impressions) * 100, 2)}%` : "—"}
                               </span> CTR
                             </span>
@@ -1334,29 +1334,29 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         ) : (
                           // Standard metrics
                           <>
-                            <span className="text-gray-500">
-                              <span className={`font-semibold ${roas != null && roas >= 2 ? "text-green-700" : roas != null && roas < 1 ? "text-red-500" : "text-gray-800"}`}>
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className={`font-semibold ${roas != null && roas >= 2 ? "text-[var(--color-success)]" : roas != null && roas < 1 ? "text-[var(--color-error)]" : "text-[var(--color-text-primary)]"}`}>
                                 {roas != null ? `${fmt(roas)}x` : "—"}
                               </span> ROAS
                             </span>
-                            <span className="text-gray-500">
-                              <span className={`font-semibold ${hookRate != null && hookRate >= 4 ? "text-green-700" : "text-gray-800"}`}>
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className={`font-semibold ${hookRate != null && hookRate >= 4 ? "text-[var(--color-success)]" : "text-[var(--color-text-primary)]"}`}>
                                 {hookRate != null ? `${fmt(hookRate, 1)}%` : "—"}
                               </span> hook
                             </span>
-                            <span className="text-gray-500">
-                              <span className="font-semibold text-gray-800">{totals.conversions}</span> conv.
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className="font-semibold text-[var(--color-text-primary)]">{totals.conversions}</span> conv.
                             </span>
                           </>
                         )}
-                        <span className="text-gray-400">{totals.adCount} ad{totals.adCount !== 1 ? "s" : ""}</span>
+                        <span className="text-[var(--color-text-tertiary)]">{totals.adCount} ad{totals.adCount !== 1 ? "s" : ""}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400 shrink-0">No data in period</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">No data in period</span>
                     )}
 
                     <svg
-                      className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                      className={`w-4 h-4 text-[var(--color-text-tertiary)] shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                       fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -1364,7 +1364,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   </div>
 
                   {(campaign.daily_budget || campaign.lifetime_budget || campaign.objective) && (
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
                       {campaign.daily_budget
                         ? `${fmtMoney(campaign.daily_budget, account?.currency)}/day`
                         : campaign.lifetime_budget
@@ -1379,12 +1379,12 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
                 {/* Expanded ad breakdown */}
                 {isExpanded && (
-                  <div className="border-t border-gray-100">
+                  <div className="border-t border-[var(--color-border-secondary)]">
                     {(() => {
                       const adRows = getAdsForCampaign(campaign);
                       if (adRows.length === 0) {
                         return (
-                          <div className="px-5 py-6 text-center text-sm text-gray-400">
+                          <div className="px-5 py-6 text-center text-sm text-[var(--color-text-tertiary)]">
                             No ad-level data for this period
                           </div>
                         );
@@ -1392,11 +1392,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                       return (
                         <div>
                           {/* Table header row with Columns button */}
-                          <div className="flex items-center justify-between px-5 py-2 bg-gray-50 border-b border-gray-100">
-                            <span className="text-xs text-gray-400 font-medium">{adRows.length} ad{adRows.length !== 1 ? "s" : ""}</span>
+                          <div className="flex items-center justify-between px-5 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-secondary)]">
+                            <span className="text-xs text-[var(--color-text-tertiary)] font-medium">{adRows.length} ad{adRows.length !== 1 ? "s" : ""}</span>
                             <button
                               onClick={(e) => { e.stopPropagation(); openColEditor(); }}
-                              className="text-xs text-gray-400 hover:text-gray-700 flex items-center gap-1 transition-colors"
+                              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] flex items-center gap-1 transition-colors"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
@@ -1407,7 +1407,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                           <div className="overflow-x-auto">
                             <table className="w-full text-xs">
                               <thead>
-                                <tr className="text-gray-400 border-b border-gray-100">
+                                <tr className="text-[var(--color-text-tertiary)] border-b border-[var(--color-border-secondary)]">
                                   <th className="px-5 py-2.5 text-left font-medium">Ad</th>
                                   {activeAdCols.map((col) => (
                                     <th key={col.id} className="px-4 py-2.5 text-right font-medium whitespace-nowrap">{col.label}</th>
@@ -1416,15 +1416,15 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                               </thead>
                               <tbody className="divide-y divide-gray-50">
                                 {adRows.map((ad) => (
-                                  <tr key={ad.ad_id} className="hover:bg-gray-50">
+                                  <tr key={ad.ad_id} className="hover:bg-[var(--color-surface-hover)]">
                                     <td className="px-5 py-2.5">
-                                      <p className="text-gray-800 font-medium truncate max-w-[220px]">{ad.ad_name ?? ad.ad_id}</p>
-                                      {ad.adset_name && <p className="text-gray-400 truncate max-w-[220px]">{ad.adset_name}</p>}
+                                      <p className="text-[var(--color-text-primary)] font-medium truncate max-w-[220px]">{ad.ad_name ?? ad.ad_id}</p>
+                                      {ad.adset_name && <p className="text-[var(--color-text-tertiary)] truncate max-w-[220px]">{ad.adset_name}</p>}
                                     </td>
                                     {activeAdCols.map((col) => (
                                       <td
                                         key={col.id}
-                                        className={`px-4 py-2.5 text-right ${col.className ? col.className(ad) : "text-gray-600"}`}
+                                        className={`px-4 py-2.5 text-right ${col.className ? col.className(ad) : "text-[var(--color-text-secondary)]"}`}
                                       >
                                         {col.render(ad, account?.currency ?? "USD")}
                                       </td>
@@ -1449,11 +1449,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       {customizeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setCustomizeOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">Customize Metric Cards</h2>
-              <button onClick={() => setCustomizeOpen(false)} className="text-gray-400 hover:text-gray-700 rounded-lg p-1 transition-colors">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border-secondary)]">
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Customize Metric Cards</h2>
+              <button onClick={() => setCustomizeOpen(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] rounded-lg p-1 transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1463,41 +1463,41 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
               {/* Current cards list */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Current Cards</p>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Current Cards</p>
                 {editCards.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-4">No cards yet. Add one below.</p>
+                  <p className="text-sm text-[var(--color-text-tertiary)] text-center py-4">No cards yet. Add one below.</p>
                 )}
                 <div className="space-y-1.5">
                   {editCards.map((card, i) => (
-                    <div key={card.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                    <div key={card.id} className="flex items-center gap-2 bg-[var(--color-bg-secondary)] rounded-lg px-3 py-2">
                       {/* Reorder buttons */}
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <button
                           onClick={() => moveCard(i, -1)}
                           disabled={i === 0}
-                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs"
+                          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] disabled:opacity-20 leading-none text-xs"
                         >▲</button>
                         <button
                           onClick={() => moveCard(i, 1)}
                           disabled={i === editCards.length - 1}
-                          className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs"
+                          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] disabled:opacity-20 leading-none text-xs"
                         >▼</button>
                       </div>
                       {/* Label + formula */}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-800 truncate">{card.label}</p>
-                        <p className="text-xs text-gray-400 font-mono truncate">{card.formula}</p>
+                        <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{card.label}</p>
+                        <p className="text-xs text-[var(--color-text-tertiary)] font-mono truncate">{card.formula}</p>
                       </div>
                       {/* Format badge */}
-                      <span className="text-xs bg-gray-200 text-gray-600 rounded px-1.5 py-0.5 shrink-0">{card.format}</span>
+                      <span className="text-xs bg-[var(--color-border-primary)] text-[var(--color-text-secondary)] rounded px-1.5 py-0.5 shrink-0">{card.format}</span>
                       {/* Live value preview */}
-                      <span className="text-xs font-semibold text-gray-700 shrink-0 min-w-[3rem] text-right">
+                      <span className="text-xs font-semibold text-[var(--color-text-primary)] shrink-0 min-w-[3rem] text-right">
                         {formatMetricValue(evaluateFormula(card.formula, formulaVars), card.format, overallCurrency)}
                       </span>
                       {/* Delete */}
                       <button
                         onClick={() => removeCard(i)}
-                        className="text-gray-300 hover:text-red-500 transition-colors shrink-0"
+                        className="text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors shrink-0"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -1509,18 +1509,18 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               </div>
 
               {/* Add new card */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add a Card</p>
+              <div className="border-t border-[var(--color-border-secondary)] pt-4">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">Add a Card</p>
 
                 {/* Quick presets */}
                 <div className="mb-3">
-                  <p className="text-xs text-gray-400 mb-1.5">Quick presets:</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mb-1.5">Quick presets:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_FORMULAS.map((p) => (
                       <button
                         key={p.formula}
                         onClick={() => applyPreset(p)}
-                        className="text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-400 text-gray-600 transition-colors"
+                        className="text-xs px-2.5 py-1 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] hover:border-gray-400 text-[var(--color-text-secondary)] transition-colors"
                       >
                         {p.label}
                       </button>
@@ -1531,25 +1531,25 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                 <div className="space-y-2.5">
                   {/* Label */}
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Label</label>
+                    <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Label</label>
                     <input
                       type="text"
                       placeholder="e.g. ROAS"
                       value={newLabel}
                       onChange={(e) => setNewLabel(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     />
                   </div>
 
                   {/* Formula + variable picker */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs text-gray-500">Formula</label>
+                      <label className="text-xs text-[var(--color-text-secondary)]">Formula</label>
                       {/* Variable groups dropdown — optgroup headers are separators, can't be selected */}
                       <select
                         defaultValue=""
                         onChange={(e) => { if (e.target.value) { insertVar(e.target.value); e.target.value = ""; } }}
-                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-gray-900 text-gray-600"
+                        className="text-xs border border-[var(--color-border-primary)] rounded px-2 py-1 bg-[var(--color-bg-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] text-[var(--color-text-secondary)]"
                       >
                         <option value="" disabled>Insert variable…</option>
                         {VARIABLE_GROUPS.map((group) => (
@@ -1571,16 +1571,16 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         value={newFormula}
                         onChange={(e) => handleFormulaChange(e.target.value)}
                         onBlur={() => setTimeout(() => setSuggestions([]), 150)}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       />
                       {/* Autocomplete suggestions */}
                       {suggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                        <div className="absolute left-0 right-0 top-full mt-0.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-[var(--shadow-lg)] z-10 overflow-hidden">
                           {suggestions.map((s) => (
                             <button
                               key={s}
                               onMouseDown={(e) => { e.preventDefault(); insertVar(s); }}
-                              className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-gray-50 text-gray-700"
+                              className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]"
                             >
                               {s}
                             </button>
@@ -1590,19 +1590,19 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                     </div>
 
                     {/* Custom conversions note */}
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      <span className="font-mono text-gray-500">conversions</span> &amp; <span className="font-mono text-gray-500">conversion_value</span> reflect your custom purchase event per account — configure it in <span className="font-medium">Account Settings ⚙</span>.
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-1.5">
+                      <span className="font-mono text-[var(--color-text-secondary)]">conversions</span> &amp; <span className="font-mono text-[var(--color-text-secondary)]">conversion_value</span> reflect your custom purchase event per account — configure it in <span className="font-medium">Account Settings ⚙</span>.
                     </p>
                   </div>
 
                   {/* Format + preview row */}
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
-                      <label className="text-xs text-gray-500 mb-1 block">Format</label>
+                      <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Format</label>
                       <select
                         value={newFormat}
                         onChange={(e) => setNewFormat(e.target.value as MetricCard["format"])}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
                       >
                         <option value="currency">Currency (₱1,234)</option>
                         <option value="multiplier">Multiplier (1.23x)</option>
@@ -1614,8 +1614,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                     {/* Live preview */}
                     {newFormula.trim() && (
                       <div className="shrink-0 text-right pb-1.5">
-                        <p className="text-xs text-gray-400">Preview</p>
-                        <p className="text-sm font-bold text-gray-900">
+                        <p className="text-xs text-[var(--color-text-tertiary)]">Preview</p>
+                        <p className="text-sm font-bold text-[var(--color-text-primary)]">
                           {formatMetricValue(evaluateFormula(newFormula, formulaVars), newFormat, overallCurrency)}
                         </p>
                       </div>
@@ -1624,7 +1624,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   <button
                     onClick={addCard}
                     disabled={!newLabel.trim() || !newFormula.trim()}
-                    className="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-40"
+                    className="w-full bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-40"
                   >
                     Add Card
                   </button>
@@ -1633,16 +1633,16 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+            <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]">
               <button
                 onClick={() => setEditCards([...DEFAULT_METRIC_CARDS])}
-                className="text-xs text-gray-400 hover:text-gray-700 underline transition-colors"
+                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] underline transition-colors"
               >
                 Reset to defaults
               </button>
               <button
                 onClick={() => { saveMetricCards(editCards); setCustomizeOpen(false); }}
-                className="bg-gray-900 text-white text-sm px-5 py-1.5 rounded-lg hover:bg-gray-700 transition-colors"
+                className="bg-[var(--color-text-primary)] text-white text-sm px-5 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
               >
                 Done
               </button>
@@ -1655,17 +1655,17 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       {colEditorOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" onClick={() => setColEditorOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border-secondary)]">
               <div>
-                <h2 className="text-base font-semibold text-gray-900">Ad Table Columns</h2>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Ad Table Columns</h2>
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                   {isMessengerTab ? "Messenger tab columns" : "Standard campaigns columns"}
                   {" · "}saved separately per tab
                 </p>
               </div>
-              <button onClick={() => setColEditorOpen(false)} className="text-gray-400 hover:text-gray-700 rounded-lg p-1">
+              <button onClick={() => setColEditorOpen(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] rounded-lg p-1">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1675,44 +1675,44 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
               {/* Column list */}
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Columns</p>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">Columns</p>
                 <div className="space-y-1">
                   {editCols.map((col, i) => {
                     const def = col.custom ? null : AD_COL_DEFS.find((d) => d.id === col.id);
                     const displayLabel = col.custom ? col.label : def?.label;
                     if (!displayLabel) return null;
                     return (
-                      <div key={col.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${col.visible ? "bg-gray-50" : "bg-white opacity-50"}`}>
+                      <div key={col.id} className={`flex items-center gap-2 rounded-lg px-3 py-2 ${col.visible ? "bg-[var(--color-bg-secondary)]" : "bg-[var(--color-bg-primary)] opacity-50"}`}>
                         {/* Reorder */}
                         <div className="flex flex-col gap-0.5 shrink-0">
                           <button onClick={() => moveCol(i, -1)} disabled={i === 0}
-                            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▲</button>
+                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] disabled:opacity-20 leading-none text-xs">▲</button>
                           <button onClick={() => moveCol(i, 1)} disabled={i === editCols.length - 1}
-                            className="text-gray-300 hover:text-gray-600 disabled:opacity-20 leading-none text-xs">▼</button>
+                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] disabled:opacity-20 leading-none text-xs">▼</button>
                         </div>
                         {/* Toggle */}
                         <button
                           onClick={() => toggleCol(col.id)}
-                          className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-gray-900" : "bg-gray-300"}`}
+                          className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-[var(--color-text-primary)]" : "bg-gray-300"}`}
                         >
-                          <span className={`block w-3 h-3 bg-white rounded-full shadow transition-transform mx-0.5 ${col.visible ? "translate-x-4" : "translate-x-0"}`} />
+                          <span className={`block w-3 h-3 bg-[var(--color-bg-primary)] rounded-full shadow transition-transform mx-0.5 ${col.visible ? "translate-x-4" : "translate-x-0"}`} />
                         </button>
                         {/* Label + formula preview */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-sm text-gray-800">{displayLabel}</span>
+                            <span className="text-sm text-[var(--color-text-primary)]">{displayLabel}</span>
                             {col.custom && (
-                              <span className="text-xs bg-blue-50 text-blue-600 rounded px-1.5 py-0.5 shrink-0">custom</span>
+                              <span className="text-xs bg-[var(--color-accent-light)] text-[var(--color-accent)] rounded px-1.5 py-0.5 shrink-0">custom</span>
                             )}
                           </div>
                           {col.custom && col.formula && (
-                            <p className="text-xs text-gray-400 font-mono truncate">{col.formula}</p>
+                            <p className="text-xs text-[var(--color-text-tertiary)] font-mono truncate">{col.formula}</p>
                           )}
                         </div>
                         {/* Delete (custom only) */}
                         {col.custom && (
                           <button onClick={() => removeCustomCol(col.id)}
-                            className="text-gray-300 hover:text-red-500 transition-colors shrink-0">
+                            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors shrink-0">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
@@ -1725,16 +1725,16 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               </div>
 
               {/* Add custom column */}
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Add Custom Column</p>
+              <div className="border-t border-[var(--color-border-secondary)] pt-4">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">Add Custom Column</p>
 
                 {/* Presets */}
                 <div className="mb-3">
-                  <p className="text-xs text-gray-400 mb-1.5">Quick presets:</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mb-1.5">Quick presets:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_FORMULAS.map((p) => (
                       <button key={p.formula} onClick={() => applyColPreset(p)}
-                        className="text-xs px-2.5 py-1 rounded-full border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-400 text-gray-600 transition-colors">
+                        className="text-xs px-2.5 py-1 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] hover:border-gray-400 text-[var(--color-text-secondary)] transition-colors">
                         {p.label}
                       </button>
                     ))}
@@ -1744,23 +1744,23 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                 <div className="space-y-2.5">
                   {/* Label */}
                   <div>
-                    <label className="text-xs text-gray-500 mb-1 block">Column label</label>
+                    <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Column label</label>
                     <input
                       type="text"
                       placeholder="e.g. CPP"
                       value={newColLabel}
                       onChange={(e) => setNewColLabel(e.target.value)}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     />
                   </div>
                   {/* Formula */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs text-gray-500">Formula (per ad)</label>
+                      <label className="text-xs text-[var(--color-text-secondary)]">Formula (per ad)</label>
                       <select
                         defaultValue=""
                         onChange={(e) => { if (e.target.value) { insertColVar(e.target.value); e.target.value = ""; } }}
-                        className="text-xs border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none text-gray-600"
+                        className="text-xs border border-[var(--color-border-primary)] rounded px-2 py-1 bg-[var(--color-bg-primary)] focus:outline-none text-[var(--color-text-secondary)]"
                       >
                         <option value="" disabled>Insert variable…</option>
                         {VARIABLE_GROUPS.map((group) => (
@@ -1780,13 +1780,13 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         value={newColFormula}
                         onChange={(e) => handleColFormulaChange(e.target.value)}
                         onBlur={() => setTimeout(() => setColSuggestions([]), 150)}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       />
                       {colSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-0.5 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                        <div className="absolute left-0 right-0 top-full mt-0.5 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-[var(--shadow-lg)] z-10 overflow-hidden">
                           {colSuggestions.map((s) => (
                             <button key={s} onMouseDown={(e) => { e.preventDefault(); insertColVar(s); }}
-                              className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-gray-50 text-gray-700">
+                              className="w-full text-left px-3 py-1.5 text-xs font-mono hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]">
                               {s}
                             </button>
                           ))}
@@ -1797,11 +1797,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   {/* Format + preview */}
                   <div className="flex items-end gap-2">
                     <div className="flex-1">
-                      <label className="text-xs text-gray-500 mb-1 block">Format</label>
+                      <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">Format</label>
                       <select
                         value={newColFormat}
                         onChange={(e) => setNewColFormat(e.target.value as MetricCard["format"])}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
                       >
                         <option value="currency">Currency (₱1,234)</option>
                         <option value="multiplier">Multiplier (1.23x)</option>
@@ -1812,20 +1812,20 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                     </div>
                     {newColFormula.trim() && (
                       <div className="shrink-0 text-right pb-1.5">
-                        <p className="text-xs text-gray-400">Preview*</p>
-                        <p className="text-sm font-bold text-gray-900">
+                        <p className="text-xs text-[var(--color-text-tertiary)]">Preview*</p>
+                        <p className="text-sm font-bold text-[var(--color-text-primary)]">
                           {formatMetricValue(evaluateFormula(newColFormula, formulaVars), newColFormat, overallCurrency)}
                         </p>
                       </div>
                     )}
                   </div>
                   {newColFormula.trim() && (
-                    <p className="text-xs text-gray-400">* Preview uses aggregate totals — actual values are per-ad</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">* Preview uses aggregate totals — actual values are per-ad</p>
                   )}
                   <button
                     onClick={addCustomCol}
                     disabled={!newColLabel.trim() || !newColFormula.trim()}
-                    className="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-40"
+                    className="w-full bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-40"
                   >
                     Add Column
                   </button>
@@ -1834,16 +1834,16 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 bg-gray-50">
+            <div className="flex items-center justify-between px-5 py-3 border-t border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]">
               <button
                 onClick={() => setEditCols(isMessengerTab ? [...DEFAULT_AD_COLUMNS_MESSENGER] : [...DEFAULT_AD_COLUMNS])}
-                className="text-xs text-gray-400 hover:text-gray-700 underline transition-colors"
+                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] underline transition-colors"
               >
                 Reset to defaults
               </button>
               <button
                 onClick={() => { saveAdColumns(editCols); setColEditorOpen(false); }}
-                className="bg-gray-900 text-white text-sm px-5 py-1.5 rounded-lg hover:bg-gray-700 transition-colors"
+                className="bg-[var(--color-text-primary)] text-white text-sm px-5 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
               >
                 Save for all
               </button>
