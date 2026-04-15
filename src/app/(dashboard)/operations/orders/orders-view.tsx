@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO, isToday } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -79,7 +79,7 @@ function profileName(p: Profile | null) {
 /* ─── Component ────────────────────────────────────────────── */
 
 export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [orders, setOrders] = useState<Order[]>(initialOrders);
   const [loading, setLoading] = useState(false);
 
@@ -160,22 +160,32 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
   /* ─── Inline Status Update ──────────────────────────────── */
 
   async function updateFinancialStatus(orderId: string, status: string) {
-    await fetch("/api/operations/orders", {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, financial_status: status } : o));
+    const res = await fetch("/api/operations/orders", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: orderId, financial_status: status }),
     });
-    router.refresh();
+    if (res.ok) {
+      setToast({ message: "Payment status updated", type: "success" });
+    } else {
+      setToast({ message: "Failed to update payment status", type: "error" });
+    }
     fetchOrders();
   }
 
   async function updateFulfillmentStatus(orderId: string, status: string) {
-    await fetch("/api/operations/orders", {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, fulfillment_status: status } : o));
+    const res = await fetch("/api/operations/orders", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: orderId, fulfillment_status: status }),
     });
-    router.refresh();
+    if (res.ok) {
+      setToast({ message: "Fulfillment status updated", type: "success" });
+    } else {
+      setToast({ message: "Failed to update fulfillment status", type: "error" });
+    }
     fetchOrders();
   }
 
@@ -224,8 +234,10 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
 
     if (res.ok) {
       setShowModal(false);
-      router.refresh();
+      setToast({ message: "Order created", type: "success" });
       fetchOrders();
+    } else {
+      setToast({ message: "Failed to create order", type: "error" });
     }
     setSaving(false);
   }
@@ -234,8 +246,13 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this order? This will also remove all line items.")) return;
-    await fetch(`/api/operations/orders?id=${id}`, { method: "DELETE" });
-    router.refresh();
+    setOrders(prev => prev.filter(o => o.id !== id));
+    const res = await fetch(`/api/operations/orders?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setToast({ message: "Order deleted", type: "success" });
+    } else {
+      setToast({ message: "Failed to delete order", type: "error" });
+    }
     fetchOrders();
   }
 
@@ -354,6 +371,8 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
           </table>
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Create Modal */}
       {showModal && (

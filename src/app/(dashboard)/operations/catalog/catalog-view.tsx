@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useToast, Toast } from "@/components/ui/toast";
 
 type CatalogItem = {
   id: string;
@@ -160,13 +160,14 @@ function ItemModal({
 }
 
 export default function CatalogView({
-  items,
+  items: initialItems,
   isOps,
 }: {
   items: CatalogItem[];
   isOps: boolean;
 }) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
+  const [items, setItems] = useState<CatalogItem[]>(initialItems);
   const [search, setSearch] = useState("");
   const [familyFilter, setFamilyFilter] = useState("");
   const [showInactive, setShowInactive] = useState(false);
@@ -204,11 +205,15 @@ export default function CatalogView({
         body: JSON.stringify(data),
       });
       if (res.ok) {
+        const created = await res.json();
+        setItems(prev => [created, ...prev]);
         setModalOpen(false);
-        router.refresh();
+        setToast({ message: "Catalog item created", type: "success" });
+      } else {
+        setToast({ message: "Failed to create catalog item", type: "error" });
       }
     },
-    [router]
+    [setToast]
   );
 
   const handleUpdate = useCallback(
@@ -220,23 +225,32 @@ export default function CatalogView({
         body: JSON.stringify({ id: editItem.id, ...data }),
       });
       if (res.ok) {
+        setItems(prev => prev.map(i => i.id === editItem.id ? { ...i, ...data } as CatalogItem : i));
         setEditItem(null);
-        router.refresh();
+        setToast({ message: "Catalog item updated", type: "success" });
+      } else {
+        setToast({ message: "Failed to update catalog item", type: "error" });
       }
     },
-    [editItem, router]
+    [editItem, setToast]
   );
 
   const handleToggleActive = useCallback(
     async (item: CatalogItem) => {
-      await fetch("/api/operations/catalog", {
+      setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_active: !i.is_active } : i));
+      const res = await fetch("/api/operations/catalog", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: item.id, is_active: !item.is_active }),
       });
-      router.refresh();
+      if (res.ok) {
+        setToast({ message: item.is_active ? "Item deactivated" : "Item activated", type: "success" });
+      } else {
+        setItems(prev => prev.map(i => i.id === item.id ? { ...i, is_active: item.is_active } : i));
+        setToast({ message: "Failed to toggle item status", type: "error" });
+      }
     },
-    [router]
+    [setToast]
   );
 
   const handleDelete = useCallback(
@@ -245,11 +259,14 @@ export default function CatalogView({
       setDeleting(id);
       const res = await fetch(`/api/operations/catalog?id=${id}`, { method: "DELETE" });
       if (res.ok) {
-        router.refresh();
+        setItems(prev => prev.filter(i => i.id !== id));
+        setToast({ message: "Catalog item deleted", type: "success" });
+      } else {
+        setToast({ message: "Failed to delete catalog item", type: "error" });
       }
       setDeleting(null);
     },
-    [router]
+    [setToast]
   );
 
   return (
@@ -421,6 +438,8 @@ export default function CatalogView({
           onClose={() => setEditItem(null)}
         />
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

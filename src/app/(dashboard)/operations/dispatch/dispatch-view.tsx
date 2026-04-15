@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -96,7 +96,7 @@ function formatDateTime(d: string | null) {
 /* ─── Component ────────────────────────────────────────────── */
 
 export function DispatchView({ initialDispatches, profiles, orders, currentUserId }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [dispatches, setDispatches] = useState<DispatchEntry[]>(initialDispatches);
   const [loading, setLoading] = useState(false);
 
@@ -151,12 +151,17 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
   /* ─── Inline Status Update ──────────────────────────────── */
 
   async function updateStatus(id: string, status: string) {
-    await fetch("/api/operations/dispatch", {
+    setDispatches(prev => prev.map(d => d.id === id ? { ...d, status } : d));
+    const res = await fetch("/api/operations/dispatch", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, status }),
     });
-    router.refresh();
+    if (res.ok) {
+      setToast({ message: "Dispatch status updated", type: "success" });
+    } else {
+      setToast({ message: "Failed to update dispatch status", type: "error" });
+    }
     fetchDispatches();
   }
 
@@ -186,8 +191,10 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
 
     if (res.ok) {
       setShowModal(false);
-      router.refresh();
+      setToast({ message: "Dispatch entry created", type: "success" });
       fetchDispatches();
+    } else {
+      setToast({ message: "Failed to create dispatch entry", type: "error" });
     }
     setSaving(false);
   }
@@ -196,8 +203,13 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this dispatch entry?")) return;
-    await fetch(`/api/operations/dispatch?id=${id}`, { method: "DELETE" });
-    router.refresh();
+    setDispatches(prev => prev.filter(d => d.id !== id));
+    const res = await fetch(`/api/operations/dispatch?id=${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setToast({ message: "Dispatch entry deleted", type: "success" });
+    } else {
+      setToast({ message: "Failed to delete dispatch entry", type: "error" });
+    }
     fetchDispatches();
   }
 
@@ -437,6 +449,8 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
           </div>
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
