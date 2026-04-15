@@ -105,9 +105,10 @@ function UserModal({
     role_id:       user?.role?.id      ?? "",
     phone:         user?.phone         ?? "",
     birthday:      user?.birthday      ?? "",
-    // Security flags — defaults for new users
-    must_change_password:  user?.must_change_password  ?? true,
-    require_mfa:           user?.require_mfa           ?? true,
+    // Security flags — read existing values; default false so editing an
+    // unrelated field (e.g. role) never silently activates a security flag.
+    must_change_password:  user?.must_change_password  ?? false,
+    require_mfa:           user?.require_mfa           ?? false,
     allow_password_change: user?.allow_password_change ?? true,
   });
 

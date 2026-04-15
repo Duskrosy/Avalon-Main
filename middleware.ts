@@ -172,7 +172,9 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isAuthRoute) {
+  // Don't redirect away from login if they still need to change their password —
+  // doing so would create a /login ↔ / redirect loop.
+  if (user && isAuthRoute && !user.app_metadata?.must_change_password) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
