@@ -61,7 +61,7 @@ export function FeedbackWidget() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-text-primary)] text-white shadow-[var(--shadow-lg)] transition-transform hover:scale-105 active:scale-95"
         aria-label="Send feedback"
       >
         <svg
@@ -81,14 +81,14 @@ export function FeedbackWidget() {
 
       {/* Modal */}
       {open && (
-        <div className="fixed bottom-20 right-6 z-50 w-80 rounded-xl border border-gray-200 bg-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <h3 className="text-sm font-semibold text-gray-900">
+        <div className="fixed bottom-20 right-6 z-50 w-80 rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] shadow-2xl">
+          <div className="flex items-center justify-between border-b border-[var(--color-border-secondary)] px-4 py-3">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
               Send feedback
             </h3>
             <button
               onClick={() => setOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -118,20 +118,20 @@ export function FeedbackWidget() {
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
                 <polyline points="22 4 12 14.01 9 11.01" />
               </svg>
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">
                 Thanks for your feedback!
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-3 p-4">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
                   Category
                 </label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-gray-400 focus:outline-none"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -142,7 +142,7 @@ export function FeedbackWidget() {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
                   What happened?
                 </label>
                 <textarea
@@ -151,23 +151,23 @@ export function FeedbackWidget() {
                   placeholder="Describe the issue or suggestion..."
                   rows={3}
                   maxLength={2000}
-                  className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-gray-400 focus:outline-none"
                 />
               </div>
 
               {error && (
-                <p className="text-xs text-red-600">{error}</p>
+                <p className="text-xs text-[var(--color-error)]">{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={submitting || !body.trim()}
-                className="w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-[var(--radius-md)] bg-[var(--color-text-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? "Sending..." : "Send feedback"}
               </button>
 
-              <p className="text-center text-[11px] text-gray-400">
+              <p className="text-center text-[11px] text-[var(--color-text-tertiary)]">
                 Page: {typeof window !== "undefined" ? window.location.pathname : ""}
               </p>
             </form>

@@ -23,7 +23,7 @@ export function Avatar({ url, initials, size = "sm", className }: AvatarProps) {
 
   if (url) {
     return (
-      <div className={cn("rounded-full overflow-hidden shrink-0 bg-gray-100", wrapper, className)}>
+      <div className={cn("rounded-full overflow-hidden shrink-0 bg-[var(--color-bg-tertiary)]", wrapper, className)}>
         <Image
           src={url}
           alt={initials}
@@ -38,7 +38,7 @@ export function Avatar({ url, initials, size = "sm", className }: AvatarProps) {
 
   return (
     <div className={cn(
-      "rounded-full bg-gray-900 flex items-center justify-center text-white font-semibold shrink-0",
+      "rounded-full bg-[var(--color-text-primary)] flex items-center justify-center text-white font-semibold shrink-0",
       wrapper, text, className
     )}>
       {initials.toUpperCase().slice(0, 2)}

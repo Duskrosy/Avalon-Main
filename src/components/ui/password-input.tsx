@@ -15,7 +15,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           type={visible ? "text" : "password"}
           className={
             className ??
-            "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            "w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           }
           {...props}
         />
@@ -23,7 +23,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           type="button"
           tabIndex={-1}
           onClick={() => setVisible((v) => !v)}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
           aria-label={visible ? "Hide password" : "Show password"}
         >
           {visible ? (

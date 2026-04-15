@@ -102,7 +102,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
       {/* Bell Button */}
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+        className="relative p-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-active)] rounded-[var(--radius-md)] transition-colors"
         aria-label="Notifications"
       >
         <svg
@@ -127,11 +127,11 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
 
       {/* Dropdown Panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-96 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-96 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="px-4 pt-3 pb-2 border-b border-gray-100">
+          <div className="px-4 pt-3 pb-2 border-b border-[var(--color-border-secondary)]">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Notifications</h3>
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
@@ -145,20 +145,20 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
             <div className="flex gap-1">
               <button
                 onClick={() => setTab("new")}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-[var(--radius-md)] font-medium transition-colors ${
                   tab === "new"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-500 hover:bg-gray-100"
+                    ? "bg-[var(--color-text-primary)] text-white"
+                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
                 }`}
               >
                 New
               </button>
               <button
                 onClick={() => setTab("unread")}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-[var(--radius-md)] font-medium transition-colors ${
                   tab === "unread"
-                    ? "bg-gray-900 text-white"
-                    : "text-gray-500 hover:bg-gray-100"
+                    ? "bg-[var(--color-text-primary)] text-white"
+                    : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
                 }`}
               >
                 Unread{unreadCount > 0 && ` (${unreadCount})`}
@@ -170,35 +170,35 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
               <div className="py-8 text-center">
-                <div className="inline-block w-5 h-5 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+                <div className="inline-block w-5 h-5 border-2 border-[var(--color-border-primary)] border-t-[var(--color-text-secondary)] rounded-full animate-spin" />
               </div>
             ) : displayList.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-[var(--color-text-tertiary)]">
                   {tab === "new" ? "No new notifications in the last 24 hours" : "All caught up!"}
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-[var(--color-border-secondary)]">
                 {displayList.map((n) => (
                   <div
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                      n.is_read ? "hover:bg-gray-50" : "bg-blue-50/50 hover:bg-blue-50"
+                      n.is_read ? "hover:bg-[var(--color-surface-hover)]" : "bg-blue-50/50 hover:bg-blue-50"
                     }`}
                   >
                     <span className="text-sm mt-0.5 shrink-0">
                       {TYPE_ICONS[n.type] || "🔔"}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs leading-snug ${n.is_read ? "text-gray-600" : "text-gray-900 font-medium"}`}>
+                      <p className={`text-xs leading-snug ${n.is_read ? "text-[var(--color-text-secondary)]" : "text-[var(--color-text-primary)] font-medium"}`}>
                         {n.title}
                       </p>
                       {n.body && (
-                        <p className="text-[11px] text-gray-400 mt-0.5 line-clamp-1">{n.body}</p>
+                        <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5 line-clamp-1">{n.body}</p>
                       )}
-                      <p className="text-[11px] text-gray-300 mt-0.5">
+                      <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">
                         {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                       </p>
                     </div>
@@ -212,10 +212,10 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-100 p-2">
+          <div className="border-t border-[var(--color-border-secondary)] p-2">
             <button
               onClick={() => { setOpen(false); router.push("/communications/notifications"); }}
-              className="w-full text-xs text-center py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+              className="w-full text-xs text-center py-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded-[var(--radius-md)] font-medium transition-colors"
             >
               See all notifications
             </button>
