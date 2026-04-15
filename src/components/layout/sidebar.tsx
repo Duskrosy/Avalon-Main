@@ -6,48 +6,48 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
+import { useTheme } from "@/components/providers/theme-provider";
 import type { NavGroup } from "@/lib/permissions/nav";
+import {
+  ChevronDown,
+  Settings,
+  Users,
+  BarChart3,
+  BookOpen,
+  CheckSquare,
+  Calendar,
+  MessageSquare,
+  DollarSign,
+  Palette,
+  Megaphone,
+  Play,
+  Package,
+  LayoutDashboard,
+  Sun,
+  Moon,
+  LogOut,
+  UserCog,
+  Pencil,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-// ─── Icons ───────────────────────────────────────────────────────────────────
-
-function ChevronDown({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="14" height="14" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
-function GearIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-const GROUP_ICONS: Record<string, string> = {
-  people:         "👥",
-  analytics:      "📊",
-  knowledgebase:  "📚",
-  productivity:   "✅",
-  scheduling:     "📅",
-  communications: "📢",
-  "sales-ops":    "💰",
-  creatives:      "🎨",
-  marketing:      "📣",
-  "ad-ops":       "🎬",
-  operations:     "📦",
-  admin:          "🔧",
+// ─── Icon map ───────────────────────────────────────────────
+const GROUP_ICONS: Record<string, LucideIcon> = {
+  people: Users,
+  analytics: BarChart3,
+  knowledgebase: BookOpen,
+  productivity: CheckSquare,
+  scheduling: Calendar,
+  communications: MessageSquare,
+  "sales-ops": DollarSign,
+  creatives: Palette,
+  marketing: Megaphone,
+  "ad-ops": Play,
+  operations: Package,
+  admin: Settings,
 };
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
+// ─── Types ──────────────────────────────────────────────────
 type Department = { name: string; slug: string };
 
 type SidebarProps = {
@@ -60,8 +60,7 @@ type SidebarProps = {
   departments: Department[];
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
+// ─── Helpers ────────────────────────────────────────────────
 function activeGroups(navigation: NavGroup[], pathname: string): Set<string> {
   const active = new Set<string>();
   for (const group of navigation) {
@@ -74,8 +73,7 @@ function activeGroups(navigation: NavGroup[], pathname: string): Set<string> {
   return active;
 }
 
-// ─── Collapsible nav group ────────────────────────────────────────────────────
-
+// ─── Collapsible nav group ──────────────────────────────────
 function NavGroupSection({
   group,
   pathname,
@@ -86,6 +84,7 @@ function NavGroupSection({
   defaultOpen: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const IconComponent = GROUP_ICONS[group.slug];
 
   useEffect(() => {
     const isActive = group.items.some(
@@ -99,19 +98,27 @@ function NavGroupSection({
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
-          open ? "text-gray-900" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+          "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm transition-colors",
+          open
+            ? "text-[var(--color-text-primary)]"
+            : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
         )}
       >
         <div className="flex items-center gap-2.5">
-          <span className="text-sm leading-none">{GROUP_ICONS[group.slug] ?? "·"}</span>
+          {IconComponent && <IconComponent size={18} strokeWidth={1.5} className="shrink-0" />}
           <span className="font-medium">{group.name}</span>
         </div>
-        <ChevronDown className={cn("text-gray-400 transition-transform shrink-0", open && "rotate-180")} />
+        <ChevronDown
+          size={14}
+          className={cn(
+            "text-[var(--color-text-tertiary)] transition-transform shrink-0",
+            open && "rotate-180"
+          )}
+        />
       </button>
 
       {open && (
-        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-gray-100 pl-3">
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-[var(--color-border-secondary)] pl-3">
           {group.items.map((item) => {
             const active = pathname === item.route || pathname.startsWith(item.route + "/");
             return (
@@ -119,10 +126,10 @@ function NavGroupSection({
                 key={item.slug}
                 href={item.route}
                 className={cn(
-                  "block px-3 py-1.5 rounded-md text-sm transition-colors",
+                  "block px-3 py-1.5 rounded-[var(--radius-sm)] text-sm transition-colors",
                   active
-                    ? "text-gray-900 font-medium bg-gray-100"
-                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                    ? "text-[var(--color-text-primary)] font-medium bg-[var(--color-surface-active)]"
+                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
                 )}
               >
                 {item.name}
@@ -135,8 +142,7 @@ function NavGroupSection({
   );
 }
 
-// ─── Executive / Dashboard section ───────────────────────────────────────────
-
+// ─── Executive / Dashboard section ──────────────────────────
 const EXEC_TABS = [
   { label: "Overview",      href: "/executive" },
   { label: "Sales",         href: "/executive/sales" },
@@ -146,15 +152,9 @@ const EXEC_TABS = [
   { label: "People",        href: "/executive/people" },
 ];
 
-function DashboardSection({
-  pathname,
-  isOps,
-}: {
-  pathname: string;
-  isOps: boolean;
-}) {
+function DashboardSection({ pathname, isOps }: { pathname: string; isOps: boolean }) {
   const isExecRoute = pathname === "/executive" || pathname.startsWith("/executive/");
-  const isHomeRoot  = pathname === "/";
+  const isHomeRoot = pathname === "/";
   const [open, setOpen] = useState(isExecRoute || isHomeRoot);
 
   useEffect(() => {
@@ -166,11 +166,13 @@ function DashboardSection({
       <Link
         href="/"
         className={cn(
-          "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-          isHomeRoot ? "bg-gray-100 text-gray-900" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+          "flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
+          isHomeRoot
+            ? "bg-[var(--color-surface-active)] text-[var(--color-text-primary)]"
+            : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
         )}
       >
-        <span className="text-sm">🏠</span>
+        <LayoutDashboard size={18} strokeWidth={1.5} />
         Dashboard
       </Link>
     );
@@ -181,19 +183,24 @@ function DashboardSection({
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
-          open ? "text-gray-900" : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+          "w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[var(--radius-md)] text-sm transition-colors",
+          open
+            ? "text-[var(--color-text-primary)]"
+            : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
         )}
       >
         <div className="flex items-center gap-2.5">
-          <span className="text-sm">🏛️</span>
+          <LayoutDashboard size={18} strokeWidth={1.5} />
           <span className="font-medium">Executive</span>
         </div>
-        <ChevronDown className={cn("text-gray-400 transition-transform shrink-0", open && "rotate-180")} />
+        <ChevronDown
+          size={14}
+          className={cn("text-[var(--color-text-tertiary)] transition-transform shrink-0", open && "rotate-180")}
+        />
       </button>
 
       {open && (
-        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-gray-100 pl-3">
+        <div className="ml-5 mt-0.5 space-y-0.5 border-l border-[var(--color-border-secondary)] pl-3">
           {EXEC_TABS.map((tab) => {
             const active =
               tab.href === "/executive"
@@ -204,8 +211,10 @@ function DashboardSection({
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "block px-3 py-1.5 rounded-md text-sm transition-colors",
-                  active ? "text-gray-900 font-medium bg-gray-100" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  "block px-3 py-1.5 rounded-[var(--radius-sm)] text-sm transition-colors",
+                  active
+                    ? "text-[var(--color-text-primary)] font-medium bg-[var(--color-surface-active)]"
+                    : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
                 )}
               >
                 {tab.label}
@@ -218,8 +227,7 @@ function DashboardSection({
   );
 }
 
-// ─── Profile strip with gear dropdown ────────────────────────────────────────
-
+// ─── Profile strip with gear dropdown ───────────────────────
 function ProfileStrip({
   userName,
   userInitials,
@@ -234,6 +242,7 @@ function ProfileStrip({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     function handle(e: MouseEvent) {
@@ -249,61 +258,85 @@ function ProfileStrip({
     router.push("/login");
   }
 
+  const isDark = theme === "dark";
+
   return (
-    <div ref={ref} className="relative shrink-0 border-t border-gray-100 px-3 py-3">
-      {/* Dropdown — floats above the strip */}
+    <div ref={ref} className="relative shrink-0 border-t border-[var(--color-border-secondary)] px-3 py-3">
       {open && (
-        <div className="absolute bottom-full left-0 right-0 mb-1 mx-3 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
+        <div className="absolute bottom-full left-0 right-0 mb-1 mx-3 bg-[var(--color-surface-card)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] overflow-hidden z-50">
           <Link
             href="/account/settings"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-3 px-4 py-3 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
           >
-            <span className="text-base leading-none">⚙️</span>
+            <UserCog size={16} strokeWidth={1.5} />
             <span>Account Settings</span>
           </Link>
           <Link
             href="/account/settings?tab=profile"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-t border-gray-50"
+            className="flex items-center gap-3 px-4 py-3 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors border-t border-[var(--color-border-secondary)]"
           >
-            <span className="text-base leading-none">✏️</span>
+            <Pencil size={16} strokeWidth={1.5} />
             <span>Edit my Profile</span>
           </Link>
+
+          {/* Dark mode quick toggle */}
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-[var(--color-border-secondary)]">
+            <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
+              {isDark ? <Moon size={16} strokeWidth={1.5} /> : <Sun size={16} strokeWidth={1.5} />}
+              <span>Dark mode</span>
+            </div>
+            <button
+              onClick={() => setTheme(isDark ? "light" : "dark")}
+              className={cn(
+                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                isDark ? "bg-[var(--color-accent)]" : "bg-[var(--color-text-tertiary)]"
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform",
+                  isDark ? "translate-x-[18px]" : "translate-x-[2px]"
+                )}
+              />
+            </button>
+          </div>
+
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
+            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors border-t border-[var(--color-border-secondary)]"
           >
-            <span className="text-base leading-none">🚪</span>
+            <LogOut size={16} strokeWidth={1.5} />
             <span>Sign out</span>
           </button>
         </div>
       )}
 
-      {/* Strip */}
       <div className="flex items-center gap-2.5">
         <Avatar url={userAvatarUrl} initials={userInitials} size="sm" className="shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate leading-tight">{userName}</p>
-          <p className="text-xs text-gray-400 truncate">{departmentName}</p>
+          <p className="text-sm font-medium text-[var(--color-text-primary)] truncate leading-tight">{userName}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] truncate">{departmentName}</p>
         </div>
         <button
           onClick={() => setOpen((v) => !v)}
           title="Account & settings"
           className={cn(
-            "p-1.5 rounded-md transition-colors shrink-0",
-            open ? "text-gray-700 bg-gray-100" : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+            "p-1.5 rounded-[var(--radius-sm)] transition-colors shrink-0",
+            open
+              ? "text-[var(--color-text-primary)] bg-[var(--color-surface-active)]"
+              : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-active)]"
           )}
         >
-          <GearIcon />
+          <Settings size={15} strokeWidth={1.5} />
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
-
+// ─── Sidebar ────────────────────────────────────────────────
 export function Sidebar({
   navigation,
   userName,
@@ -318,9 +351,9 @@ export function Sidebar({
   const mainNav = navigation.filter((g) => g.slug !== "account");
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0">
-      <div className="px-6 py-5 border-b border-gray-100 shrink-0">
-        <Link href="/" className="text-lg font-semibold text-gray-900 tracking-tight">
+    <aside className="w-64 h-screen bg-[var(--color-bg-primary)] border-r border-[var(--color-border-primary)] flex-col fixed left-0 top-0 hidden lg:flex">
+      <div className="px-6 py-5 border-b border-[var(--color-border-secondary)] shrink-0">
+        <Link href="/" className="text-lg font-semibold text-[var(--color-text-primary)] tracking-tight">
           Avalon
         </Link>
       </div>
