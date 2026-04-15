@@ -9,6 +9,7 @@ const feedbackCreateSchema = z.object({
   category: z.enum(["bug", "missing_feature", "confusing", "slow", "other"]),
   body: z.string().min(1, "Feedback body is required").max(2000),
   page_url: z.string().max(500).optional(),
+  user_agent: z.string().max(500).optional(),
 });
 
 const feedbackPatchSchema = z.object({
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
     category: body.category,
     body: body.body,
     page_url: body.page_url ?? null,
+    user_agent: body.user_agent ?? null,
   }).select().single();
 
   if (error) {

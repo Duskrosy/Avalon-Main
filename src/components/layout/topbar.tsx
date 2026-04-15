@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Bug } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationDropdown } from "./notification-dropdown";
+
+function openFeedback() {
+  window.dispatchEvent(new CustomEvent("open-feedback"));
+}
 
 type TopbarProps = {
   unreadCount: number;
@@ -40,7 +45,15 @@ export function Topbar({ unreadCount, birthdayBanner, userName, userInitials, us
       {/* Desktop topbar */}
       <header className="h-14 bg-[var(--color-bg-primary)] border-b border-[var(--color-border-primary)] items-center justify-between px-6 hidden lg:flex">
         <div />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={openFeedback}
+            className="p-1.5 rounded-[var(--radius-md)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            aria-label="Send feedback"
+            title="Send feedback"
+          >
+            <Bug size={17} strokeWidth={1.5} />
+          </button>
           <NotificationDropdown unreadCount={unreadCount} />
         </div>
       </header>
@@ -51,6 +64,13 @@ export function Topbar({ unreadCount, birthdayBanner, userName, userInitials, us
           Avalon
         </Link>
         <div className="flex items-center gap-3">
+          <button
+            onClick={openFeedback}
+            className="p-1.5 rounded-[var(--radius-md)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            aria-label="Send feedback"
+          >
+            <Bug size={17} strokeWidth={1.5} />
+          </button>
           <NotificationDropdown unreadCount={unreadCount} />
           {userInitials && (
             <Link href="/account/settings">

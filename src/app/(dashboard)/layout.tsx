@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { MfaBanner } from "@/components/layout/mfa-banner";
+import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { PostHogProvider } from "@/lib/posthog/provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import type { UserPreferences } from "@/types/database";
@@ -146,6 +147,7 @@ export default async function DashboardLayout({
             unreadCount={unreadCount}
           />
 
+          <FeedbackWidget />
         </div>
       </ThemeProvider>
     </PostHogProvider>
