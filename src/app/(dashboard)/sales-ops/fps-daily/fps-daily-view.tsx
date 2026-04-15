@@ -36,20 +36,20 @@ function agentName(a: Agent) {
 
 function statusBadge(status: DailyFpsRow["dayStatus"]) {
   const map: Record<string, { label: string; cls: string }> = {
-    SCORED: { label: "Scored", cls: "bg-green-50 text-green-700" },
-    "QA CAPPED": { label: "QA Cap", cls: "bg-red-50 text-red-600" },
-    LEAVE: { label: "Leave", cls: "bg-blue-50 text-blue-600" },
-    "NO DATA": { label: "No data", cls: "bg-gray-100 text-gray-400" },
+    SCORED: { label: "Scored", cls: "bg-[var(--color-success-light)] text-[var(--color-success)]" },
+    "QA CAPPED": { label: "QA Cap", cls: "bg-[var(--color-error-light)] text-[var(--color-error)]" },
+    LEAVE: { label: "Leave", cls: "bg-[var(--color-accent-light)] text-[var(--color-accent)]" },
+    "NO DATA": { label: "No data", cls: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]" },
   };
   const s = map[status] ?? map["NO DATA"];
   return <span className={`text-xs px-2 py-0.5 rounded-full ${s.cls}`}>{s.label}</span>;
 }
 
 function bracketColor(bracket: string) {
-  if (bracket === "Elite") return "text-green-700";
-  if (bracket === "Strong") return "text-blue-600";
+  if (bracket === "Elite") return "text-[var(--color-success)]";
+  if (bracket === "Strong") return "text-[var(--color-accent)]";
   if (bracket === "Pass") return "text-[#D57B0E]";
-  return "text-red-500";
+  return "text-[var(--color-error)]";
 }
 
 export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
@@ -74,8 +74,8 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">FPS Daily Score</h1>
-        <p className="text-sm text-gray-500 mt-1">Follow-through Performance Score — per agent per day</p>
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">FPS Daily Score</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Follow-through Performance Score — per agent per day</p>
       </div>
 
       {/* Filters */}
@@ -84,13 +84,13 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
         {canManage && (
           <select
             value={selectedAgent}
             onChange={(e) => setSelectedAgent(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
           >
             {agents.map((a) => (
               <option key={a.id} value={a.id}>{agentName(a)}</option>
@@ -100,36 +100,36 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Computing...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Computing...</div>
       ) : !result ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No data found for this period.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No data found for this period.</p>
         </div>
       ) : (
         <>
           {/* Monthly summary cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">MTD Confirmed Regular</p>
-              <p className="text-2xl font-bold text-gray-900">{result.mtd_confirmed_regular}</p>
-              <p className={`text-xs mt-1 font-medium ${result.gate_passed ? "text-green-600" : "text-amber-500"}`}>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">MTD Confirmed Regular</p>
+              <p className="text-2xl font-bold text-[var(--color-text-primary)]">{result.mtd_confirmed_regular}</p>
+              <p className={`text-xs mt-1 font-medium ${result.gate_passed ? "text-[var(--color-success)]" : "text-amber-500"}`}>
                 {result.gate_passed ? "Gate passed" : `${result.gate_remaining} to gate`}
               </p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Avg Daily FPS</p>
-              <p className="text-2xl font-bold text-gray-900">
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Avg Daily FPS</p>
+              <p className="text-2xl font-bold text-[var(--color-text-primary)]">
                 {result.avg_fps !== null ? result.avg_fps.toFixed(1) : "—"}
               </p>
-              <p className="text-xs text-gray-400 mt-1">{result.scored_days} scored days</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{result.scored_days} scored days</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Consistency Bonus</p>
-              <p className="text-2xl font-bold text-gray-900">+{result.consistency_score}</p>
-              <p className="text-xs text-gray-400 mt-1">points</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Consistency Bonus</p>
+              <p className="text-2xl font-bold text-[var(--color-text-primary)]">+{result.consistency_score}</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1">points</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Monthly FPS</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Monthly FPS</p>
               <p className={`text-2xl font-bold ${bracketColor(result.bracket)}`}>
                 {result.monthly_fps !== null ? result.monthly_fps.toFixed(1) : "—"}
               </p>
@@ -138,28 +138,28 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
           </div>
 
           {/* Daily rows table */}
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-100 text-sm">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+            <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+              <thead className="bg-[var(--color-bg-secondary)]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vol pts</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">QA pts</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">QA Tier</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Base FPS</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase font-bold">Final FPS</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Vol pts</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">QA pts</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">QA Tier</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Base FPS</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase font-bold">Final FPS</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-50">
+              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
                 {result.daily.map((row) => (
-                  <tr key={row.date} className={`hover:bg-gray-50 ${row.isNoData || row.isLeave ? "opacity-60" : ""}`}>
-                    <td className="px-4 py-3 font-medium text-gray-900">
+                  <tr key={row.date} className={`hover:bg-[var(--color-surface-hover)] ${row.isNoData || row.isLeave ? "opacity-60" : ""}`}>
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">
                       {format(new Date(row.date + "T00:00:00"), "EEE d MMM")}
                     </td>
                     <td className="px-4 py-3">{statusBadge(row.dayStatus)}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.volPts ?? "—"}</td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.qaPts ?? "—"}</td>
+                    <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.volPts ?? "—"}</td>
+                    <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.qaPts ?? "—"}</td>
                     <td className="px-4 py-3">
                       {row.qaTier ? (
                         <span
@@ -172,13 +172,13 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
                           {row.qaTier}
                         </span>
                       ) : (
-                        <span className="text-xs text-gray-300">—</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)]">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700">{row.baseFps ?? "—"}</td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-900">
+                    <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.baseFps ?? "—"}</td>
+                    <td className="px-4 py-3 text-right font-bold text-[var(--color-text-primary)]">
                       {row.finalFps !== null ? (
-                        <span className={row.capApplied ? "text-red-600" : ""}>
+                        <span className={row.capApplied ? "text-[var(--color-error)]" : ""}>
                           {row.finalFps}
                           {row.capApplied && <span className="text-xs font-normal ml-1">(cap)</span>}
                         </span>
@@ -188,12 +188,12 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
                 ))}
               </tbody>
               {result.daily.length > 0 && (
-                <tfoot className="bg-gray-50 border-t border-gray-200">
+                <tfoot className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border-primary)]">
                   <tr>
-                    <td colSpan={6} className="px-4 py-3 text-xs text-right font-medium text-gray-500 uppercase">
+                    <td colSpan={6} className="px-4 py-3 text-xs text-right font-medium text-[var(--color-text-secondary)] uppercase">
                       Average ({result.scored_days} scored days)
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-900">
+                    <td className="px-4 py-3 text-right font-bold text-[var(--color-text-primary)]">
                       {result.avg_fps !== null ? result.avg_fps.toFixed(1) : "—"}
                     </td>
                   </tr>
@@ -204,7 +204,7 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
 
           {/* Agent info */}
           {agentObj && (
-            <p className="text-xs text-gray-400 mt-3 text-right">
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-3 text-right">
               Viewing: {agentName(agentObj)} · {month}
             </p>
           )}

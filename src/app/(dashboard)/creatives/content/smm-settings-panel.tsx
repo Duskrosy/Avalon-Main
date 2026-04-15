@@ -232,14 +232,14 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
       <div className="flex items-center gap-3">
         <button
           onClick={onClose}
-          className="text-sm text-gray-400 hover:text-gray-700 flex items-center gap-1"
+          className="text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] flex items-center gap-1"
         >
           ← Back
         </button>
-        <h2 className="text-lg font-semibold text-gray-900">Manage Groups & Platforms</h2>
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Manage Groups & Platforms</h2>
         <button
           onClick={() => setShowNewGroup(true)}
-          className="ml-auto text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
+          className="ml-auto text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)]"
         >
           + New Group
         </button>
@@ -247,7 +247,7 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
 
       {/* TikTok OAuth callback banner */}
       {tiktokStatus === "connected" && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 flex items-center justify-between">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-[var(--radius-lg)] px-4 py-3 flex items-center justify-between">
           <span className="text-sm text-emerald-700">
             ✅ TikTok connected{tiktokName ? ` as @${tiktokName}` : ""}
           </span>
@@ -255,21 +255,21 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
       )}
       {tiktokStatus === "error" && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between">
-          <span className="text-sm text-red-600">
+        <div className="bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-4 py-3 flex items-center justify-between">
+          <span className="text-sm text-[var(--color-error)]">
             TikTok connection failed{tiktokReason ? `: ${tiktokReason}` : ""}
           </span>
-          <button onClick={dismissTikTokBanner} className="text-xs text-red-400 hover:text-red-600">Dismiss</button>
+          <button onClick={dismissTikTokBanner} className="text-xs text-red-400 hover:text-[var(--color-error)]">Dismiss</button>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>
+        <div className="bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-4 py-3 text-sm text-[var(--color-error)]">{error}</div>
       )}
 
       {/* New group form */}
       {showNewGroup && (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 space-y-3">
           <div className="flex gap-3">
             <input
               autoFocus
@@ -278,48 +278,48 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && createGroup()}
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="flex-1 border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
             <button
               onClick={createGroup}
               disabled={creating}
-              className="text-sm px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+              className="text-sm px-3 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             >
               {creating ? "Creating…" : "Create"}
             </button>
-            <button onClick={() => setShowNewGroup(false)} className="text-sm text-gray-400 hover:text-gray-600">
+            <button onClick={() => setShowNewGroup(false)} className="text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
               Cancel
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-500 w-32">Weekly post target</label>
+            <label className="text-xs text-[var(--color-text-secondary)] w-32">Weekly post target</label>
             <input
               type="number"
               min="1"
               max="200"
               value={newGroupTarget}
               onChange={(e) => setNewGroupTarget(Number(e.target.value))}
-              className="w-20 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-20 border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </div>
         </div>
       )}
 
-      {loading && <p className="text-sm text-gray-400 py-8 text-center">Loading…</p>}
+      {loading && <p className="text-sm text-[var(--color-text-tertiary)] py-8 text-center">Loading…</p>}
 
       {!loading && groups.length === 0 && !showNewGroup && (
-        <div className="bg-white border border-dashed border-gray-200 rounded-2xl p-12 text-center">
-          <p className="text-sm text-gray-400">No SMM groups yet. Create one to get started.</p>
+        <div className="bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-border-primary)] rounded-2xl p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No SMM groups yet. Create one to get started.</p>
         </div>
       )}
 
       {groups.map((group) => (
-        <div key={group.id} className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div key={group.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
-              <h3 className="font-semibold text-gray-900">{group.name}</h3>
+              <h3 className="font-semibold text-[var(--color-text-primary)]">{group.name}</h3>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-gray-400">Weekly target:</span>
+                <span className="text-xs text-[var(--color-text-tertiary)]">Weekly target:</span>
                 <input
                   type="number"
                   min="1"
@@ -329,14 +329,14 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                     const val = Number(e.target.value);
                     if (val !== group.weekly_target && val > 0) updateGroupTarget(group.id, val);
                   }}
-                  className="w-14 border border-gray-200 rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-14 border border-[var(--color-border-primary)] rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
-                <span className="text-xs text-gray-400">posts</span>
+                <span className="text-xs text-[var(--color-text-tertiary)]">posts</span>
               </div>
             </div>
             <button
               onClick={() => deleteGroup(group.id)}
-              className="text-xs text-gray-300 hover:text-red-500 transition-colors"
+              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors"
             >
               Delete
             </button>
@@ -352,18 +352,18 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
               return (
                 <div
                   key={platform}
-                  className={`border rounded-xl p-3 transition-colors ${
-                    isActive ? "border-gray-900 bg-gray-50" : "border-gray-200"
+                  className={`border rounded-[var(--radius-lg)] p-3 transition-colors ${
+                    isActive ? "border-gray-900 bg-[var(--color-bg-secondary)]" : "border-[var(--color-border-primary)]"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-sm font-medium text-gray-800 capitalize">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)] capitalize">
                       {platform === "tiktok" ? "TikTok" : platform}
                     </span>
                     <button
                       onClick={() => togglePlatform(group.id, platform)}
                       className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                        isActive ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                        isActive ? "bg-[var(--color-text-primary)] text-white" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border-primary)]"
                       }`}
                     >
                       {isActive ? "Active" : "Enable"}
@@ -378,14 +378,14 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                           ✅ @{existing.handle ?? existing.page_name ?? "connected"}
                         </p>
                       ) : (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-[var(--color-text-tertiary)]">
                           {existing ? "Token expired or not connected" : "Not connected"}
                         </p>
                       )}
                       <button
                         onClick={() => connectTikTok(group.id, existing?.id ?? null)}
                         disabled={connectingTikTok === group.id}
-                        className="text-xs px-2.5 py-1 rounded-lg bg-black text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                        className="text-xs px-2.5 py-1 rounded-lg bg-black text-white hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                       >
                         {connectingTikTok === group.id
                           ? "Connecting…"
@@ -395,9 +395,9 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                       </button>
                     </div>
                   ) : existing ? (
-                    <div className="text-xs text-gray-400 space-y-0.5">
+                    <div className="text-xs text-[var(--color-text-tertiary)] space-y-0.5">
                       {existing.page_name && <p className="truncate">{existing.page_name}</p>}
-                      {existing.page_id && <p className="font-mono text-[10px] text-gray-300 truncate">{existing.page_id}</p>}
+                      {existing.page_id && <p className="font-mono text-[10px] text-[var(--color-text-tertiary)] truncate">{existing.page_id}</p>}
                       {existing.handle && <p>@{existing.handle}</p>}
                       <button
                         onClick={() => {
@@ -408,13 +408,13 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                             handle: existing.handle ?? "",
                           });
                         }}
-                        className="text-blue-500 hover:text-blue-700 mt-0.5 block"
+                        className="text-[var(--color-accent)] hover:text-[var(--color-accent)] mt-0.5 block"
                       >
                         Edit details
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs text-gray-300">Not configured</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">Not configured</p>
                   )}
                 </div>
               );
@@ -426,39 +426,39 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
       {/* Platform edit modal (non-TikTok platforms) */}
       {editPlatform && editPlatform.platform !== "tiktok" && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-            <h2 className="text-base font-semibold text-gray-900 mb-4 capitalize">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4 capitalize">
               {editPlatform.platform} — Page Details
             </h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Page / Channel Name</label>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Page / Channel Name</label>
                 <input
                   autoFocus
                   type="text"
                   value={platformForm.page_name}
                   onChange={(e) => setPlatformForm((f) => ({ ...f, page_name: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   placeholder="e.g. Avalon Heights PH"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Page ID / Channel ID</label>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Page ID / Channel ID</label>
                 <input
                   type="text"
                   value={platformForm.page_id}
                   onChange={(e) => setPlatformForm((f) => ({ ...f, page_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   placeholder="Numeric page or channel ID"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Handle / Username</label>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Handle / Username</label>
                 <input
                   type="text"
                   value={platformForm.handle}
                   onChange={(e) => setPlatformForm((f) => ({ ...f, handle: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   placeholder="@handle"
                 />
               </div>
@@ -466,13 +466,13 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
             <div className="flex gap-2 mt-5">
               <button
                 onClick={() => setEditPlatform(null)}
-                className="flex-1 border border-gray-200 text-sm py-2 rounded-lg hover:bg-gray-50"
+                className="flex-1 border border-[var(--color-border-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
               >
                 Cancel
               </button>
               <button
                 onClick={savePlatform}
-                className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700"
+                className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
               >
                 Save
               </button>

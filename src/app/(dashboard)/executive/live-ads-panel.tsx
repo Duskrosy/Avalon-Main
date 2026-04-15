@@ -47,10 +47,10 @@ function fmtK(n: number) {
 
 function Pill({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="flex-1 min-w-0 bg-gray-50 rounded-xl p-3">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
-      <p className="text-lg font-bold text-gray-900 mt-0.5">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+    <div className="flex-1 min-w-0 bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3">
+      <p className="text-[10px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wide">{label}</p>
+      <p className="text-lg font-bold text-[var(--color-text-primary)] mt-0.5">{value}</p>
+      {sub && <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -89,20 +89,20 @@ export function LiveAdsPanel() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-gray-900">Ad Operations</h2>
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Ad Operations</h2>
             {!loading && (
-              <span className="flex items-center gap-1 text-[10px] font-medium text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+              <span className="flex items-center gap-1 text-[10px] font-medium text-[var(--color-success)] bg-[var(--color-success-light)] px-1.5 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success-light)]0 animate-pulse inline-block" />
                 Live
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
             {loading
               ? "Loading…"
               : `${activeCampaigns.length} active · ${fmtMoney(totalLiveSpend, currency)} today`
@@ -110,24 +110,24 @@ export function LiveAdsPanel() {
             {!loading && overallRoas !== null && ` · ${overallRoas.toFixed(2)}x ROAS`}
           </p>
         </div>
-        <Link href="/ad-ops/live" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">
+        <Link href="/ad-ops/live" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-colors">
           View all →
         </Link>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-10">
-          <div className="w-5 h-5 border-2 border-gray-200 border-t-gray-700 rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-[var(--color-border-primary)] border-t-gray-700 rounded-full animate-spin" />
         </div>
       ) : error ? (
         <div className="px-5 py-8 text-center">
-          <p className="text-sm text-gray-400">Failed to load live ad data.</p>
-          <button onClick={load} className="mt-2 text-xs text-gray-500 hover:text-gray-700 underline">
+          <p className="text-sm text-[var(--color-text-tertiary)]">Failed to load live ad data.</p>
+          <button onClick={load} className="mt-2 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] underline">
             Retry
           </button>
         </div>
       ) : campaigns.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-gray-400 text-center">No campaigns found.</p>
+        <p className="px-5 py-8 text-sm text-[var(--color-text-tertiary)] text-center">No campaigns found.</p>
       ) : (
         <>
           {/* Summary pills */}
@@ -161,22 +161,22 @@ export function LiveAdsPanel() {
               const autoPaused   = !!c.auto_paused_at;
 
               const roasBadge =
-                roas === null          ? "bg-gray-100 text-gray-400" :
-                roas >= 2              ? "bg-green-50 text-green-700" :
-                roas >= 1              ? "bg-amber-50 text-amber-700" :
-                                         "bg-red-50 text-red-700";
+                roas === null          ? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]" :
+                roas >= 2              ? "bg-[var(--color-success-light)] text-[var(--color-success)]" :
+                roas >= 1              ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]" :
+                                         "bg-[var(--color-error-light)] text-[var(--color-error)]";
 
               return (
                 <div key={c.id} className="px-5 py-3 flex items-center gap-3">
                   {/* Status indicator */}
                   <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    autoPaused ? "bg-amber-400" : isActive ? "bg-green-500" : "bg-gray-300"
+                    autoPaused ? "bg-amber-400" : isActive ? "bg-[var(--color-success-light)]0" : "bg-gray-300"
                   }`} />
 
                   {/* Name + account */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 font-medium truncate">{c.campaign_name}</p>
-                    <p className="text-xs text-gray-400 truncate">
+                    <p className="text-sm text-[var(--color-text-primary)] font-medium truncate">{c.campaign_name}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] truncate">
                       {c.account?.name ?? "—"}
                       {campImpr > 0 && ` · ${fmtK(campImpr)} impr.`}
                       {autoPaused && <span className="text-amber-500 ml-1">· auto-paused</span>}
@@ -185,7 +185,7 @@ export function LiveAdsPanel() {
 
                   {/* Spend + ROAS */}
                   <div className="text-right shrink-0 space-y-0.5">
-                    <p className="text-sm font-semibold text-gray-900">{fmtMoney(campSpend, cur)}</p>
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{fmtMoney(campSpend, cur)}</p>
                     {roas !== null && (
                       <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${roasBadge}`}>
                         {roas.toFixed(2)}x
@@ -197,8 +197,8 @@ export function LiveAdsPanel() {
             })}
 
             {campaigns.length > 6 && (
-              <div className="px-5 py-2.5 bg-gray-50 text-center">
-                <Link href="/ad-ops/live" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+              <div className="px-5 py-2.5 bg-[var(--color-bg-secondary)] text-center">
+                <Link href="/ad-ops/live" className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors">
                   +{campaigns.length - 6} more → View all live campaigns
                 </Link>
               </div>

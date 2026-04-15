@@ -118,8 +118,8 @@ export function QaLogView({ agents, canManage }: Props) {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">QA Log</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">QA Log</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {rows.length} entries · {QA_TIER_KEYS.map((t) => `${tierCounts[t]} ${t}`).join(" · ")}
           </p>
         </div>
@@ -138,12 +138,12 @@ export function QaLogView({ agents, canManage }: Props) {
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
         <select
           value={selectedAgent}
           onChange={(e) => setSelectedAgent(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         >
           <option value="all">All agents</option>
           {agents.map((a) => (
@@ -153,44 +153,44 @@ export function QaLogView({ agents, canManage }: Props) {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : rows.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No QA entries for this period.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No QA entries for this period.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tier</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Points</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Evaluator</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Agent</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Tier</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Points</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Reason</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Evaluator</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Link</th>
                 {canManage && <th className="px-4 py-3" />}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {rows.map((row) => {
                 const agent = agents.find((a) => a.id === row.agent_id);
                 return (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{format(parseISO(row.qa_date), "EEE d MMM")}</td>
-                    <td className="px-4 py-3 text-gray-700">{agent ? agentName(agent) : row.agent_id}</td>
+                  <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]">
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">{format(parseISO(row.qa_date), "EEE d MMM")}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-primary)]">{agent ? agentName(agent) : row.agent_id}</td>
                     <td className="px-4 py-3"><TierBadge tier={row.qa_tier} /></td>
-                    <td className="px-4 py-3 text-right font-semibold text-gray-900">{row.qa_points}</td>
-                    <td className="px-4 py-3 text-gray-600 max-w-xs truncate">{row.qa_reason}</td>
-                    <td className="px-4 py-3 text-gray-500">{row.evaluator}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-[var(--color-text-primary)]">{row.qa_points}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-xs truncate">{row.qa_reason}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{row.evaluator}</td>
                     <td className="px-4 py-3">
                       {row.message_link && (
                         <a
                           href={row.message_link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-xs text-blue-500 hover:underline"
+                          className="text-xs text-[var(--color-accent)] hover:underline"
                         >
                           View
                         </a>
@@ -198,8 +198,8 @@ export function QaLogView({ agents, canManage }: Props) {
                     </td>
                     {canManage && (
                       <td className="px-4 py-3 text-right">
-                        <button onClick={() => openEdit(row)} className="text-xs text-gray-400 hover:text-gray-700 mr-3">Edit</button>
-                        <button onClick={() => handleDelete(row.id)} className="text-xs text-gray-300 hover:text-red-400">Del</button>
+                        <button onClick={() => openEdit(row)} className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] mr-3">Edit</button>
+                        <button onClick={() => handleDelete(row.id)} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400">Del</button>
                       </td>
                     )}
                   </tr>
@@ -212,17 +212,17 @@ export function QaLogView({ agents, canManage }: Props) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{editRow ? "Edit QA Entry" : "Log QA Check"}</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">{editRow ? "Edit QA Entry" : "Log QA Check"}</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Agent *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Agent *</label>
                   <select
                     required
                     value={form.agent_id}
                     onChange={(e) => setForm((f) => ({ ...f, agent_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   >
                     {agents.map((a) => (
                       <option key={a.id} value={a.id}>{agentName(a)}</option>
@@ -230,19 +230,19 @@ export function QaLogView({ agents, canManage }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Date *</label>
                   <input
                     required
                     type="date"
                     value={form.qa_date}
                     onChange={(e) => setForm((f) => ({ ...f, qa_date: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">QA Tier *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">QA Tier *</label>
                 <div className="grid grid-cols-4 gap-2">
                   {QA_TIER_KEYS.map((t) => (
                     <button
@@ -262,36 +262,36 @@ export function QaLogView({ agents, canManage }: Props) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Message Link *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Message Link *</label>
                 <input
                   required
                   type="url"
                   value={form.message_link}
                   onChange={(e) => setForm((f) => ({ ...f, message_link: e.target.value }))}
                   placeholder="https://..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Reason *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Reason *</label>
                 <textarea
                   required
                   rows={2}
                   value={form.qa_reason}
                   onChange={(e) => setForm((f) => ({ ...f, qa_reason: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Evaluator *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Evaluator *</label>
                 <input
                   required
                   type="text"
                   value={form.evaluator}
                   onChange={(e) => setForm((f) => ({ ...f, evaluator: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
@@ -299,7 +299,7 @@ export function QaLogView({ agents, canManage }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>

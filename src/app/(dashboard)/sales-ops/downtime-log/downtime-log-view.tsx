@@ -26,10 +26,10 @@ function agentName(a: Agent) {
 function typeBadge(type: DowntimeLog["downtime_type"]) {
   const colors: Record<string, string> = {
     system: "bg-purple-50 text-purple-600",
-    internet: "bg-blue-50 text-blue-600",
-    power: "bg-red-50 text-red-600",
-    tool: "bg-amber-50 text-amber-600",
-    other: "bg-gray-100 text-gray-500",
+    internet: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+    power: "bg-[var(--color-error-light)] text-[var(--color-error)]",
+    tool: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+    other: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
   };
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full ${colors[type] ?? colors.other}`}>
@@ -157,8 +157,8 @@ export function DowntimeLogView({ agents, canManage }: Props) {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Downtime Log</h1>
-          <p className="text-sm text-gray-500 mt-1">{rows.length} incidents · {totalHours.toFixed(1)}h total downtime</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Downtime Log</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{rows.length} incidents · {totalHours.toFixed(1)}h total downtime</p>
         </div>
         <button
           onClick={openCreate}
@@ -173,64 +173,64 @@ export function DowntimeLogView({ agents, canManage }: Props) {
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : rows.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No downtime logged for this period.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No downtime logged for this period.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Duration</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Time</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Duration</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {rows.map((row) => {
                 const agent = agents.find((a) => a.id === row.agent_id);
                 return (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{format(parseISO(row.date), "EEE d MMM")}</td>
+                  <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]">
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">{format(parseISO(row.date), "EEE d MMM")}</td>
                     <td className="px-4 py-3">
                       {typeBadge(row.downtime_type)}
-                      {row.affected_tool && <span className="text-xs text-gray-400 ml-1">({row.affected_tool})</span>}
+                      {row.affected_tool && <span className="text-xs text-[var(--color-text-tertiary)] ml-1">({row.affected_tool})</span>}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-xs truncate">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-xs truncate">
                       {row.description}
-                      {agent && <span className="text-xs text-gray-400 ml-1">— {agentName(agent)}</span>}
+                      {agent && <span className="text-xs text-[var(--color-text-tertiary)] ml-1">— {agentName(agent)}</span>}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)] font-mono text-xs">
                       {row.start_time}{row.end_time ? ` – ${row.end_time}` : ""}
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-700">
+                    <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">
                       {row.duration_hours !== null ? `${row.duration_hours}h` : "—"}
                     </td>
                     <td className="px-4 py-3">
                       {row.verified ? (
-                        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Verified</span>
+                        <span className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] px-2 py-0.5 rounded-full">Verified</span>
                       ) : (
-                        <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Unverified</span>
+                        <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] px-2 py-0.5 rounded-full">Unverified</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => openEdit(row)} className="text-xs text-gray-400 hover:text-gray-700 mr-2">Edit</button>
+                      <button onClick={() => openEdit(row)} className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] mr-2">Edit</button>
                       {canManage && !row.verified && (
-                        <button onClick={() => handleVerify(row.id, true)} className="text-xs text-green-500 hover:text-green-700 mr-2">Verify</button>
+                        <button onClick={() => handleVerify(row.id, true)} className="text-xs text-green-500 hover:text-[var(--color-success)] mr-2">Verify</button>
                       )}
                       {canManage && (
-                        <button onClick={() => handleDelete(row.id)} className="text-xs text-gray-300 hover:text-red-400">Del</button>
+                        <button onClick={() => handleDelete(row.id)} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400">Del</button>
                       )}
                     </td>
                   </tr>
@@ -243,26 +243,26 @@ export function DowntimeLogView({ agents, canManage }: Props) {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{editRow ? "Edit Downtime" : "Log Downtime"}</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">{editRow ? "Edit Downtime" : "Log Downtime"}</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Date *</label>
                   <input
                     required
                     type="date"
                     value={form.date}
                     onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Agent</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Agent</label>
                   <select
                     value={form.agent_id}
                     onChange={(e) => setForm((f) => ({ ...f, agent_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   >
                     <option value="">Team-wide</option>
                     {agents.map((a) => (
@@ -274,12 +274,12 @@ export function DowntimeLogView({ agents, canManage }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Type *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Type *</label>
                   <select
                     required
                     value={form.downtime_type}
                     onChange={(e) => setForm((f) => ({ ...f, downtime_type: e.target.value as DowntimeLog["downtime_type"] }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   >
                     {DOWNTIME_TYPES.map((t) => (
                       <option key={t} value={t}>{TYPE_LABELS[t]}</option>
@@ -287,57 +287,57 @@ export function DowntimeLogView({ agents, canManage }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Affected Tool</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Affected Tool</label>
                   <input
                     type="text"
                     value={form.affected_tool}
                     onChange={(e) => setForm((f) => ({ ...f, affected_tool: e.target.value }))}
                     placeholder="e.g. Shopify, GSheets"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Start Time *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Start Time *</label>
                   <input
                     required
                     type="time"
                     value={form.start_time}
                     onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">End Time</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">End Time</label>
                   <input
                     type="time"
                     value={form.end_time}
                     onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Ticket Ref</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Ticket Ref</label>
                 <input
                   type="text"
                   value={form.ticket_ref}
                   onChange={(e) => setForm((f) => ({ ...f, ticket_ref: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Description *</label>
                 <textarea
                   required
                   rows={2}
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
@@ -345,7 +345,7 @@ export function DowntimeLogView({ agents, canManage }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>

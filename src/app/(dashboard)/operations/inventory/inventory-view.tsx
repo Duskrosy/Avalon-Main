@@ -56,11 +56,11 @@ const ADJUSTMENT_LABELS: Record<AdjustmentType, string> = {
 };
 
 const ADJUSTMENT_COLORS: Record<AdjustmentType, string> = {
-  received: "bg-green-100 text-green-700",
+  received: "bg-[var(--color-success-light)] text-[var(--color-success)]",
   dispatched: "bg-orange-100 text-orange-700",
-  returned: "bg-blue-100 text-blue-700",
-  damaged: "bg-red-100 text-red-700",
-  correction: "bg-gray-100 text-gray-700",
+  returned: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  damaged: "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  correction: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]",
   reserved: "bg-purple-100 text-purple-700",
   released: "bg-cyan-100 text-cyan-700",
 };
@@ -68,9 +68,9 @@ const ADJUSTMENT_COLORS: Record<AdjustmentType, string> = {
 /* ---------- helpers ---------- */
 
 function availColor(qty: number): string {
-  if (qty === 0) return "text-red-600 font-semibold";
-  if (qty < 5) return "text-amber-600 font-medium";
-  return "text-green-700";
+  if (qty === 0) return "text-[var(--color-error)] font-semibold";
+  if (qty < 5) return "text-[var(--color-warning)] font-medium";
+  return "text-[var(--color-success)]";
 }
 
 function fmtDate(iso: string): string {
@@ -134,26 +134,26 @@ function AdjustModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-        <h2 className="text-base font-semibold text-gray-900 mb-1">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-md">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">
           Adjust Stock
         </h2>
-        <p className="text-sm text-gray-500 mb-4">
+        <p className="text-sm text-[var(--color-text-secondary)] mb-4">
           {record.catalog?.product_name ?? "Unknown"}{" "}
-          <span className="text-gray-400">
+          <span className="text-[var(--color-text-tertiary)]">
             ({record.catalog?.sku ?? "—"})
           </span>
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">
               Adjustment Type
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value as AdjustmentType)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               {ADJUSTMENT_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -164,7 +164,7 @@ function AdjustModal({
           </div>
 
           <div>
-            <label className="block text-xs text-gray-500 mb-1">
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">
               Quantity
             </label>
             <input
@@ -173,13 +173,13 @@ function AdjustModal({
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               placeholder="Enter quantity"
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs text-gray-500 mb-1">
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">
               Notes
             </label>
             <textarea
@@ -187,26 +187,26 @@ function AdjustModal({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes..."
               rows={3}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-[var(--color-error)]">{error}</p>
           )}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg"
+              className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] rounded-lg"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 hover:bg-gray-800 rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-text-primary)] hover:bg-[var(--color-text-secondary)] rounded-lg disabled:opacity-50"
             >
               {submitting ? "Saving..." : "Submit Adjustment"}
             </button>
@@ -244,7 +244,7 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
 
   if (loading) {
     return (
-      <div className="px-4 py-3 text-sm text-gray-400">
+      <div className="px-4 py-3 text-sm text-[var(--color-text-tertiary)]">
         Loading movements...
       </div>
     );
@@ -252,7 +252,7 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
 
   if (movements.length === 0) {
     return (
-      <div className="px-4 py-3 text-sm text-gray-400">
+      <div className="px-4 py-3 text-sm text-[var(--color-text-tertiary)]">
         No movements recorded.
       </div>
     );
@@ -262,7 +262,7 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
     <div className="px-4 py-3">
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-gray-400 text-left">
+          <tr className="text-[var(--color-text-tertiary)] text-left">
             <th className="pb-1 font-medium">Date</th>
             <th className="pb-1 font-medium">Type</th>
             <th className="pb-1 font-medium text-right">Qty</th>
@@ -272,12 +272,12 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
         <tbody className="divide-y divide-gray-50">
           {movements.map((m) => (
             <tr key={m.id}>
-              <td className="py-1.5 text-gray-500">{fmtDate(m.created_at)}</td>
+              <td className="py-1.5 text-[var(--color-text-secondary)]">{fmtDate(m.created_at)}</td>
               <td className="py-1.5">
                 <span
                   className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
                     ADJUSTMENT_COLORS[m.adjustment_type as AdjustmentType] ??
-                    "bg-gray-100 text-gray-600"
+                    "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
                   }`}
                 >
                   {ADJUSTMENT_LABELS[m.adjustment_type as AdjustmentType] ??
@@ -285,7 +285,7 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
                 </span>
               </td>
               <td className="py-1.5 text-right font-mono">{m.quantity}</td>
-              <td className="py-1.5 text-gray-400 truncate max-w-[200px]">
+              <td className="py-1.5 text-[var(--color-text-tertiary)] truncate max-w-[200px]">
                 {m.notes ?? "—"}
               </td>
             </tr>
@@ -350,28 +350,28 @@ export default function InventoryView({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">Inventory</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Inventory</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           Stock levels, adjustments, and movement history
         </p>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Total SKUs</p>
-          <p className="text-2xl font-semibold text-gray-900">{totalSkus}</p>
+        <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] p-4">
+          <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Total SKUs</p>
+          <p className="text-2xl font-semibold text-[var(--color-text-primary)]">{totalSkus}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Low Stock</p>
-          <p className="text-2xl font-semibold text-amber-600">{lowStock}</p>
+        <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] p-4">
+          <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Low Stock</p>
+          <p className="text-2xl font-semibold text-[var(--color-warning)]">{lowStock}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Out of Stock</p>
-          <p className="text-2xl font-semibold text-red-600">{outOfStock}</p>
+        <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] p-4">
+          <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Out of Stock</p>
+          <p className="text-2xl font-semibold text-[var(--color-error)]">{outOfStock}</p>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 p-4">
-          <p className="text-xs text-gray-400 mb-1">Total Reserved</p>
+        <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] p-4">
+          <p className="text-xs text-[var(--color-text-tertiary)] mb-1">Total Reserved</p>
           <p className="text-2xl font-semibold text-purple-600">
             {totalReserved}
           </p>
@@ -385,10 +385,10 @@ export default function InventoryView({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by product name or SKU..."
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-2.5 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
         <svg
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-tertiary)]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -403,33 +403,33 @@ export default function InventoryView({
       </div>
 
       {/* Inventory table */}
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+      <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-gray-400">
+              <tr className="border-b border-[var(--color-border-secondary)] text-left">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)]">
                   SKU
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)]">
                   Product
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)]">
                   Color / Size
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 text-right">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)] text-right">
                   Available
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 text-right">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)] text-right">
                   Reserved
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 text-right">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)] text-right">
                   Damaged
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 text-right">
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)] text-right">
                   Total
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400" />
+                <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)]" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -437,7 +437,7 @@ export default function InventoryView({
                 <tr>
                   <td
                     colSpan={8}
-                    className="px-4 py-12 text-center text-gray-400"
+                    className="px-4 py-12 text-center text-[var(--color-text-tertiary)]"
                   >
                     {search
                       ? "No items match your search."
@@ -455,21 +455,21 @@ export default function InventoryView({
                 return (
                   <Fragment key={r.id}>
                     <tr
-                      className="hover:bg-gray-50/50 cursor-pointer transition-colors"
+                      className="hover:bg-[var(--color-surface-hover)]/50 cursor-pointer transition-colors"
                       onClick={() => toggleExpand(r.id)}
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-secondary)]">
                         {r.catalog?.sku ?? "—"}
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">
+                      <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">
                         {r.catalog?.product_name ?? "Unknown"}
                         {r.catalog?.product_family && (
-                          <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] rounded-full">
                             {r.catalog.product_family}
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-gray-500">
+                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                         {[r.catalog?.color, r.catalog?.size]
                           .filter(Boolean)
                           .join(" / ") || "—"}
@@ -484,10 +484,10 @@ export default function InventoryView({
                       <td className="px-4 py-3 text-right tabular-nums text-purple-600">
                         {r.reserved_qty ?? 0}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-red-500">
+                      <td className="px-4 py-3 text-right tabular-nums text-[var(--color-error)]">
                         {r.damaged_qty ?? 0}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-medium text-gray-900">
+                      <td className="px-4 py-3 text-right tabular-nums font-medium text-[var(--color-text-primary)]">
                         {total}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -496,7 +496,7 @@ export default function InventoryView({
                             e.stopPropagation();
                             setAdjusting(r);
                           }}
-                          className="text-xs font-medium text-gray-500 hover:text-gray-900 px-2.5 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+                          className="text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-2.5 py-1 rounded-lg hover:bg-[var(--color-surface-active)] transition-colors"
                         >
                           Adjust
                         </button>
@@ -504,7 +504,7 @@ export default function InventoryView({
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={8} className="bg-gray-50/50">
+                        <td colSpan={8} className="bg-[var(--color-bg-secondary)]/50">
                           <MovementHistory
                             catalogItemId={r.catalog_item_id}
                           />

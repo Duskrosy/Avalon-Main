@@ -217,14 +217,14 @@ function LoginInner() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)]">
       <div className="w-full max-w-sm">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-sm border border-[var(--color-border-primary)] p-8">
 
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">Avalon</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Avalon</h1>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
               {step === "credentials"  && "Sign in to your account"}
               {step === "mfa"          && "Two-factor authentication"}
               {step === "forgot"       && "Reset your password"}
@@ -238,12 +238,12 @@ function LoginInner() {
             <div className="space-y-5">
               {/* OAuth error banners */}
               {oauthError === "no_account" && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                <div className="bg-amber-50 border border-amber-200 rounded-[var(--radius-lg)] px-4 py-3 text-sm text-amber-800">
                   No Avalon account is linked to that Discord. Sign in with your email first, then connect Discord from your account settings.
                 </div>
               )}
               {oauthError && oauthError !== "no_account" && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+                <div className="bg-amber-50 border border-amber-200 rounded-[var(--radius-lg)] px-4 py-3 text-sm text-amber-800">
                   {oauthError.includes("PKCE") || oauthError.includes("code verifier")
                     ? "You need to set a new password before signing in with SSO. Please sign in with your email and password first."
                     : decodeURIComponent(oauthError)}
@@ -251,7 +251,7 @@ function LoginInner() {
               )}
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label htmlFor="email" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Email</label>
                   <input
                     id="email"
                     type="email"
@@ -259,16 +259,16 @@ function LoginInner() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="you@company.com"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
+                    <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text-primary)]">Password</label>
                     <button
                       type="button"
                       onClick={() => goTo("forgot")}
-                      className="text-xs text-gray-400 hover:text-gray-700 transition-colors"
+                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
                     >
                       Forgot password?
                     </button>
@@ -279,16 +279,16 @@ function LoginInner() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="••••••••"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
 
-                {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+                {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-lg">{error}</p>}
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                  className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                 >
                   {loading ? "Signing in…" : "Sign in"}
                 </button>
@@ -296,9 +296,9 @@ function LoginInner() {
 
               {/* Divider */}
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-xs text-gray-400">or</span>
-                <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex-1 h-px bg-[var(--color-border-primary)]" />
+                <span className="text-xs text-[var(--color-text-tertiary)]">or</span>
+                <div className="flex-1 h-px bg-[var(--color-border-primary)]" />
               </div>
 
               {/* Discord */}
@@ -323,9 +323,9 @@ function LoginInner() {
                 onClick={() => goTo("magic")}
                 disabled={mustChangePw}
                 title={mustChangePw ? "Change your password first before signing in with SSO" : undefined}
-                className="w-full flex items-center justify-center gap-2 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <svg className="w-4 h-4 text-[var(--color-text-secondary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 9v.906a2.25 2.25 0 01-1.183 1.981l-6.478 3.488M2.25 9v.906a2.25 2.25 0 001.183 1.981l6.478 3.488m8.839 2.51l-4.66-2.51m0 0l-1.023-.55a2.25 2.25 0 00-2.134 0l-1.022.55m0 0l-4.661 2.51m16.5 1.615a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V8.844a2.25 2.25 0 011.183-1.98l7.5-4.04a2.25 2.25 0 012.134 0l7.5 4.04a2.25 2.25 0 011.183 1.98V19.5z" />
                 </svg>
                 Sign in with email link
@@ -339,11 +339,11 @@ function LoginInner() {
               <button
                 type="button"
                 onClick={() => goTo("credentials")}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <span aria-hidden="true">←</span> Back
               </button>
-              <p className="text-sm text-gray-500 text-center">
+              <p className="text-sm text-[var(--color-text-secondary)] text-center">
                 Enter the 6-digit code from your authenticator app.
               </p>
               <input
@@ -357,13 +357,13 @@ function LoginInner() {
                 autoFocus
                 autoComplete="one-time-code"
                 placeholder="000000"
-                className="w-full px-3 py-3 border border-gray-300 rounded-lg text-xl font-mono tabular-nums tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full px-3 py-3 border border-[var(--color-border-primary)] rounded-lg text-xl font-mono tabular-nums tracking-widest text-center focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
-              {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+              {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-lg">{error}</p>}
               <button
                 type="submit"
                 disabled={loading || mfaCode.length < 6}
-                className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
               >
                 {loading ? "Verifying…" : "Verify"}
               </button>
@@ -376,18 +376,18 @@ function LoginInner() {
               <button
                 type="button"
                 onClick={() => goTo("credentials")}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <span aria-hidden="true">←</span> Back to sign in
               </button>
 
               {!forgotSent ? (
                 <form onSubmit={handleForgot} className="space-y-4">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-[var(--color-text-secondary)]">
                     Enter your registered email and we&apos;ll send you a reset link.
                   </p>
                   <div>
-                    <label htmlFor="forgot-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label htmlFor="forgot-email" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Email</label>
                     <input
                       id="forgot-email"
                       type="email"
@@ -395,13 +395,13 @@ function LoginInner() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       placeholder="you@company.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                    className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                   >
                     {loading ? "Sending…" : "Send reset link"}
                   </button>
@@ -414,12 +414,12 @@ function LoginInner() {
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Check your email</p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-sm font-medium text-[var(--color-text-primary)]">Check your email</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] mt-1">
                       If a reset link was sent, it will arrive at <strong>{email}</strong> shortly.
                     </p>
                   </div>
-                  <p className="text-xs text-gray-400 border-t border-gray-100 pt-3">
+                  <p className="text-xs text-[var(--color-text-tertiary)] border-t border-[var(--color-border-secondary)] pt-3">
                     If you don&apos;t have an active email address linked to your Avalon account, or you&apos;re not allowed to change your password, please contact your manager.
                   </p>
                 </div>
@@ -433,18 +433,18 @@ function LoginInner() {
               <button
                 type="button"
                 onClick={() => goTo("credentials")}
-                className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-1 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
               >
                 <span aria-hidden="true">←</span> Back to sign in
               </button>
 
               {!magicSent ? (
                 <form onSubmit={handleMagic} className="space-y-4">
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-[var(--color-text-secondary)]">
                     Enter your registered email. We&apos;ll send you a one-time sign-in link — no password needed.
                   </p>
                   <div>
-                    <label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label htmlFor="magic-email" className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Email</label>
                     <input
                       id="magic-email"
                       type="email"
@@ -452,14 +452,14 @@ function LoginInner() {
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       placeholder="you@company.com"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     />
                   </div>
-                  {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+                  {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-lg">{error}</p>}
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                    className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                   >
                     {loading ? "Sending…" : "Send sign-in link"}
                   </button>
@@ -471,14 +471,14 @@ function LoginInner() {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="text-sm font-medium text-gray-900">Check your email</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">Check your email</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">
                     We sent a sign-in link to <strong>{email}</strong>. Click the link to sign in — it expires in 1 hour.
                   </p>
                   <button
                     type="button"
                     onClick={() => { setMagicSent(false); setError(null); }}
-                    className="text-xs text-gray-400 hover:text-gray-700 underline"
+                    className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] underline"
                   >
                     Resend link
                   </button>
@@ -490,14 +490,14 @@ function LoginInner() {
           {/* ── Force change password ───────────────────────────────────── */}
           {step === "force_change" && (
             <form onSubmit={handleForceChange} className="space-y-4">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-[var(--radius-lg)] px-4 py-3">
                 <p className="text-sm text-amber-800 font-medium">Password change required</p>
                 <p className="text-xs text-amber-700 mt-0.5">
                   Your account requires a new password before you can continue. You cannot skip this step.
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
+                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">New password</label>
                 <PasswordInput
                   required
                   minLength={8}
@@ -505,25 +505,25 @@ function LoginInner() {
                   onChange={(e) => setForceNew(e.target.value)}
                   placeholder="At least 8 characters"
                   autoFocus
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
+                <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1">Confirm new password</label>
                 <PasswordInput
                   required
                   minLength={8}
                   value={forceConfirm}
                   onChange={(e) => setForceConfirm(e.target.value)}
                   placeholder="Repeat your new password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-3 py-2 border border-[var(--color-border-primary)] rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
-              {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+              {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-lg">{error}</p>}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+                className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
               >
                 {loading ? "Saving…" : "Set new password"}
               </button>
@@ -540,19 +540,19 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)]">
           <div className="w-full max-w-sm mx-auto space-y-6 px-4">
-            <div className="h-8 w-32 mx-auto animate-pulse rounded bg-gray-200" />
+            <div className="h-8 w-32 mx-auto animate-pulse rounded bg-[var(--color-border-primary)]" />
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
-                <div className="h-10 w-full animate-pulse rounded-lg bg-gray-100" />
+                <div className="h-3 w-16 animate-pulse rounded bg-[var(--color-border-primary)]" />
+                <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--color-bg-tertiary)]" />
               </div>
               <div className="space-y-2">
-                <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
-                <div className="h-10 w-full animate-pulse rounded-lg bg-gray-100" />
+                <div className="h-3 w-20 animate-pulse rounded bg-[var(--color-border-primary)]" />
+                <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--color-bg-tertiary)]" />
               </div>
-              <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
+              <div className="h-10 w-full animate-pulse rounded-lg bg-[var(--color-border-primary)]" />
             </div>
           </div>
         </div>

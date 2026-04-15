@@ -183,8 +183,8 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Confirmed Sales</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Confirmed Sales</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {rows.length} sales · ₱{totalNetValue.toLocaleString()} net · {abandonedCount} abandoned carts
           </p>
         </div>
@@ -201,13 +201,13 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
         {canManage && (
           <select
             value={selectedAgent}
             onChange={(e) => setSelectedAgent(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
           >
             <option value="all">All agents</option>
             {agents.map((a) => (
@@ -218,36 +218,36 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : rows.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No sales recorded for this period.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No sales recorded for this period.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order ID</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Design / Type</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Net Value</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Flags</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Order ID</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Design / Type</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Qty</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Net Value</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Flags</th>
                 {canManage && <th className="px-4 py-3" />}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{format(parseISO(row.confirmed_date), "EEE d MMM")}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-700">{row.order_id}</td>
-                  <td className="px-4 py-3 text-gray-700">
+                <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]">
+                  <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">{format(parseISO(row.confirmed_date), "EEE d MMM")}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-primary)]">{row.order_id}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-primary)]">
                     {row.design && <span className="font-medium">{row.design}</span>}
-                    {row.sale_type && <span className="text-gray-400 ml-1">· {row.sale_type}</span>}
+                    {row.sale_type && <span className="text-[var(--color-text-tertiary)] ml-1">· {row.sale_type}</span>}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-700">{row.quantity}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">₱{row.net_value.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.quantity}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--color-text-primary)]">₱{row.net_value.toLocaleString()}</td>
                   <td className="px-4 py-3 flex gap-1 flex-wrap">
                     {row.abandoned_cart && (
                       <span className="text-xs bg-[#F4E2D0] text-[#D57B0E] px-2 py-0.5 rounded-full">Abandoned</span>
@@ -258,8 +258,8 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
                   </td>
                   {canManage && (
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => openEdit(row)} className="text-xs text-gray-400 hover:text-gray-700 mr-3">Edit</button>
-                      <button onClick={() => handleDelete(row.id)} className="text-xs text-gray-300 hover:text-red-400">Del</button>
+                      <button onClick={() => openEdit(row)} className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] mr-3">Edit</button>
+                      <button onClick={() => handleDelete(row.id)} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400">Del</button>
                     </td>
                   )}
                 </tr>
@@ -271,27 +271,27 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">{editRow ? "Edit Sale" : "Add Sale"}</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">{editRow ? "Edit Sale" : "Add Sale"}</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Date *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Date *</label>
                   <input
                     required
                     type="date"
                     value={form.confirmed_date}
                     onChange={(e) => setForm((f) => ({ ...f, confirmed_date: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 {canManage && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Agent *</label>
+                    <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Agent *</label>
                     <select
                       value={form.agent_id}
                       onChange={(e) => setForm((f) => ({ ...f, agent_id: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                      className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                     >
                       {agents.map((a) => (
                         <option key={a.id} value={a.id}>{agentName(a)}</option>
@@ -302,26 +302,26 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Order ID *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Order ID *</label>
                 <input
                   required
                   type="text"
                   value={form.order_id}
                   onChange={(e) => setForm((f) => ({ ...f, order_id: e.target.value }))}
                   placeholder="e.g. 1234"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
                 {/* Shopify auto-fill indicator — create mode only */}
                 {!editRow && (
                   <div className="mt-1 h-4">
                     {shopifyLookup.status === "loading" && (
-                      <span className="text-[11px] text-gray-400">Looking up Shopify order…</span>
+                      <span className="text-[11px] text-[var(--color-text-tertiary)]">Looking up Shopify order…</span>
                     )}
                     {shopifyLookup.status === "found" && (
                       <span className="text-[11px] text-emerald-600 flex items-center gap-1">
                         ✓ Filled from Shopify
                         {shopifyLookup.source === "shopify_live" && (
-                          <span className="text-gray-400">(live)</span>
+                          <span className="text-[var(--color-text-tertiary)]">(live)</span>
                         )}
                       </span>
                     )}
@@ -337,80 +337,80 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Design</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Design</label>
                   <input
                     type="text"
                     value={form.design}
                     onChange={(e) => setForm((f) => ({ ...f, design: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Sale Type</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Sale Type</label>
                   <input
                     type="text"
                     value={form.sale_type}
                     onChange={(e) => setForm((f) => ({ ...f, sale_type: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Qty</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Qty</label>
                   <input
                     type="number"
                     min={1}
                     value={form.quantity}
                     onChange={(e) => setForm((f) => ({ ...f, quantity: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Net Value (₱)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Net Value (₱)</label>
                   <input
                     type="number"
                     min={0}
                     step="0.01"
                     value={form.net_value}
                     onChange={(e) => setForm((f) => ({ ...f, net_value: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment Mode</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Payment Mode</label>
                   <input
                     type="text"
                     value={form.payment_mode}
                     onChange={(e) => setForm((f) => ({ ...f, payment_mode: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Discount Offered</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Discount Offered</label>
                   <input
                     type="text"
                     value={form.discount_offered}
                     onChange={(e) => setForm((f) => ({ ...f, discount_offered: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Ads Source</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Ads Source</label>
                   <input
                     type="text"
                     value={form.ads_source}
                     onChange={(e) => setForm((f) => ({ ...f, ads_source: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-[var(--color-text-primary)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.abandoned_cart}
@@ -421,12 +421,12 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
               </label>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
@@ -434,7 +434,7 @@ export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRo
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>

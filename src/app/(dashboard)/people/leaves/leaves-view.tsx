@@ -39,12 +39,12 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Leaves & Absences</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage leave requests, balances, and approvals.</p>
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Leaves & Absences</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Manage leave requests, balances, and approvals.</p>
       </div>
 
       {/* Tab bar — employee tabs left, manager tabs right */}
-      <div className="flex items-center justify-between border-b border-gray-200 mb-6">
+      <div className="flex items-center justify-between border-b border-[var(--color-border-primary)] mb-6">
         <div className="flex">
           {employeeTabs.map((t) => (
             <button
@@ -53,8 +53,8 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
               className={cn(
                 "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                 activeTab === t.id
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
+                  ? "border-gray-900 text-[var(--color-text-primary)]"
+                  : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               )}
             >
               {t.label}
@@ -71,8 +71,8 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
                 className={cn(
                   "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                   activeTab === t.id
-                    ? "border-gray-900 text-gray-900"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-gray-900 text-[var(--color-text-primary)]"
+                    : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 )}
               >
                 {t.label}

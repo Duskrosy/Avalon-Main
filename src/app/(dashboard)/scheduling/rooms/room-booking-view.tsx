@@ -43,10 +43,10 @@ type Props = {
 };
 
 const ROOM_COLORS = [
-  { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", fill: "bg-blue-500", light: "bg-blue-100", accent: "bg-blue-600" },
+  { bg: "bg-[var(--color-accent-light)]", border: "border-blue-200", text: "text-[var(--color-accent)]", fill: "bg-[var(--color-accent-light)]0", light: "bg-[var(--color-accent-light)]", accent: "bg-[var(--color-accent)]" },
   { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", fill: "bg-violet-500", light: "bg-violet-100", accent: "bg-violet-600" },
   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", fill: "bg-emerald-500", light: "bg-emerald-100", accent: "bg-emerald-600" },
-  { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", fill: "bg-amber-500", light: "bg-amber-100", accent: "bg-amber-600" },
+  { bg: "bg-[var(--color-warning-light)]", border: "border-[var(--color-border-primary)]", text: "text-[var(--color-warning-text)]", fill: "bg-[var(--color-warning-light)]0", light: "bg-[var(--color-warning-light)]", accent: "bg-amber-600" },
   { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", fill: "bg-rose-500", light: "bg-rose-100", accent: "bg-rose-600" },
   { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-700", fill: "bg-cyan-500", light: "bg-cyan-100", accent: "bg-cyan-600" },
 ];
@@ -61,7 +61,7 @@ function Avatar({ user, size = "sm" }: { user: User; size?: "sm" | "md" }) {
     return <img src={user.avatar_url} alt={name} className={`${cls} rounded-full object-cover shrink-0`} />;
   }
   return (
-    <div className={`${cls} rounded-full bg-gray-200 flex items-center justify-center font-medium text-gray-600 shrink-0`}>
+    <div className={`${cls} rounded-full bg-[var(--color-border-primary)] flex items-center justify-center font-medium text-[var(--color-text-secondary)] shrink-0`}>
       {initials}
     </div>
   );
@@ -105,20 +105,20 @@ function UserPicker({
     <div className="relative" ref={ref}>
       <div
         onClick={() => setOpen(!open)}
-        className="border border-gray-200 rounded-xl px-3 py-2.5 cursor-pointer min-h-[42px]"
+        className="border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 cursor-pointer min-h-[42px]"
       >
         {selected.length === 0 ? (
-          <span className="text-sm text-gray-400">Invite people (optional)</span>
+          <span className="text-sm text-[var(--color-text-tertiary)]">Invite people (optional)</span>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {selected.map((id) => {
               const user = allUsers.find((u) => u.id === id);
               if (!user) return null;
               return (
-                <span key={id} className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 pl-1 pr-2 py-0.5 rounded-full">
+                <span key={id} className="inline-flex items-center gap-1.5 text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] pl-1 pr-2 py-0.5 rounded-full">
                   <Avatar user={user} size="sm" />
                   {user.first_name}
-                  <button type="button" onClick={(e) => { e.stopPropagation(); toggle(id); }} className="text-gray-400 hover:text-gray-600 ml-0.5">&times;</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); toggle(id); }} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] ml-0.5">&times;</button>
                 </span>
               );
             })}
@@ -126,33 +126,33 @@ function UserPicker({
         )}
       </div>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-52 overflow-hidden">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute z-20 mt-1 w-full bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] max-h-52 overflow-hidden">
+          <div className="p-2 border-b border-[var(--color-border-secondary)]">
             <input
               type="text"
               placeholder="Search people..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-sm px-3 py-1.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="w-full text-sm px-3 py-1.5 border border-[var(--color-border-primary)] rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400"
               autoFocus
             />
           </div>
           <div className="max-h-40 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="text-xs text-gray-400 p-3 text-center">No one found</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] p-3 text-center">No one found</p>
             ) : (
               filtered.map((user) => (
                 <button
                   type="button"
                   key={user.id}
                   onClick={() => toggle(user.id)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                    selected.includes(user.id) ? "bg-blue-50" : ""
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] ${
+                    selected.includes(user.id) ? "bg-[var(--color-accent-light)]" : ""
                   }`}
                 >
                   <Avatar user={user} />
                   <span className="flex-1">{user.first_name} {user.last_name}</span>
-                  {selected.includes(user.id) && <span className="text-blue-500 font-bold">&#10003;</span>}
+                  {selected.includes(user.id) && <span className="text-[var(--color-accent)] font-bold">&#10003;</span>}
                 </button>
               ))
             )}
@@ -469,12 +469,12 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Room Booking</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Room Booking</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
         </div>
         <div className="flex gap-2">
           {isOps && (
-            <button onClick={() => setShowAddRoom(true)} className="text-sm px-4 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors">
+            <button onClick={() => setShowAddRoom(true)} className="text-sm px-4 py-2 border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors">
               + Add Room
             </button>
           )}
@@ -485,19 +485,19 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
         {/* Left sidebar */}
         <div className="w-72 shrink-0 space-y-5">
           {/* Date navigation */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-4">
             <div className="flex items-center justify-between mb-3">
-              <button onClick={() => handleDateChange(subDays(selectedDate, 7))} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+              <button onClick={() => handleDateChange(subDays(selectedDate, 7))} className="p-1.5 hover:bg-[var(--color-surface-active)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
               </button>
-              <span className="text-sm font-medium text-gray-800">{format(weekStart, "MMM yyyy")}</span>
-              <button onClick={() => handleDateChange(addDays(selectedDate, 7))} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+              <span className="text-sm font-medium text-[var(--color-text-primary)]">{format(weekStart, "MMM yyyy")}</span>
+              <button onClick={() => handleDateChange(addDays(selectedDate, 7))} className="p-1.5 hover:bg-[var(--color-surface-active)] rounded-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
               </button>
             </div>
             <div className="grid grid-cols-7 gap-1">
               {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-                <div key={i} className="text-center text-xs text-gray-400 font-medium py-1">{d}</div>
+                <div key={i} className="text-center text-xs text-[var(--color-text-tertiary)] font-medium py-1">{d}</div>
               ))}
               {weekDates.map((d) => {
                 const isSelected = isSameDay(d, selectedDate);
@@ -508,8 +508,8 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                     key={d.toISOString()}
                     onClick={() => handleDateChange(d)}
                     disabled={isPast}
-                    className={`w-9 h-9 rounded-xl text-sm font-medium transition-all flex items-center justify-center ${
-                      isSelected ? "bg-gray-900 text-white shadow-sm" : isToday ? "bg-blue-50 text-blue-700" : isPast ? "text-gray-300" : "text-gray-700 hover:bg-gray-100"
+                    className={`w-9 h-9 rounded-[var(--radius-lg)] text-sm font-medium transition-all flex items-center justify-center ${
+                      isSelected ? "bg-[var(--color-text-primary)] text-white shadow-[var(--shadow-sm)]" : isToday ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]" : isPast ? "text-[var(--color-text-tertiary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-active)]"
                     }`}
                   >
                     {format(d, "d")}
@@ -518,15 +518,15 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
               })}
             </div>
             {!isSameDay(selectedDate, today) && (
-              <button onClick={() => handleDateChange(today)} className="mt-3 w-full text-xs text-blue-600 hover:text-blue-800 font-medium">
+              <button onClick={() => handleDateChange(today)} className="mt-3 w-full text-xs text-[var(--color-accent)] hover:text-blue-800 font-medium">
                 Go to today
               </button>
             )}
           </div>
 
           {/* Room selector */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Rooms</h3>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-4">
+            <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">Rooms</h3>
             <div className="space-y-2">
               {roomList.map((room) => {
                 const color = roomColor(room.id);
@@ -539,25 +539,25 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                   <button
                     key={room.id}
                     onClick={() => { setSelectedRoom(room); setSelectedSlots(new Set()); setMultiSelect(false); }}
-                    className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
-                      isActive ? `${color.bg} ${color.border}` : "border-transparent hover:bg-gray-50"
+                    className={`w-full text-left p-3 rounded-[var(--radius-lg)] border-2 transition-all ${
+                      isActive ? `${color.bg} ${color.border}` : "border-transparent hover:bg-[var(--color-surface-hover)]"
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-2.5 h-2.5 rounded-full ${color.fill}`} />
-                        <span className={`text-sm font-medium ${isActive ? color.text : "text-gray-800"}`}>{room.name}</span>
+                        <span className={`text-sm font-medium ${isActive ? color.text : "text-[var(--color-text-primary)]"}`}>{room.name}</span>
                       </div>
                       {isOps && isActive && (
                         <button
                           onClick={(e) => { e.stopPropagation(); setShowRoomSettings({ ...room }); }}
-                          className="text-xs text-gray-400 hover:text-gray-600"
+                          className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                         >
                           &#9881;
                         </button>
                       )}
                     </div>
-                    <div className="ml-4.5 mt-1 flex items-center gap-2 text-xs text-gray-400">
+                    <div className="ml-4.5 mt-1 flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
                       <span>{room.capacity ? `${room.capacity} seats` : "No limit"}</span>
                       <span>&middot;</span>
                       <span>{Math.round(openH)}am–{closeH > 12 ? `${Math.round(closeH - 12)}pm` : `${Math.round(closeH)}am`}</span>
@@ -565,7 +565,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                       <span>{room.slot_duration}min</span>
                     </div>
                     {bookingCount > 0 && (
-                      <p className="ml-4.5 mt-1 text-xs text-gray-400">{bookingCount} booking{bookingCount !== 1 ? "s" : ""} today</p>
+                      <p className="ml-4.5 mt-1 text-xs text-[var(--color-text-tertiary)]">{bookingCount} booking{bookingCount !== 1 ? "s" : ""} today</p>
                     )}
                   </button>
                 );
@@ -576,15 +576,15 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
 
         {/* Right content — timeline */}
         <div className="flex-1 min-w-0 flex flex-col">
-          <div className="bg-white rounded-2xl border border-gray-200 flex-1 overflow-hidden flex flex-col">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] flex-1 overflow-hidden flex flex-col">
             {/* Room header */}
             {selectedRoom && (
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-5 py-3 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${roomColor(selectedRoom.id).fill}`} />
-                  <h2 className="font-semibold text-gray-900">{selectedRoom.name}</h2>
+                  <h2 className="font-semibold text-[var(--color-text-primary)]">{selectedRoom.name}</h2>
                 </div>
-                <p className="text-xs text-gray-400">Click a slot to book</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">Click a slot to book</p>
               </div>
             )}
 
@@ -595,10 +595,10 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                   {Array.from({ length: 8 }).map((_, i) => (
                     <div key={i} className="flex items-stretch">
                       <div className="w-20 shrink-0 pr-3 py-2">
-                        {i % 2 === 0 && <div className="h-3 w-12 animate-pulse rounded bg-gray-200" />}
+                        {i % 2 === 0 && <div className="h-3 w-12 animate-pulse rounded bg-[var(--color-border-primary)]" />}
                       </div>
                       <div className="flex-1 py-1">
-                        <div className="h-8 animate-pulse rounded-lg bg-gray-100" />
+                        <div className="h-8 animate-pulse rounded-lg bg-[var(--color-bg-tertiary)]" />
                       </div>
                     </div>
                   ))}
@@ -624,19 +624,19 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                       <div key={slot.index} className="flex items-stretch group">
                         {/* Time */}
                         <div className="w-20 shrink-0 pr-3 py-2">
-                          {isHour && <span className="text-xs text-gray-400 font-medium">{minutesToLabel(slot.startMin)}</span>}
+                          {isHour && <span className="text-xs text-[var(--color-text-tertiary)] font-medium">{minutesToLabel(slot.startMin)}</span>}
                         </div>
 
                         {/* Slot */}
                         <div
                           onClick={() => handleSlotClick(slot.index)}
                           className={`
-                            flex-1 py-2.5 px-4 rounded-xl cursor-pointer transition-all relative min-h-[44px] flex items-center
+                            flex-1 py-2.5 px-4 rounded-[var(--radius-lg)] cursor-pointer transition-all relative min-h-[44px] flex items-center
                             ${isBooked
                               ? `${color.light} hover:opacity-90`
                               : isSelected
-                                ? `${color.bg} border-2 ${color.border} shadow-sm`
-                                : "hover:bg-gray-50 border-2 border-transparent hover:border-gray-200"
+                                ? `${color.bg} border-2 ${color.border} shadow-[var(--shadow-sm)]`
+                                : "hover:bg-[var(--color-surface-hover)] border-2 border-transparent hover:border-[var(--color-border-primary)]"
                             }
                           `}
                         >
@@ -645,7 +645,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                               <div className={`w-1 h-8 rounded-full ${color.fill} shrink-0`} />
                               <div className="flex-1 min-w-0">
                                 <p className={`text-sm font-medium ${color.text} truncate`}>{booking.title}</p>
-                                <p className="text-xs text-gray-400 truncate">
+                                <p className="text-xs text-[var(--color-text-tertiary)] truncate">
                                   {format(parseISO(booking.start_time), "h:mm a")} – {format(parseISO(booking.end_time), "h:mm a")}
                                   {booking.booked_by_profile && ` · ${booking.booked_by_profile.first_name}`}
                                 </p>
@@ -668,7 +668,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                             </span>
                           )}
                           {!isBooked && !isSelected && (
-                            <span className="text-xs text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-xs text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity">
                               {minutesToLabel(slot.startMin)} — Available
                             </span>
                           )}
@@ -678,24 +678,24 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400 text-center py-12">Select a room to see availability</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] text-center py-12">Select a room to see availability</p>
               )}
             </div>
           </div>
 
           {/* Sticky action bar — always visible at bottom */}
           <div className="sticky bottom-0 z-10 mt-3">
-            <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-lg">
+            <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-3 shadow-[var(--shadow-lg)]">
               {selectedSlots.size > 0 && selectedRange ? (
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-[var(--color-text-primary)]">
                       {selectedRange.startLabel} – {selectedRange.endLabel}
-                      <span className="text-gray-400 ml-1.5">({durationLabel(selectedRange.duration)})</span>
+                      <span className="text-[var(--color-text-tertiary)] ml-1.5">({durationLabel(selectedRange.duration)})</span>
                     </p>
                     <button
                       onClick={() => { setSelectedSlots(new Set()); setMultiSelect(false); }}
-                      className="text-xs text-gray-400 hover:text-gray-600"
+                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                     >
                       Clear
                     </button>
@@ -708,8 +708,8 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                         onClick={() => expandSelection(opt.slots)}
                         className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                           selectedSlots.size === opt.slots
-                            ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
-                            : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                            ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] font-medium"
+                            : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                         }`}
                       >
                         {opt.label}
@@ -720,15 +720,15 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                       onClick={() => setMultiSelect(!multiSelect)}
                       className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                         multiSelect
-                          ? "bg-amber-50 border-amber-200 text-amber-700 font-medium"
-                          : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                          ? "bg-[var(--color-warning-light)] border-[var(--color-border-primary)] text-[var(--color-warning-text)] font-medium"
+                          : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}
                     >
                       {multiSelect ? "Multi-select on" : "Custom"}
                     </button>
                     <button
                       onClick={openBookModal}
-                      className="text-sm px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
+                      className="text-sm px-5 py-2 bg-[var(--color-accent)] text-white rounded-[var(--radius-lg)] hover:bg-[var(--color-accent-hover)] transition-colors font-medium shadow-[var(--shadow-sm)]"
                     >
                       Book
                     </button>
@@ -736,7 +736,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                 </div>
               ) : (
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-[var(--color-text-tertiary)]">
                     {selectedRoom ? "Select a time slot above to get started" : "Pick a room from the sidebar"}
                   </p>
                   {selectedRoom && (
@@ -744,8 +744,8 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                       onClick={() => setMultiSelect(!multiSelect)}
                       className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                         multiSelect
-                          ? "bg-amber-50 border-amber-200 text-amber-700 font-medium"
-                          : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                          ? "bg-[var(--color-warning-light)] border-[var(--color-border-primary)] text-[var(--color-warning-text)] font-medium"
+                          : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}
                     >
                       {multiSelect ? "Multi-select on" : "Select multiple slots"}
@@ -761,15 +761,15 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
       {/* ─── BOOKING CONFIRMATION MODAL ──────────────────────────────────────── */}
       {showBookModal && selectedRange && selectedRoom && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowBookModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center gap-3 mb-5">
-                <div className={`w-10 h-10 rounded-xl ${roomColor(selectedRoom.id).light} flex items-center justify-center`}>
+                <div className={`w-10 h-10 rounded-[var(--radius-lg)] ${roomColor(selectedRoom.id).light} flex items-center justify-center`}>
                   <div className={`w-4 h-4 rounded-full ${roomColor(selectedRoom.id).fill}`} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">Confirm Booking</h2>
-                  <p className="text-sm text-gray-500">
+                  <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Confirm Booking</h2>
+                  <p className="text-sm text-[var(--color-text-secondary)]">
                     {selectedRoom.name} &middot; {format(selectedDate, "EEE, MMM d")} &middot; {selectedRange.startLabel} – {selectedRange.endLabel}
                   </p>
                 </div>
@@ -777,20 +777,20 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
 
               <form onSubmit={handleBook} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Meeting title</label>
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">Meeting title</label>
                   <input
                     required
                     type="text"
                     placeholder="e.g., Sprint Planning"
                     value={formData.title}
                     onChange={(e) => setFormData((f) => ({ ...f, title: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Invite people</label>
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">Invite people</label>
                   <UserPicker
                     allUsers={allUsers}
                     selected={invitees}
@@ -800,39 +800,39 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                  <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">Notes</label>
                   <textarea
                     rows={2}
                     placeholder="Agenda, links, etc. (optional)"
                     value={formData.notes}
                     onChange={(e) => setFormData((f) => ({ ...f, notes: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
                   />
                 </div>
 
                 {/* Summary */}
-                <div className="bg-gray-50 rounded-xl p-3 flex items-center gap-3">
-                  <div className="text-xs text-gray-500 space-y-0.5">
-                    <p><span className="font-medium text-gray-700">Duration:</span> {durationLabel(selectedRange.duration)}</p>
-                    <p><span className="font-medium text-gray-700">Room:</span> {selectedRoom.name}{selectedRoom.capacity ? ` (${selectedRoom.capacity} seats)` : ""}</p>
-                    {invitees.length > 0 && <p><span className="font-medium text-gray-700">Invitees:</span> {invitees.length} people</p>}
+                <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3 flex items-center gap-3">
+                  <div className="text-xs text-[var(--color-text-secondary)] space-y-0.5">
+                    <p><span className="font-medium text-[var(--color-text-primary)]">Duration:</span> {durationLabel(selectedRange.duration)}</p>
+                    <p><span className="font-medium text-[var(--color-text-primary)]">Room:</span> {selectedRoom.name}{selectedRoom.capacity ? ` (${selectedRoom.capacity} seats)` : ""}</p>
+                    {invitees.length > 0 && <p><span className="font-medium text-[var(--color-text-primary)]">Invitees:</span> {invitees.length} people</p>}
                   </div>
                 </div>
 
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {error && <p className="text-sm text-[var(--color-error)]">{error}</p>}
 
                 <div className="flex gap-3 pt-1">
                   <button
                     type="button"
                     onClick={() => setShowBookModal(false)}
-                    className="flex-1 border border-gray-200 text-gray-600 text-sm py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
+                    className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-surface-hover)] transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={creating || !formData.title.trim()}
-                    className="flex-1 bg-blue-600 text-white text-sm py-2.5 rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors font-medium"
+                    className="flex-1 bg-[var(--color-accent)] text-white text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-accent-hover)] disabled:opacity-50 transition-colors font-medium"
                   >
                     {creating ? "Booking..." : "Confirm Booking"}
                   </button>
@@ -846,9 +846,9 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
       {/* ─── BOOKING DETAIL MODAL ────────────────────────────────────────────── */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDetailModal(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">{showDetailModal.title}</h3>
-            <p className="text-sm text-gray-500">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-[var(--color-text-primary)] mb-1">{showDetailModal.title}</h3>
+            <p className="text-sm text-[var(--color-text-secondary)]">
               {format(parseISO(showDetailModal.start_time), "h:mm a")} – {format(parseISO(showDetailModal.end_time), "h:mm a")}
               {showDetailModal.room && ` · ${showDetailModal.room.name}`}
             </p>
@@ -857,22 +857,22 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
               <div className="flex items-center gap-2 mt-4">
                 <Avatar user={showDetailModal.booked_by_profile} size="md" />
                 <div>
-                  <p className="text-sm font-medium text-gray-800">
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">
                     {showDetailModal.booked_by_profile.first_name} {showDetailModal.booked_by_profile.last_name}
                   </p>
-                  <p className="text-xs text-gray-400">Organizer</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Organizer</p>
                 </div>
               </div>
             )}
 
             {showDetailModal.invitees && showDetailModal.invitees.length > 0 && (
               <div className="mt-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Invitees</p>
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">Invitees</p>
                 <div className="space-y-2">
                   {showDetailModal.invitees.map((inv) => inv.profile && (
                     <div key={inv.id} className="flex items-center gap-2">
                       <Avatar user={inv.profile} size="sm" />
-                      <span className="text-sm text-gray-700">{inv.profile.first_name} {inv.profile.last_name}</span>
+                      <span className="text-sm text-[var(--color-text-primary)]">{inv.profile.first_name} {inv.profile.last_name}</span>
                     </div>
                   ))}
                 </div>
@@ -880,17 +880,17 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
             )}
 
             {showDetailModal.notes && (
-              <div className="mt-4 bg-gray-50 rounded-xl p-3">
-                <p className="text-sm text-gray-600">{showDetailModal.notes}</p>
+              <div className="mt-4 bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3">
+                <p className="text-sm text-[var(--color-text-secondary)]">{showDetailModal.notes}</p>
               </div>
             )}
 
             <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowDetailModal(null)} className="flex-1 border border-gray-200 text-gray-600 text-sm py-2.5 rounded-xl hover:bg-gray-50">
+              <button onClick={() => setShowDetailModal(null)} className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-surface-hover)]">
                 Close
               </button>
               {(isOps || showDetailModal.booked_by_profile?.id === currentUserId) && (
-                <button onClick={() => handleCancel(showDetailModal.id)} className="flex-1 border border-red-200 text-red-600 text-sm py-2.5 rounded-xl hover:bg-red-50">
+                <button onClick={() => handleCancel(showDetailModal.id)} className="flex-1 border border-red-200 text-[var(--color-error)] text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-error-light)]">
                   Cancel Booking
                 </button>
               )}
@@ -902,41 +902,41 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
       {/* ─── ROOM SETTINGS MODAL (OPS) ───────────────────────────────────────── */}
       {showRoomSettings && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowRoomSettings(null)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Room Settings</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Room Settings</h2>
             <form onSubmit={handleSaveRoomSettings} className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Opens at</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Opens at</label>
                   <input
                     type="time"
                     value={showRoomSettings.open_time.slice(0, 5)}
                     onChange={(e) => setShowRoomSettings((r) => r ? { ...r, open_time: e.target.value } : null)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Closes at</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Closes at</label>
                   <input
                     type="time"
                     value={showRoomSettings.close_time.slice(0, 5)}
                     onChange={(e) => setShowRoomSettings((r) => r ? { ...r, close_time: e.target.value } : null)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Session length</label>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Session length</label>
                 <div className="flex gap-2">
                   {[15, 30, 60].map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => setShowRoomSettings((r) => r ? { ...r, slot_duration: d } : null)}
-                      className={`flex-1 py-2 text-sm rounded-xl border-2 transition-colors ${
+                      className={`flex-1 py-2 text-sm rounded-[var(--radius-lg)] border-2 transition-colors ${
                         showRoomSettings.slot_duration === d
-                          ? "bg-blue-50 border-blue-200 text-blue-700 font-medium"
-                          : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                          ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] font-medium"
+                          : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}
                     >
                       {d} min
@@ -946,30 +946,30 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Capacity</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Capacity</label>
                   <input
                     type="number"
                     min="1"
                     value={showRoomSettings.capacity ?? ""}
                     onChange={(e) => setShowRoomSettings((r) => r ? { ...r, capacity: e.target.value ? parseInt(e.target.value) : null } : null)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Location</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Location</label>
                   <input
                     type="text"
                     value={showRoomSettings.location ?? ""}
                     onChange={(e) => setShowRoomSettings((r) => r ? { ...r, location: e.target.value || null } : null)}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowRoomSettings(null)} className="flex-1 border border-gray-200 text-gray-600 text-sm py-2.5 rounded-xl hover:bg-gray-50">
+                <button type="button" onClick={() => setShowRoomSettings(null)} className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-surface-hover)]">
                   Cancel
                 </button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white text-sm py-2.5 rounded-xl hover:bg-blue-700 font-medium">
+                <button type="submit" className="flex-1 bg-[var(--color-accent)] text-white text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-accent-hover)] font-medium">
                   Save
                 </button>
               </div>
@@ -981,33 +981,33 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
       {/* ─── ADD ROOM MODAL (OPS) ────────────────────────────────────────────── */}
       {showAddRoom && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAddRoom(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Room</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Add Room</h2>
             <form onSubmit={handleAddRoom} className="space-y-3">
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Name *</label>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Name *</label>
                 <input required type="text" value={roomForm.name} onChange={(e) => setRoomForm((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Opens at</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Opens at</label>
                   <input type="time" value={roomForm.open_time} onChange={(e) => setRoomForm((f) => ({ ...f, open_time: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Closes at</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Closes at</label>
                   <input type="time" value={roomForm.close_time} onChange={(e) => setRoomForm((f) => ({ ...f, close_time: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
                 </div>
               </div>
               <div>
-                <label className="block text-xs text-gray-500 mb-1">Session length</label>
+                <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Session length</label>
                 <div className="flex gap-2">
                   {[15, 30, 60].map((d) => (
                     <button key={d} type="button" onClick={() => setRoomForm((f) => ({ ...f, slot_duration: d }))}
-                      className={`flex-1 py-2 text-sm rounded-xl border-2 transition-colors ${
-                        roomForm.slot_duration === d ? "bg-blue-50 border-blue-200 text-blue-700 font-medium" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                      className={`flex-1 py-2 text-sm rounded-[var(--radius-lg)] border-2 transition-colors ${
+                        roomForm.slot_duration === d ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] font-medium" : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}>
                       {d} min
                     </button>
@@ -1016,19 +1016,19 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Capacity</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Capacity</label>
                   <input type="number" min="1" value={roomForm.capacity} onChange={(e) => setRoomForm((f) => ({ ...f, capacity: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">Location</label>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Location</label>
                   <input type="text" value={roomForm.location} onChange={(e) => setRoomForm((f) => ({ ...f, location: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]" />
                 </div>
               </div>
               <div className="flex gap-3 pt-1">
-                <button type="button" onClick={() => setShowAddRoom(false)} className="flex-1 border border-gray-200 text-gray-600 text-sm py-2.5 rounded-xl hover:bg-gray-50">Cancel</button>
-                <button type="submit" className="flex-1 bg-blue-600 text-white text-sm py-2.5 rounded-xl hover:bg-blue-700 font-medium">Add Room</button>
+                <button type="button" onClick={() => setShowAddRoom(false)} className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-surface-hover)]">Cancel</button>
+                <button type="submit" className="flex-1 bg-[var(--color-accent)] text-white text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-accent-hover)] font-medium">Add Room</button>
               </div>
             </form>
           </div>

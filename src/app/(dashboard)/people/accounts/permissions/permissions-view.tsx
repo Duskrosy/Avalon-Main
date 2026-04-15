@@ -53,9 +53,9 @@ const TIER_LABELS: Record<number, string> = {
 
 const TIER_COLORS: Record<number, string> = {
   0: "bg-purple-100 text-purple-700",
-  1: "bg-blue-100 text-blue-700",
-  2: "bg-green-100 text-green-700",
-  3: "bg-gray-100 text-gray-600",
+  1: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  2: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  3: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
   4: "bg-yellow-100 text-yellow-700",
   5: "bg-orange-100 text-orange-700",
 };
@@ -170,7 +170,7 @@ function Initials({ name }: { name: string }) {
   const parts = name.split(" ");
   const letters = (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
   return (
-    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+    <div className="w-8 h-8 rounded-full bg-[var(--color-border-primary)] flex items-center justify-center text-xs font-semibold text-[var(--color-text-secondary)] shrink-0">
       {letters.toUpperCase()}
     </div>
   );
@@ -178,7 +178,7 @@ function Initials({ name }: { name: string }) {
 
 function TierBadge({ tier }: { tier: number }) {
   return (
-    <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", TIER_COLORS[tier] ?? "bg-gray-100 text-gray-500")}>
+    <span className={cn("px-1.5 py-0.5 rounded text-xs font-medium", TIER_COLORS[tier] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]")}>
       T{tier}
     </span>
   );
@@ -210,7 +210,7 @@ function OverrideToggle({
         onClick={() => onChange(segValue)}
         className={cn(
           "px-2.5 py-1 text-xs font-medium transition-colors",
-          active ? activeClass : "text-gray-400 hover:text-gray-600 hover:bg-gray-50",
+          active ? activeClass : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]",
           hasPending && "ring-1 ring-amber-400 ring-offset-0"
         )}
       >
@@ -221,12 +221,12 @@ function OverrideToggle({
 
   return (
     <div className={cn(
-      "inline-flex rounded-lg border divide-x overflow-hidden",
-      hasPending ? "border-amber-400 divide-amber-400" : "border-gray-200 divide-gray-200"
+      "inline-flex rounded-[var(--radius-md)] border divide-x overflow-hidden",
+      hasPending ? "border-amber-400 divide-amber-400" : "border-[var(--color-border-primary)] divide-[var(--color-border-primary)]"
     )}>
-      {btn("Inherit", null, "bg-gray-100 text-gray-700", "·")}
-      {btn("Grant", true, "bg-green-50 text-green-700", "✓")}
-      {btn("Deny", false, "bg-red-50 text-red-700", "✕")}
+      {btn("Inherit", null, "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]", "·")}
+      {btn("Grant", true, "bg-[var(--color-success-light)] text-[var(--color-success)]", "✓")}
+      {btn("Deny", false, "bg-[var(--color-error-light)] text-[var(--color-error)]", "✕")}
     </div>
   );
 }
@@ -250,21 +250,21 @@ function PageGroupSection({
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-gray-100 rounded-xl overflow-hidden">
+    <div className="border border-[var(--color-border-secondary)] rounded-[var(--radius-lg)] overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-surface-active)] transition-colors"
       >
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+        <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
           <span>{GROUP_ICONS[group.slug] ?? "·"}</span>
           <span>{group.name}</span>
-          <span className="text-xs text-gray-400 font-normal">
+          <span className="text-xs text-[var(--color-text-tertiary)] font-normal">
             {group.items.length} {group.items.length === 1 ? "page" : "pages"}
           </span>
         </div>
         <svg
-          className={cn("w-4 h-4 text-gray-400 transition-transform", open && "rotate-180")}
+          className={cn("w-4 h-4 text-[var(--color-text-tertiary)] transition-transform", open && "rotate-180")}
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         >
           <path d="M6 9l6 6 6-6" />
@@ -278,15 +278,15 @@ function PageGroupSection({
             const savedVal = savedOverrides[item.slug]; // boolean or undefined
             const pendingVal = pending[item.slug]; // boolean | null | undefined
             return (
-              <div key={item.slug} className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors">
+              <div key={item.slug} className="flex items-center justify-between px-4 py-3 hover:bg-[var(--color-surface-hover)] transition-colors">
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-2 h-2 rounded-full shrink-0",
                     isDefault ? "bg-green-400" : "bg-gray-300"
                   )} title={isDefault ? "Visible by default" : "Hidden by default"} />
                   <div>
-                    <p className="text-sm text-gray-900">{item.name}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-sm text-[var(--color-text-primary)]">{item.name}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">
                       {isDefault ? "Visible by default" : "Hidden by default"}
                     </p>
                   </div>
@@ -439,8 +439,8 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
     <div>
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Permissions</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Permissions</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           Grant or restrict access to specific pages for any person, role, or department.
         </p>
       </div>
@@ -448,10 +448,10 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
       <div className="flex gap-5 items-start">
 
         {/* ── LEFT PANEL ── */}
-        <div className="w-72 shrink-0 bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col" style={{ height: "calc(100vh - 180px)" }}>
+        <div className="w-72 shrink-0 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden flex flex-col" style={{ height: "calc(100vh - 180px)" }}>
 
           {/* Tab bar */}
-          <div className="flex border-b border-gray-100 shrink-0">
+          <div className="flex border-b border-[var(--color-border-secondary)] shrink-0">
             {(["people", "role", "dept"] as const).map((tab) => (
               <button
                 key={tab}
@@ -459,8 +459,8 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                 className={cn(
                   "flex-1 py-2.5 text-xs font-medium transition-colors",
                   activeTab === tab
-                    ? "text-gray-900 border-b-2 border-gray-900"
-                    : "text-gray-400 hover:text-gray-700"
+                    ? "text-[var(--color-text-primary)] border-b-2 border-gray-900"
+                    : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                 )}
               >
                 {tab === "people" ? "People" : tab === "role" ? "By Role" : "By Dept"}
@@ -470,13 +470,13 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
 
           {/* Search (people tab only) */}
           {activeTab === "people" && (
-            <div className="px-3 py-2 border-b border-gray-100 shrink-0">
+            <div className="px-3 py-2 border-b border-[var(--color-border-secondary)] shrink-0">
               <input
                 type="search"
                 placeholder="Search people…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
           )}
@@ -488,7 +488,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
             {activeTab === "people" && (
               <>
                 {filteredUsers.length === 0 && (
-                  <p className="px-4 py-6 text-sm text-gray-400 text-center">No users found</p>
+                  <p className="px-4 py-6 text-sm text-[var(--color-text-tertiary)] text-center">No users found</p>
                 )}
                 {filteredUsers.map((user) => {
                   const isSelected = selectedTarget?.type === "user" && selectedTarget.user.id === user.id;
@@ -497,24 +497,24 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                       key={user.id}
                       onClick={() => selectTarget({ type: "user", user })}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 transition-colors",
-                        isSelected && "bg-gray-50"
+                        "w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-[var(--color-surface-hover)] transition-colors",
+                        isSelected && "bg-[var(--color-bg-secondary)]"
                       )}
                     >
                       <Initials name={`${user.first_name} ${user.last_name}`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                          <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                             {user.first_name} {user.last_name}
                           </p>
                           <TierBadge tier={user.role.tier} />
                         </div>
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-[var(--color-text-tertiary)] truncate">
                           {user.department?.name ?? "No department"}
                         </p>
                       </div>
                       {isSelected && (
-                        <div className="w-1.5 h-6 rounded-full bg-gray-900 shrink-0" />
+                        <div className="w-1.5 h-6 rounded-full bg-[var(--color-text-primary)] shrink-0" />
                       )}
                     </button>
                   );
@@ -531,18 +531,18 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                   key={role.id}
                   onClick={() => selectTarget({ type: "role", role })}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors",
-                    isSelected && "bg-gray-50"
+                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface-hover)] transition-colors",
+                    isSelected && "bg-[var(--color-bg-secondary)]"
                   )}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-900">{role.name}</p>
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">{role.name}</p>
                       <TierBadge tier={role.tier} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">{count} {count === 1 ? "user" : "users"}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{count} {count === 1 ? "user" : "users"}</p>
                   </div>
-                  {isSelected && <div className="w-1.5 h-6 rounded-full bg-gray-900 shrink-0" />}
+                  {isSelected && <div className="w-1.5 h-6 rounded-full bg-[var(--color-text-primary)] shrink-0" />}
                 </button>
               );
             })}
@@ -556,15 +556,15 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                   key={dept.id}
                   onClick={() => selectTarget({ type: "dept", dept })}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors",
-                    isSelected && "bg-gray-50"
+                    "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-[var(--color-surface-hover)] transition-colors",
+                    isSelected && "bg-[var(--color-bg-secondary)]"
                   )}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{dept.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{count} {count === 1 ? "user" : "users"}</p>
+                    <p className="text-sm font-medium text-[var(--color-text-primary)]">{dept.name}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{count} {count === 1 ? "user" : "users"}</p>
                   </div>
-                  {isSelected && <div className="w-1.5 h-6 rounded-full bg-gray-900 shrink-0" />}
+                  {isSelected && <div className="w-1.5 h-6 rounded-full bg-[var(--color-text-primary)] shrink-0" />}
                 </button>
               );
             })}
@@ -575,30 +575,30 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
         {/* ── RIGHT PANEL ── */}
         <div className="flex-1 min-w-0">
           {!selectedTarget ? (
-            <div className="bg-white border border-gray-200 rounded-xl flex flex-col items-center justify-center py-20 text-center">
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] flex flex-col items-center justify-center py-20 text-center">
               <div className="text-4xl mb-3">🔐</div>
-              <p className="text-sm font-medium text-gray-700">Select a target</p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">Select a target</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
                 Choose a person, role, or department from the left panel
               </p>
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
 
               {/* Right panel header */}
-              <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100">
+              <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--color-border-secondary)]">
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider font-medium mb-0.5">
+                  <p className="text-xs text-[var(--color-text-tertiary)] uppercase tracking-wider font-medium mb-0.5">
                     {selectedTarget.type === "user" ? "User" : selectedTarget.type === "role" ? "Role" : "Department"}
                   </p>
-                  <h2 className="text-lg font-semibold text-gray-900">{targetLabel(selectedTarget)}</h2>
+                  <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{targetLabel(selectedTarget)}</h2>
                   {selectedTarget.type === "user" && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                       {selectedTarget.user.email} · {selectedTarget.user.department?.name ?? "No dept"} · {TIER_LABELS[selectedTarget.user.role.tier] ?? selectedTarget.user.role.name}
                     </p>
                   )}
                   {selectedTarget.type !== "user" && (
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                       Applies to {targetIds.length} {targetIds.length === 1 ? "user" : "users"}
                     </p>
                   )}
@@ -607,10 +607,10 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                   onClick={handleSave}
                   disabled={!hasPendingChanges || saving || isBlocked}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "px-4 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
                     hasPendingChanges && !saving && !isBlocked
-                      ? "bg-gray-900 text-white hover:bg-gray-700"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                      ? "bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)]"
+                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] cursor-not-allowed"
                   )}
                 >
                   {saving ? "Saving…" : "Save Changes"}
@@ -620,13 +620,13 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
               {/* Super admin blocker */}
               {isBlocked && (
                 <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                    <svg className="w-6 h-6 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <div className="w-12 h-12 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center mb-4">
+                    <svg className="w-6 h-6 text-[var(--color-text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     </svg>
                   </div>
-                  <p className="text-sm font-semibold text-gray-800 mb-1">Protected — cannot be modified</p>
-                  <p className="text-sm text-gray-500 max-w-xs">
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Protected — cannot be modified</p>
+                  <p className="text-sm text-[var(--color-text-secondary)] max-w-xs">
                     Super Admin accounts have unrestricted access by design. Their page visibility cannot be overridden.
                   </p>
                 </div>
@@ -634,13 +634,13 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
 
               {/* Info banners */}
               {!isBlocked && selectedTarget.type !== "user" && mixedOverrides && (
-                <div className="mx-5 mt-4 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                <div className="mx-5 mt-4 px-4 py-3 bg-[var(--color-warning-light)] border border-[var(--color-border-primary)] rounded-[var(--radius-md)] text-sm text-[var(--color-warning-text)]">
                   <strong>Note:</strong> Some users in this group have individual overrides that differ. Saving will apply these changes to all {targetIds.length} users uniformly.
                 </div>
               )}
 
               {!isBlocked && selectedTarget.type === "role" && (
-                <div className="mx-5 mt-4 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                <div className="mx-5 mt-4 px-4 py-3 bg-[var(--color-accent-light)] border border-blue-200 rounded-[var(--radius-md)] text-sm text-blue-800">
                   <strong>Tip:</strong> The &quot;default&quot; dots reflect tier-based access with no department applied. Department-restricted pages are shown as hidden by default for this role.
                 </div>
               )}
@@ -649,15 +649,15 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
               {!isBlocked && (
                 <>
                   <div className="flex items-center gap-5 px-5 pt-4 pb-3">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
                       <div className="w-2 h-2 rounded-full bg-green-400" />
                       Visible by default
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
                       <div className="w-2 h-2 rounded-full bg-gray-300" />
                       Hidden by default
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
                       <span className="w-4 h-4 flex items-center justify-center rounded border border-amber-400 text-amber-500 font-bold text-[10px]">!</span>
                       Unsaved change
                     </div>

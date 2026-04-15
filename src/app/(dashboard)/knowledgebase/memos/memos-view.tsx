@@ -83,18 +83,18 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
     <div>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Memos</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Memos</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {memos.length} memo{memos.length !== 1 ? "s" : ""}
             {unsignedCount > 0 && (
-              <span className="text-amber-600 ml-2">{unsignedCount} unsigned</span>
+              <span className="text-[var(--color-warning)] ml-2">{unsignedCount} unsigned</span>
             )}
           </p>
         </div>
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + New Memo
           </button>
@@ -103,9 +103,9 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
 
       {/* Error toast */}
       {error && !showCreate && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-center justify-between">
+        <div className="mb-4 px-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-error-light)] border border-red-200 text-sm text-[var(--color-error)] flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">×</button>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-[var(--color-error)] ml-2">×</button>
         </div>
       )}
 
@@ -116,13 +116,13 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
           aria-label="Search memos"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="flex-1 min-w-48 border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
         <select
           value={signedFilter}
           aria-label="Filter by signature status"
           onChange={(e) => setSignedFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="all">All memos</option>
           <option value="unsigned">Unsigned</option>
@@ -132,7 +132,7 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
           value={deptFilter}
           aria-label="Filter by department"
           onChange={(e) => setDeptFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="all">All departments</option>
           <option value="global">Global</option>
@@ -145,10 +145,10 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
       {/* Result count when filtering */}
       {hasFilters && (
         <div className="flex items-center gap-2 mb-4">
-          <p className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)]">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
           <button
             onClick={() => { setSearch(""); setDeptFilter("all"); setSignedFilter("all"); }}
-            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded"
+            className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-2 py-0.5 rounded"
           >
             Clear
           </button>
@@ -156,21 +156,21 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
       )}
 
       {filtered.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           {hasFilters ? (
             <>
-              <p className="text-sm text-gray-500 mb-2">No memos match your filters.</p>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-2">No memos match your filters.</p>
               <button
                 onClick={() => { setSearch(""); setDeptFilter("all"); setSignedFilter("all"); }}
-                className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg"
+                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
               >
                 Clear filters
               </button>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 mb-1">No memos posted yet.</p>
-              <p className="text-xs text-gray-400">Create a memo to share important notices with your team.</p>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-1">No memos posted yet.</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">Create a memo to share important notices with your team.</p>
             </>
           )}
         </div>
@@ -183,41 +183,41 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
               <Link
                 key={memo.id}
                 href={`/knowledgebase/memos/${memo.id}`}
-                className="block bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 transition-colors"
+                className="block bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:border-gray-400 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-1">{memo.title}</h3>
-                    <p className="text-xs text-gray-500 line-clamp-2">{memo.content}</p>
+                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">{memo.title}</h3>
+                    <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">{memo.content}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="flex items-center gap-1.5">
                       {signed ? (
-                        <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] px-2 py-0.5 rounded-full">
                           Signed
                         </span>
                       ) : (
-                        <span className="text-xs bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-[var(--color-warning-light)] text-[var(--color-warning)] px-2 py-0.5 rounded-full">
                           Unsigned
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{sigCount} signature{sigCount !== 1 ? "s" : ""}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{sigCount} signature{sigCount !== 1 ? "s" : ""}</p>
                   </div>
                 </div>
                 {memo.attachment_name && (
                   <div className="mt-2">
-                    <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                    <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded inline-flex items-center gap-1">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
                       {memo.attachment_name}
                     </span>
                   </div>
                 )}
-                <div className="flex items-center gap-2 mt-2 text-xs text-gray-400">
+                <div className="flex items-center gap-2 mt-2 text-xs text-[var(--color-text-tertiary)]">
                   {memo.department ? (
                     <span>{memo.department.name}</span>
                   ) : (
-                    <span className="text-blue-500">Global</span>
+                    <span className="text-[var(--color-accent)]">Global</span>
                   )}
                   <span>·</span>
                   <span>{format(new Date(memo.created_at), "d MMM yyyy")}</span>
@@ -236,39 +236,39 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
 
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Memo</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Memo</h2>
 
             {error && (
-              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+              <div className="mb-4 px-3 py-2 rounded-lg bg-[var(--color-error-light)] border border-red-200 text-xs text-[var(--color-error)]">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Title *</label>
                 <input
                   required
                   type="text"
                   maxLength={2000}
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Content *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Content *</label>
                 <textarea
                   required
                   rows={6}
                   value={form.content}
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Attachment (optional)</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Attachment (optional)</label>
                 <input
                   type="file"
                   aria-label="Upload attachment"
@@ -282,16 +282,16 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
                     }
                     setFile(f);
                   }}
-                  className="w-full text-sm text-gray-600"
+                  className="w-full text-sm text-[var(--color-text-secondary)]"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">PDF, DOC, XLS, PPT, TXT, CSV. Max 50MB.</p>
+                <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">PDF, DOC, XLS, PPT, TXT, CSV. Max 50MB.</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Department</label>
                 <select
                   value={form.department_id}
                   onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">Global (all staff)</option>
                   {departments.map((d) => (
@@ -303,14 +303,14 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
                 <button
                   type="button"
                   onClick={() => { setShowCreate(false); setError(null); }}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {creating ? "Posting..." : "Post Memo"}
                 </button>

@@ -36,7 +36,7 @@ const CURRENCIES = [
 
 function Spinner() {
   return (
-    <svg className="animate-spin w-3.5 h-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+    <svg className="animate-spin w-3.5 h-3.5 text-[var(--color-text-tertiary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
     </svg>
   );
@@ -222,8 +222,8 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
     const key = groupId ?? "ungrouped";
     if (addingTo !== key) return null;
     return (
-      <div className="mt-3 bg-gray-50 rounded-xl p-4 border border-gray-200">
-        <p className="text-xs font-semibold text-gray-600 mb-3">Add Meta Ad Account</p>
+      <div className="mt-3 bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-4 border border-[var(--color-border-primary)]">
+        <p className="text-xs font-semibold text-[var(--color-text-secondary)] mb-3">Add Meta Ad Account</p>
         <div className="space-y-2">
           <input
             autoFocus
@@ -231,34 +231,34 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
             placeholder="Meta account ID (e.g. 123456789)"
             value={newAccountId}
             onChange={(e) => setNewAccountId(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           <input
             type="text"
             placeholder="Name shown in Avalon (e.g. Local Main)"
             value={newAccountName}
             onChange={(e) => setNewAccountName(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           <input
             type="text"
             placeholder="Label / note (optional)"
             value={newAccountLabel}
             onChange={(e) => setNewAccountLabel(e.target.value)}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
         </div>
         <div className="flex gap-2 mt-3">
           <button
             onClick={() => setAddingTo(null)}
-            className="flex-1 border border-gray-200 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-100"
+            className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-active)]"
           >
             Cancel
           </button>
           <button
             onClick={() => addAccount(groupId)}
             disabled={addingAccount || !newAccountId.trim() || !newAccountName.trim()}
-            className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {addingAccount ? <><Spinner /> Adding…</> : "Add Account"}
           </button>
@@ -272,18 +272,18 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
   function AccountChip({ account }: { account: MetaAccount }) {
     const [showMove, setShowMove] = useState(false);
     return (
-      <div className={`flex items-center gap-2 bg-white border rounded-xl px-3 py-2.5 ${account.is_active ? "border-gray-200" : "border-gray-100 opacity-60"}`}>
+      <div className={`flex items-center gap-2 bg-[var(--color-bg-primary)] border rounded-[var(--radius-lg)] px-3 py-2.5 ${account.is_active ? "border-[var(--color-border-primary)]" : "border-[var(--color-border-secondary)] opacity-60"}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-medium text-gray-900">{account.name}</span>
+            <span className="text-sm font-medium text-[var(--color-text-primary)]">{account.name}</span>
             {account.label && (
-              <span className="text-xs text-gray-400">{account.label}</span>
+              <span className="text-xs text-[var(--color-text-tertiary)]">{account.label}</span>
             )}
             {!account.is_active && (
-              <span className="text-xs bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-full">inactive</span>
+              <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] px-1.5 py-0.5 rounded-full">inactive</span>
             )}
           </div>
-          <p className="text-xs text-gray-400 font-mono mt-0.5">act_{account.account_id}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-0.5">act_{account.account_id}</p>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -296,20 +296,20 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                 <button
                   onClick={() => setShowMove((s) => !s)}
                   title="Move to group"
-                  className="p-1 text-gray-400 hover:text-gray-700 rounded"
+                  className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] rounded"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
                 </button>
                 {showMove && (
-                  <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-gray-200 rounded-xl shadow-lg z-10 py-1">
-                    <p className="px-3 py-1.5 text-xs text-gray-400 font-medium">Move to…</p>
+                  <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] z-10 py-1">
+                    <p className="px-3 py-1.5 text-xs text-[var(--color-text-tertiary)] font-medium">Move to…</p>
                     {groups.map((g) => (
                       <button
                         key={g.id}
                         onClick={() => { moveAccount(account.id, g.id); setShowMove(false); }}
-                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-gray-50 ${account.group_id === g.id ? "text-gray-400 cursor-default" : "text-gray-700"}`}
+                        className={`w-full text-left px-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] ${account.group_id === g.id ? "text-[var(--color-text-tertiary)] cursor-default" : "text-[var(--color-text-primary)]"}`}
                         disabled={account.group_id === g.id}
                       >
                         {g.name}
@@ -318,7 +318,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                     {account.group_id !== null && (
                       <button
                         onClick={() => { moveAccount(account.id, null); setShowMove(false); }}
-                        className="w-full text-left px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-50 border-t border-gray-100 mt-1 pt-2"
+                        className="w-full text-left px-3 py-1.5 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] border-t border-[var(--color-border-secondary)] mt-1 pt-2"
                       >
                         Ungroup
                       </button>
@@ -331,7 +331,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
               <button
                 onClick={() => toggleAccount(account.id, !account.is_active)}
                 title={account.is_active ? "Deactivate" : "Activate"}
-                className={`p-1 rounded ${account.is_active ? "text-gray-400 hover:text-amber-500" : "text-gray-300 hover:text-green-600"}`}
+                className={`p-1 rounded ${account.is_active ? "text-[var(--color-text-tertiary)] hover:text-amber-500" : "text-[var(--color-text-tertiary)] hover:text-[var(--color-success)]"}`}
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   {account.is_active
@@ -344,7 +344,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
               <button
                 onClick={() => removeAccount(account.id)}
                 title="Remove account"
-                className="p-1 text-gray-300 hover:text-red-500 rounded"
+                className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] rounded"
               >
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -364,19 +364,19 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
     <div className="max-w-2xl">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Ad Ops Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage account groups and Meta ad accounts</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Ad Ops Settings</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Manage account groups and Meta ad accounts</p>
         </div>
         <button
           onClick={() => setShowNewGroup(true)}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Group
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+        <div className="mb-4 bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-4 py-3 text-sm text-[var(--color-error)]">
           {error}
         </div>
       )}
@@ -384,11 +384,11 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
       {/* New group modal */}
       {showNewGroup && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Account Group</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Account Group</h2>
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Group Name *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Group Name *</label>
                 <input
                   autoFocus
                   type="text"
@@ -396,15 +396,15 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && createGroup()}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Default Currency</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Default Currency</label>
                 <select
                   value={newGroupCurrency}
                   onChange={(e) => setNewGroupCurrency(e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -413,14 +413,14 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setShowNewGroup(false)}
-                className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
               >
                 Cancel
               </button>
               <button
                 onClick={createGroup}
                 disabled={creatingGroup || !newGroupName.trim()}
-                className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {creatingGroup ? <><Spinner /> Creating…</> : "Create Group"}
               </button>
@@ -432,18 +432,18 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
       {/* Account groups */}
       <div className="space-y-4">
         {groups.length === 0 && (
-          <div className="bg-gray-50 rounded-xl p-12 text-center">
-            <p className="text-sm text-gray-400">No account groups yet</p>
-            <p className="text-xs text-gray-400 mt-1">Create a group (e.g. Local, International) then add your Meta ad accounts to it</p>
+          <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+            <p className="text-sm text-[var(--color-text-tertiary)]">No account groups yet</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">Create a group (e.g. Local, International) then add your Meta ad accounts to it</p>
           </div>
         )}
 
         {groups.map((group) => {
           const groupAccounts = accounts.filter((a) => a.group_id === group.id);
           return (
-            <div key={group.id} className={`border rounded-2xl overflow-hidden ${group.is_active ? "border-gray-200" : "border-gray-100 opacity-70"}`}>
+            <div key={group.id} className={`border rounded-2xl overflow-hidden ${group.is_active ? "border-[var(--color-border-primary)]" : "border-[var(--color-border-secondary)] opacity-70"}`}>
               {/* Group header */}
-              <div className="bg-white px-5 py-4 flex items-center gap-3 flex-wrap">
+              <div className="bg-[var(--color-bg-primary)] px-5 py-4 flex items-center gap-3 flex-wrap">
                 {/* Name (inline edit) */}
                 {editingGroupId === group.id ? (
                   <input
@@ -455,12 +455,12 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                       if (e.key === "Escape") setEditingGroupId(null);
                     }}
                     onBlur={() => saveGroupName(group.id)}
-                    className="flex-1 text-base font-semibold text-gray-900 border-b border-gray-300 focus:outline-none focus:border-gray-900 bg-transparent"
+                    className="flex-1 text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border-primary)] focus:outline-none focus:border-gray-900 bg-transparent"
                   />
                 ) : (
                   <button
                     onClick={() => startEditGroup(group)}
-                    className="flex-1 text-left text-base font-semibold text-gray-900 hover:text-gray-600 min-w-0 truncate"
+                    className="flex-1 text-left text-base font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-text-secondary)] min-w-0 truncate"
                     title="Click to rename"
                   >
                     {group.name}
@@ -472,7 +472,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                   value={group.currency}
                   onChange={(e) => updateGroup(group.id, { currency: e.target.value })}
                   disabled={isBusy(group.id)}
-                  className="border border-gray-200 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900 disabled:opacity-50"
+                  className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50"
                 >
                   {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -481,7 +481,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                 <button
                   onClick={() => updateGroup(group.id, { is_active: !group.is_active })}
                   disabled={isBusy(group.id)}
-                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${group.is_active ? "bg-green-50 text-green-700 hover:bg-green-100" : "bg-gray-100 text-gray-400 hover:bg-gray-200"}`}
+                  className={`text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${group.is_active ? "bg-[var(--color-success-light)] text-[var(--color-success)] hover:bg-[var(--color-success-light)]" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:bg-[var(--color-border-primary)]"}`}
                 >
                   {group.is_active ? "● Active" : "○ Inactive"}
                 </button>
@@ -491,7 +491,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                   onClick={() => deleteGroup(group.id)}
                   disabled={isBusy(group.id)}
                   title="Delete group"
-                  className="p-1 text-gray-300 hover:text-red-500 transition-colors disabled:opacity-50"
+                  className="p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] transition-colors disabled:opacity-50"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -500,10 +500,10 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
               </div>
 
               {/* Accounts in group */}
-              <div className="px-5 pb-4 bg-gray-50/50 border-t border-gray-100">
+              <div className="px-5 pb-4 bg-[var(--color-bg-secondary)]/50 border-t border-[var(--color-border-secondary)]">
                 <div className="pt-3 space-y-2">
                   {groupAccounts.length === 0 && addingTo !== group.id && (
-                    <p className="text-xs text-gray-400 py-2">No Meta ad accounts in this group yet</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] py-2">No Meta ad accounts in this group yet</p>
                   )}
                   {groupAccounts.map((account) => (
                     <AccountChip key={account.id} account={account} />
@@ -515,7 +515,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                 {addingTo !== group.id && (
                   <button
                     onClick={() => openAddAccount(group.id)}
-                    className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                    className="mt-3 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -530,12 +530,12 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
 
         {/* Ungrouped accounts */}
         {(ungroupedAccounts.length > 0 || addingTo === "ungrouped") && (
-          <div className="border border-dashed border-gray-200 rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 bg-white flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-500">Ungrouped accounts</p>
-              <p className="text-xs text-gray-400">Assign to a group using the ⇄ button</p>
+          <div className="border border-dashed border-[var(--color-border-primary)] rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 bg-[var(--color-bg-primary)] flex items-center justify-between">
+              <p className="text-sm font-medium text-[var(--color-text-secondary)]">Ungrouped accounts</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">Assign to a group using the ⇄ button</p>
             </div>
-            <div className="px-5 pb-4 bg-gray-50/50 border-t border-gray-100">
+            <div className="px-5 pb-4 bg-[var(--color-bg-secondary)]/50 border-t border-[var(--color-border-secondary)]">
               <div className="pt-3 space-y-2">
                 {ungroupedAccounts.map((account) => (
                   <AccountChip key={account.id} account={account} />
@@ -545,7 +545,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
               {addingTo !== "ungrouped" && (
                 <button
                   onClick={() => openAddAccount(null)}
-                  className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+                  className="mt-3 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -559,7 +559,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
 
         {/* If no groups and no ungrouped accounts, show full empty state */}
         {groups.length === 0 && ungroupedAccounts.length === 0 && addingTo === "ungrouped" && (
-          <div className="border border-dashed border-gray-200 rounded-2xl px-5 pb-4 bg-gray-50/50">
+          <div className="border border-dashed border-[var(--color-border-primary)] rounded-2xl px-5 pb-4 bg-[var(--color-bg-secondary)]/50">
             <AddAccountForm groupId={null} />
           </div>
         )}

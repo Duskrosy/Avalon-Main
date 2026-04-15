@@ -63,18 +63,18 @@ function StatCard({
 }) {
   const accentCls =
     accent === "red"
-      ? "border-red-200 bg-red-50"
+      ? "border-red-200 bg-[var(--color-error-light)]"
       : accent === "amber"
-      ? "border-amber-200 bg-amber-50"
-      : "border-gray-200 bg-white";
+      ? "border-[var(--color-border-primary)] bg-[var(--color-warning-light)]"
+      : "border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]";
 
   const inner = (
-    <div className={`rounded-xl border p-5 ${accentCls} ${href ? "hover:shadow-md transition-shadow cursor-pointer" : ""}`}>
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
-      <p className={`text-2xl font-bold ${accent === "red" ? "text-red-700" : accent === "amber" ? "text-amber-700" : "text-gray-900"}`}>
+    <div className={`rounded-[var(--radius-lg)] border p-5 ${accentCls} ${href ? "hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer" : ""}`}>
+      <p className="text-xs text-[var(--color-text-secondary)] mb-1">{label}</p>
+      <p className={`text-2xl font-bold ${accent === "red" ? "text-[var(--color-error)]" : accent === "amber" ? "text-[var(--color-warning-text)]" : "text-[var(--color-text-primary)]"}`}>
         {value}
       </p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+      {sub && <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{sub}</p>}
     </div>
   );
 
@@ -96,39 +96,39 @@ function KpiHealthBar({
 }) {
   if (status.total === 0) return null;
   return (
-    <Link href={href} className="block bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
+    <Link href={href} className="block bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:shadow-[var(--shadow-md)] transition-shadow">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-gray-700">{deptName} KPIs</p>
+          <p className="text-sm font-semibold text-[var(--color-text-primary)]">{deptName} KPIs</p>
           {staleDays != null && staleDays > 2 && (
-            <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] bg-[var(--color-warning-light)] text-[var(--color-warning-text)] px-2 py-0.5 rounded-full font-medium">
               Data last updated {staleDays}d ago
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{status.total} tracked</span>
+          <span className="text-xs text-[var(--color-text-tertiary)]">{status.total} tracked</span>
           <FeedbackButton pageUrl="/" />
         </div>
       </div>
       <div className="flex items-center gap-4 mb-3">
         {[
-          { label: "On Track", count: status.green,  cls: "text-green-600" },
-          { label: "Monitor",  count: status.amber,  cls: "text-amber-600" },
-          { label: "Critical", count: status.red,    cls: "text-red-600"   },
-          { label: "No Data",  count: status.noData, cls: "text-gray-400"  },
+          { label: "On Track", count: status.green,  cls: "text-[var(--color-success)]" },
+          { label: "Monitor",  count: status.amber,  cls: "text-[var(--color-warning)]" },
+          { label: "Critical", count: status.red,    cls: "text-[var(--color-error)]"   },
+          { label: "No Data",  count: status.noData, cls: "text-[var(--color-text-tertiary)]"  },
         ].filter(s => s.count > 0).map(s => (
           <div key={s.label} className="flex items-center gap-1.5">
             <span className={`text-sm font-bold ${s.cls}`}>{s.count}</span>
-            <span className="text-xs text-gray-400">{s.label}</span>
+            <span className="text-xs text-[var(--color-text-tertiary)]">{s.label}</span>
           </div>
         ))}
       </div>
       <div className="h-2 rounded-full overflow-hidden flex gap-0.5">
-        {status.green  > 0 && <div className="bg-green-500 rounded-full" style={{ flex: status.green  }} />}
+        {status.green  > 0 && <div className="bg-[var(--color-success-light)]0 rounded-full" style={{ flex: status.green  }} />}
         {status.amber  > 0 && <div className="bg-amber-400 rounded-full" style={{ flex: status.amber  }} />}
-        {status.red    > 0 && <div className="bg-red-500   rounded-full" style={{ flex: status.red    }} />}
-        {status.noData > 0 && <div className="bg-gray-200  rounded-full" style={{ flex: status.noData }} />}
+        {status.red    > 0 && <div className="bg-[var(--color-error-light)]0   rounded-full" style={{ flex: status.red    }} />}
+        {status.noData > 0 && <div className="bg-[var(--color-border-primary)]  rounded-full" style={{ flex: status.noData }} />}
       </div>
     </Link>
   );
@@ -342,7 +342,7 @@ export default async function DashboardPage() {
   const PRIORITY_STYLES: Record<string, string> = {
     urgent:    "border-l-4 border-red-400",
     important: "border-l-4 border-amber-400",
-    normal:    "border-l-4 border-gray-200",
+    normal:    "border-l-4 border-[var(--color-border-primary)]",
   };
 
   const showVelocity = userIsManager || userIsOps;
@@ -353,7 +353,7 @@ export default async function DashboardPage() {
 
       {/* Birthday banner */}
       {isBirthday && (
-        <div className="rounded-xl bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-4 flex items-center gap-3">
+        <div className="rounded-[var(--radius-lg)] bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-4 flex items-center gap-3">
           <span className="text-2xl">🎂</span>
           <div>
             <p className="text-white font-semibold text-base">Happy Birthday, {user.first_name}!</p>
@@ -364,10 +364,10 @@ export default async function DashboardPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
           {getGreeting()}, {user.first_name}
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           {userIsOps
             ? "Platform overview · all departments"
             : `${user.department?.name ?? ""} · ${format(new Date(), "EEEE, d MMMM yyyy")}`}
@@ -422,10 +422,10 @@ export default async function DashboardPage() {
 
       {/* Goal progress mini-list */}
       {goalsList.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-900">Goal progress</h2>
-            <Link href="/analytics/goals" className="text-xs text-gray-400 hover:text-gray-700">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Goal progress</h2>
+            <Link href="/analytics/goals" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">
               View all →
             </Link>
           </div>
@@ -436,21 +436,21 @@ export default async function DashboardPage() {
                 ? goalRag(g.deadline, g.deadline_green_days, g.deadline_amber_days)
                 : "green";
               const barColor =
-                color === "green" ? "bg-green-500" : color === "amber" ? "bg-amber-400" : "bg-red-500";
+                color === "green" ? "bg-[var(--color-success-light)]0" : color === "amber" ? "bg-amber-400" : "bg-[var(--color-error-light)]0";
               const badgeColor =
                 color === "green"
-                  ? "bg-green-50 text-green-700"
+                  ? "bg-[var(--color-success-light)] text-[var(--color-success)]"
                   : color === "amber"
-                  ? "bg-amber-50 text-amber-700"
-                  : "bg-red-50 text-red-700";
+                  ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]"
+                  : "bg-[var(--color-error-light)] text-[var(--color-error)]";
               const daysLeft = g.deadline ? differenceInDays(new Date(g.deadline), new Date()) : null;
 
               return (
                 <div key={g.id} className="px-5 py-3">
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-sm text-gray-700 truncate flex-1 mr-3">{g.title}</p>
+                    <p className="text-sm text-[var(--color-text-primary)] truncate flex-1 mr-3">{g.title}</p>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-semibold text-gray-500">{pct}%</span>
+                      <span className="text-xs font-semibold text-[var(--color-text-secondary)]">{pct}%</span>
                       {daysLeft != null && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badgeColor}`}>
                           {daysLeft > 0 ? `${daysLeft}d left` : daysLeft === 0 ? "Due today" : `${Math.abs(daysLeft)}d overdue`}
@@ -458,7 +458,7 @@ export default async function DashboardPage() {
                       )}
                     </div>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
                     <div className={`h-full ${barColor} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
@@ -472,15 +472,15 @@ export default async function DashboardPage() {
       {userIsOps && obsAlertCount > 0 && (
         <Link
           href="/admin/observability"
-          className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-5 py-3 hover:bg-red-100 transition-colors"
+          className="flex items-center justify-between bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-5 py-3 hover:bg-[var(--color-error-light)] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span className="text-sm font-medium text-red-700">
+            <div className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0 animate-pulse" />
+            <span className="text-sm font-medium text-[var(--color-error)]">
               {obsAlertCount} unacknowledged {obsAlertCount === 1 ? "alert" : "alerts"} in Observability
             </span>
           </div>
-          <span className="text-xs text-red-500">View →</span>
+          <span className="text-xs text-[var(--color-error)]">View →</span>
         </Link>
       )}
 
@@ -498,14 +498,14 @@ export default async function DashboardPage() {
       {kpiStatus.total === 0 && deptId && (userIsOps || userIsManager) && (
         <Link
           href="/analytics/kpis"
-          className="block bg-white border border-dashed border-gray-300 rounded-xl px-5 py-4 hover:border-gray-400 hover:bg-gray-50 transition-colors"
+          className="block bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4 hover:border-gray-400 hover:bg-[var(--color-surface-hover)] transition-colors"
         >
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[var(--color-text-secondary)]">
             {userIsOps
               ? `Set up KPIs for ${user.department?.name ?? "this department"} →`
               : `Request KPI setup from OPS →`}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
             KPIs help track department performance with real-time health indicators.
           </p>
         </Link>
@@ -513,46 +513,46 @@ export default async function DashboardPage() {
 
       {/* Sales today (sales dept or OPS) */}
       {(deptSlug === "sales" || userIsOps) && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Sales today</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{format(new Date(), "EEEE d MMMM")}</p>
+              <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Sales today</h2>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{format(new Date(), "EEEE d MMMM")}</p>
             </div>
-            <Link href="/sales-ops/daily-volume" className="text-xs text-gray-400 hover:text-gray-700">
+            <Link href="/sales-ops/daily-volume" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">
               Log volume →
             </Link>
           </div>
           {salesToday.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-gray-400">
+            <div className="px-5 py-8 text-center text-sm text-[var(--color-text-tertiary)]">
               No volume logged yet today.
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
               {salesToday.map((row) => (
                 <div key={row.agent} className="px-5 py-3 flex items-center justify-between">
-                  <span className="text-sm text-gray-700">{row.agent}</span>
+                  <span className="text-sm text-[var(--color-text-primary)]">{row.agent}</span>
                   <div className="flex items-center gap-3">
                     <span className={`text-sm font-semibold ${
-                      row.pairs >= 8 ? "text-green-600" : row.pairs >= 6 ? "text-amber-600" : "text-red-600"
+                      row.pairs >= 8 ? "text-[var(--color-success)]" : row.pairs >= 6 ? "text-[var(--color-warning)]" : "text-[var(--color-error)]"
                     }`}>
                       {row.pairs} pairs
                     </span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                       row.pairs >= 8
-                        ? "bg-green-50 text-green-700"
+                        ? "bg-[var(--color-success-light)] text-[var(--color-success)]"
                         : row.pairs >= 6
-                        ? "bg-amber-50 text-amber-700"
-                        : "bg-red-50 text-red-700"
+                        ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]"
+                        : "bg-[var(--color-error-light)] text-[var(--color-error)]"
                     }`}>
                       {row.pairs >= 8 ? "On track" : row.pairs >= 6 ? "Monitor" : "Below target"}
                     </span>
                   </div>
                 </div>
               ))}
-              <div className="px-5 py-3 flex items-center justify-between bg-gray-50">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team total</span>
-                <span className="text-sm font-bold text-gray-900">
+              <div className="px-5 py-3 flex items-center justify-between bg-[var(--color-bg-secondary)]">
+                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">Team total</span>
+                <span className="text-sm font-bold text-[var(--color-text-primary)]">
                   {salesToday.reduce((s, r) => s + r.pairs, 0)} pairs
                 </span>
               </div>
@@ -564,18 +564,18 @@ export default async function DashboardPage() {
       {/* Recent announcements */}
       {(announcements ?? []).length > 0 && (
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Announcements</h2>
+          <h2 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Announcements</h2>
           <div className="space-y-2">
             {(announcements ?? []).map((a) => (
               <Link
                 key={a.id}
                 href="/communications/announcements"
-                className={`block bg-white border border-gray-200 rounded-xl px-5 py-3.5 hover:shadow-sm transition-shadow ${PRIORITY_STYLES[a.priority] ?? PRIORITY_STYLES.normal}`}
+                className={`block bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-3.5 hover:shadow-[var(--shadow-sm)] transition-shadow ${PRIORITY_STYLES[a.priority] ?? PRIORITY_STYLES.normal}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-gray-900 truncate">{a.title}</p>
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{a.title}</p>
                       {a.flair_text && (
                         <span
                           className="text-[10px] px-2 py-0.5 rounded-full font-medium shrink-0"
@@ -589,10 +589,10 @@ export default async function DashboardPage() {
                       )}
                     </div>
                     {a.content && (
-                      <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{a.content}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 line-clamp-2">{a.content}</p>
                     )}
                   </div>
-                  <span className="text-xs text-gray-400 shrink-0 mt-0.5">
+                  <span className="text-xs text-[var(--color-text-tertiary)] shrink-0 mt-0.5">
                     {format(new Date(a.created_at), "d MMM")}
                   </span>
                 </div>

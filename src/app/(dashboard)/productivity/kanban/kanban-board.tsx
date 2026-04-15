@@ -146,7 +146,7 @@ function AssigneeAvatar({ name, avatarUrl, size = "sm" }: { name: string; avatar
   }
 
   return (
-    <div className={`${sizeClass} rounded-full bg-gray-200 flex items-center justify-center font-medium text-gray-600 shrink-0`}>
+    <div className={`${sizeClass} rounded-full bg-[var(--color-border-primary)] flex items-center justify-center font-medium text-[var(--color-text-secondary)] shrink-0`}>
       {initials}
     </div>
   );
@@ -163,7 +163,7 @@ function AssigneeChips({
   onClick?: () => void;
 }) {
   if (assignees.length === 0) {
-    return <span className="text-xs text-gray-400">Unassigned</span>;
+    return <span className="text-xs text-[var(--color-text-tertiary)]">Unassigned</span>;
   }
 
   const shown = assignees.slice(0, maxShow);
@@ -184,7 +184,7 @@ function AssigneeChips({
           />
         ))}
       </div>
-      <span className="text-xs text-gray-600 ml-1">
+      <span className="text-xs text-[var(--color-text-secondary)] ml-1">
         {firstName}{extra > 0 && ` +${extra}`}
       </span>
     </button>
@@ -233,11 +233,11 @@ function AssigneePicker({
   return (
     <div className="relative" ref={containerRef}>
       <div
-        className="border border-gray-200 rounded-lg px-3 py-2 cursor-pointer"
+        className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 cursor-pointer"
         onClick={() => setOpen(!open)}
       >
         {selected.length === 0 ? (
-          <span className="text-sm text-gray-400">Select assignees...</span>
+          <span className="text-sm text-[var(--color-text-tertiary)]">Select assignees...</span>
         ) : (
           <div className="flex flex-wrap gap-1">
             {selected.map((id) => {
@@ -246,7 +246,7 @@ function AssigneePicker({
               return (
                 <span
                   key={id}
-                  className="inline-flex items-center gap-1.5 text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full"
+                  className="inline-flex items-center gap-1.5 text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] px-2 py-1 rounded-full"
                 >
                   <AssigneeAvatar name={`${user.first_name} ${user.last_name}`} avatarUrl={user.avatar_url} size="sm" />
                   {user.first_name} {user.last_name}
@@ -255,7 +255,7 @@ function AssigneePicker({
                       e.stopPropagation();
                       toggle(id);
                     }}
-                    className="text-gray-400 hover:text-gray-600 ml-0.5"
+                    className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] ml-0.5"
                   >
                     ×
                   </button>
@@ -267,27 +267,27 @@ function AssigneePicker({
       </div>
 
       {open && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute z-10 mt-1 w-full bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-[var(--shadow-lg)] max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-[var(--color-border-secondary)]">
             <input
               type="text"
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+              className="w-full text-sm px-2 py-1 border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
               autoFocus
             />
           </div>
           <div className="max-h-44 overflow-y-auto">
             {filtered.length === 0 ? (
-              <p className="text-xs text-gray-400 p-3 text-center">No users found</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] p-3 text-center">No users found</p>
             ) : (
               filtered.map((user) => (
                 <button
                   key={user.id}
                   onClick={() => toggle(user.id)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                    selected.includes(user.id) ? "bg-gray-50" : ""
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] ${
+                    selected.includes(user.id) ? "bg-[var(--color-bg-secondary)]" : ""
                   }`}
                 >
                   <AssigneeAvatar name={`${user.first_name} ${user.last_name}`} avatarUrl={user.avatar_url} />
@@ -319,7 +319,7 @@ function ColorPicker({
 }) {
   return (
     <div>
-      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+      <label className="block text-xs text-[var(--color-text-secondary)] mb-1">{label}</label>
       <div className="flex flex-wrap gap-1.5">
         {colors.map((color, i) => (
           <button
@@ -328,16 +328,16 @@ function ColorPicker({
             className={`w-7 h-7 rounded-md border-2 transition-all flex items-center justify-center ${
               selected === color
                 ? "border-gray-900 ring-2 ring-gray-400 ring-offset-1"
-                : "border-gray-300 hover:border-gray-400 hover:scale-105"
+                : "border-[var(--color-border-primary)] hover:border-gray-400 hover:scale-105"
             }`}
             style={{ backgroundColor: color ?? "#ffffff" }}
             title={color ?? "None"}
           >
             {selected === color && color !== null && (
-              <span className="text-gray-800 text-sm font-bold">✓</span>
+              <span className="text-[var(--color-text-primary)] text-sm font-bold">✓</span>
             )}
             {color === null && (
-              <span className={`text-sm ${selected === color ? "text-gray-800 font-bold" : "text-gray-400"}`}>
+              <span className={`text-sm ${selected === color ? "text-[var(--color-text-primary)] font-bold" : "text-[var(--color-text-tertiary)]"}`}>
                 {selected === color ? "✓" : "∅"}
               </span>
             )}
@@ -359,7 +359,7 @@ function CustomFieldInput({
   onChange: (val: Partial<FieldValue>) => void;
   allUsers: Member[];
 }) {
-  const baseClass = "w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900";
+  const baseClass = "w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]";
 
   switch (field.field_type) {
     case "text":
@@ -407,9 +407,9 @@ function CustomFieldInput({
             type="checkbox"
             checked={value?.value_boolean ?? false}
             onChange={(e) => onChange({ value_boolean: e.target.checked })}
-            className="w-4 h-4 rounded border-gray-300"
+            className="w-4 h-4 rounded border-[var(--color-border-primary)]"
           />
-          <span className="text-sm text-gray-600">{field.description || "Yes"}</span>
+          <span className="text-sm text-[var(--color-text-secondary)]">{field.description || "Yes"}</span>
         </label>
       );
     case "dropdown":
@@ -443,8 +443,8 @@ function CustomFieldInput({
                 }}
                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                   isSelected
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
                 }`}
               >
                 {opt.label}
@@ -541,8 +541,8 @@ function CardModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">
           {card.id ? "Edit Card" : "New Card"}
         </h2>
         <div className="space-y-3">
@@ -552,22 +552,22 @@ function CardModal({
             placeholder="Card title"
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           <textarea
             rows={3}
             placeholder="Description (optional)"
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Priority</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Priority</label>
               <select
                 value={form.priority}
                 onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value as Card["priority"] }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               >
                 {Object.entries(PRIORITY_LABELS).map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -575,26 +575,26 @@ function CardModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Start date</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Start date</label>
               <input
                 type="date"
                 value={form.start_date}
                 onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Due date</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Due date</label>
             <input
               type="date"
               value={form.due_date}
               onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Assignees</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Assignees</label>
             <AssigneePicker
               allUsers={allUsers}
               selected={assigneeIds}
@@ -610,11 +610,11 @@ function CardModal({
 
           {/* Custom Fields */}
           {fieldDefinitions.length > 0 && (
-            <div className="pt-3 border-t border-gray-100 space-y-3">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Custom Fields</p>
+            <div className="pt-3 border-t border-[var(--color-border-secondary)] space-y-3">
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">Custom Fields</p>
               {fieldDefinitions.map((field) => (
                 <div key={field.id}>
-                  <label className="block text-xs text-gray-500 mb-1">
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">
                     {field.name}
                     {field.is_required && <span className="text-red-400 ml-0.5">*</span>}
                   </label>
@@ -631,11 +631,11 @@ function CardModal({
         </div>
         <div className="flex gap-2 mt-5">
           {onDelete && (
-            <button onClick={onDelete} className="text-xs text-red-400 hover:text-red-600 mr-auto">
+            <button onClick={onDelete} className="text-xs text-red-400 hover:text-[var(--color-error)] mr-auto">
               Delete
             </button>
           )}
-          <button onClick={onClose} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button onClick={onClose} className="text-sm px-4 py-2 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-surface-hover)]">
             Cancel
           </button>
           <button
@@ -647,7 +647,7 @@ function CardModal({
               color: form.color,
             }, fieldValues, assigneeIds)}
             disabled={!form.title.trim()}
-            className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+            className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
           >
             Save
           </button>
@@ -965,33 +965,33 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
   const isOverdue = (due: string | null) => due && new Date(due) < new Date();
 
   const SortIcon = ({ field }: { field: SortField }) => {
-    if (listSort.field !== field) return <span className="text-gray-300 ml-1">↕</span>;
-    return <span className="text-gray-900 ml-1">{listSort.dir === "asc" ? "↑" : "↓"}</span>;
+    if (listSort.field !== field) return <span className="text-[var(--color-text-tertiary)] ml-1">↕</span>;
+    return <span className="text-[var(--color-text-primary)] ml-1">{listSort.dir === "asc" ? "↑" : "↓"}</span>;
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className={`${compact ? "mb-2" : "mb-6"} flex items-center justify-between gap-4 shrink-0`}>
         <div>
-          {!compact && <h1 className="text-2xl font-semibold text-gray-900">Kanban</h1>}
-          <p className="text-xs text-gray-500">{allCards.length} card{allCards.length !== 1 ? "s" : ""} &middot; {columns.length} column{columns.length !== 1 ? "s" : ""}</p>
+          {!compact && <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Kanban</h1>}
+          <p className="text-xs text-[var(--color-text-secondary)]">{allCards.length} card{allCards.length !== 1 ? "s" : ""} &middot; {columns.length} column{columns.length !== 1 ? "s" : ""}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Settings button (managers only) */}
           {canManage && (
             <button
               onClick={() => setShowSettings(true)}
-              className="text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              className="text-xs px-3 py-1.5 border border-[var(--color-border-primary)] rounded-lg text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-primary)]"
             >
               Settings
             </button>
           )}
           {/* View toggle */}
-          <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5">
+          <div className="flex items-center gap-1 bg-[var(--color-bg-tertiary)] rounded-lg p-0.5">
             <button
               onClick={() => setView("board")}
               className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
-                view === "board" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                view === "board" ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               }`}
             >
               Board
@@ -999,7 +999,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             <button
               onClick={() => setView("list")}
               className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
-              view === "list" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+              view === "list" ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
             List
@@ -1016,7 +1016,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             <select
               value={listFilter.status}
               onChange={(e) => setListFilter((f) => ({ ...f, status: e.target.value }))}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="text-sm border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               <option value="">All columns</option>
               {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1024,7 +1024,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             <select
               value={listFilter.priority}
               onChange={(e) => setListFilter((f) => ({ ...f, priority: e.target.value }))}
-              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="text-sm border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               <option value="">All priorities</option>
               {Object.keys(PRIORITY_LABELS).map((p) => (
@@ -1045,45 +1045,45 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             {(listFilter.status || listFilter.priority || listFilter.assigned) && (
               <button
                 onClick={() => setListFilter({ priority: "", assigned: "", status: "" })}
-                className="text-xs text-gray-400 hover:text-gray-600"
+                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
               >
                 Clear filters
               </button>
             )}
-            <span className="ml-auto text-xs text-gray-400">{filteredSortedCards.length} card{filteredSortedCards.length !== 1 ? "s" : ""}</span>
+            <span className="ml-auto text-xs text-[var(--color-text-tertiary)]">{filteredSortedCards.length} card{filteredSortedCards.length !== 1 ? "s" : ""}</span>
           </div>
 
           {/* Table */}
-          <div className="flex-1 overflow-auto rounded-xl border border-gray-200 bg-white">
+          <div className="flex-1 overflow-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]">
             <table className="w-full text-sm min-w-[600px]">
               <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
+                <tr className="border-b border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]">
                   <th
-                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none"
+                    className="text-left text-xs font-medium text-[var(--color-text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--color-text-primary)] select-none"
                     onClick={() => toggleSort("title")}
                   >
                     Title <SortIcon field="title" />
                   </th>
                   <th
-                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-28"
+                    className="text-left text-xs font-medium text-[var(--color-text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--color-text-primary)] select-none w-28"
                     onClick={() => toggleSort("status")}
                   >
                     Status <SortIcon field="status" />
                   </th>
                   <th
-                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-24"
+                    className="text-left text-xs font-medium text-[var(--color-text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--color-text-primary)] select-none w-24"
                     onClick={() => toggleSort("priority")}
                   >
                     Priority <SortIcon field="priority" />
                   </th>
                   <th
-                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-36"
+                    className="text-left text-xs font-medium text-[var(--color-text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--color-text-primary)] select-none w-36"
                     onClick={() => toggleSort("assigned_to")}
                   >
                     Assigned to <SortIcon field="assigned_to" />
                   </th>
                   <th
-                    className="text-left text-xs font-medium text-gray-500 px-4 py-3 cursor-pointer hover:text-gray-900 select-none w-28"
+                    className="text-left text-xs font-medium text-[var(--color-text-secondary)] px-4 py-3 cursor-pointer hover:text-[var(--color-text-primary)] select-none w-28"
                     onClick={() => toggleSort("due_date")}
                   >
                     Due <SortIcon field="due_date" />
@@ -1093,7 +1093,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
               <tbody className="divide-y divide-gray-50">
                 {filteredSortedCards.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-sm text-gray-400">
+                    <td colSpan={5} className="text-center py-12 text-sm text-[var(--color-text-tertiary)]">
                       No cards found
                     </td>
                   </tr>
@@ -1102,49 +1102,49 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                     <tr
                       key={card.id}
                       onClick={() => setModal({ ...card, column_id: card.columnId })}
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-[var(--color-surface-hover)] cursor-pointer"
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-start gap-2">
                           <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                            card.priority === "urgent" ? "bg-red-500" :
+                            card.priority === "urgent" ? "bg-[var(--color-error-light)]0" :
                             card.priority === "high"   ? "bg-amber-400" :
                             card.priority === "medium" ? "bg-blue-400" : "bg-gray-300"
                           }`} />
                           <div>
-                            <p className="font-medium text-gray-900">{card.title}</p>
+                            <p className="font-medium text-[var(--color-text-primary)]">{card.title}</p>
                             {card.description && (
-                              <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{card.description}</p>
+                              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5 line-clamp-1">{card.description}</p>
                             )}
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]">
                           {card.columnName}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium ${
-                          card.priority === "urgent" ? "text-red-600" :
-                          card.priority === "high"   ? "text-amber-600" :
-                          card.priority === "medium" ? "text-blue-600" : "text-gray-400"
+                          card.priority === "urgent" ? "text-[var(--color-error)]" :
+                          card.priority === "high"   ? "text-[var(--color-warning)]" :
+                          card.priority === "medium" ? "text-[var(--color-accent)]" : "text-[var(--color-text-tertiary)]"
                         }`}>
                           {PRIORITY_LABELS[card.priority]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-gray-600">
+                      <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                         {card.assignees && card.assignees.length > 0
                           ? <AssigneeChips assignees={card.assignees} />
-                          : <span className="text-gray-300">—</span>}
+                          : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         {card.due_date ? (
-                          <span className={`text-xs ${isOverdue(card.due_date) ? "text-red-500 font-medium" : "text-gray-500"}`}>
+                          <span className={`text-xs ${isOverdue(card.due_date) ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-secondary)]"}`}>
                             {format(new Date(card.due_date), "d MMM yyyy")}
                           </span>
                         ) : (
-                          <span className="text-gray-300">—</span>
+                          <span className="text-[var(--color-text-tertiary)]">—</span>
                         )}
                       </td>
                     </tr>
@@ -1161,22 +1161,22 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
         {columns.map((col) => (
           <div
             key={col.id}
-            className="bg-gray-50 rounded-xl p-3 w-80 shrink-0 flex flex-col gap-2"
+            className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3 w-80 shrink-0 flex flex-col gap-2"
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(col.id)}
           >
             {/* Column header */}
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-sm font-semibold text-gray-700">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                 {col.name}
-                <span className="ml-1.5 text-xs font-normal text-gray-400">
+                <span className="ml-1.5 text-xs font-normal text-[var(--color-text-tertiary)]">
                   {col.kanban_cards.length}
                 </span>
               </h3>
               {canManage && (
                 <button
                   onClick={() => handleDeleteColumn(col.id, col.name)}
-                  className="text-gray-300 hover:text-red-400 text-xs"
+                  className="text-[var(--color-text-tertiary)] hover:text-red-400 text-xs"
                 >
                   ×
                 </button>
@@ -1190,13 +1190,13 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                 draggable
                 onDragStart={() => handleDragStart(card.id, col.id)}
                 onClick={() => setModal({ ...card, column_id: col.id })}
-                className={`bg-white border border-l-4 border-gray-200 ${
+                className={`bg-[var(--color-bg-primary)] border border-l-4 border-[var(--color-border-primary)] ${
                   PRIORITY_COLORS[card.priority]
-                } rounded-lg p-3 cursor-pointer hover:shadow-sm transition-shadow`}
+                } rounded-lg p-3 cursor-pointer hover:shadow-[var(--shadow-sm)] transition-shadow`}
               >
-                <p className="text-sm text-gray-900 font-medium leading-snug mb-1">{card.title}</p>
+                <p className="text-sm text-[var(--color-text-primary)] font-medium leading-snug mb-1">{card.title}</p>
                 {card.description && (
-                  <p className="text-xs text-gray-400 mb-2 line-clamp-2">{card.description}</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mb-2 line-clamp-2">{card.description}</p>
                 )}
                 <div className="flex items-center justify-between gap-1 flex-wrap">
                   {card.assignees && card.assignees.length > 0 && (
@@ -1206,8 +1206,8 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                     <span
                       className={`text-xs ${
                         isOverdue(card.due_date)
-                          ? "text-red-500 font-medium"
-                          : "text-gray-400"
+                          ? "text-[var(--color-error)] font-medium"
+                          : "text-[var(--color-text-tertiary)]"
                       }`}
                     >
                       {format(new Date(card.due_date), "d MMM")}
@@ -1220,7 +1220,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             {/* Add card */}
             <button
               onClick={() => setModal({ column_id: col.id })}
-              className="text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg py-1.5 px-2 text-left transition-colors"
+              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)] rounded-lg py-1.5 px-2 text-left transition-colors"
             >
               + Add card
             </button>
@@ -1231,7 +1231,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
         {canManage && (
           <div className="w-72 shrink-0">
             {addingColumn ? (
-              <div className="bg-gray-50 rounded-xl p-3 flex gap-2">
+              <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3 flex gap-2">
                 <input
                   autoFocus
                   type="text"
@@ -1242,11 +1242,11 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                     if (e.key === "Enter") handleAddColumn();
                     if (e.key === "Escape") setAddingColumn(false);
                   }}
-                  className="flex-1 border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="flex-1 border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
                 <button
                   onClick={handleAddColumn}
-                  className="text-sm px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
+                  className="text-sm px-3 py-1.5 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)]"
                 >
                   Add
                 </button>
@@ -1254,7 +1254,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
             ) : (
               <button
                 onClick={() => setAddingColumn(true)}
-                className="w-full text-sm text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl py-3 px-4 text-left transition-colors border-2 border-dashed border-gray-200"
+                className="w-full text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)] rounded-[var(--radius-lg)] py-3 px-4 text-left transition-colors border-2 border-dashed border-[var(--color-border-primary)]"
               >
                 + Add column
               </button>
@@ -1344,20 +1344,20 @@ function SettingsPanel({
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/20" onClick={onClose} />
-      <div className="relative bg-white w-96 h-full shadow-xl overflow-y-auto z-50">
+      <div className="relative bg-[var(--color-bg-primary)] w-96 h-full shadow-xl overflow-y-auto z-50">
         <div className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Settings</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Settings</h2>
+            <button onClick={onClose} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] text-xl">&times;</button>
           </div>
 
           {/* Tabs */}
           {canManage && (
-            <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-0.5">
+            <div className="flex gap-1 mb-6 bg-[var(--color-bg-tertiary)] rounded-lg p-0.5">
               <button
                 onClick={() => setTab("fields")}
                 className={`flex-1 text-xs py-2 rounded-md transition-colors ${
-                  tab === "fields" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  tab === "fields" ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
                 Custom Fields
@@ -1365,7 +1365,7 @@ function SettingsPanel({
               <button
                 onClick={() => setTab("overview")}
                 className={`flex-1 text-xs py-2 rounded-md transition-colors ${
-                  tab === "overview" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  tab === "overview" ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
                 Team Overview
@@ -1383,36 +1383,36 @@ function SettingsPanel({
             <div className="space-y-6">
               {/* Stats */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-gray-900">{allCards.length}</p>
-                  <p className="text-xs text-gray-500">Total tasks</p>
+                <div className="bg-[var(--color-bg-secondary)] rounded-lg p-3">
+                  <p className="text-2xl font-bold text-[var(--color-text-primary)]">{allCards.length}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">Total tasks</p>
                 </div>
-                <div className="bg-green-50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-green-700">{completedThisWeek.length}</p>
-                  <p className="text-xs text-gray-500">Done this week</p>
+                <div className="bg-[var(--color-success-light)] rounded-lg p-3">
+                  <p className="text-2xl font-bold text-[var(--color-success)]">{completedThisWeek.length}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">Done this week</p>
                 </div>
-                <div className="bg-red-50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-red-600">{overdueCards.length}</p>
-                  <p className="text-xs text-gray-500">Overdue</p>
+                <div className="bg-[var(--color-error-light)] rounded-lg p-3">
+                  <p className="text-2xl font-bold text-[var(--color-error)]">{overdueCards.length}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">Overdue</p>
                 </div>
-                <div className="bg-amber-50 rounded-lg p-3">
-                  <p className="text-2xl font-bold text-amber-600">{dueSoonCards.length}</p>
-                  <p className="text-xs text-gray-500">Due soon</p>
+                <div className="bg-[var(--color-warning-light)] rounded-lg p-3">
+                  <p className="text-2xl font-bold text-[var(--color-warning)]">{dueSoonCards.length}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">Due soon</p>
                 </div>
               </div>
 
               {/* Workload */}
               {workload.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Workload</h3>
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Workload</h3>
                   <div className="space-y-2">
                     {workload.map((w) => (
-                      <div key={w.name} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-sm text-gray-800">{w.name}</span>
+                      <div key={w.name} className="flex items-center justify-between p-2 bg-[var(--color-bg-secondary)] rounded-lg">
+                        <span className="text-sm text-[var(--color-text-primary)]">{w.name}</span>
                         <div className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-500">{w.open} open</span>
+                          <span className="text-[var(--color-text-secondary)]">{w.open} open</span>
                           {w.overdue > 0 && (
-                            <span className="text-red-500 font-medium">{w.overdue} overdue</span>
+                            <span className="text-[var(--color-error)] font-medium">{w.overdue} overdue</span>
                           )}
                         </div>
                       </div>
@@ -1424,17 +1424,17 @@ function SettingsPanel({
               {/* Overdue cards */}
               {overdueCards.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Overdue Tasks</h3>
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Overdue Tasks</h3>
                   <div className="space-y-2">
                     {overdueCards.slice(0, 10).map((card) => (
-                      <div key={card.id} className="p-2 bg-red-50 rounded-lg border border-red-100">
-                        <p className="text-sm text-gray-800 font-medium">{card.title}</p>
+                      <div key={card.id} className="p-2 bg-[var(--color-error-light)] rounded-lg border border-red-100">
+                        <p className="text-sm text-[var(--color-text-primary)] font-medium">{card.title}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-red-500">
+                          <span className="text-xs text-[var(--color-error)]">
                             Due {format(new Date(card.due_date!), "d MMM")}
                           </span>
                           {card.assignees && card.assignees.length > 0 && (
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-[var(--color-text-secondary)]">
                               {card.assignees.map((a) => a.profile?.first_name).filter(Boolean).join(", ")}
                             </span>
                           )}
@@ -1446,7 +1446,7 @@ function SettingsPanel({
               )}
 
               {overdueCards.length === 0 && workload.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-8">No tasks to show yet</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">No tasks to show yet</p>
               )}
             </div>
           )}
@@ -1549,28 +1549,28 @@ function FieldSettingsContent({
 
   return (
     <div>
-      <h3 className="text-sm font-medium text-gray-700 mb-3">Custom Fields</h3>
-      <p className="text-xs text-gray-500 mb-4">
+      <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-3">Custom Fields</h3>
+      <p className="text-xs text-[var(--color-text-secondary)] mb-4">
         Add fields to track extra data on cards.
       </p>
 
             {/* Existing fields */}
             <div className="space-y-2 mb-4">
               {fields.length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">No custom fields yet</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">No custom fields yet</p>
               ) : (
                 fields.map((field) => (
-                  <div key={field.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div key={field.id} className="flex items-center justify-between p-3 bg-[var(--color-bg-secondary)] rounded-lg">
                     <div>
-                      <p className="text-sm font-medium text-gray-800">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
                         {field.name}
                         {field.is_required && <span className="text-red-400 ml-1">*</span>}
                       </p>
-                      <p className="text-xs text-gray-500">{FIELD_TYPE_LABELS[field.field_type]}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)]">{FIELD_TYPE_LABELS[field.field_type]}</p>
                     </div>
                     <button
                       onClick={() => handleDeleteField(field.id)}
-                      className="text-xs text-gray-400 hover:text-red-500"
+                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-error)]"
                     >
                       Delete
                     </button>
@@ -1581,19 +1581,19 @@ function FieldSettingsContent({
 
             {/* Add field form */}
             {adding ? (
-              <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+              <div className="border border-[var(--color-border-primary)] rounded-lg p-4 space-y-3">
                 <input
                   type="text"
                   placeholder="Field name"
                   value={newField.name}
                   onChange={(e) => setNewField((f) => ({ ...f, name: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm"
                   autoFocus
                 />
                 <select
                   value={newField.field_type}
                   onChange={(e) => setNewField((f) => ({ ...f, field_type: e.target.value as FieldType, options: [] }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm"
                 >
                   {Object.entries(FIELD_TYPE_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
@@ -1604,22 +1604,22 @@ function FieldSettingsContent({
                   placeholder="Description (optional)"
                   value={newField.description}
                   onChange={(e) => setNewField((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm"
                 />
-                <label className="flex items-center gap-2 text-sm text-gray-600">
+                <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
                   <input
                     type="checkbox"
                     checked={newField.is_required}
                     onChange={(e) => setNewField((f) => ({ ...f, is_required: e.target.checked }))}
-                    className="rounded border-gray-300"
+                    className="rounded border-[var(--color-border-primary)]"
                   />
                   Required field
                 </label>
 
                 {/* Options for dropdown/multi_select */}
                 {["dropdown", "multi_select"].includes(newField.field_type) && (
-                  <div className="pt-2 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 mb-2">Options</p>
+                  <div className="pt-2 border-t border-[var(--color-border-secondary)]">
+                    <p className="text-xs text-[var(--color-text-secondary)] mb-2">Options</p>
                     {newField.options.map((opt, idx) => (
                       <div key={opt.id} className="flex items-center gap-2 mb-2">
                         <input
@@ -1627,11 +1627,11 @@ function FieldSettingsContent({
                           placeholder={`Option ${idx + 1}`}
                           value={opt.label}
                           onChange={(e) => updateOption(idx, e.target.value)}
-                          className="flex-1 border border-gray-200 rounded px-2 py-1 text-sm"
+                          className="flex-1 border border-[var(--color-border-primary)] rounded px-2 py-1 text-sm"
                         />
                         <button
                           onClick={() => removeOption(idx)}
-                          className="text-gray-400 hover:text-red-500 text-sm"
+                          className="text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] text-sm"
                         >
                           &times;
                         </button>
@@ -1639,7 +1639,7 @@ function FieldSettingsContent({
                     ))}
                     <button
                       onClick={addOption}
-                      className="text-xs text-gray-500 hover:text-gray-700"
+                      className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                     >
                       + Add option
                     </button>
@@ -1649,14 +1649,14 @@ function FieldSettingsContent({
                 <div className="flex gap-2 pt-2">
                   <button
                     onClick={() => setAdding(false)}
-                    className="flex-1 text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50"
+                    className="flex-1 text-sm px-3 py-2 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-surface-hover)]"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAddField}
                     disabled={!newField.name.trim() || saving}
-                    className="flex-1 text-sm px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                    className="flex-1 text-sm px-3 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                   >
                     {saving ? "..." : "Add Field"}
                   </button>
@@ -1665,7 +1665,7 @@ function FieldSettingsContent({
             ) : (
               <button
                 onClick={() => setAdding(true)}
-                className="w-full text-sm px-4 py-2 border border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700"
+                className="w-full text-sm px-4 py-2 border border-dashed border-[var(--color-border-primary)] rounded-lg text-[var(--color-text-secondary)] hover:border-gray-400 hover:text-[var(--color-text-primary)]"
               >
                 + Add Custom Field
               </button>
@@ -1713,7 +1713,7 @@ function ListAssigneeFilter({
     <div className="relative" ref={containerRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-gray-900 flex items-center gap-2 min-w-[140px]"
+        className="text-sm border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] flex items-center gap-2 min-w-[140px]"
       >
         {selectedUser ? (
           <span className="flex items-center gap-1.5">
@@ -1724,36 +1724,36 @@ function ListAssigneeFilter({
             />
             <span className="truncate">{selectedUser.first_name} {selectedUser.last_name}</span>
             <span
-              className="text-gray-400 hover:text-gray-600 ml-1"
+              className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] ml-1"
               onClick={(e) => { e.stopPropagation(); onChange(""); setOpen(false); }}
             >
               &times;
             </span>
           </span>
         ) : (
-          <span className="text-gray-400">
+          <span className="text-[var(--color-text-tertiary)]">
             {scope === "global" ? "All people" : "All members"}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-gray-100">
+        <div className="absolute z-20 mt-1 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-[var(--shadow-lg)] max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-[var(--color-border-secondary)]">
             <input
               type="text"
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-sm px-2 py-1 border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+              className="w-full text-sm px-2 py-1 border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
               autoFocus
             />
           </div>
           <div className="max-h-44 overflow-y-auto">
             <button
               onClick={() => { onChange(""); setOpen(false); setSearch(""); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                !selected ? "bg-gray-50 font-medium" : ""
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] ${
+                !selected ? "bg-[var(--color-bg-secondary)] font-medium" : ""
               }`}
             >
               {scope === "global" ? "All people" : "All members"}
@@ -1762,8 +1762,8 @@ function ListAssigneeFilter({
               <button
                 key={user.id}
                 onClick={() => { onChange(user.id); setOpen(false); setSearch(""); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
-                  selected === user.id ? "bg-gray-50" : ""
+                className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[var(--color-surface-hover)] ${
+                  selected === user.id ? "bg-[var(--color-bg-secondary)]" : ""
                 }`}
               >
                 <AssigneeAvatar
@@ -1776,7 +1776,7 @@ function ListAssigneeFilter({
               </button>
             ))}
             {filtered.length === 0 && (
-              <p className="text-xs text-gray-400 p-3 text-center">No one found</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] p-3 text-center">No one found</p>
             )}
           </div>
         </div>

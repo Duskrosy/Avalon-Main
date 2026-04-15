@@ -44,12 +44,12 @@ type Props = {
 const DISPATCH_STATUSES = ["pending", "picking", "packing", "ready", "handed_off", "cancelled"] as const;
 
 const STATUS_BADGE: Record<string, string> = {
-  pending:    "bg-gray-100 text-gray-600",
-  picking:    "bg-blue-50 text-blue-700",
-  packing:    "bg-amber-50 text-amber-600",
-  ready:      "bg-green-50 text-green-700",
+  pending:    "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  picking:    "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  packing:    "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  ready:      "bg-[var(--color-success-light)] text-[var(--color-success)]",
   handed_off: "bg-emerald-50 text-emerald-700",
-  cancelled:  "bg-red-50 text-red-500",
+  cancelled:  "bg-[var(--color-error-light)] text-[var(--color-error)]",
 };
 
 const STATUS_PIPELINE_COLOR: Record<string, string> = {
@@ -220,12 +220,12 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Dispatch Queue</h1>
-          <p className="text-sm text-gray-500 mt-1">{dispatches.length} entries loaded</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Dispatch Queue</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{dispatches.length} entries loaded</p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Dispatch
         </button>
@@ -233,7 +233,7 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
 
       {/* Status Pipeline Bar */}
       <div className="mb-6">
-        <div className="flex h-8 rounded-lg overflow-hidden border border-gray-200">
+        <div className="flex h-8 rounded-lg overflow-hidden border border-[var(--color-border-primary)]">
           {DISPATCH_STATUSES.map((s) => {
             const pct = (counts[s] / total) * 100;
             if (counts[s] === 0) return null;
@@ -244,15 +244,15 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
                 style={{ width: `${Math.max(pct, 4)}%` }}
                 title={`${STATUS_LABEL[s]}: ${counts[s]}`}
               >
-                <span className="text-[10px] font-semibold text-white drop-shadow-sm truncate px-1">
+                <span className="text-[10px] font-semibold text-white drop-shadow-[var(--shadow-sm)] truncate px-1">
                   {counts[s]}
                 </span>
               </div>
             );
           })}
           {dispatches.length === 0 && (
-            <div className="w-full bg-gray-50 flex items-center justify-center">
-              <span className="text-xs text-gray-400">No dispatch entries</span>
+            <div className="w-full bg-[var(--color-bg-secondary)] flex items-center justify-center">
+              <span className="text-xs text-[var(--color-text-tertiary)]">No dispatch entries</span>
             </div>
           )}
         </div>
@@ -260,7 +260,7 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
           {DISPATCH_STATUSES.map((s) => (
             <div key={s} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${STATUS_PIPELINE_COLOR[s]}`} />
-              <span className="text-[11px] text-gray-500">
+              <span className="text-[11px] text-[var(--color-text-secondary)]">
                 {STATUS_LABEL[s]} ({counts[s]})
               </span>
             </div>
@@ -273,7 +273,7 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Statuses</option>
           {DISPATCH_STATUSES.map((s) => (
@@ -283,7 +283,7 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
         <select
           value={assignedFilter}
           onChange={(e) => setAssignedFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Assigned</option>
           {profiles.map((p) => (
@@ -293,7 +293,7 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
         {(statusFilter || assignedFilter) && (
           <button
             onClick={() => { setStatusFilter(""); setAssignedFilter(""); }}
-            className="text-xs text-gray-400 hover:text-gray-700"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -302,42 +302,42 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : dispatches.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No dispatch entries found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No dispatch entries found.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Pre-order?</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Courier</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tracking #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dispatch Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Handoff</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Order #</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Customer</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase">Pre-order?</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Courier</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Tracking #</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Assigned</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Dispatch Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Handoff</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {dispatches.map((d) => (
-                <tr key={d.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono text-xs font-medium text-gray-900">
+                <tr key={d.id} className="hover:bg-[var(--color-surface-hover)]">
+                  <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--color-text-primary)]">
                     {d.order?.order_number ?? "\u2014"}
                   </td>
-                  <td className="px-4 py-3 text-gray-700">
-                    {d.order?.customer_name ?? <span className="text-gray-300">{"\u2014"}</span>}
+                  <td className="px-4 py-3 text-[var(--color-text-primary)]">
+                    {d.order?.customer_name ?? <span className="text-[var(--color-text-tertiary)]">{"\u2014"}</span>}
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <select
                       value={d.status}
                       onChange={(e) => updateStatus(d.id, e.target.value)}
-                      className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-gray-900 ${STATUS_BADGE[d.status] ?? "bg-gray-100 text-gray-500"}`}
+                      className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-[var(--color-accent)] ${STATUS_BADGE[d.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}
                     >
                       {DISPATCH_STATUSES.map((s) => (
                         <option key={s} value={s}>{STATUS_LABEL[s]}</option>
@@ -348,18 +348,18 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
                     {d.is_preorder ? (
                       <span className="text-xs bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full font-medium">Yes</span>
                     ) : (
-                      <span className="text-xs text-gray-300">{"\u2014"}</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">{"\u2014"}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{d.courier_name ?? "\u2014"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{d.tracking_number ?? "\u2014"}</td>
-                  <td className="px-4 py-3 text-xs text-gray-600">{profileName(d.assigned)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{formatDate(d.dispatch_date)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{formatDateTime(d.handoff_at)}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">{d.courier_name ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-secondary)]">{d.tracking_number ?? "\u2014"}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">{profileName(d.assigned)}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">{formatDate(d.dispatch_date)}</td>
+                  <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">{formatDateTime(d.handoff_at)}</td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleDelete(d.id)}
-                      className="text-xs text-gray-300 hover:text-red-400"
+                      className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400"
                     >
                       Del
                     </button>
@@ -374,16 +374,16 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
       {/* Create Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Dispatch Entry</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Dispatch Entry</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Order *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Order *</label>
                 <select
                   required
                   value={form.order_id}
                   onChange={(e) => setForm((f) => ({ ...f, order_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">Select order...</option>
                   {orders.map((o) => (
@@ -395,11 +395,11 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Assigned To</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Assigned To</label>
                 <select
                   value={form.assigned_to}
                   onChange={(e) => setForm((f) => ({ ...f, assigned_to: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">Unassigned</option>
                   {profiles.map((p) => (
@@ -414,18 +414,18 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
                   id="is_preorder"
                   checked={form.is_preorder}
                   onChange={(e) => setForm((f) => ({ ...f, is_preorder: e.target.checked }))}
-                  className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                  className="rounded border-[var(--color-border-primary)] text-[var(--color-text-primary)] focus:ring-[var(--color-accent)]"
                 />
-                <label htmlFor="is_preorder" className="text-sm text-gray-700">Pre-order</label>
+                <label htmlFor="is_preorder" className="text-sm text-[var(--color-text-primary)]">Pre-order</label>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Remarks</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Remarks</label>
                 <textarea
                   rows={2}
                   value={form.remarks}
                   onChange={(e) => setForm((f) => ({ ...f, remarks: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
@@ -433,14 +433,14 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Create Dispatch"}
                 </button>

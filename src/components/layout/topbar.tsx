@@ -1,31 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
+import { Avatar } from "@/components/ui/avatar";
 import { NotificationDropdown } from "./notification-dropdown";
 
 type TopbarProps = {
   unreadCount: number;
   birthdayBanner: { name: string; daysUntil: number } | null;
+  userName?: string;
+  userInitials?: string;
+  userAvatarUrl?: string | null;
 };
 
-export function Topbar({ unreadCount, birthdayBanner }: TopbarProps) {
+export function Topbar({ unreadCount, birthdayBanner, userName, userInitials, userAvatarUrl }: TopbarProps) {
   const [showBanner, setShowBanner] = useState(!!birthdayBanner);
-  const router = useRouter();
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   return (
     <div>
       {showBanner && birthdayBanner && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
-          <p className="text-sm text-amber-800">
+        <div className="bg-[var(--color-warning-light)] border-b border-[var(--color-border-primary)] px-4 py-2 flex items-center justify-between">
+          <p className="text-sm text-[var(--color-warning-text)]">
             🎂{" "}
             {birthdayBanner.daysUntil === 0
               ? `It's ${birthdayBanner.name}'s birthday today!`
@@ -35,25 +30,33 @@ export function Topbar({ unreadCount, birthdayBanner }: TopbarProps) {
           </p>
           <button
             onClick={() => setShowBanner(false)}
-            className="text-amber-600 hover:text-amber-800 text-sm"
+            className="text-[var(--color-warning)] hover:text-[var(--color-warning-text)] text-sm"
           >
             ✕
           </button>
         </div>
       )}
 
-      <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-6">
+      {/* Desktop topbar */}
+      <header className="h-14 bg-[var(--color-bg-primary)] border-b border-[var(--color-border-primary)] items-center justify-between px-6 hidden lg:flex">
         <div />
-
         <div className="flex items-center gap-4">
           <NotificationDropdown unreadCount={unreadCount} />
+        </div>
+      </header>
 
-          <button
-            onClick={handleSignOut}
-            className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            Sign out
-          </button>
+      {/* Mobile topbar */}
+      <header className="h-12 bg-[var(--color-bg-primary)] border-b border-[var(--color-border-primary)] flex items-center justify-between px-4 lg:hidden">
+        <Link href="/" className="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">
+          Avalon
+        </Link>
+        <div className="flex items-center gap-3">
+          <NotificationDropdown unreadCount={unreadCount} />
+          {userInitials && (
+            <Link href="/account/settings">
+              <Avatar url={userAvatarUrl} initials={userInitials} size="sm" />
+            </Link>
+          )}
         </div>
       </header>
     </div>

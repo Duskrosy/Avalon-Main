@@ -37,10 +37,10 @@ type Props = {
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  low: "bg-gray-100 text-gray-600",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-amber-100 text-amber-700",
-  urgent: "bg-red-100 text-red-700",
+  low: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  medium: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  high: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  urgent: "bg-[var(--color-error-light)] text-[var(--color-error)]",
 };
 
 export function ManagerDashboard({ currentDepartmentId, departments, isOps }: Props) {
@@ -72,14 +72,14 @@ export function ManagerDashboard({ currentDepartmentId, departments, isOps }: Pr
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Productivity Overview</h1>
-          <p className="text-sm text-gray-500 mt-1">Team workload and task status</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Productivity Overview</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Team workload and task status</p>
         </div>
         {isOps && departments.length > 0 && (
           <select
             value={departmentId}
             onChange={(e) => setDepartmentId(e.target.value)}
-            className="text-sm border border-gray-200 rounded-lg px-3 py-2"
+            className="text-sm border border-[var(--color-border-primary)] rounded-lg px-3 py-2"
           >
             <option value="">All Departments</option>
             {departments.map((d) => (
@@ -90,53 +90,53 @@ export function ManagerDashboard({ currentDepartmentId, departments, isOps }: Pr
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-gray-400">Loading...</div>
+        <div className="py-12 text-center text-sm text-[var(--color-text-tertiary)]">Loading...</div>
       ) : (
         <>
           {/* Stats cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Total Tasks</p>
-              <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Total Tasks</p>
+              <p className="text-2xl font-semibold text-[var(--color-text-primary)]">{stats.total}</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Completed</p>
-              <p className="text-2xl font-semibold text-green-600">{stats.completed}</p>
-              <p className="text-xs text-gray-400 mt-1">{completionRate}% completion rate</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Completed</p>
+              <p className="text-2xl font-semibold text-[var(--color-success)]">{stats.completed}</p>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{completionRate}% completion rate</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Overdue</p>
-              <p className="text-2xl font-semibold text-red-600">{stats.overdue}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Overdue</p>
+              <p className="text-2xl font-semibold text-[var(--color-error)]">{stats.overdue}</p>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-500 mb-1">Completed This Week</p>
-              <p className="text-2xl font-semibold text-blue-600">{stats.completedThisWeek}</p>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <p className="text-xs text-[var(--color-text-secondary)] mb-1">Completed This Week</p>
+              <p className="text-2xl font-semibold text-[var(--color-accent)]">{stats.completedThisWeek}</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Workload by assignee */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">Workload by Assignee</h3>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Workload by Assignee</h3>
               {workload.length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">No assigned tasks</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">No assigned tasks</p>
               ) : (
                 <div className="space-y-3">
                   {workload.map((person) => (
                     <div key={person.id} className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-600">
+                        <div className="w-8 h-8 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-xs font-medium text-[var(--color-text-secondary)]">
                           {person.name.split(" ").map((n) => n[0]).join("")}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-gray-800">{person.name}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm font-medium text-[var(--color-text-primary)]">{person.name}</p>
+                          <p className="text-xs text-[var(--color-text-secondary)]">
                             {person.open} open{person.completedThisWeek > 0 && `, ${person.completedThisWeek} done this week`}
                           </p>
                         </div>
                       </div>
                       {person.overdue > 0 && (
-                        <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">
+                        <span className="text-xs px-2 py-1 bg-[var(--color-error-light)] text-[var(--color-error)] rounded-full">
                           {person.overdue} overdue
                         </span>
                       )}
@@ -147,25 +147,25 @@ export function ManagerDashboard({ currentDepartmentId, departments, isOps }: Pr
             </div>
 
             {/* Overdue tasks */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4">
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
                 Overdue Tasks
-                {overdue.length > 0 && <span className="text-red-500 ml-2">({overdue.length})</span>}
+                {overdue.length > 0 && <span className="text-[var(--color-error)] ml-2">({overdue.length})</span>}
               </h3>
               {overdue.length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">No overdue tasks</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">No overdue tasks</p>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {overdue.map((card) => (
                     <Link
                       key={card.id}
                       href="/productivity/kanban"
-                      className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="block p-3 bg-[var(--color-bg-secondary)] rounded-lg hover:bg-[var(--color-surface-active)] transition-colors"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">{card.title}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{card.title}</p>
+                          <p className="text-xs text-[var(--color-text-secondary)]">
                             {card.assignee ?? "Unassigned"} · {card.column}
                           </p>
                         </div>
@@ -173,7 +173,7 @@ export function ManagerDashboard({ currentDepartmentId, departments, isOps }: Pr
                           <span className={`text-xs px-2 py-0.5 rounded ${PRIORITY_COLORS[card.priority]}`}>
                             {card.priority}
                           </span>
-                          <p className="text-xs text-red-500 mt-1">
+                          <p className="text-xs text-[var(--color-error)] mt-1">
                             Due {format(new Date(card.due_date), "MMM d")}
                           </p>
                         </div>
@@ -189,7 +189,7 @@ export function ManagerDashboard({ currentDepartmentId, departments, isOps }: Pr
           <div className="mt-6 text-center">
             <Link
               href="/productivity/kanban"
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             >
               Open Task Board →
             </Link>

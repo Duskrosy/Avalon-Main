@@ -21,10 +21,10 @@ function rag(value: number | null, green: number, amber: number, direction: stri
 }
 
 const RAG_STYLES: Record<RagStatus, { bg: string; text: string; border: string; dot: string }> = {
-  green:  { bg: "bg-green-50",  text: "text-green-700",  border: "border-green-400", dot: "bg-green-500"  },
-  amber:  { bg: "bg-amber-50",  text: "text-amber-700",  border: "border-amber-400", dot: "bg-amber-500"  },
-  red:    { bg: "bg-red-50",    text: "text-red-700",    border: "border-red-400",   dot: "bg-red-500"    },
-  noData: { bg: "bg-gray-50",   text: "text-gray-400",   border: "border-gray-200",  dot: "bg-gray-300"   },
+  green:  { bg: "bg-[var(--color-success-light)]",  text: "text-[var(--color-success)]",  border: "border-green-400", dot: "bg-[var(--color-success-light)]0"  },
+  amber:  { bg: "bg-[var(--color-warning-light)]",  text: "text-[var(--color-warning-text)]",  border: "border-amber-400", dot: "bg-[var(--color-warning-light)]0"  },
+  red:    { bg: "bg-[var(--color-error-light)]",    text: "text-[var(--color-error)]",    border: "border-red-400",   dot: "bg-[var(--color-error-light)]0"    },
+  noData: { bg: "bg-[var(--color-bg-secondary)]",   text: "text-[var(--color-text-tertiary)]",   border: "border-[var(--color-border-primary)]",  dot: "bg-gray-300"   },
 };
 
 function fmtKpi(value: number | null, unit: string): string {
@@ -96,7 +96,7 @@ export default async function ExecutiveAdOpsKpiPage() {
 
   if (!mktDept) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
+      <div className="flex items-center justify-center h-64 text-[var(--color-text-tertiary)] text-sm">
         Marketing department not found
       </div>
     );
@@ -159,16 +159,16 @@ export default async function ExecutiveAdOpsKpiPage() {
     <div className="space-y-6">
 
       {/* ── Overall Health Summary ──────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-900">KPI Health Overview</h2>
-          <span className="text-xs text-gray-400">{totalKpis} metrics tracked</span>
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">KPI Health Overview</h2>
+          <span className="text-xs text-[var(--color-text-tertiary)]">{totalKpis} metrics tracked</span>
         </div>
         {/* RAG bar */}
-        <div className="flex h-3 rounded-full overflow-hidden bg-gray-100">
+        <div className="flex h-3 rounded-full overflow-hidden bg-[var(--color-bg-tertiary)]">
           {summary.green > 0 && (
             <div
-              className="bg-green-500 transition-all"
+              className="bg-[var(--color-success-light)]0 transition-all"
               style={{ width: `${(summary.green / totalKpis) * 100}%` }}
             />
           )}
@@ -180,7 +180,7 @@ export default async function ExecutiveAdOpsKpiPage() {
           )}
           {summary.red > 0 && (
             <div
-              className="bg-red-500 transition-all"
+              className="bg-[var(--color-error-light)]0 transition-all"
               style={{ width: `${(summary.red / totalKpis) * 100}%` }}
             />
           )}
@@ -194,15 +194,15 @@ export default async function ExecutiveAdOpsKpiPage() {
         {/* Legend */}
         <div className="flex items-center gap-4 mt-3">
           {[
-            { label: "Green", count: summary.green, color: "bg-green-500" },
+            { label: "Green", count: summary.green, color: "bg-[var(--color-success-light)]0" },
             { label: "Amber", count: summary.amber, color: "bg-amber-400" },
-            { label: "Red", count: summary.red, color: "bg-red-500" },
+            { label: "Red", count: summary.red, color: "bg-[var(--color-error-light)]0" },
             { label: "No data", count: summary.noData, color: "bg-gray-300" },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-              <span className="text-xs text-gray-500">
-                {item.label} <span className="font-semibold text-gray-700">{item.count}</span>
+              <span className="text-xs text-[var(--color-text-secondary)]">
+                {item.label} <span className="font-semibold text-[var(--color-text-primary)]">{item.count}</span>
               </span>
             </div>
           ))}
@@ -212,7 +212,7 @@ export default async function ExecutiveAdOpsKpiPage() {
       {/* ── North Star (Hero Section) ──────────────────────────────────── */}
       {grouped["North Star"] && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["North Star"]}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -221,9 +221,9 @@ export default async function ExecutiveAdOpsKpiPage() {
               return (
                 <div
                   key={kpi.id}
-                  className={`bg-white rounded-xl border border-gray-200 border-l-4 ${styles.border} p-6`}
+                  className={`bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] border-l-4 ${styles.border} p-6`}
                 >
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">
+                  <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase tracking-wide mb-2">
                     {kpi.name}
                   </p>
                   <p className={`text-4xl font-bold tracking-tight ${styles.text}`}>
@@ -232,10 +232,10 @@ export default async function ExecutiveAdOpsKpiPage() {
                       : fmtKpi(kpi.value, kpi.unit)}
                   </p>
                   {kpi.hint && (
-                    <p className="text-xs text-gray-400 mt-2 leading-relaxed">{kpi.hint}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-2 leading-relaxed">{kpi.hint}</p>
                   )}
                   {kpi.period_date && (
-                    <p className="text-[10px] text-gray-300 mt-1.5">
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1.5">
                       Latest: {kpi.period_date}
                     </p>
                   )}
@@ -249,7 +249,7 @@ export default async function ExecutiveAdOpsKpiPage() {
       {/* ── Supporting (Medium Cards) ──────────────────────────────────── */}
       {grouped["Supporting"] && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["Supporting"]}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -258,20 +258,20 @@ export default async function ExecutiveAdOpsKpiPage() {
               return (
                 <div
                   key={kpi.id}
-                  className="bg-white rounded-xl border border-gray-200 p-5"
+                  className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] p-5"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <div className={`w-2.5 h-2.5 rounded-full ${styles.dot}`} />
-                    <p className="text-xs text-gray-500 font-medium">{kpi.name}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] font-medium">{kpi.name}</p>
                   </div>
                   <p className={`text-2xl font-bold tracking-tight ${styles.text}`}>
                     {fmtKpi(kpi.value, kpi.unit)}
                   </p>
                   {kpi.hint && (
-                    <p className="text-[10px] text-gray-400 mt-1.5 line-clamp-2">{kpi.hint}</p>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1.5 line-clamp-2">{kpi.hint}</p>
                   )}
                   {kpi.period_date && (
-                    <p className="text-[10px] text-gray-300 mt-1">
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">
                       Latest: {kpi.period_date}
                     </p>
                   )}
@@ -285,7 +285,7 @@ export default async function ExecutiveAdOpsKpiPage() {
       {/* ── Efficiency (Compact Grid) ──────────────────────────────────── */}
       {grouped["Efficiency"] && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["Efficiency"]}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -294,10 +294,10 @@ export default async function ExecutiveAdOpsKpiPage() {
               return (
                 <div
                   key={kpi.id}
-                  className="bg-white rounded-xl border border-gray-200 p-4"
+                  className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] p-4"
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wide truncate">
+                    <p className="text-[10px] text-[var(--color-text-secondary)] font-medium uppercase tracking-wide truncate">
                       {kpi.name}
                     </p>
                     <div className={`w-2 h-2 rounded-full shrink-0 ${styles.dot}`} />
@@ -305,7 +305,7 @@ export default async function ExecutiveAdOpsKpiPage() {
                   <p className={`text-lg font-bold tracking-tight ${styles.text}`}>
                     {fmtKpi(kpi.value, kpi.unit)}
                   </p>
-                  <p className="text-[9px] text-gray-300 mt-1 uppercase tracking-wide">
+                  <p className="text-[9px] text-[var(--color-text-tertiary)] mt-1 uppercase tracking-wide">
                     Early warning
                   </p>
                 </div>
@@ -318,7 +318,7 @@ export default async function ExecutiveAdOpsKpiPage() {
       {/* ── Budget (Progress-Style) ────────────────────────────────────── */}
       {grouped["Budget"] && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["Budget"]}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -337,36 +337,36 @@ export default async function ExecutiveAdOpsKpiPage() {
               return (
                 <div
                   key={kpi.id}
-                  className="bg-white rounded-xl border border-gray-200 p-5"
+                  className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] p-5"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-gray-500 font-medium">{kpi.name}</p>
+                    <p className="text-xs text-[var(--color-text-secondary)] font-medium">{kpi.name}</p>
                     <div className={`w-2.5 h-2.5 rounded-full ${styles.dot}`} />
                   </div>
                   <p className={`text-2xl font-bold tracking-tight mb-3 ${styles.text}`}>
                     {fmtKpi(kpi.value, kpi.unit)}
                   </p>
                   {/* Progress bar */}
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all ${
                         kpi.status === "green"
-                          ? "bg-green-500"
+                          ? "bg-[var(--color-success-light)]0"
                           : kpi.status === "amber"
                           ? "bg-amber-400"
                           : kpi.status === "red"
-                          ? "bg-red-500"
+                          ? "bg-[var(--color-error-light)]0"
                           : "bg-gray-300"
                       }`}
                       style={{ width: `${Math.min(progressPct, 100)}%` }}
                     />
                   </div>
                   <div className="flex items-center justify-between mt-1.5">
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">
                       Target: {fmtKpi(kpi.threshold_green, kpi.unit)}
                     </span>
                     {kpi.period_date && (
-                      <span className="text-[10px] text-gray-300">{kpi.period_date}</span>
+                      <span className="text-[10px] text-[var(--color-text-tertiary)]">{kpi.period_date}</span>
                     )}
                   </div>
                 </div>
@@ -381,17 +381,17 @@ export default async function ExecutiveAdOpsKpiPage() {
         .filter(([cat]) => !TIER_ORDER.includes(cat))
         .map(([cat, items]) => (
           <div key={cat}>
-            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
               {cat}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {items.map((kpi) => {
                 const styles = RAG_STYLES[kpi.status];
                 return (
-                  <div key={kpi.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                  <div key={kpi.id} className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] p-4">
                     <div className="flex items-center gap-2 mb-1.5">
                       <div className={`w-2 h-2 rounded-full ${styles.dot}`} />
-                      <p className="text-xs text-gray-500 font-medium">{kpi.name}</p>
+                      <p className="text-xs text-[var(--color-text-secondary)] font-medium">{kpi.name}</p>
                     </div>
                     <p className={`text-lg font-bold ${styles.text}`}>
                       {fmtKpi(kpi.value, kpi.unit)}

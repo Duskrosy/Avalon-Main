@@ -42,27 +42,27 @@ type Props = {
 };
 
 const REQUEST_STATUS_STYLES: Record<string, string> = {
-  draft:       "bg-gray-100 text-gray-500",
-  submitted:   "bg-blue-50 text-blue-600",
-  in_progress: "bg-amber-50 text-amber-600",
+  draft:       "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  submitted:   "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  in_progress: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
   review:      "bg-purple-50 text-purple-600",
-  approved:    "bg-green-50 text-green-700",
-  rejected:    "bg-red-50 text-red-500",
-  cancelled:   "bg-gray-100 text-gray-400",
+  approved:    "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  rejected:    "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  cancelled:   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
 };
 
 const ASSET_STATUS_STYLES: Record<string, string> = {
-  draft:          "bg-gray-100 text-gray-500",
-  pending_review: "bg-amber-50 text-amber-600",
-  approved:       "bg-green-50 text-green-700",
-  needs_revision: "bg-red-50 text-red-500",
-  archived:       "bg-gray-100 text-gray-400",
+  draft:          "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  pending_review: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  approved:       "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  needs_revision: "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  archived:       "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
 };
 
 const FUNNEL_COLORS: Record<string, string> = {
-  TOF: "bg-blue-100 text-blue-700",
-  MOF: "bg-amber-100 text-amber-700",
-  BOF: "bg-green-100 text-green-700",
+  TOF: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  MOF: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  BOF: "bg-[var(--color-success-light)] text-[var(--color-success)]",
 };
 
 const MODULES = [
@@ -150,8 +150,8 @@ export function AdDashboard({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Ad Operations</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Ad Operations</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           Shared workspace for Creatives &amp; Marketing · {metaAccounts.length} Meta account{metaAccounts.length !== 1 ? "s" : ""} connected
         </p>
       </div>
@@ -159,18 +159,18 @@ export function AdDashboard({
       {/* ── Yesterday's Performance ───────────────────────────────────────────── */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">Yesterday&apos;s Performance</h2>
-          <span className="text-xs text-gray-400">{yesterdayLabel}</span>
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Yesterday&apos;s Performance</h2>
+          <span className="text-xs text-[var(--color-text-tertiary)]">{yesterdayLabel}</span>
         </div>
 
         {!hasYesterdayData ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-8 flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-gray-400">No data yet — sync to get yesterday&apos;s metrics</p>
+          <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-[var(--color-text-tertiary)]">No data yet — sync to get yesterday&apos;s metrics</p>
             {canSync && (
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 {syncing ? "Syncing…" : "Sync Now"}
               </button>
@@ -180,47 +180,47 @@ export function AdDashboard({
           <>
             {/* Totals row */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Total Spend{totalsCurrency === null && perAccountSpend.length > 1 ? " (mixed)" : ""}</p>
-                <p className="text-xl font-bold text-gray-900">{fmtCurrency(yesterdayTotals.spend, totalsCurrency)}</p>
+              <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Total Spend{totalsCurrency === null && perAccountSpend.length > 1 ? " (mixed)" : ""}</p>
+                <p className="text-xl font-bold text-[var(--color-text-primary)]">{fmtCurrency(yesterdayTotals.spend, totalsCurrency)}</p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Impressions</p>
-                <p className="text-xl font-bold text-gray-900">{fmtK(yesterdayTotals.impressions)}</p>
+              <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Impressions</p>
+                <p className="text-xl font-bold text-[var(--color-text-primary)]">{fmtK(yesterdayTotals.impressions)}</p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Overall ROAS</p>
-                <p className="text-xl font-bold text-gray-900">
+              <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Overall ROAS</p>
+                <p className="text-xl font-bold text-[var(--color-text-primary)]">
                   {yesterdayTotals.roas != null ? yesterdayTotals.roas.toFixed(2) + "x" : "—"}
                 </p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-1">Conversions</p>
-                <p className="text-xl font-bold text-gray-900">{yesterdayTotals.conversions.toLocaleString()}</p>
+              <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Conversions</p>
+                <p className="text-xl font-bold text-[var(--color-text-primary)]">{yesterdayTotals.conversions.toLocaleString()}</p>
               </div>
             </div>
 
             {/* Top campaigns + per-account */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {topByROAS && (
-                <div className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Top Campaign · ROAS</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate mb-1">{topByROAS.name}</p>
-                  <p className="text-xl font-bold text-green-700">{topByROAS.roas.toFixed(2)}x</p>
+                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">Top Campaign · ROAS</p>
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate mb-1">{topByROAS.name}</p>
+                  <p className="text-xl font-bold text-[var(--color-success)]">{topByROAS.roas.toFixed(2)}x</p>
                 </div>
               )}
               {topBySpend && (
-                <div className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Top Campaign · Spend</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate mb-1">{topBySpend.name}</p>
-                  <p className="text-xl font-bold text-gray-900">{fmtCurrency(topBySpend.spend, totalsCurrency)}</p>
+                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">Top Campaign · Spend</p>
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate mb-1">{topBySpend.name}</p>
+                  <p className="text-xl font-bold text-[var(--color-text-primary)]">{fmtCurrency(topBySpend.spend, totalsCurrency)}</p>
                 </div>
               )}
               {perAccountSpend.map((a) => (
-                <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                  <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">Account Spend</p>
-                  <p className="text-sm font-semibold text-gray-900 truncate mb-1">{a.name}</p>
-                  <p className="text-xl font-bold text-gray-900">{fmtCurrency(a.spend, a.currency)}</p>
+                <div key={a.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)] mb-1 uppercase tracking-wide">Account Spend</p>
+                  <p className="text-sm font-semibold text-[var(--color-text-primary)] truncate mb-1">{a.name}</p>
+                  <p className="text-xl font-bold text-[var(--color-text-primary)]">{fmtCurrency(a.spend, a.currency)}</p>
                 </div>
               ))}
             </div>
@@ -230,42 +230,42 @@ export function AdDashboard({
 
       {/* Meta Sync status */}
       {canSync && (
-        <div className="mb-6 border border-gray-200 rounded-xl bg-white p-4 flex items-center gap-4 flex-wrap">
+        <div className="mb-6 border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] bg-[var(--color-bg-primary)] p-4 flex items-center gap-4 flex-wrap">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Meta Ads Sync</p>
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-1">Meta Ads Sync</p>
             {lastSync ? (
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${
-                  lastSync.status === "success" ? "bg-green-50 text-green-700" :
-                  lastSync.status === "failed"  ? "bg-red-50 text-red-600" :
-                  "bg-amber-50 text-amber-600"
+                  lastSync.status === "success" ? "bg-[var(--color-success-light)] text-[var(--color-success)]" :
+                  lastSync.status === "failed"  ? "bg-[var(--color-error-light)] text-[var(--color-error)]" :
+                  "bg-[var(--color-warning-light)] text-[var(--color-warning)]"
                 }`}>
                   {lastSync.status === "success" ? "✓" : lastSync.status === "failed" ? "✕" : "⟳"} {lastSync.status}
                 </span>
                 {lastSync.completed_at && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-[var(--color-text-tertiary)]">
                     {format(parseISO(lastSync.completed_at), "d MMM yyyy, h:mm a")}
                     {lastSync.triggered_by && ` · ${lastSync.triggered_by}`}
                   </span>
                 )}
                 {lastSync.records_processed > 0 && (
-                  <span className="text-xs text-gray-400">{lastSync.records_processed} records</span>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">{lastSync.records_processed} records</span>
                 )}
                 {lastSync.account_results && lastSync.account_results.length > 0 && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-[var(--color-text-tertiary)]">
                     {lastSync.account_results.filter((r) => r.status === "ok").length}/{lastSync.account_results.length} accounts ok
                   </span>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-gray-400">Never synced — click Sync Now to pull Meta data</p>
+              <p className="text-sm text-[var(--color-text-tertiary)]">Never synced — click Sync Now to pull Meta data</p>
             )}
-            {syncError && <p className="text-xs text-red-500 mt-1">{syncError}</p>}
+            {syncError && <p className="text-xs text-[var(--color-error)] mt-1">{syncError}</p>}
           </div>
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="shrink-0 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="shrink-0 bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {syncing ? (
               <>
@@ -281,39 +281,39 @@ export function AdDashboard({
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Open Requests</p>
-          <p className="text-2xl font-bold text-gray-900">{openRequests}</p>
-          <p className="text-xs text-gray-400 mt-1">of {totalRequests} total</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Open Requests</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{openRequests}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">of {totalRequests} total</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Approved Assets</p>
-          <p className="text-2xl font-bold text-gray-900">{approvedAssets}</p>
-          <p className="text-xs text-gray-400 mt-1">ready to deploy</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Approved Assets</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{approvedAssets}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">ready to deploy</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Pending Review</p>
-          <p className="text-2xl font-bold text-gray-900">{pendingReview}</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Pending Review</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{pendingReview}</p>
           {needsRevision > 0 && (
             <p className="text-xs text-red-400 mt-1">{needsRevision} need revision</p>
           )}
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Active Campaigns</p>
-          <p className="text-2xl font-bold text-gray-900">{activeDeployments.length}</p>
-          <p className="text-xs text-gray-400 mt-1">live deployments</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Active Campaigns</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{activeDeployments.length}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">live deployments</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
         {/* Recent requests */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Recent Requests</h2>
-            <Link href="/ad-ops/requests" className="text-xs text-gray-400 hover:text-gray-700">View all →</Link>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Recent Requests</h2>
+            <Link href="/ad-ops/requests" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">View all →</Link>
           </div>
           {recentRequests.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-gray-400">No requests yet</div>
+            <div className="px-5 py-8 text-center text-sm text-[var(--color-text-tertiary)]">No requests yet</div>
           ) : (
             <ul className="divide-y divide-gray-50">
               {recentRequests.map((r) => (
@@ -321,9 +321,9 @@ export function AdDashboard({
                   <span className={`text-xs px-2 py-0.5 rounded-full ${REQUEST_STATUS_STYLES[r.status] ?? ""}`}>
                     {r.status.replace("_", " ")}
                   </span>
-                  <span className="flex-1 text-sm text-gray-800 truncate">{r.title}</span>
+                  <span className="flex-1 text-sm text-[var(--color-text-primary)] truncate">{r.title}</span>
                   {r.target_date && (
-                    <span className="text-xs text-gray-400 shrink-0">
+                    <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
                       {format(parseISO(r.target_date), "d MMM")}
                     </span>
                   )}
@@ -334,24 +334,24 @@ export function AdDashboard({
         </div>
 
         {/* Active deployments */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Active Deployments</h2>
-            <Link href="/ad-ops/deployments" className="text-xs text-gray-400 hover:text-gray-700">View all →</Link>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Active Deployments</h2>
+            <Link href="/ad-ops/deployments" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">View all →</Link>
           </div>
           {activeDeployments.length === 0 ? (
-            <div className="px-5 py-8 text-center text-sm text-gray-400">No active deployments</div>
+            <div className="px-5 py-8 text-center text-sm text-[var(--color-text-tertiary)]">No active deployments</div>
           ) : (
             <ul className="divide-y divide-gray-50">
               {activeDeployments.map((d) => (
                 <li key={d.id} className="px-5 py-3 flex items-center gap-3">
                   <span className="w-2 h-2 bg-green-400 rounded-full shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-gray-800 truncate">{d.campaign_name ?? d.asset?.title ?? "Unnamed"}</p>
-                    {d.asset && <p className="text-xs text-gray-400">{d.asset.asset_code}</p>}
+                    <p className="text-sm text-[var(--color-text-primary)] truncate">{d.campaign_name ?? d.asset?.title ?? "Unnamed"}</p>
+                    {d.asset && <p className="text-xs text-[var(--color-text-tertiary)]">{d.asset.asset_code}</p>}
                   </div>
                   {d.launched_at && (
-                    <span className="text-xs text-gray-400 shrink-0">
+                    <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
                       {format(parseISO(d.launched_at), "d MMM")}
                     </span>
                   )}
@@ -366,25 +366,25 @@ export function AdDashboard({
       {recentAssets.length > 0 && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">Recent Assets</h2>
-            <Link href="/ad-ops/library" className="text-xs text-gray-400 hover:text-gray-700">View library →</Link>
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Recent Assets</h2>
+            <Link href="/ad-ops/library" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">View library →</Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {recentAssets.map((a) => (
-              <div key={a.id} className="bg-white border border-gray-200 rounded-xl p-4">
+              <div key={a.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-mono text-xs text-gray-500">{a.asset_code}</span>
+                  <span className="font-mono text-xs text-[var(--color-text-secondary)]">{a.asset_code}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${ASSET_STATUS_STYLES[a.status] ?? ""}`}>
                     {a.status.replace("_", " ")}
                   </span>
                   {a.funnel_stage && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${FUNNEL_COLORS[a.funnel_stage] ?? "bg-gray-100 text-gray-500"}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${FUNNEL_COLORS[a.funnel_stage] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>
                       {a.funnel_stage}
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-medium text-gray-900 truncate">{a.title}</p>
-                {a.content_type && <p className="text-xs text-gray-400 mt-0.5">{a.content_type}</p>}
+                <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{a.title}</p>
+                {a.content_type && <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{a.content_type}</p>}
               </div>
             ))}
           </div>
@@ -392,16 +392,16 @@ export function AdDashboard({
       )}
 
       {/* Module links */}
-      <h2 className="text-sm font-semibold text-gray-700 mb-3">Modules</h2>
+      <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Modules</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {MODULES.map((m) => (
           <Link
             key={m.href}
             href={m.href}
-            className="bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-400 hover:shadow-sm transition-all group"
+            className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:border-gray-400 hover:shadow-[var(--shadow-sm)] transition-all group"
           >
-            <p className="font-medium text-gray-900 group-hover:text-gray-700">{m.label}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{m.desc}</p>
+            <p className="font-medium text-[var(--color-text-primary)] group-hover:text-[var(--color-text-primary)]">{m.label}</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{m.desc}</p>
           </Link>
         ))}
       </div>

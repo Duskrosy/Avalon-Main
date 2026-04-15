@@ -35,17 +35,17 @@ function fmtKpi(value: number, unit: string): string {
 }
 
 const RAG_COLORS = {
-  green: { dot: "bg-green-500", bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
-  amber: { dot: "bg-amber-400", bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
-  red:   { dot: "bg-red-500",   bg: "bg-red-50",   text: "text-red-700",   border: "border-red-200" },
-  none:  { dot: "bg-gray-300",  bg: "bg-gray-50",  text: "text-gray-400",  border: "border-gray-200" },
+  green: { dot: "bg-[var(--color-success-light)]0", bg: "bg-[var(--color-success-light)]", text: "text-[var(--color-success)]", border: "border-green-200" },
+  amber: { dot: "bg-amber-400", bg: "bg-[var(--color-warning-light)]", text: "text-[var(--color-warning-text)]", border: "border-[var(--color-border-primary)]" },
+  red:   { dot: "bg-[var(--color-error-light)]0",   bg: "bg-[var(--color-error-light)]",   text: "text-[var(--color-error)]",   border: "border-red-200" },
+  none:  { dot: "bg-gray-300",  bg: "bg-[var(--color-bg-secondary)]",  text: "text-[var(--color-text-tertiary)]",  border: "border-[var(--color-border-primary)]" },
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  facebook:  "bg-blue-100 text-blue-800",
+  facebook:  "bg-[var(--color-accent-light)] text-blue-800",
   instagram: "bg-pink-100 text-pink-800",
-  tiktok:    "bg-gray-900 text-white",
-  youtube:   "bg-red-100 text-red-800",
+  tiktok:    "bg-[var(--color-text-primary)] text-white",
+  youtube:   "bg-[var(--color-error-light)] text-red-800",
 };
 
 // ─── KPI section component ────────────────────────────────────────────────────
@@ -54,10 +54,10 @@ const PLATFORM_COLORS: Record<string, string> = {
 function KpiSection({ title, subtitle, defs, latestMap }: { title: string; subtitle?: string; defs: any[]; latestMap: Record<string, number> }) {
   if (!defs.length) return null;
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</h2>
+        {subtitle && <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{subtitle}</p>}
       </div>
       <div className={`grid gap-3 ${defs.length <= 3 ? "grid-cols-3" : defs.length <= 5 ? "grid-cols-5" : "grid-cols-3 sm:grid-cols-6"}`}>
         {defs.map((d: { id: string; name: string; unit: string; threshold_green: number; threshold_amber: number; direction: string; hint?: string }) => {
@@ -68,12 +68,12 @@ function KpiSection({ title, subtitle, defs, latestMap }: { title: string; subti
             <div key={d.id} className={`rounded-lg border p-3 ${colors.border} ${colors.bg}`}>
               <div className="flex items-center gap-1.5 mb-1">
                 <div className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                <span className="text-xs text-gray-500 truncate">{d.name}</span>
+                <span className="text-xs text-[var(--color-text-secondary)] truncate">{d.name}</span>
               </div>
-              <p className={`text-lg font-bold ${val !== undefined ? colors.text : "text-gray-300"}`}>
+              <p className={`text-lg font-bold ${val !== undefined ? colors.text : "text-[var(--color-text-tertiary)]"}`}>
                 {val !== undefined ? fmtKpi(val, d.unit) : "—"}
               </p>
-              <p className="text-[10px] text-gray-400 mt-1 truncate">{d.hint?.split(".")[0] ?? ""}</p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1 truncate">{d.hint?.split(".")[0] ?? ""}</p>
             </div>
           );
         })}
@@ -224,10 +224,10 @@ export default async function ExecutiveCreativesPage() {
   const kpiTotal = allDefs.length;
 
   const PIPELINE_STAGES = [
-    { key: "idea",      label: "Ideas",     color: "bg-gray-200" },
+    { key: "idea",      label: "Ideas",     color: "bg-[var(--color-border-primary)]" },
     { key: "draft",     label: "Drafts",    color: "bg-amber-400" },
     { key: "scheduled", label: "Scheduled", color: "bg-blue-400" },
-    { key: "published", label: "Published", color: "bg-green-500" },
+    { key: "published", label: "Published", color: "bg-[var(--color-success-light)]0" },
     { key: "backlog",   label: "Backlog",   color: "bg-purple-400" },
   ];
 
@@ -236,24 +236,24 @@ export default async function ExecutiveCreativesPage() {
 
       {/* ── Overall KPI Health ─────────────────────────────────────────── */}
       {kpiTotal > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-900">Overall KPI Health</h2>
-            <span className="text-xs text-gray-400">{kpiTotal} metrics tracked</span>
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Overall KPI Health</h2>
+            <span className="text-xs text-[var(--color-text-tertiary)]">{kpiTotal} metrics tracked</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden flex">
-              {kpiGreen  > 0 && <div className="bg-green-500 h-full" style={{ flex: kpiGreen }} />}
+            <div className="flex-1 h-3 rounded-full bg-[var(--color-bg-tertiary)] overflow-hidden flex">
+              {kpiGreen  > 0 && <div className="bg-[var(--color-success-light)]0 h-full" style={{ flex: kpiGreen }} />}
               {kpiAmber  > 0 && <div className="bg-amber-400 h-full" style={{ flex: kpiAmber }} />}
-              {kpiRed    > 0 && <div className="bg-red-500   h-full" style={{ flex: kpiRed }} />}
-              {kpiNoData > 0 && <div className="bg-gray-200  h-full" style={{ flex: kpiNoData }} />}
+              {kpiRed    > 0 && <div className="bg-[var(--color-error-light)]0   h-full" style={{ flex: kpiRed }} />}
+              {kpiNoData > 0 && <div className="bg-[var(--color-border-primary)]  h-full" style={{ flex: kpiNoData }} />}
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 text-xs">
-            {kpiGreen  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" /><span className="text-gray-600">{kpiGreen} on target</span></span>}
-            {kpiAmber  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-gray-600">{kpiAmber} needs attention</span></span>}
-            {kpiRed    > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /><span className="text-gray-600">{kpiRed} off target</span></span>}
-            {kpiNoData > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300" /><span className="text-gray-600">{kpiNoData} no data</span></span>}
+            {kpiGreen  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0" /><span className="text-[var(--color-text-secondary)]">{kpiGreen} on target</span></span>}
+            {kpiAmber  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-[var(--color-text-secondary)]">{kpiAmber} needs attention</span></span>}
+            {kpiRed    > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0" /><span className="text-[var(--color-text-secondary)]">{kpiRed} off target</span></span>}
+            {kpiNoData > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300" /><span className="text-[var(--color-text-secondary)]">{kpiNoData} no data</span></span>}
           </div>
         </div>
       )}
@@ -299,10 +299,10 @@ export default async function ExecutiveCreativesPage() {
       />
 
       {/* ── Content pipeline ───────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-900">Content pipeline · all time</h2>
-          <span className="text-xs text-gray-400">{totalPosts} total posts</span>
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Content pipeline · all time</h2>
+          <span className="text-xs text-[var(--color-text-tertiary)]">{totalPosts} total posts</span>
         </div>
         <div className="grid grid-cols-5 gap-3">
           {PIPELINE_STAGES.map((stage) => {
@@ -316,8 +316,8 @@ export default async function ExecutiveCreativesPage() {
                     style={{ height: `${Math.max(8, pct)}%` }}
                   />
                 </div>
-                <p className="text-xl font-bold text-gray-900">{count}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{stage.label}</p>
+                <p className="text-xl font-bold text-[var(--color-text-primary)]">{count}</p>
+                <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{stage.label}</p>
               </div>
             );
           })}
@@ -327,14 +327,14 @@ export default async function ExecutiveCreativesPage() {
       {/* ── Platform breakdown + upcoming ──────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Platform distribution */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Posts by platform</h2>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Posts by platform</h2>
           <div className="space-y-3">
             {Object.entries(platformPostCounts)
               .sort(([, a], [, b]) => b - a)
               .map(([platform, count]) => {
                 const pct = (count / Math.max(1, totalPosts)) * 100;
-                const colorClass = PLATFORM_COLORS[platform] ?? "bg-gray-100 text-gray-600";
+                const colorClass = PLATFORM_COLORS[platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
                 const barColor =
                   platform === "facebook"  ? "bg-blue-400" :
                   platform === "instagram" ? "bg-pink-400" :
@@ -347,9 +347,9 @@ export default async function ExecutiveCreativesPage() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colorClass}`}>
                         {platform.charAt(0).toUpperCase() + platform.slice(1)}
                       </span>
-                      <span className="text-sm font-semibold text-gray-700">{count}</span>
+                      <span className="text-sm font-semibold text-[var(--color-text-primary)]">{count}</span>
                     </div>
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
                       <div className={`h-full ${barColor} rounded-full`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -359,21 +359,21 @@ export default async function ExecutiveCreativesPage() {
         </div>
 
         {/* Upcoming scheduled */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">Upcoming scheduled posts</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{statusCounts.scheduled ?? 0} total scheduled</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Upcoming scheduled posts</h2>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{statusCounts.scheduled ?? 0} total scheduled</p>
           </div>
           {upcoming.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">No upcoming scheduled posts.</p>
+            <p className="px-5 py-8 text-sm text-[var(--color-text-tertiary)] text-center">No upcoming scheduled posts.</p>
           ) : (
             <div className="divide-y divide-gray-50">
               {upcoming.map((p) => (
                 <div key={p.id} className="px-5 py-3 flex items-center gap-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[p.platform] ?? "bg-gray-100 text-gray-600"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[p.platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>
                     {p.platform.charAt(0).toUpperCase() + p.platform.slice(1)}
                   </span>
-                  <span className="text-xs text-gray-500 flex-1">
+                  <span className="text-xs text-[var(--color-text-secondary)] flex-1">
                     {p.scheduled_at ? format(new Date(p.scheduled_at), "d MMM · HH:mm") : "—"}
                   </span>
                 </div>
@@ -385,39 +385,39 @@ export default async function ExecutiveCreativesPage() {
 
       {/* ── Platform analytics (7d) ─────────────────────────────────────── */}
       {Object.keys(platformAnalytics).length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-900">Platform analytics · last 7 days</h2>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
+            <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Platform analytics · last 7 days</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border-secondary)]">
             {Object.entries(platformAnalytics).map(([platformId, stats]) => {
               const plat = platformMap[platformId];
               if (!plat) return null;
-              const colorClass = PLATFORM_COLORS[plat.platform] ?? "bg-gray-100 text-gray-600";
+              const colorClass = PLATFORM_COLORS[plat.platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
               const engRate = stats.reach > 0 ? ((stats.engagements / stats.reach) * 100).toFixed(1) : "—";
               return (
                 <div key={platformId} className="p-5">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colorClass} mb-3 inline-block`}>
                     {plat.platform.charAt(0).toUpperCase() + plat.platform.slice(1)}
                   </span>
-                  <p className="text-xs text-gray-400 mt-2 mb-0.5">Reach</p>
-                  <p className="text-2xl font-bold text-gray-900">{fmtK(stats.reach)}</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-2 mb-0.5">Reach</p>
+                  <p className="text-2xl font-bold text-[var(--color-text-primary)]">{fmtK(stats.reach)}</p>
                   <div className="grid grid-cols-2 gap-2 mt-3">
                     <div>
-                      <p className="text-xs text-gray-400">Engagements</p>
-                      <p className="text-sm font-semibold text-gray-700">{fmtK(stats.engagements)}</p>
+                      <p className="text-xs text-[var(--color-text-tertiary)]">Engagements</p>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">{fmtK(stats.engagements)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Eng. rate</p>
-                      <p className="text-sm font-semibold text-gray-700">{engRate}{engRate !== "—" ? "%" : ""}</p>
+                      <p className="text-xs text-[var(--color-text-tertiary)]">Eng. rate</p>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">{engRate}{engRate !== "—" ? "%" : ""}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Followers</p>
-                      <p className="text-sm font-semibold text-gray-700">{fmtK(stats.follower_count)}</p>
+                      <p className="text-xs text-[var(--color-text-tertiary)]">Followers</p>
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">{fmtK(stats.follower_count)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-400">Growth</p>
-                      <p className={`text-sm font-semibold ${stats.growth >= 0 ? "text-green-600" : "text-red-500"}`}>
+                      <p className="text-xs text-[var(--color-text-tertiary)]">Growth</p>
+                      <p className={`text-sm font-semibold ${stats.growth >= 0 ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}`}>
                         {stats.growth >= 0 ? "+" : ""}{stats.growth}
                       </p>
                     </div>
@@ -432,18 +432,18 @@ export default async function ExecutiveCreativesPage() {
       {/* ── Top posts ───────────────────────────────────────────────────── */}
       {(topPosts ?? []).length > 0 && (
         <div>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Top posts by engagement</h2>
+          <h2 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">Top posts by engagement</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {(topPosts ?? []).map((post) => {
               const plat = platformMap[post.platform_id];
-              const colorClass = PLATFORM_COLORS[plat?.platform ?? ""] ?? "bg-gray-100 text-gray-600";
+              const colorClass = PLATFORM_COLORS[plat?.platform ?? ""] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
               return (
-                <div key={post.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                  <div className="aspect-video bg-gray-100 relative">
+                <div key={post.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+                  <div className="aspect-video bg-[var(--color-bg-tertiary)] relative">
                     {post.thumbnail_url ? (
                       <img src={post.thumbnail_url} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">📷</div>
+                      <div className="w-full h-full flex items-center justify-center text-[var(--color-text-tertiary)] text-2xl">📷</div>
                     )}
                     <span className={`absolute top-1 right-1 text-[9px] px-1 py-0.5 rounded-full font-medium ${colorClass}`}>
                       {plat?.platform?.slice(0, 2).toUpperCase() ?? "—"}
@@ -451,14 +451,14 @@ export default async function ExecutiveCreativesPage() {
                   </div>
                   <div className="p-2">
                     {post.caption_preview && (
-                      <p className="text-[10px] text-gray-600 line-clamp-2 mb-1.5">{post.caption_preview}</p>
+                      <p className="text-[10px] text-[var(--color-text-secondary)] line-clamp-2 mb-1.5">{post.caption_preview}</p>
                     )}
-                    <div className="flex items-center gap-2 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-secondary)]">
                       <span>❤️ {fmtK(post.engagements)}</span>
                       <span>👁 {fmtK(post.reach)}</span>
                     </div>
                     {post.published_at && (
-                      <p className="text-[9px] text-gray-400 mt-1">{format(parseISO(post.published_at), "d MMM")}</p>
+                      <p className="text-[9px] text-[var(--color-text-tertiary)] mt-1">{format(parseISO(post.published_at), "d MMM")}</p>
                     )}
                   </div>
                 </div>

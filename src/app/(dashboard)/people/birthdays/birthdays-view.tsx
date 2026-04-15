@@ -96,19 +96,19 @@ function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
       <input
         type="text" placeholder="Search GIFs…" value={query}
         onChange={(e) => { setQuery(e.target.value); if (debounceRef.current) clearTimeout(debounceRef.current); debounceRef.current = setTimeout(() => search(e.target.value), 400); }}
-        className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        className="w-full px-3 py-2 rounded-[var(--radius-md)] bg-[var(--color-bg-primary)]/10 border border-white/20 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
       />
       {loading && (
-        <div className="grid grid-cols-3 gap-1.5 rounded-lg">
+        <div className="grid grid-cols-3 gap-1.5 rounded-[var(--radius-md)]">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 rounded bg-white/10" />
+            <Skeleton key={i} className="h-20 rounded bg-[var(--color-bg-primary)]/10" />
           ))}
         </div>
       )}
       {!loading && gifs.length > 0 && (
-        <div className="grid grid-cols-3 gap-1.5 rounded-lg">
+        <div className="grid grid-cols-3 gap-1.5 rounded-[var(--radius-md)]">
           {gifs.map((g) => (
-            <button key={g.id} onClick={() => onSelect(g)} className="rounded overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all bg-white/5">
+            <button key={g.id} onClick={() => onSelect(g)} className="rounded overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all bg-[var(--color-bg-primary)]/5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={g.preview} alt={g.title} className="w-full h-auto" loading="lazy" />
             </button>
@@ -233,7 +233,7 @@ function BirthdayCardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl bg-gray-900 rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "92vh" }}>
+      <div className="relative w-full max-w-3xl bg-[var(--color-text-primary)] rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "92vh" }}>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-5 rounded-t-2xl shrink-0">
@@ -251,7 +251,7 @@ function BirthdayCardModal({
         </div>
 
         {/* Tabs + OPS delete-all */}
-        <div className="flex items-center border-b border-white/10 bg-gray-900 shrink-0 px-1">
+        <div className="flex items-center border-b border-white/10 bg-[var(--color-text-primary)] shrink-0 px-1">
           <button onClick={() => setTab("messages")} className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === "messages" ? "text-amber-400 border-b-2 border-amber-400" : "text-white/40 hover:text-white/70"}`}>
             Messages {messages.length > 0 && `(${messages.length})`}
           </button>
@@ -267,7 +267,7 @@ function BirthdayCardModal({
             <button
               onClick={handleDeleteAll}
               disabled={deletingAll}
-              className="ml-auto mr-2 text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-300/50 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 shrink-0"
+              className="ml-auto mr-2 text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-300/50 rounded-[var(--radius-md)] px-3 py-1.5 transition-colors disabled:opacity-50 shrink-0"
             >
               {deletingAll ? "Deleting…" : "Delete all"}
             </button>
@@ -279,14 +279,14 @@ function BirthdayCardModal({
           {loading ? (
             <div className="space-y-4 py-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="bg-white/5 rounded-xl p-4 space-y-3">
+                <div key={i} className="bg-[var(--color-bg-primary)]/5 rounded-[var(--radius-lg)] p-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <SkeletonAvatar size="xs" className="bg-white/10" />
-                    <Skeleton className="h-3 w-24 bg-white/10" />
-                    <Skeleton className="h-3 w-12 ml-auto bg-white/10" />
+                    <SkeletonAvatar size="xs" className="bg-[var(--color-bg-primary)]/10" />
+                    <Skeleton className="h-3 w-24 bg-[var(--color-bg-primary)]/10" />
+                    <Skeleton className="h-3 w-12 ml-auto bg-[var(--color-bg-primary)]/10" />
                   </div>
-                  <Skeleton className="h-3 w-full bg-white/10" />
-                  <Skeleton className="h-3 w-3/4 bg-white/10" />
+                  <Skeleton className="h-3 w-full bg-[var(--color-bg-primary)]/10" />
+                  <Skeleton className="h-3 w-3/4 bg-[var(--color-bg-primary)]/10" />
                 </div>
               ))}
             </div>
@@ -306,7 +306,7 @@ function BirthdayCardModal({
                   const canDeleteThis = isOwnMessage || currentUserIsOps;
 
                   return (
-                    <div key={m.id} className="bg-white/5 rounded-xl p-4">
+                    <div key={m.id} className="bg-[var(--color-bg-primary)]/5 rounded-[var(--radius-lg)] p-4">
                       {/* Author row */}
                       <div className="flex items-center gap-2 mb-3">
                         <Avatar url={m.author?.avatar_url ?? null} initials={m.author ? `${m.author.first_name[0]}${m.author.last_name[0]}` : "?"} size="xs" />
@@ -328,7 +328,7 @@ function BirthdayCardModal({
                       {/* Message text always on top, image below */}
                       <p className="text-white text-sm leading-relaxed mb-3">{m.message}</p>
                       {m.gif_url && (
-                        <div className="w-40 rounded-lg overflow-hidden bg-white/5">
+                        <div className="w-40 rounded-[var(--radius-md)] overflow-hidden bg-[var(--color-bg-primary)]/5">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={m.gif_url} alt="attachment" className="w-full h-auto" loading="lazy" />
                         </div>
@@ -346,7 +346,7 @@ function BirthdayCardModal({
                               className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all border ${
                                 hasReacted
                                   ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
-                                  : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:border-white/20 hover:text-white/80"
+                                  : "bg-[var(--color-bg-primary)]/5 border-white/10 text-white/50 hover:bg-[var(--color-bg-primary)]/10 hover:border-white/20 hover:text-white/80"
                               }`}
                             >
                               <span>{emoji}</span>
@@ -366,11 +366,11 @@ function BirthdayCardModal({
                 <label className="block text-white/60 text-xs mb-1.5 uppercase tracking-wide">Your message <span className="text-white/30">({280 - msgText.length} left)</span></label>
                 <textarea value={msgText} onChange={(e) => setMsgText(e.target.value)} maxLength={280} rows={3}
                   placeholder={`Write a birthday message for ${person.first_name}…`}
-                  className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/30 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full px-3 py-2 rounded-[var(--radius-md)] bg-[var(--color-bg-primary)]/10 border border-white/20 text-white placeholder-white/30 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
                 />
               </div>
               {(selectedGif || photoPreview) && (
-                <div className="relative rounded-lg overflow-hidden bg-white/5">
+                <div className="relative rounded-[var(--radius-md)] overflow-hidden bg-[var(--color-bg-primary)]/5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={selectedGif ? selectedGif.preview : photoPreview!} alt="Attachment" className="max-h-64 w-auto max-w-full mx-auto block" />
                   <button onClick={clearAttachment} className="absolute top-2 right-2 bg-black/70 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center hover:bg-black/90">✕</button>
@@ -389,7 +389,7 @@ function BirthdayCardModal({
               {showGifPicker && !selectedGif && !photoPreview && <GifPicker onSelect={(g) => { setSelectedGif(g); setShowGifPicker(false); }} />}
               {submitError && <p className="text-red-400 text-sm">{submitError}</p>}
               <button onClick={handleSubmit} disabled={submitting || uploading || !msgText.trim()}
-                className="w-full py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 rounded-[var(--radius-md)] bg-amber-500 hover:bg-amber-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm transition-colors flex items-center justify-center gap-2"
               >
                 {uploading ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Uploading…</>
                   : submitting ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Saving…</>
@@ -420,20 +420,20 @@ function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { pe
   if (variant === "hero") {
     return (
       <>
-        <div onClick={() => setOpen(true)} className="cursor-pointer bg-amber-50 border-2 border-amber-200 rounded-2xl p-5 flex items-center gap-4 hover:shadow-lg hover:border-amber-300 transition-all">
+        <div onClick={() => setOpen(true)} className="cursor-pointer bg-[var(--color-warning-light)] border-2 border-[var(--color-border-primary)] rounded-2xl p-5 flex items-center gap-4 hover:shadow-[var(--shadow-lg)] hover:border-amber-300 transition-all">
           <BirthdayAvatar person={person} ring size="lg" />
           <div className="flex-1 min-w-0">
-            <p className="text-base font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+            <p className="text-base font-bold text-[var(--color-text-primary)] flex items-center gap-1.5 flex-wrap">
               {person.first_name} {person.last_name}
-              {person.age && <span className="text-xs font-normal text-gray-400">turns {person.age}</span>}
-              {person.id === currentUserId && <span className="text-xs text-amber-600 font-normal">(you!)</span>}
+              {person.age && <span className="text-xs font-normal text-[var(--color-text-tertiary)]">turns {person.age}</span>}
+              {person.id === currentUserId && <span className="text-xs text-[var(--color-warning)] font-normal">(you!)</span>}
             </p>
-            {person.department && <p className="text-sm text-gray-500 mt-0.5">{person.department.name}</p>}
-            <p className="text-xs text-amber-600 font-medium mt-1.5">✍️ Click to sign their card</p>
+            {person.department && <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{person.department.name}</p>}
+            <p className="text-xs text-[var(--color-warning)] font-medium mt-1.5">✍️ Click to sign their card</p>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-xl font-bold text-amber-600">Today!</p>
-            <p className="text-sm text-gray-400 mt-0.5">{dateStr}</p>
+            <p className="text-xl font-bold text-[var(--color-warning)]">Today!</p>
+            <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">{dateStr}</p>
           </div>
         </div>
         {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
@@ -445,18 +445,18 @@ function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { pe
   if (variant === "large") {
     return (
       <>
-        <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 flex items-center gap-3">
           <BirthdayAvatar person={person} size="md" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 flex-wrap">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)] flex items-center gap-1.5 flex-wrap">
               {person.first_name} {person.last_name}
-              {person.age && <span className="text-xs font-normal text-gray-400">turns {person.age}</span>}
+              {person.age && <span className="text-xs font-normal text-[var(--color-text-tertiary)]">turns {person.age}</span>}
             </p>
-            {person.department && <p className="text-xs text-gray-400 mt-0.5">{person.department.name}</p>}
+            {person.department && <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{person.department.name}</p>}
           </div>
           <div className="text-right shrink-0">
-            <p className="text-sm font-semibold text-gray-700">{dateStr}</p>
-            <p className="text-xs text-gray-400 mt-0.5">in {daysUntil}d</p>
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">{dateStr}</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">in {daysUntil}d</p>
           </div>
         </div>
         {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
@@ -468,15 +468,15 @@ function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { pe
   if (variant === "medium") {
     return (
       <>
-        <div className="bg-white border border-gray-100 rounded-xl p-3.5 flex items-center gap-2.5">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] rounded-[var(--radius-lg)] p-3.5 flex items-center gap-2.5">
           <BirthdayAvatar person={person} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-800 truncate">{person.first_name} {person.last_name}</p>
-            {person.department && <p className="text-xs text-gray-400 truncate">{person.department.name}</p>}
+            <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{person.first_name} {person.last_name}</p>
+            {person.department && <p className="text-xs text-[var(--color-text-tertiary)] truncate">{person.department.name}</p>}
           </div>
           <div className="text-right shrink-0">
-            <p className="text-xs font-semibold text-gray-600">{dateStr}</p>
-            <p className="text-xs text-gray-400">in {daysUntil}d</p>
+            <p className="text-xs font-semibold text-[var(--color-text-secondary)]">{dateStr}</p>
+            <p className="text-xs text-[var(--color-text-tertiary)]">in {daysUntil}d</p>
           </div>
         </div>
         {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
@@ -488,17 +488,17 @@ function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { pe
   if (variant === "small") {
     return (
       <>
-        <div onClick={() => setOpen(true)} className="cursor-pointer bg-gray-50 border border-dashed border-gray-300 rounded-xl p-3 flex items-center gap-2.5 hover:bg-gray-100 hover:border-gray-400 transition-all">
+        <div onClick={() => setOpen(true)} className="cursor-pointer bg-[var(--color-bg-secondary)] border border-dashed border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-3 flex items-center gap-2.5 hover:bg-[var(--color-surface-active)] hover:border-gray-400 transition-all">
           <div className="relative shrink-0">
             <Avatar url={person.avatar_url} initials={initials} size="sm" className="opacity-80" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-gray-600 truncate">{person.first_name} {person.last_name}</p>
-            {person.department && <p className="text-[10px] text-gray-400 truncate">{person.department.name}</p>}
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] truncate">{person.first_name} {person.last_name}</p>
+            {person.department && <p className="text-[10px] text-[var(--color-text-tertiary)] truncate">{person.department.name}</p>}
           </div>
           <div className="text-right shrink-0">
-            <p className="text-xs text-gray-500">{dateStr}</p>
-            <p className="text-[10px] text-gray-400">{daysAgo === 1 ? "yesterday" : `${daysAgo}d ago`}</p>
+            <p className="text-xs text-[var(--color-text-secondary)]">{dateStr}</p>
+            <p className="text-[10px] text-[var(--color-text-tertiary)]">{daysAgo === 1 ? "yesterday" : `${daysAgo}d ago`}</p>
           </div>
         </div>
         {clickable && open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
@@ -509,15 +509,15 @@ function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { pe
   // ── compact (upcoming) — not clickable ──
   return (
     <>
-      <div className="bg-white border border-gray-100 rounded-lg p-2.5 flex items-center gap-2">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] rounded-[var(--radius-md)] p-2.5 flex items-center gap-2">
         <Avatar url={person.avatar_url} initials={initials} size="xs" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-600 truncate">{person.first_name} {person.last_name}</p>
-          {person.department && <p className="text-[10px] text-gray-400 truncate">{person.department.name}</p>}
+          <p className="text-xs font-medium text-[var(--color-text-secondary)] truncate">{person.first_name} {person.last_name}</p>
+          {person.department && <p className="text-[10px] text-[var(--color-text-tertiary)] truncate">{person.department.name}</p>}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[11px] text-gray-500">{dateStr}</p>
-          <p className="text-[10px] text-gray-400">in {daysUntil}d</p>
+          <p className="text-[11px] text-[var(--color-text-secondary)]">{dateStr}</p>
+          <p className="text-[10px] text-[var(--color-text-tertiary)]">in {daysUntil}d</p>
         </div>
       </div>
       {open && <BirthdayCardModal person={person} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} onClose={() => setOpen(false)} />}
@@ -540,9 +540,9 @@ function Section({ title, people, variant, emptyMsg, currentUserId, currentUserI
 }) {
   return (
     <div>
-      <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">{title}</h2>
+      <h2 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-widest mb-3">{title}</h2>
       {people.length === 0 ? (
-        <p className="text-sm text-gray-400 py-1">{emptyMsg}</p>
+        <p className="text-sm text-[var(--color-text-tertiary)] py-1">{emptyMsg}</p>
       ) : (
         <div className={`grid ${GRID[variant]} gap-3`}>
           {people.map((p) => <BirthdayCard key={p.id} person={p} variant={variant} currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />)}
@@ -574,25 +574,25 @@ export function BirthdaysView({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Birthday Tracker</h1>
-        <p className="text-sm text-gray-500 mt-1">Upcoming birthdays across the team · click any card to leave a message</p>
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Birthday Tracker</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Upcoming birthdays across the team · click any card to leave a message</p>
       </div>
 
       {/* Own birthday today */}
       {currentUserHasBirthday && (
-        <div className="mb-6 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 px-5 py-4 flex items-center gap-3">
+        <div className="mb-6 rounded-[var(--radius-lg)] bg-gradient-to-r from-amber-50 to-orange-50 border border-[var(--color-border-primary)] px-5 py-4 flex items-center gap-3">
           <span className="text-2xl">🎉</span>
-          <p className="text-amber-800 font-medium text-sm">Happy Birthday! Your teammates can leave you a birthday card message today.</p>
+          <p className="text-[var(--color-warning-text)] font-medium text-sm">Happy Birthday! Your teammates can leave you a birthday card message today.</p>
         </div>
       )}
 
       {/* Own birthday passed banner */}
       {myRecentBirthdayDaysAgo !== null && myRecentBirthdayPerson && (
         <>
-          <div className="mb-6 rounded-xl bg-gray-50 border border-gray-200 px-5 py-4 flex items-center justify-between gap-3">
+          <div className="mb-6 rounded-[var(--radius-lg)] bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] px-5 py-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="text-xl">🎂</span>
-              <p className="text-gray-700 text-sm">
+              <p className="text-[var(--color-text-primary)] text-sm">
                 Your birthday was <span className="font-medium">{myRecentBirthdayDaysAgo === 1 ? "yesterday" : `${myRecentBirthdayDaysAgo} days ago`}</span>.
                 Your card closes in <span className="font-medium">{7 - myRecentBirthdayDaysAgo} more {7 - myRecentBirthdayDaysAgo === 1 ? "day" : "days"}</span>.
               </p>

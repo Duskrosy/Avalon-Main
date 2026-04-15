@@ -50,21 +50,21 @@ export function DateRangeBar() {
     <div className="flex items-center gap-2.5 pb-4">
       {activePreset === "today" && (
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-green-600 font-semibold">Live</span>
+          <span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0 animate-pulse" />
+          <span className="text-xs text-[var(--color-success)] font-semibold">Live</span>
         </div>
       )}
-      <div className="flex rounded-lg border border-gray-200 bg-white overflow-hidden text-xs">
+      <div className="flex rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] overflow-hidden text-xs">
         {PRESETS.map((p, i) => (
           <button
             key={p.key}
             onClick={() => setPreset(p.key)}
             className={`px-3 py-1.5 font-medium transition-colors ${
-              i > 0 ? "border-l border-gray-200" : ""
+              i > 0 ? "border-l border-[var(--color-border-primary)]" : ""
             } ${
               activePreset === p.key
-                ? "bg-gray-900 text-white"
-                : "text-gray-500 hover:text-gray-900 hover:bg-gray-50"
+                ? "bg-[var(--color-text-primary)] text-white"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
             {p.label}
@@ -76,7 +76,7 @@ export function DateRangeBar() {
         onClick={handleRefresh}
         disabled={refreshing}
         title="Refresh dashboard data"
-        className="flex items-center justify-center w-7 h-7 rounded-lg border border-gray-200 bg-white text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors disabled:opacity-50"
+        className="flex items-center justify-center w-7 h-7 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-primary)] transition-colors disabled:opacity-50"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"

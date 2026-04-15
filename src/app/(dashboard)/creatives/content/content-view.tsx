@@ -35,10 +35,10 @@ type TopPost = {
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  facebook:  "bg-blue-100 text-blue-800",
+  facebook:  "bg-[var(--color-accent-light)] text-blue-800",
   instagram: "bg-pink-100 text-pink-800",
-  tiktok:    "bg-gray-900 text-white",
-  youtube:   "bg-red-100 text-red-800",
+  tiktok:    "bg-[var(--color-text-primary)] text-white",
+  youtube:   "bg-[var(--color-error-light)] text-red-800",
 };
 
 const PLATFORM_EMOJIS: Record<string, string> = {
@@ -49,10 +49,10 @@ const PLATFORM_EMOJIS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  idea:      "bg-gray-100 text-gray-600",
-  draft:     "bg-amber-100 text-amber-700",
-  scheduled: "bg-blue-100 text-blue-700",
-  published: "bg-green-100 text-green-700",
+  idea:      "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  draft:     "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  scheduled: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  published: "bg-[var(--color-success-light)] text-[var(--color-success)]",
   backlog:   "bg-purple-100 text-purple-700",
 };
 
@@ -92,28 +92,28 @@ function PostModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">
           {initial ? "Edit Post" : "New Post"}
         </h2>
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Group</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Group</label>
               <select
                 value={form.group_id}
                 onChange={(e) => setForm((f) => ({ ...f, group_id: e.target.value, platform: "facebook" }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               >
                 {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Platform</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Platform</label>
               <select
                 value={form.platform}
                 onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               >
                 {(activePlatforms.length > 0 ? activePlatforms.map((p) => p.platform) : [...PLATFORMS]).map((p) => (
                   <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
@@ -123,11 +123,11 @@ function PostModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Post type</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Post type</label>
               <select
                 value={form.post_type}
                 onChange={(e) => setForm((f) => ({ ...f, post_type: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               >
                 {POST_TYPES.map((t) => (
                   <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
@@ -135,11 +135,11 @@ function PostModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Status</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Status</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               >
                 {STATUSES.map((s) => (
                   <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -148,27 +148,27 @@ function PostModal({
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Scheduled date/time</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Scheduled date/time</label>
             <input
               type="datetime-local"
               value={form.scheduled_at}
               onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Caption</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Caption</label>
             <textarea
               rows={4}
               placeholder="Post caption…"
               value={form.caption}
               onChange={(e) => setForm((f) => ({ ...f, caption: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </div>
         </div>
         <div className="flex gap-2 mt-5">
-          <button onClick={onClose} className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button onClick={onClose} className="text-sm px-4 py-2 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-surface-hover)]">
             Cancel
           </button>
           <button
@@ -177,7 +177,7 @@ function PostModal({
               caption: form.caption || null,
               scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
             })}
-            className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 ml-auto"
+            className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] ml-auto"
           >
             {initial ? "Save changes" : "Create post"}
           </button>
@@ -375,28 +375,28 @@ export function ContentManager({
       <>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Content</h1>
-          <p className="text-sm text-gray-500 mt-1">SMM content management</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Content</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">SMM content management</p>
         </div>
 
         {/* View mode toggle */}
-        <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden">
+        <div className="flex items-center rounded-lg border border-[var(--color-border-primary)] overflow-hidden">
           <button
             onClick={() => setViewMode("planned")}
             className={`text-sm px-4 py-2 transition-colors ${
               viewMode === "planned"
-                ? "bg-gray-900 text-white"
-                : "bg-white text-gray-500 hover:bg-gray-50"
+                ? "bg-[var(--color-text-primary)] text-white"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
             Planned
           </button>
           <button
             onClick={() => setViewMode("published")}
-            className={`text-sm px-4 py-2 transition-colors border-l border-gray-200 ${
+            className={`text-sm px-4 py-2 transition-colors border-l border-[var(--color-border-primary)] ${
               viewMode === "published"
-                ? "bg-gray-900 text-white"
-                : "bg-white text-gray-500 hover:bg-gray-50"
+                ? "bg-[var(--color-text-primary)] text-white"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
             Published
@@ -406,7 +406,7 @@ export function ContentManager({
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowSettings(true)}
-            className="text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500"
+            className="text-sm px-3 py-2 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]"
             title="Manage Groups & Platforms"
           >
             ⚙ Groups
@@ -414,14 +414,14 @@ export function ContentManager({
           {viewMode === "published" && (
             <div className="flex items-center gap-2">
               {syncMsg && !syncing && (
-                <span className={`text-xs ${syncMsg.startsWith("⚠") ? "text-amber-600" : "text-emerald-600"}`}>
+                <span className={`text-xs ${syncMsg.startsWith("⚠") ? "text-[var(--color-warning)]" : "text-emerald-600"}`}>
                   {syncMsg}
                 </span>
               )}
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="text-sm px-3 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 disabled:opacity-50 transition-colors"
+                className="text-sm px-3 py-2 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
               >
                 {syncing ? "Syncing…" : "↻ Sync"}
               </button>
@@ -430,7 +430,7 @@ export function ContentManager({
           {viewMode === "planned" && (
             <button
               onClick={() => setModal("new")}
-              className="text-sm px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700"
+              className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)]"
             >
               + New Post
             </button>
@@ -439,24 +439,24 @@ export function ContentManager({
       </div>
 
       {groups.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
-          <p className="text-sm text-gray-500">No SMM groups configured yet.</p>
-          <a href="/ad-ops/settings" className="text-sm text-blue-600 hover:text-blue-800 mt-2 inline-block">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-12 text-center">
+          <p className="text-sm text-[var(--color-text-secondary)]">No SMM groups configured yet.</p>
+          <a href="/ad-ops/settings" className="text-sm text-[var(--color-accent)] hover:text-blue-800 mt-2 inline-block">
             Go to Settings →
           </a>
         </div>
       ) : (
         <>
           {/* Group tabs */}
-          <div className="flex items-center gap-1 border-b border-gray-200">
+          <div className="flex items-center gap-1 border-b border-[var(--color-border-primary)]">
             {groups.map((g) => (
               <button
                 key={g.id}
                 onClick={() => { setActiveGroup(g.id); setActivePlatform("all"); }}
                 className={`text-sm px-4 py-2 font-medium border-b-2 transition-colors ${
                   activeGroup === g.id
-                    ? "border-gray-900 text-gray-900"
-                    : "border-transparent text-gray-400 hover:text-gray-600"
+                    ? "border-gray-900 text-[var(--color-text-primary)]"
+                    : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                 }`}
               >
                 {g.name}
@@ -471,8 +471,8 @@ export function ContentManager({
                 onClick={() => setActivePlatform("all")}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   activePlatform === "all"
-                    ? "bg-gray-900 text-white border-transparent"
-                    : "border-gray-200 text-gray-500 hover:text-gray-700"
+                    ? "bg-[var(--color-text-primary)] text-white border-transparent"
+                    : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
                 All platforms
@@ -483,8 +483,8 @@ export function ContentManager({
                   onClick={() => setActivePlatform(p.platform)}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                     activePlatform === p.platform
-                      ? "bg-gray-900 text-white border-transparent"
-                      : "border-gray-200 text-gray-500 hover:text-gray-700"
+                      ? "bg-[var(--color-text-primary)] text-white border-transparent"
+                      : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                   }`}
                 >
                   {p.platform.charAt(0).toUpperCase() + p.platform.slice(1)}
@@ -498,78 +498,78 @@ export function ContentManager({
             <>
               {/* Status filter */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-400">Status:</span>
+                <span className="text-xs text-[var(--color-text-tertiary)]">Status:</span>
                 {["all", ...STATUSES].map((s) => (
                   <button
                     key={s}
                     onClick={() => setActiveStatus(s)}
                     className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                       activeStatus === s
-                        ? "bg-gray-900 text-white border-transparent"
-                        : "border-gray-200 text-gray-500 hover:text-gray-700"
+                        ? "bg-[var(--color-text-primary)] text-white border-transparent"
+                        : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                     }`}
                   >
                     {s === "all" ? "All" : s.charAt(0).toUpperCase() + s.slice(1)}
                   </button>
                 ))}
-                <span className="ml-auto text-xs text-gray-400">{filteredPosts.length} post{filteredPosts.length !== 1 ? "s" : ""}</span>
+                <span className="ml-auto text-xs text-[var(--color-text-tertiary)]">{filteredPosts.length} post{filteredPosts.length !== 1 ? "s" : ""}</span>
               </div>
 
               {/* Posts grid */}
               {filteredPosts.length === 0 ? (
-                <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
-                  <p className="text-sm text-gray-400">No posts found. Create one to get started.</p>
+                <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-12 text-center">
+                  <p className="text-sm text-[var(--color-text-tertiary)]">No posts found. Create one to get started.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {filteredPosts.map((post) => (
                     <div
                       key={post.id}
-                      className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col gap-3 hover:shadow-sm transition-shadow"
+                      className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 flex flex-col gap-3 hover:shadow-[var(--shadow-sm)] transition-shadow"
                     >
                       {/* Platform + status badges */}
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? "bg-gray-100 text-gray-600"}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[post.platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>
                           {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[post.status] ?? "bg-gray-100 text-gray-600"}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[post.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>
                           {post.status.charAt(0).toUpperCase() + post.status.slice(1)}
                         </span>
-                        <span className="text-xs text-gray-400 ml-auto">
+                        <span className="text-xs text-[var(--color-text-tertiary)] ml-auto">
                           {post.post_type.replace(/_/g, " ")}
                         </span>
                       </div>
 
                       {/* Caption */}
-                      <p className="text-sm text-gray-700 line-clamp-3 flex-1">
-                        {post.caption || <span className="text-gray-300 italic">No caption</span>}
+                      <p className="text-sm text-[var(--color-text-primary)] line-clamp-3 flex-1">
+                        {post.caption || <span className="text-[var(--color-text-tertiary)] italic">No caption</span>}
                       </p>
 
                       {/* Scheduled date */}
                       {post.scheduled_at && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-[var(--color-text-tertiary)]">
                           📅 {format(new Date(post.scheduled_at), "d MMM yyyy · HH:mm")}
                         </p>
                       )}
 
                       {/* Author */}
                       {post.created_by_profile && (
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-[var(--color-text-tertiary)]">
                           {post.created_by_profile.first_name} {post.created_by_profile.last_name}
                         </p>
                       )}
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 pt-1 border-t border-gray-50">
+                      <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-border-secondary)]">
                         <button
                           onClick={() => setModal(post)}
-                          className="text-xs text-gray-500 hover:text-gray-900"
+                          className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                         >
                           Edit
                         </button>
                         <button
                           onClick={() => handleDelete(post.id)}
-                          className="text-xs text-gray-300 hover:text-red-500 ml-auto"
+                          className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] ml-auto"
                         >
                           Delete
                         </button>
@@ -583,17 +583,17 @@ export function ContentManager({
             /* Published view */
             <>
               {liveLoading ? (
-                <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+                <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">Loading…</p>
               ) : livePosts.length === 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  <p className="text-sm text-gray-400 col-span-full text-center py-8">
+                  <p className="text-sm text-[var(--color-text-tertiary)] col-span-full text-center py-8">
                     No published posts synced yet. Hit the ↻ Sync button above to pull from connected platforms.
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {livePosts.map((post) => {
-                    const platformColorClass = PLATFORM_COLORS[post._platformName] ?? "bg-gray-100 text-gray-600";
+                    const platformColorClass = PLATFORM_COLORS[post._platformName] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
                     const platformEmoji = PLATFORM_EMOJIS[post._platformName] ?? "🌐";
                     const postTypeLabel = post.post_type
                       ? post.post_type.charAt(0).toUpperCase() + post.post_type.slice(1)
@@ -604,10 +604,10 @@ export function ContentManager({
                     return (
                       <div
                         key={`${post._platformId}-${post.id}`}
-                        className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col hover:shadow-sm transition-shadow"
+                        className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden flex flex-col hover:shadow-[var(--shadow-sm)] transition-shadow"
                       >
                         {/* Thumbnail */}
-                        <div className="relative aspect-video bg-gray-100 flex items-center justify-center">
+                        <div className="relative aspect-video bg-[var(--color-bg-tertiary)] flex items-center justify-center">
                           {post.thumbnail_url ? (
                             <img
                               src={post.thumbnail_url}
@@ -635,18 +635,18 @@ export function ContentManager({
                         <div className="p-2.5 flex flex-col gap-1.5 flex-1">
                           {/* Caption */}
                           {post.caption_preview && (
-                            <p className="text-xs text-gray-700 line-clamp-2">{post.caption_preview}</p>
+                            <p className="text-xs text-[var(--color-text-primary)] line-clamp-2">{post.caption_preview}</p>
                           )}
 
                           {/* Date */}
                           {post.published_at && (
-                            <p className="text-[10px] text-gray-400">
+                            <p className="text-[10px] text-[var(--color-text-tertiary)]">
                               {format(parseISO(post.published_at), "d MMM yyyy")}
                             </p>
                           )}
 
                           {/* Metrics row */}
-                          <div className="flex items-center gap-3 text-[10px] text-gray-500 flex-wrap">
+                          <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-secondary)] flex-wrap">
                             <span>👁 {fmtK(impressionVal)}</span>
                             <span>❤️ {fmtK(post.engagements)}</span>
                             {post.video_plays != null && post.video_plays > 0 && (
@@ -661,7 +661,7 @@ export function ContentManager({
                                 href={post.post_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[10px] text-gray-400 hover:text-gray-700"
+                                className="text-[10px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                               >
                                 View →
                               </a>
@@ -690,7 +690,7 @@ export function ContentManager({
         />
       )}
       {saving && (
-        <div className="fixed bottom-4 right-4 bg-gray-900 text-white text-xs px-4 py-2 rounded-lg">
+        <div className="fixed bottom-4 right-4 bg-[var(--color-text-primary)] text-white text-xs px-4 py-2 rounded-lg">
           Saving…
         </div>
       )}

@@ -39,30 +39,30 @@ function MetricCard({
   badge?: string;
 }) {
   const bg =
-    accent === "red"   ? "bg-red-50 border-red-200" :
-    accent === "amber" ? "bg-amber-50 border-amber-200" :
-    accent === "green" ? "bg-green-50 border-green-200" :
-    accent === "blue"  ? "bg-blue-50 border-blue-200" :
-    "bg-white border-gray-200";
+    accent === "red"   ? "bg-[var(--color-error-light)] border-red-200" :
+    accent === "amber" ? "bg-[var(--color-warning-light)] border-[var(--color-border-primary)]" :
+    accent === "green" ? "bg-[var(--color-success-light)] border-green-200" :
+    accent === "blue"  ? "bg-[var(--color-accent-light)] border-blue-200" :
+    "bg-[var(--color-bg-primary)] border-[var(--color-border-primary)]";
   const valColor =
-    accent === "red"   ? "text-red-700" :
-    accent === "amber" ? "text-amber-700" :
-    accent === "green" ? "text-green-700" :
-    accent === "blue"  ? "text-blue-700" :
-    "text-gray-900";
+    accent === "red"   ? "text-[var(--color-error)]" :
+    accent === "amber" ? "text-[var(--color-warning-text)]" :
+    accent === "green" ? "text-[var(--color-success)]" :
+    accent === "blue"  ? "text-[var(--color-accent)]" :
+    "text-[var(--color-text-primary)]";
 
   const inner = (
-    <div className={`rounded-xl border p-5 h-full ${bg} ${href ? "hover:shadow-md transition-shadow cursor-pointer" : ""}`}>
+    <div className={`rounded-[var(--radius-lg)] border p-5 h-full ${bg} ${href ? "hover:shadow-[var(--shadow-md)] transition-shadow cursor-pointer" : ""}`}>
       <div className="flex items-start justify-between gap-2 mb-1">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide leading-tight">{label}</p>
+        <p className="text-xs text-[var(--color-text-secondary)] font-medium uppercase tracking-wide leading-tight">{label}</p>
         {badge && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white border border-gray-200 text-gray-500 font-medium shrink-0">
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] font-medium shrink-0">
             {badge}
           </span>
         )}
       </div>
       <p className={`text-3xl font-bold tracking-tight ${valColor}`}>{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
+      {sub && <p className="text-xs text-[var(--color-text-tertiary)] mt-1.5">{sub}</p>}
     </div>
   );
   return href ? <Link href={href}>{inner}</Link> : inner;
@@ -83,28 +83,28 @@ function KpiBar({
     "green";
 
   const dot =
-    status === "red"   ? "bg-red-500" :
+    status === "red"   ? "bg-[var(--color-error-light)]0" :
     status === "amber" ? "bg-amber-400" :
     status === "none"  ? "bg-gray-300" :
-    "bg-green-500";
+    "bg-[var(--color-success-light)]0";
 
   return (
-    <Link href={href} className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors group">
+    <Link href={href} className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
       <div className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-      <span className="text-sm text-gray-700 flex-1 font-medium">{deptName}</span>
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        {green  > 0 && <span className="text-green-600 font-semibold">{green}✓</span>}
-        {amber  > 0 && <span className="text-amber-600 font-semibold">{amber}!</span>}
-        {red    > 0 && <span className="text-red-600   font-semibold">{red}✗</span>}
-        {noData > 0 && <span className="text-gray-400">{noData}—</span>}
+      <span className="text-sm text-[var(--color-text-primary)] flex-1 font-medium">{deptName}</span>
+      <div className="flex items-center gap-2 text-xs text-[var(--color-text-tertiary)]">
+        {green  > 0 && <span className="text-[var(--color-success)] font-semibold">{green}✓</span>}
+        {amber  > 0 && <span className="text-[var(--color-warning)] font-semibold">{amber}!</span>}
+        {red    > 0 && <span className="text-[var(--color-error)]   font-semibold">{red}✗</span>}
+        {noData > 0 && <span className="text-[var(--color-text-tertiary)]">{noData}—</span>}
       </div>
-      <div className="w-24 h-1.5 rounded-full bg-gray-100 overflow-hidden flex gap-px shrink-0">
-        {green  > 0 && <div className="bg-green-500 rounded-full" style={{ flex: green  }} />}
+      <div className="w-24 h-1.5 rounded-full bg-[var(--color-bg-tertiary)] overflow-hidden flex gap-px shrink-0">
+        {green  > 0 && <div className="bg-[var(--color-success-light)]0 rounded-full" style={{ flex: green  }} />}
         {amber  > 0 && <div className="bg-amber-400 rounded-full" style={{ flex: amber  }} />}
-        {red    > 0 && <div className="bg-red-500   rounded-full" style={{ flex: red    }} />}
-        {noData > 0 && <div className="bg-gray-200  rounded-full" style={{ flex: noData }} />}
+        {red    > 0 && <div className="bg-[var(--color-error-light)]0   rounded-full" style={{ flex: red    }} />}
+        {noData > 0 && <div className="bg-[var(--color-border-primary)]  rounded-full" style={{ flex: noData }} />}
       </div>
-      <span className="text-xs text-gray-300 group-hover:text-gray-500">→</span>
+      <span className="text-xs text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-secondary)]">→</span>
     </Link>
   );
 }
@@ -329,42 +329,42 @@ export default async function ExecutiveOverviewPage({
       {/* ── Alert banner ─────────────────────────────────────────────────── */}
       {(obsAlerts ?? 0) > 0 && (
         <Link href="/admin/observability"
-          className="flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-5 py-3 hover:bg-red-100 transition-colors">
+          className="flex items-center justify-between bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-5 py-3 hover:bg-[var(--color-error-light)] transition-colors">
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse inline-block" />
-            <span className="text-sm font-semibold text-red-700">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0 animate-pulse inline-block" />
+            <span className="text-sm font-semibold text-[var(--color-error)]">
               {obsAlerts} unacknowledged system {obsAlerts === 1 ? "alert" : "alerts"}
             </span>
           </div>
-          <span className="text-xs text-red-500 font-medium">View →</span>
+          <span className="text-xs text-[var(--color-error)] font-medium">View →</span>
         </Link>
       )}
 
       {/* ── Quick links + Task velocity ────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link href="/executive/ad-ops"
-          className="flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl px-5 py-4 hover:shadow-md transition-shadow group">
+          className="flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-[var(--radius-lg)] px-5 py-4 hover:shadow-[var(--shadow-md)] transition-shadow group">
           <div>
             <p className="text-sm font-semibold text-violet-900">Ad-Ops KPI Dashboard</p>
             <p className="text-xs text-violet-500 mt-0.5">Spend, ROAS, CPC, impressions &amp; more</p>
           </div>
           <span className="text-sm text-violet-400 group-hover:text-violet-600 transition-colors">View →</span>
         </Link>
-        <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-5 py-4">
+        <div className="flex items-center justify-between bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4">
           <div>
-            <p className="text-sm font-semibold text-gray-900">Task Velocity</p>
-            <p className="text-xs text-gray-400 mt-0.5">Kanban board · last 7 days</p>
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Task Velocity</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">Kanban board · last 7 days</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-center">
-              <p className="text-xl font-bold text-green-600">{tasksCompletedWeek ?? 0}</p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Completed</p>
+              <p className="text-xl font-bold text-[var(--color-success)]">{tasksCompletedWeek ?? 0}</p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Completed</p>
             </div>
             <div className="text-center">
-              <p className={`text-xl font-bold ${(tasksOverdue ?? 0) > 0 ? "text-red-600" : "text-gray-300"}`}>
+              <p className={`text-xl font-bold ${(tasksOverdue ?? 0) > 0 ? "text-[var(--color-error)]" : "text-[var(--color-text-tertiary)]"}`}>
                 {tasksOverdue ?? 0}
               </p>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Overdue</p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Overdue</p>
             </div>
           </div>
         </div>
@@ -421,34 +421,34 @@ export default async function ExecutiveOverviewPage({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
         {/* Sales agent ranking */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">Sales · today</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{format(new Date(), "EEEE d MMMM")}</p>
+              <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Sales · today</h2>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{format(new Date(), "EEEE d MMMM")}</p>
             </div>
-            <Link href="/executive/sales" className="text-xs text-gray-400 hover:text-gray-700">More →</Link>
+            <Link href="/executive/sales" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">More →</Link>
           </div>
           {agentRanking.length === 0 ? (
-            <p className="px-5 py-8 text-sm text-gray-400 text-center">No volume logged yet today.</p>
+            <p className="px-5 py-8 text-sm text-[var(--color-text-tertiary)] text-center">No volume logged yet today.</p>
           ) : (
             <div className="px-5 py-3 space-y-2.5">
               {agentRanking.map((agent, i) => {
                 const pct = (agent.pairs / maxDailyPairs) * 100;
                 const color =
-                  agent.pairs >= 8 ? "bg-green-500" :
+                  agent.pairs >= 8 ? "bg-[var(--color-success-light)]0" :
                   agent.pairs >= 6 ? "bg-amber-400" :
                   "bg-red-400";
                 const badge =
-                  agent.pairs >= 8 ? "bg-green-50 text-green-700" :
-                  agent.pairs >= 6 ? "bg-amber-50 text-amber-700" :
-                  "bg-red-50 text-red-700";
+                  agent.pairs >= 8 ? "bg-[var(--color-success-light)] text-[var(--color-success)]" :
+                  agent.pairs >= 6 ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]" :
+                  "bg-[var(--color-error-light)] text-[var(--color-error)]";
                 return (
                   <div key={agent.name} className="space-y-1">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 w-4 text-right">{i + 1}</span>
-                        <span className="text-sm text-gray-700 font-medium">{agent.name}</span>
+                        <span className="text-xs text-[var(--color-text-tertiary)] w-4 text-right">{i + 1}</span>
+                        <span className="text-sm text-[var(--color-text-primary)] font-medium">{agent.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${badge}`}>
@@ -456,15 +456,15 @@ export default async function ExecutiveOverviewPage({
                         </span>
                       </div>
                     </div>
-                    <div className="ml-6 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="ml-6 h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
                       <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );
               })}
-              <div className="pt-1.5 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Team total</span>
-                <span className="text-sm font-bold text-gray-900">{totalPairsToday} pairs</span>
+              <div className="pt-1.5 border-t border-[var(--color-border-secondary)] flex items-center justify-between">
+                <span className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">Team total</span>
+                <span className="text-sm font-bold text-[var(--color-text-primary)]">{totalPairsToday} pairs</span>
               </div>
             </div>
           )}
@@ -475,18 +475,18 @@ export default async function ExecutiveOverviewPage({
 
       {/* ── KPI health across departments ────────────────────────────────── */}
       {deptsWithKpis.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-gray-900">KPI Health · all departments</h2>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">KPI Health · all departments</h2>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                 {kpiTotal} KPIs tracked ·{" "}
-                <span className="text-green-600 font-medium">{kpiGreen} on track</span>
-                {kpiAmber > 0 && <span className="text-amber-600 font-medium"> · {kpiAmber} monitor</span>}
-                {kpiRed   > 0 && <span className="text-red-600   font-medium"> · {kpiRed} critical</span>}
+                <span className="text-[var(--color-success)] font-medium">{kpiGreen} on track</span>
+                {kpiAmber > 0 && <span className="text-[var(--color-warning)] font-medium"> · {kpiAmber} monitor</span>}
+                {kpiRed   > 0 && <span className="text-[var(--color-error)]   font-medium"> · {kpiRed} critical</span>}
               </p>
             </div>
-            <Link href="/analytics/kpis" className="text-xs text-gray-400 hover:text-gray-700">All KPIs →</Link>
+            <Link href="/analytics/kpis" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">All KPIs →</Link>
           </div>
           <div className="px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
             {deptsWithKpis.map((dept) => {
@@ -511,7 +511,7 @@ export default async function ExecutiveOverviewPage({
       {/* ── Announcements ────────────────────────────────────────────────── */}
       {(announcements ?? []).length > 0 && (
         <div>
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Announcements</h2>
+          <h2 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">Announcements</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {(announcements ?? []).map((a) => {
               const border =
@@ -520,9 +520,9 @@ export default async function ExecutiveOverviewPage({
                 "border-l-4 border-l-gray-200";
               return (
                 <Link key={a.id} href="/communications/announcements"
-                  className={`bg-white border border-gray-200 rounded-xl px-4 py-3 hover:shadow-sm transition-shadow ${border}`}>
-                  <p className="text-sm font-medium text-gray-900 truncate">{a.title}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{format(new Date(a.created_at), "d MMM yyyy")}</p>
+                  className={`bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-3 hover:shadow-[var(--shadow-sm)] transition-shadow ${border}`}>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{a.title}</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{format(new Date(a.created_at), "d MMM yyyy")}</p>
                 </Link>
               );
             })}

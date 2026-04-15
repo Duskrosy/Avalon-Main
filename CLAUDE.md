@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Avalon New** (1614 symbols, 4233 relationships, 63 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Avalon New** (1714 symbols, 4407 relationships, 63 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
@@ -97,26 +97,6 @@ To check whether embeddings exist, inspect `.gitnexus/meta.json` — the `stats.
 | Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
 | Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-| Work in the [id] area (152 symbols) | `.claude/skills/generated/id/SKILL.md` |
-| Work in the Campaigns area (63 symbols) | `.claude/skills/generated/campaigns/SKILL.md` |
-| Work in the Leaves area (45 symbols) | `.claude/skills/generated/leaves/SKILL.md` |
-| Work in the Live area (19 symbols) | `.claude/skills/generated/live/SKILL.md` |
-| Work in the Meta area (19 symbols) | `.claude/skills/generated/meta/SKILL.md` |
-| Work in the Login area (18 symbols) | `.claude/skills/generated/login/SKILL.md` |
-| Work in the Sales area (18 symbols) | `.claude/skills/generated/sales/SKILL.md` |
-| Work in the Settings area (18 symbols) | `.claude/skills/generated/settings/SKILL.md` |
-| Work in the Confirmed-sales area (17 symbols) | `.claude/skills/generated/confirmed-sales/SKILL.md` |
-| Work in the Social-sync area (16 symbols) | `.claude/skills/generated/social-sync/SKILL.md` |
-| Work in the Requests area (15 symbols) | `.claude/skills/generated/requests/SKILL.md` |
-| Work in the Shopify area (13 symbols) | `.claude/skills/generated/shopify/SKILL.md` |
-| Work in the Competitors area (12 symbols) | `.claude/skills/generated/competitors/SKILL.md` |
-| Work in the Tiktok area (11 symbols) | `.claude/skills/generated/tiktok/SKILL.md` |
-| Work in the Dashboard area (11 symbols) | `.claude/skills/generated/dashboard/SKILL.md` |
-| Work in the Kpis area (11 symbols) | `.claude/skills/generated/kpis/SKILL.md` |
-| Work in the Content area (10 symbols) | `.claude/skills/generated/content/SKILL.md` |
-| Work in the Executive area (9 symbols) | `.claude/skills/generated/executive/SKILL.md` |
-| Work in the Accounts area (8 symbols) | `.claude/skills/generated/accounts/SKILL.md` |
-| Work in the Ad-ops area (7 symbols) | `.claude/skills/generated/ad-ops/SKILL.md` |
 
 <!-- gitnexus:end -->
 

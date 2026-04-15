@@ -33,7 +33,7 @@ const TYPE_LABELS = {
 
 const TYPE_COLORS = {
   leave: "bg-amber-400",
-  booking: "bg-blue-500",
+  booking: "bg-[var(--color-accent-light)]0",
   birthday: "bg-pink-400",
   task: "bg-purple-500",
   post: "bg-gray-700",
@@ -43,10 +43,10 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   return (
     <button
       onClick={() => onChange(!checked)}
-      className={`relative w-10 h-5 rounded-full transition-colors ${checked ? "bg-gray-900" : "bg-gray-200"}`}
+      className={`relative w-10 h-5 rounded-full transition-colors ${checked ? "bg-[var(--color-text-primary)]" : "bg-[var(--color-border-primary)]"}`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+        className={`absolute top-0.5 left-0.5 w-4 h-4 bg-[var(--color-bg-primary)] rounded-full shadow transition-transform ${
           checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
@@ -146,25 +146,25 @@ export function CalendarView({
     <div>
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
           {format(firstDay, "MMMM yyyy")}
         </h1>
         <div className="flex items-center gap-2">
           <button
             onClick={goToday}
-            className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            className="text-sm border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
           >
             Today
           </button>
           <button
             onClick={() => navigate(-1)}
-            className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            className="text-sm border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
           >
             ‹
           </button>
           <button
             onClick={() => navigate(1)}
-            className="text-sm border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            className="text-sm border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
           >
             ›
           </button>
@@ -173,7 +173,7 @@ export function CalendarView({
               setSettingsForm(settings);
               setShowSettingsPanel(true);
             }}
-            className="text-gray-400 hover:text-gray-700 text-sm px-2 py-1 rounded-lg border border-gray-200 hover:border-gray-400"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] text-sm px-2 py-1 rounded-lg border border-[var(--color-border-primary)] hover:border-gray-400"
           >
             ⚙ Settings
           </button>
@@ -190,11 +190,11 @@ export function CalendarView({
             onClick={() => setFilters((f) => ({ ...f, [type]: !f[type] }))}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
               filters[type]
-                ? "border-transparent bg-gray-900 text-white"
-                : "border-gray-200 text-gray-400"
+                ? "border-transparent bg-[var(--color-text-primary)] text-white"
+                : "border-[var(--color-border-primary)] text-[var(--color-text-tertiary)]"
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${filters[type] ? "bg-white/70" : TYPE_COLORS[type]}`} />
+            <span className={`w-2 h-2 rounded-full ${filters[type] ? "bg-[var(--color-bg-primary)]/70" : TYPE_COLORS[type]}`} />
             {TYPE_LABELS[type]}
           </button>
         ))}
@@ -203,22 +203,22 @@ export function CalendarView({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar grid */}
         <div className="lg:col-span-2">
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
             {/* Day-of-week header */}
-            <div className="grid grid-cols-7 border-b border-gray-100">
+            <div className="grid grid-cols-7 border-b border-[var(--color-border-secondary)]">
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
-                <div key={d} className="text-center text-xs font-medium text-gray-400 py-2">{d}</div>
+                <div key={d} className="text-center text-xs font-medium text-[var(--color-text-tertiary)] py-2">{d}</div>
               ))}
             </div>
 
             {/* Days grid */}
             {loading ? (
-              <div className="py-12 text-center text-sm text-gray-400">Loading...</div>
+              <div className="py-12 text-center text-sm text-[var(--color-text-tertiary)]">Loading...</div>
             ) : (
               <div className="grid grid-cols-7">
                 {/* Empty cells for start day-of-week offset */}
                 {Array.from({ length: startDow }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-24 border-b border-r border-gray-50" />
+                  <div key={`empty-${i}`} className="h-24 border-b border-r border-[var(--color-border-secondary)]" />
                 ))}
                 {Array.from({ length: daysInMonth }, (_, i) => {
                   const day = i + 1;
@@ -231,13 +231,13 @@ export function CalendarView({
                     <div
                       key={day}
                       onClick={() => setSelected(isSelected ? null : dateStr)}
-                      className={`h-24 border-b border-r border-gray-50 p-1.5 cursor-pointer transition-colors ${
-                        isSelected ? "bg-gray-50" : "hover:bg-gray-50/50"
+                      className={`h-24 border-b border-r border-[var(--color-border-secondary)] p-1.5 cursor-pointer transition-colors ${
+                        isSelected ? "bg-[var(--color-bg-secondary)]" : "hover:bg-[var(--color-surface-hover)]/50"
                       }`}
                     >
                       <div
                         className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${
-                          isToday ? "bg-gray-900 text-white" : "text-gray-500"
+                          isToday ? "bg-[var(--color-text-primary)] text-white" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {day}
@@ -253,7 +253,7 @@ export function CalendarView({
                           </div>
                         ))}
                         {dayEvents.length > 3 && (
-                          <div className="text-xs text-gray-400 pl-1">
+                          <div className="text-xs text-[var(--color-text-tertiary)] pl-1">
                             +{dayEvents.length - 3} more
                           </div>
                         )}
@@ -269,12 +269,12 @@ export function CalendarView({
         {/* Sidebar: selected day or month summary */}
         <div>
           {selected ? (
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">
                 {format(new Date(selected), "EEEE, d MMMM")}
               </h3>
               {selectedEvents.length === 0 ? (
-                <p className="text-xs text-gray-400">Nothing scheduled.</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">Nothing scheduled.</p>
               ) : (
                 <div className="space-y-2">
                   {selectedEvents.map((e) => (
@@ -284,8 +284,8 @@ export function CalendarView({
                         style={{ backgroundColor: e.color }}
                       />
                       <div>
-                        <p className="text-xs text-gray-800 font-medium leading-snug">{e.title}</p>
-                        <p className="text-xs text-gray-400 capitalize">
+                        <p className="text-xs text-[var(--color-text-primary)] font-medium leading-snug">{e.title}</p>
+                        <p className="text-xs text-[var(--color-text-tertiary)] capitalize">
                           {e.type === "post" ? (e.meta ?? "SMM Post") : e.type}
                         </p>
                       </div>
@@ -295,8 +295,8 @@ export function CalendarView({
               )}
             </div>
           ) : (
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Month summary</h3>
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+              <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Month summary</h3>
               <div className="space-y-2">
                 {(Object.keys(TYPE_LABELS) as (keyof typeof TYPE_LABELS)[])
                   .filter((type) => type !== "post" || showSmmPosts)
@@ -307,9 +307,9 @@ export function CalendarView({
                     <div key={type} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${TYPE_COLORS[type]}`} />
-                        <span className="text-xs text-gray-600">{TYPE_LABELS[type]}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)]">{TYPE_LABELS[type]}</span>
                       </div>
-                      <span className="text-xs font-medium text-gray-900">{count}</span>
+                      <span className="text-xs font-medium text-[var(--color-text-primary)]">{count}</span>
                     </div>
                   );
                 })}
@@ -323,19 +323,19 @@ export function CalendarView({
       {showSettingsPanel && (
         <div className="fixed inset-0 z-40 flex justify-end">
           <div className="absolute inset-0 bg-black/20" onClick={() => setShowSettingsPanel(false)} />
-          <div className="relative bg-white w-80 h-full shadow-xl p-6 overflow-y-auto z-50">
+          <div className="relative bg-[var(--color-bg-primary)] w-80 h-full shadow-xl p-6 overflow-y-auto z-50">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-base font-semibold text-gray-900">Calendar Settings</h2>
-              <button onClick={() => setShowSettingsPanel(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Calendar Settings</h2>
+              <button onClick={() => setShowSettingsPanel(false)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">✕</button>
             </div>
 
-            <p className="text-xs text-gray-500 mb-4">Choose which events appear in your calendar by default.</p>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-4">Choose which events appear in your calendar by default.</p>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Tasks</p>
-                  <p className="text-xs text-gray-400">Kanban due dates</p>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">Tasks</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Kanban due dates</p>
                 </div>
                 <Toggle
                   checked={settingsForm.show_tasks}
@@ -345,8 +345,8 @@ export function CalendarView({
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Leaves &amp; Absences</p>
-                  <p className="text-xs text-gray-400">Approved leave requests</p>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">Leaves &amp; Absences</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Approved leave requests</p>
                 </div>
                 <Toggle
                   checked={settingsForm.show_leaves}
@@ -356,8 +356,8 @@ export function CalendarView({
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Room Bookings</p>
-                  <p className="text-xs text-gray-400">Meeting room reservations</p>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">Room Bookings</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Meeting room reservations</p>
                 </div>
                 <Toggle
                   checked={settingsForm.show_rooms}
@@ -367,8 +367,8 @@ export function CalendarView({
 
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Birthdays</p>
-                  <p className="text-xs text-gray-400">Team member birthdays</p>
+                  <p className="text-sm font-medium text-[var(--color-text-primary)]">Birthdays</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Team member birthdays</p>
                 </div>
                 <Toggle
                   checked={settingsForm.show_birthdays}
@@ -379,8 +379,8 @@ export function CalendarView({
               {showSmmPosts && (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-800">SMM Posts</p>
-                    <p className="text-xs text-gray-400">Scheduled social media posts</p>
+                    <p className="text-sm font-medium text-[var(--color-text-primary)]">SMM Posts</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">Scheduled social media posts</p>
                   </div>
                   <Toggle
                     checked={settingsForm.show_posts}
@@ -390,11 +390,11 @@ export function CalendarView({
               )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100">
+            <div className="mt-6 pt-4 border-t border-[var(--color-border-secondary)]">
               <button
                 onClick={saveSettings}
                 disabled={saving}
-                className="w-full bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                className="w-full bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save preferences"}
               </button>

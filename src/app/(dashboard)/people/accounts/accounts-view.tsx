@@ -61,8 +61,8 @@ function SecurityCheck({
         className="mt-0.5 accent-gray-900"
       />
       <div>
-        <p className="text-sm font-medium text-gray-800">{label}</p>
-        {description && <p className="text-xs text-gray-400 mt-0.5">{description}</p>}
+        <p className="text-sm font-medium text-[var(--color-text-primary)]">{label}</p>
+        {description && <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{description}</p>}
       </div>
     </label>
   );
@@ -167,14 +167,14 @@ function UserModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[var(--color-border-secondary)]">
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
             {mode === "create" ? "Create User" : `Edit ${user!.first_name} ${user!.last_name}`}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+            className="p-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-active)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -186,21 +186,21 @@ function UserModal({
           {/* Name */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">First name</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">First name</label>
               <input
                 required
                 value={form.first_name}
                 onChange={(e) => setField("first_name", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Last name</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Last name</label>
               <input
                 required
                 value={form.last_name}
                 onChange={(e) => setField("last_name", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
@@ -208,16 +208,16 @@ function UserModal({
           {/* Email (create always, edit for OPS only) */}
           {(mode === "create" || isOps) && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Email</label>
               <input
                 type="email"
                 required={mode === "create"}
                 value={form.email}
                 onChange={(e) => setField("email", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
               {mode === "edit" && (
-                <p className="text-xs text-gray-400 mt-1">Changing this will update their login email.</p>
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">Changing this will update their login email.</p>
               )}
             </div>
           )}
@@ -225,9 +225,9 @@ function UserModal({
           {/* Password (create always, edit for OPS only) */}
           {(mode === "create" || isOps) && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
                 {mode === "create" ? "Password" : "New password"}
-                {mode === "edit" && <span className="text-gray-400 font-normal"> (leave blank to keep current)</span>}
+                {mode === "edit" && <span className="text-[var(--color-text-tertiary)] font-normal"> (leave blank to keep current)</span>}
               </label>
               <PasswordInput
                 required={mode === "create"}
@@ -242,24 +242,24 @@ function UserModal({
           {/* Dept + Role */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Department</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Department</label>
               <select
                 required
                 value={form.department_id}
                 onChange={(e) => setField("department_id", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
               >
                 <option value="">Select…</option>
                 {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Role</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Role</label>
               <select
                 required
                 value={form.role_id}
                 onChange={(e) => setField("role_id", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
               >
                 <option value="">Select…</option>
                 {assignableRoles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -270,27 +270,27 @@ function UserModal({
           {/* Phone + Birthday */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Phone <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Phone <span className="text-[var(--color-text-tertiary)] font-normal">(optional)</span></label>
               <input
                 value={form.phone}
                 onChange={(e) => setField("phone", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Birthday <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Birthday <span className="text-[var(--color-text-tertiary)] font-normal">(optional)</span></label>
               <input
                 type="date"
                 value={form.birthday}
                 onChange={(e) => setField("birthday", e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-[var(--radius-md)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
 
           {/* Security flags */}
-          <div className="border-t border-gray-100 pt-4 space-y-3">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Account Security</p>
+          <div className="border-t border-[var(--color-border-secondary)] pt-4 space-y-3">
+            <p className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider">Account Security</p>
             <SecurityCheck
               label="Ask to change password on next login"
               description="Employee must set a new password when they first sign in."
@@ -313,21 +313,21 @@ function UserModal({
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
+            <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-[var(--radius-md)]">{error}</p>
           )}
 
           <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50"
+              className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] py-2 rounded-[var(--radius-md)] text-sm hover:bg-[var(--color-surface-hover)]"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+              className="flex-1 bg-[var(--color-text-primary)] text-white py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             >
               {saving ? (mode === "create" ? "Creating…" : "Saving…") : (mode === "create" ? "Create user" : "Save changes")}
             </button>
@@ -430,8 +430,8 @@ export function AccountsView({
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">User Accounts</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">User Accounts</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {activeTab === "active"
               ? `${users.length} active user${users.length !== 1 ? "s" : ""}`
               : `${deactivated.length} deactivated user${deactivated.length !== 1 ? "s" : ""}`}
@@ -440,7 +440,7 @@ export function AccountsView({
         {activeTab === "active" && (
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors"
+            className="bg-[var(--color-text-primary)] text-white px-4 py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + New user
           </button>
@@ -448,7 +448,7 @@ export function AccountsView({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-5 gap-0">
+      <div className="flex border-b border-[var(--color-border-primary)] mb-5 gap-0">
         {([
           { key: "active",      label: "Active",      count: users.length },
           { key: "deactivated", label: "Deactivated", count: deactivated.length },
@@ -459,8 +459,8 @@ export function AccountsView({
             className={cn(
               "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
               activeTab === tab.key
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-300",
+                ? "border-gray-900 text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-primary)]",
             )}
           >
             {tab.label}
@@ -468,8 +468,8 @@ export function AccountsView({
               <span className={cn(
                 "text-xs px-1.5 py-0.5 rounded-full font-medium",
                 activeTab === tab.key
-                  ? tab.key === "deactivated" ? "bg-gray-200 text-gray-600" : "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-500",
+                  ? tab.key === "deactivated" ? "bg-[var(--color-border-primary)] text-[var(--color-text-secondary)]" : "bg-[var(--color-text-primary)] text-white"
+                  : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
               )}>
                 {tab.count}
               </span>
@@ -515,20 +515,20 @@ export function AccountsView({
 
       {/* ── Active users table ────────────────────────────────────────────── */}
       {activeTab === "active" && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+              <tr className="border-b border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Email</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Department</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Role</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Avatar
@@ -537,25 +537,25 @@ export function AccountsView({
                         size="xs"
                       />
                       <div>
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-[var(--color-text-primary)]">
                           {user.first_name} {user.last_name}
                         </span>
                         {user.must_change_password && (
-                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-warning-light)] text-[var(--color-warning-text)] font-medium">
                             pw change
                           </span>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500">{user.email}</td>
-                  <td className="px-4 py-3 text-gray-600">{user.department?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{user.email}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)]">{user.department?.name ?? "—"}</td>
                   <td className="px-4 py-3">
                     <span className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                       user.role?.tier <= 1 ? "bg-purple-100 text-purple-700" :
-                      user.role?.tier === 2 ? "bg-blue-100 text-blue-700" :
-                      "bg-gray-100 text-gray-600",
+                      user.role?.tier === 2 ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]" :
+                      "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
                     )}>
                       {user.role?.name ?? "—"}
                     </span>
@@ -565,7 +565,7 @@ export function AccountsView({
                       {canEdit(user) && (
                         <button
                           onClick={() => setEditingUser(user)}
-                          className="text-xs text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100"
+                          className="text-xs text-[var(--color-text-secondary)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-active)]"
                         >
                           Edit
                         </button>
@@ -573,7 +573,7 @@ export function AccountsView({
                       {user.id !== currentUserId && canEdit(user) && (
                         <button
                           onClick={() => handleForceSignOut(user.id, `${user.first_name} ${user.last_name}`)}
-                          className="text-xs text-blue-600 px-3 py-1.5 rounded-lg hover:bg-blue-50"
+                          className="text-xs text-[var(--color-accent)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-accent-light)]"
                         >
                           Sign out
                         </button>
@@ -581,7 +581,7 @@ export function AccountsView({
                       {isOps && user.id !== currentUserId && canEdit(user) && (
                         <button
                           onClick={() => handleDeactivate(user.id, `${user.first_name} ${user.last_name}`)}
-                          className="text-xs text-amber-600 px-3 py-1.5 rounded-lg hover:bg-amber-50"
+                          className="text-xs text-[var(--color-warning)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-warning-light)]"
                         >
                           Deactivate
                         </button>
@@ -592,7 +592,7 @@ export function AccountsView({
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-gray-400">No active users</td>
+                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-[var(--color-text-tertiary)]">No active users</td>
                 </tr>
               )}
             </tbody>
@@ -602,29 +602,29 @@ export function AccountsView({
 
       {/* ── Deactivated users table ───────────────────────────────────────── */}
       {activeTab === "deactivated" && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] overflow-hidden">
           {deactivated.length > 0 && (
-            <div className="px-4 py-3 border-b border-gray-100 bg-amber-50 flex items-center gap-2">
+            <div className="px-4 py-3 border-b border-[var(--color-border-secondary)] bg-[var(--color-warning-light)] flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-              <p className="text-xs text-amber-700">
+              <p className="text-xs text-[var(--color-warning-text)]">
                 Deactivated accounts have no access to Avalon. Use <strong>Reactivate</strong> to restore access, or <strong>Delete</strong> to permanently remove.
               </p>
             </div>
           )}
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Deactivated</th>
+              <tr className="border-b border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]">
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Name</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Email</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Department</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Role</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Deactivated</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {deactivated.map((user) => (
-                <tr key={user.id} className="opacity-60 bg-gray-50/50">
+                <tr key={user.id} className="opacity-60 bg-[var(--color-bg-secondary)]/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Avatar
@@ -633,23 +633,23 @@ export function AccountsView({
                         size="xs"
                       />
                       <div>
-                        <span className="font-medium text-gray-600 line-through decoration-gray-400">
+                        <span className="font-medium text-[var(--color-text-secondary)] line-through decoration-gray-400">
                           {user.first_name} {user.last_name}
                         </span>
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-500 font-medium">
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--color-border-primary)] text-[var(--color-text-secondary)] font-medium">
                           inactive
                         </span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-400">{user.email}</td>
-                  <td className="px-4 py-3 text-gray-400">{user.department?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-tertiary)]">{user.email}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-tertiary)]">{user.department?.name ?? "—"}</td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-400">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]">
                       {user.role?.name ?? "—"}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-400">
+                  <td className="px-4 py-3 text-xs text-[var(--color-text-tertiary)]">
                     {user.deleted_at ? format(parseISO(user.deleted_at), "d MMM yyyy") : "—"}
                   </td>
                   <td className="px-4 py-3">
@@ -657,13 +657,13 @@ export function AccountsView({
                       <div className="flex gap-1 justify-end">
                         <button
                           onClick={() => handleReactivate(user.id, `${user.first_name} ${user.last_name}`)}
-                          className="text-xs text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-50 border border-green-200 font-medium"
+                          className="text-xs text-[var(--color-success)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-success-light)] border border-green-200 font-medium"
                         >
                           Reactivate
                         </button>
                         <button
                           onClick={() => handlePermanentDelete(user.id, `${user.first_name} ${user.last_name}`)}
-                          className="text-xs text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 border border-red-200"
+                          className="text-xs text-[var(--color-error)] px-3 py-1.5 rounded-[var(--radius-md)] hover:bg-[var(--color-error-light)] border border-red-200"
                         >
                           Delete
                         </button>
@@ -674,7 +674,7 @@ export function AccountsView({
               ))}
               {deactivated.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-400">No deactivated users</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-[var(--color-text-tertiary)]">No deactivated users</td>
                 </tr>
               )}
             </tbody>

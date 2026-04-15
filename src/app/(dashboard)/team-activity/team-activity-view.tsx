@@ -47,16 +47,16 @@ type TimelineItem =
 // ── Style maps ────────────────────────────────────────────────────────────────
 
 const CATEGORY_DOT: Record<string, string> = {
-  product: "bg-blue-500",
+  product: "bg-[var(--color-accent-light)]0",
   audit: "bg-gray-400",
-  error: "bg-red-500",
+  error: "bg-[var(--color-error-light)]0",
   performance: "bg-purple-500",
 };
 
 const ACTION_DOT: Record<string, string> = {
-  INSERT: "bg-green-500",
-  UPDATE: "bg-blue-500",
-  DELETE: "bg-red-500",
+  INSERT: "bg-[var(--color-success-light)]0",
+  UPDATE: "bg-[var(--color-accent-light)]0",
+  DELETE: "bg-[var(--color-error-light)]0",
 };
 
 const DAYS_OPTIONS = [7, 14, 30] as const;
@@ -180,8 +180,8 @@ export default function TeamActivityView({ currentUser }: Props) {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Team Activity</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Team Activity</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           Activity within {currentUser.department_name}
         </p>
       </div>
@@ -193,8 +193,8 @@ export default function TeamActivityView({ currentUser }: Props) {
             onClick={() => setSelectedUserId("")}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
               !selectedUserId
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
             All members
@@ -209,13 +209,13 @@ export default function TeamActivityView({ currentUser }: Props) {
                 onClick={() => setSelectedUserId(isSelected ? "" : u.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                   isSelected
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
                 <span>{u.first_name} {u.last_name}</span>
                 {last && (
-                  <span className={`${isSelected ? "text-gray-300" : "text-gray-400"} text-[10px]`}>
+                  <span className={`${isSelected ? "text-[var(--color-text-tertiary)]" : "text-[var(--color-text-tertiary)]"} text-[10px]`}>
                     {format(parseISO(last), "d MMM HH:mm")}
                   </span>
                 )}
@@ -227,15 +227,15 @@ export default function TeamActivityView({ currentUser }: Props) {
 
       {/* Days filter */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+        <div className="flex rounded-lg border border-[var(--color-border-primary)] overflow-hidden">
           {DAYS_OPTIONS.map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 days === d
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  ? "bg-[var(--color-text-primary)] text-white"
+                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
               {d}d
@@ -243,7 +243,7 @@ export default function TeamActivityView({ currentUser }: Props) {
           ))}
         </div>
 
-        <span className="text-xs text-gray-400">
+        <span className="text-xs text-[var(--color-text-tertiary)]">
           {timeline.length} {timeline.length === 1 ? "entry" : "entries"}
         </span>
       </div>
@@ -253,10 +253,10 @@ export default function TeamActivityView({ currentUser }: Props) {
         {/* Activity feed */}
         <div className="flex-1 min-w-0">
           {loading ? (
-            <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+            <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
           ) : timeline.length === 0 ? (
-            <div className="bg-gray-50 rounded-xl p-12 text-center">
-              <p className="text-sm text-gray-400">
+            <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 No activity found for the selected period.
               </p>
             </div>
@@ -264,7 +264,7 @@ export default function TeamActivityView({ currentUser }: Props) {
             <div>
               {groupedTimeline.map((group) => (
                 <div key={group.key} className="mb-6">
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+                  <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">
                     {group.label}
                   </h3>
                   <div className="space-y-0">
@@ -285,15 +285,15 @@ export default function TeamActivityView({ currentUser }: Props) {
         {/* Module usage sidebar */}
         {!loading && moduleUsage.length > 0 && (
           <div className="w-64 shrink-0 hidden lg:block">
-            <div className="bg-white border border-gray-200 rounded-xl p-4 sticky top-4">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+            <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 sticky top-4">
+              <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">
                 Module Usage
               </h3>
               <div className="space-y-2">
                 {moduleUsage.map(([mod, count]) => (
                   <div key={mod} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700 truncate">{mod}</span>
-                    <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    <span className="text-sm text-[var(--color-text-primary)] truncate">{mod}</span>
+                    <span className="text-xs font-medium text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] px-2 py-0.5 rounded-full">
                       {count}
                     </span>
                   </div>
@@ -314,20 +314,20 @@ function TimelineRow({ item, users }: { item: TimelineItem; users: UserProfile[]
     const e = item.data;
     const dotColor = CATEGORY_DOT[e.category] ?? "bg-gray-400";
     return (
-      <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-b-0">
-        <span className="text-xs text-gray-400 w-24 shrink-0 pt-0.5">
+      <div className="flex items-start gap-3 py-2.5 border-b border-[var(--color-border-secondary)] last:border-b-0">
+        <span className="text-xs text-[var(--color-text-tertiary)] w-24 shrink-0 pt-0.5">
           {format(parseISO(e.created_at), "d MMM HH:mm")}
         </span>
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-          <span className="text-sm text-gray-800 truncate">{e.event_name}</span>
+          <span className="text-sm text-[var(--color-text-primary)] truncate">{e.event_name}</span>
           {e.module && (
-            <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium shrink-0">
+            <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded font-medium shrink-0">
               {e.module}
             </span>
           )}
         </div>
-        <span className="text-xs text-gray-400 shrink-0">{userName(users, e.actor_id)}</span>
+        <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{userName(users, e.actor_id)}</span>
       </div>
     );
   }
@@ -335,17 +335,17 @@ function TimelineRow({ item, users }: { item: TimelineItem; users: UserProfile[]
   const a = item.data;
   const dotColor = ACTION_DOT[a.action] ?? "bg-gray-400";
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-b-0">
-      <span className="text-xs text-gray-400 w-24 shrink-0 pt-0.5">
+    <div className="flex items-start gap-3 py-2.5 border-b border-[var(--color-border-secondary)] last:border-b-0">
+      <span className="text-xs text-[var(--color-text-tertiary)] w-24 shrink-0 pt-0.5">
         {format(parseISO(a.created_at), "d MMM HH:mm")}
       </span>
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-        <span className="text-sm text-gray-800 truncate">
+        <span className="text-sm text-[var(--color-text-primary)] truncate">
           {a.action} on {a.table_name}
         </span>
       </div>
-      <span className="text-xs text-gray-400 shrink-0">{userName(users, a.actor_id)}</span>
+      <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{userName(users, a.actor_id)}</span>
     </div>
   );
 }

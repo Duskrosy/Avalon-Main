@@ -18,7 +18,7 @@ export default async function SalesOpsPage() {
 
   if (!salesDept) {
     return (
-      <div className="p-12 text-center text-gray-400 text-sm">
+      <div className="p-12 text-center text-[var(--color-text-tertiary)] text-sm">
         Sales department not found in database.
       </div>
     );

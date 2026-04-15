@@ -23,6 +23,12 @@ export type Role = {
   updated_at: string;
 };
 
+export type UserPreferences = {
+  theme?: "light" | "dark" | "system";
+  accent?: "blue" | "violet" | "teal" | "rose" | "amber" | "emerald" | "orange" | "indigo";
+  density?: "comfortable" | "compact";
+};
+
 export type Profile = {
   id: string;
   email: string;
@@ -40,6 +46,7 @@ export type Profile = {
   updated_at: string;
   created_by: string | null;
   updated_by: string | null;
+  user_preferences: UserPreferences;
 };
 
 export type ProfileWithRelations = Profile & {

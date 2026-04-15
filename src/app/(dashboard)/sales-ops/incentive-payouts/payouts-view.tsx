@@ -14,10 +14,10 @@ function agentName(a: Agent) {
 
 function statusBadge(status: IncentivePayout["status"]) {
   const map: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-500",
-    approved: "bg-blue-50 text-blue-600",
-    paid: "bg-green-50 text-green-700",
-    disputed: "bg-red-50 text-red-500",
+    draft: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+    approved: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+    paid: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+    disputed: "bg-[var(--color-error-light)] text-[var(--color-error)]",
   };
   return (
     <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium capitalize ${map[status] ?? ""}`}>
@@ -27,10 +27,10 @@ function statusBadge(status: IncentivePayout["status"]) {
 }
 
 function bracketColor(bracket: string | null) {
-  if (bracket === "Elite") return "text-green-700";
-  if (bracket === "Strong") return "text-blue-600";
+  if (bracket === "Elite") return "text-[var(--color-success)]";
+  if (bracket === "Strong") return "text-[var(--color-accent)]";
   if (bracket === "Pass") return "text-[#D57B0E]";
-  return "text-red-500";
+  return "text-[var(--color-error)]";
 }
 
 export function PayoutsView({ agents, canManage }: Props) {
@@ -99,8 +99,8 @@ export function PayoutsView({ agents, canManage }: Props) {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Incentive Payouts</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Incentive Payouts</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {payouts.length} payouts computed · ₱{totalPayout.toLocaleString()} total
           </p>
         </div>
@@ -119,15 +119,15 @@ export function PayoutsView({ agents, canManage }: Props) {
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : payouts.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No payouts computed for this month yet.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No payouts computed for this month yet.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -137,21 +137,21 @@ export function PayoutsView({ agents, canManage }: Props) {
             return (
               <div
                 key={payout.id}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden"
+                className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden"
               >
                 {/* Main row */}
                 <div
-                  className="p-5 cursor-pointer hover:bg-gray-50 flex items-center gap-4 flex-wrap"
+                  className="p-5 cursor-pointer hover:bg-[var(--color-surface-hover)] flex items-center gap-4 flex-wrap"
                   onClick={() => setSelectedPayout(isSelected ? null : payout)}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 flex-wrap mb-1">
-                      <span className="font-semibold text-gray-900">{agent ? agentName(agent) : payout.agent_id}</span>
+                      <span className="font-semibold text-[var(--color-text-primary)]">{agent ? agentName(agent) : payout.agent_id}</span>
                       {statusBadge(payout.status)}
                       {payout.gate_passed ? (
-                        <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Gate passed</span>
+                        <span className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] px-2 py-0.5 rounded-full">Gate passed</span>
                       ) : (
-                        <span className="text-xs bg-red-50 text-red-500 px-2 py-0.5 rounded-full">Gate failed</span>
+                        <span className="text-xs bg-[var(--color-error-light)] text-[var(--color-error)] px-2 py-0.5 rounded-full">Gate failed</span>
                       )}
                       {payout.payout_tier && (
                         <span className={`text-xs font-semibold ${bracketColor(payout.payout_tier)}`}>
@@ -159,38 +159,38 @@ export function PayoutsView({ agents, canManage }: Props) {
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-[var(--color-text-secondary)]">
                       FPS: {payout.final_fps?.toFixed(1) ?? "—"} · CR: {payout.mtd_confirmed_regular} · {payout.scored_days} scored days
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold text-gray-900">₱{payout.total_payout.toLocaleString()}</p>
-                    <p className="text-xs text-gray-400">total payout</p>
+                    <p className="text-xl font-bold text-[var(--color-text-primary)]">₱{payout.total_payout.toLocaleString()}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">total payout</p>
                   </div>
                 </div>
 
                 {/* Expanded breakdown */}
                 {isSelected && (
-                  <div className="border-t border-gray-100 px-5 py-4 bg-[#FBF6F0]">
-                    <h3 className="text-xs font-semibold text-gray-700 uppercase mb-3">Payout Breakdown</h3>
+                  <div className="border-t border-[var(--color-border-secondary)] px-5 py-4 bg-[#FBF6F0]">
+                    <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase mb-3">Payout Breakdown</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                       {/* Main tier */}
-                      <div className="bg-white rounded-lg p-3 border border-gray-100">
-                        <p className="text-xs text-gray-500 mb-1">Main Tier</p>
-                        <p className="text-lg font-bold text-gray-900">₱{payout.main_tier_payout.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">{payout.paid_pairs} paid pairs</p>
+                      <div className="bg-[var(--color-bg-primary)] rounded-lg p-3 border border-[var(--color-border-secondary)]">
+                        <p className="text-xs text-[var(--color-text-secondary)] mb-1">Main Tier</p>
+                        <p className="text-lg font-bold text-[var(--color-text-primary)]">₱{payout.main_tier_payout.toLocaleString()}</p>
+                        <p className="text-xs text-[var(--color-text-tertiary)]">{payout.paid_pairs} paid pairs</p>
                       </div>
                       {/* Abandoned */}
-                      <div className="bg-white rounded-lg p-3 border border-gray-100">
-                        <p className="text-xs text-gray-500 mb-1">Abandoned Recovery</p>
-                        <p className="text-lg font-bold text-gray-900">₱{payout.abandoned_payout.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">{payout.abandoned_pairs} delivered abandoned</p>
+                      <div className="bg-[var(--color-bg-primary)] rounded-lg p-3 border border-[var(--color-border-secondary)]">
+                        <p className="text-xs text-[var(--color-text-secondary)] mb-1">Abandoned Recovery</p>
+                        <p className="text-lg font-bold text-[var(--color-text-primary)]">₱{payout.abandoned_payout.toLocaleString()}</p>
+                        <p className="text-xs text-[var(--color-text-tertiary)]">{payout.abandoned_pairs} delivered abandoned</p>
                       </div>
                       {/* On-hand */}
-                      <div className="bg-white rounded-lg p-3 border border-gray-100">
-                        <p className="text-xs text-gray-500 mb-1">On-Hand Bonus</p>
-                        <p className="text-lg font-bold text-gray-900">₱{payout.onhand_payout.toLocaleString()}</p>
-                        <p className="text-xs text-gray-400">
+                      <div className="bg-[var(--color-bg-primary)] rounded-lg p-3 border border-[var(--color-border-secondary)]">
+                        <p className="text-xs text-[var(--color-text-secondary)] mb-1">On-Hand Bonus</p>
+                        <p className="text-lg font-bold text-[var(--color-text-primary)]">₱{payout.onhand_payout.toLocaleString()}</p>
+                        <p className="text-xs text-[var(--color-text-tertiary)]">
                           {payout.onhand_pairs} on-hand / {payout.total_delivered} delivered
                         </p>
                       </div>
@@ -201,7 +201,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                         {payout.status === "draft" && (
                           <button
                             onClick={() => updateStatus(payout.id, "approved")}
-                            className="text-xs bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100"
+                            className="text-xs bg-[var(--color-accent-light)] text-[var(--color-accent)] border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-[var(--color-accent-light)]"
                           >
                             Approve
                           </button>
@@ -209,7 +209,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                         {payout.status === "approved" && (
                           <button
                             onClick={() => updateStatus(payout.id, "paid")}
-                            className="text-xs bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100"
+                            className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] border border-green-200 px-3 py-1.5 rounded-lg hover:bg-[var(--color-success-light)]"
                           >
                             Mark paid
                           </button>
@@ -217,7 +217,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                         {(payout.status === "approved" || payout.status === "paid") && (
                           <button
                             onClick={() => updateStatus(payout.id, "disputed")}
-                            className="text-xs bg-red-50 text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-100"
+                            className="text-xs bg-[var(--color-error-light)] text-[var(--color-error)] border border-red-200 px-3 py-1.5 rounded-lg hover:bg-[var(--color-error-light)]"
                           >
                             Dispute
                           </button>
@@ -225,7 +225,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                         {payout.status === "disputed" && (
                           <button
                             onClick={() => updateStatus(payout.id, "draft")}
-                            className="text-xs bg-gray-100 text-gray-600 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-200"
+                            className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-border-primary)]"
                           >
                             Revert to draft
                           </button>
@@ -233,7 +233,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                       </div>
                     )}
 
-                    {payout.notes && <p className="text-xs text-gray-500 mt-2">{payout.notes}</p>}
+                    {payout.notes && <p className="text-xs text-[var(--color-text-secondary)] mt-2">{payout.notes}</p>}
                   </div>
                 )}
               </div>
@@ -245,19 +245,19 @@ export function PayoutsView({ agents, canManage }: Props) {
       {/* Compute modal */}
       {showComputeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Compute Payout</h2>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-1">Compute Payout</h2>
+            <p className="text-xs text-[var(--color-text-secondary)] mb-4">
               FPS is computed from logged data. Enter delivered pair counts for the payout calculation.
             </p>
             <form onSubmit={handleCompute} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Agent *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Agent *</label>
                 <select
                   required
                   value={computeForm.agent_id}
                   onChange={(e) => setComputeForm((f) => ({ ...f, agent_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 >
                   {agents.map((a) => (
                     <option key={a.id} value={a.id}>{agentName(a)}</option>
@@ -267,58 +267,58 @@ export function PayoutsView({ agents, canManage }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Paid Pairs</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Paid Pairs</label>
                   <input
                     type="number"
                     min={0}
                     value={computeForm.paid_pairs}
                     onChange={(e) => setComputeForm((f) => ({ ...f, paid_pairs: e.target.value }))}
                     placeholder="0"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Total Delivered</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Total Delivered</label>
                   <input
                     type="number"
                     min={0}
                     value={computeForm.total_delivered}
                     onChange={(e) => setComputeForm((f) => ({ ...f, total_delivered: e.target.value }))}
                     placeholder="0"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Abandoned Delivered</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Abandoned Delivered</label>
                   <input
                     type="number"
                     min={0}
                     value={computeForm.abandoned_pairs}
                     onChange={(e) => setComputeForm((f) => ({ ...f, abandoned_pairs: e.target.value }))}
                     placeholder="0"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">On-Hand Delivered</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">On-Hand Delivered</label>
                   <input
                     type="number"
                     min={0}
                     value={computeForm.onhand_pairs}
                     onChange={(e) => setComputeForm((f) => ({ ...f, onhand_pairs: e.target.value }))}
                     placeholder="0"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={computeForm.notes}
                   onChange={(e) => setComputeForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
@@ -326,7 +326,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowComputeModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>

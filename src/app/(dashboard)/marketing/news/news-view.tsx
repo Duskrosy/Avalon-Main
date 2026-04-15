@@ -23,10 +23,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 const CATEGORY_BADGE: Record<string, string> = {
-  shoes:   "bg-amber-100 text-amber-800",
-  height:  "bg-green-100 text-green-700",
+  shoes:   "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  height:  "bg-[var(--color-success-light)] text-[var(--color-success)]",
   viral_ph:"bg-rose-100 text-rose-700",
-  general: "bg-gray-100 text-gray-600",
+  general: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
 };
 
 const CATEGORY_TABS = [
@@ -132,9 +132,9 @@ export function NewsView({ canManage }: Props) {
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">News Feed</h1>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">News Feed</h1>
           {lastFetched && (
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
               Last fetched: {formatDate(lastFetched)}
             </p>
           )}
@@ -143,7 +143,7 @@ export function NewsView({ canManage }: Props) {
           {canManage && (
             <button
               onClick={() => setShowAddSource(true)}
-              className="text-sm px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
+              className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
             >
               + Add Source
             </button>
@@ -151,7 +151,7 @@ export function NewsView({ canManage }: Props) {
           <button
             onClick={handleRefresh}
             disabled={fetching}
-            className="text-sm px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             <span className={fetching ? "animate-spin inline-block" : ""}>↻</span>
             {fetching ? "Fetching…" : "Refresh"}
@@ -161,9 +161,9 @@ export function NewsView({ canManage }: Props) {
 
       {/* Refresh result banner */}
       {refreshResult && (
-        <div className="mb-4 px-4 py-2.5 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center justify-between">
+        <div className="mb-4 px-4 py-2.5 bg-[var(--color-success-light)] border border-green-200 rounded-lg text-sm text-[var(--color-success)] flex items-center justify-between">
           <span>{refreshResult}</span>
-          <button onClick={() => setRefreshResult(null)} className="text-green-500 hover:text-green-700 ml-4">✕</button>
+          <button onClick={() => setRefreshResult(null)} className="text-green-500 hover:text-[var(--color-success)] ml-4">✕</button>
         </div>
       )}
 
@@ -175,8 +175,8 @@ export function NewsView({ canManage }: Props) {
             onClick={() => { if (category !== tab.value) { setCategory(tab.value); } }}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               category === tab.value
-                ? "bg-gray-900 text-white border-gray-900"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
             }`}
           >
             {tab.label}
@@ -186,11 +186,11 @@ export function NewsView({ canManage }: Props) {
 
       {/* News list */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           <p className="text-2xl mb-3">📰</p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-[var(--color-text-secondary)]">
             No articles yet. Click <strong>Refresh</strong> to fetch the latest news.
           </p>
         </div>
@@ -207,7 +207,7 @@ export function NewsView({ canManage }: Props) {
         <div className="mt-6 text-center">
           <button
             onClick={handleLoadMore}
-            className="text-sm px-5 py-2 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
+            className="text-sm px-5 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
           >
             Load more
           </button>
@@ -218,11 +218,11 @@ export function NewsView({ canManage }: Props) {
       {showAddSource && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/30" onClick={() => setShowAddSource(false)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Add RSS Source</h2>
+          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Add RSS Source</h2>
             <form onSubmit={handleAddSource} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
                   Source Name <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -230,12 +230,12 @@ export function NewsView({ canManage }: Props) {
                   value={addSourceForm.name}
                   onChange={(e) => setAddSourceForm((f) => ({ ...f, name: e.target.value }))}
                   placeholder="e.g. Rappler"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
                   RSS URL <span className="text-red-400">*</span>
                 </label>
                 <input
@@ -243,16 +243,16 @@ export function NewsView({ canManage }: Props) {
                   value={addSourceForm.url}
                   onChange={(e) => setAddSourceForm((f) => ({ ...f, url: e.target.value }))}
                   placeholder="https://example.com/feed"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Category</label>
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Category</label>
                 <select
                   value={addSourceForm.category}
                   onChange={(e) => setAddSourceForm((f) => ({ ...f, category: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
                 >
                   {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
@@ -263,14 +263,14 @@ export function NewsView({ canManage }: Props) {
                 <button
                   type="button"
                   onClick={() => { setShowAddSource(false); setAddSourceForm(EMPTY_SOURCE_FORM); }}
-                  className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
+                  className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingSource || !addSourceForm.name.trim() || !addSourceForm.url.trim()}
-                  className="text-sm px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
                 >
                   {savingSource ? "Saving…" : "Add Source"}
                 </button>
@@ -287,10 +287,10 @@ export function NewsView({ canManage }: Props) {
 
 function NewsCard({ item }: { item: NewsItem }) {
   const categoryLabel = CATEGORY_LABELS[item.source.category] ?? item.source.category;
-  const categoryBadge = CATEGORY_BADGE[item.source.category] ?? "bg-gray-100 text-gray-600";
+  const categoryBadge = CATEGORY_BADGE[item.source.category] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors">
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden hover:border-[var(--color-border-primary)] transition-colors">
       <div className="flex gap-4 p-4">
         {/* Thumbnail */}
         {item.image_url && (
@@ -305,7 +305,7 @@ function NewsCard({ item }: { item: NewsItem }) {
             <img
               src={item.image_url}
               alt=""
-              className="w-20 h-20 object-cover rounded-lg bg-gray-100"
+              className="w-20 h-20 object-cover rounded-lg bg-[var(--color-bg-tertiary)]"
               onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
             />
           </a>
@@ -317,25 +317,25 @@ function NewsCard({ item }: { item: NewsItem }) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-gray-900 hover:text-gray-600 transition-colors text-sm leading-snug line-clamp-2"
+            className="font-semibold text-[var(--color-text-primary)] hover:text-[var(--color-text-secondary)] transition-colors text-sm leading-snug line-clamp-2"
           >
             {item.title}
           </a>
 
           {item.summary && (
-            <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2 leading-relaxed">
               {item.summary}
             </p>
           )}
 
           {/* Meta row */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <span className="text-xs text-gray-400">{item.source.name}</span>
+            <span className="text-xs text-[var(--color-text-tertiary)]">{item.source.name}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${categoryBadge}`}>
               {categoryLabel}
             </span>
             {item.published_at && (
-              <span className="text-xs text-gray-400">{formatDate(item.published_at)}</span>
+              <span className="text-xs text-[var(--color-text-tertiary)]">{formatDate(item.published_at)}</span>
             )}
           </div>
         </div>

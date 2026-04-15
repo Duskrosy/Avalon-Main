@@ -30,10 +30,10 @@ type Props = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  draft:   "bg-gray-100 text-gray-500",
-  active:  "bg-green-50 text-green-700",
-  paused:  "bg-amber-50 text-amber-600",
-  ended:   "bg-gray-100 text-gray-400",
+  draft:   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  active:  "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  paused:  "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  ended:   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
 };
 
 const STATUS_DOT: Record<string, string> = {
@@ -155,12 +155,12 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Deployments</h1>
-          <p className="text-sm text-gray-500 mt-1">{deployments.length} deployments</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Deployments</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{deployments.length} deployments</p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Deployment
         </button>
@@ -172,7 +172,7 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"}`}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-white border-gray-900" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"}`}
           >
             {s === "" ? "All" : s}
           </button>
@@ -180,25 +180,25 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : deployments.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No deployments found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No deployments found.</p>
         </div>
       ) : (
         <div className="space-y-2">
           {deployments.map((d) => (
-            <div key={d.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <div key={d.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
               <div
-                className="px-5 py-4 flex items-start gap-3 cursor-pointer hover:bg-gray-50"
+                className="px-5 py-4 flex items-start gap-3 cursor-pointer hover:bg-[var(--color-surface-hover)]"
                 onClick={() => setExpanded(expanded === d.id ? null : d.id)}
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 mt-2 ${STATUS_DOT[d.status] ?? "bg-gray-300"}`} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-[var(--color-text-primary)]">
                     {d.campaign_name ?? d.asset?.title ?? "Unnamed deployment"}
                   </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                     {d.asset?.asset_code && <span className="font-mono">{d.asset.asset_code}</span>}
                     {d.meta_account && <span> · {d.meta_account.name}</span>}
                     {d.launched_at && <span> · launched {format(parseISO(d.launched_at), "d MMM")}</span>}
@@ -210,66 +210,66 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
               </div>
 
               {expanded === d.id && (
-                <div className="border-t border-gray-100 px-5 py-4 bg-gray-50 space-y-3">
+                <div className="border-t border-[var(--color-border-secondary)] px-5 py-4 bg-[var(--color-bg-secondary)] space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                     {d.budget_daily != null && (
                       <div>
-                        <p className="text-gray-400">Daily Budget</p>
-                        <p className="font-medium text-gray-800">${d.budget_daily.toLocaleString()}</p>
+                        <p className="text-[var(--color-text-tertiary)]">Daily Budget</p>
+                        <p className="font-medium text-[var(--color-text-primary)]">${d.budget_daily.toLocaleString()}</p>
                       </div>
                     )}
                     {d.budget_total != null && (
                       <div>
-                        <p className="text-gray-400">Total Budget</p>
-                        <p className="font-medium text-gray-800">${d.budget_total.toLocaleString()}</p>
+                        <p className="text-[var(--color-text-tertiary)]">Total Budget</p>
+                        <p className="font-medium text-[var(--color-text-primary)]">${d.budget_total.toLocaleString()}</p>
                       </div>
                     )}
                     {d.meta_campaign_id && (
                       <div>
-                        <p className="text-gray-400">Campaign ID</p>
-                        <p className="font-mono text-gray-800">{d.meta_campaign_id}</p>
+                        <p className="text-[var(--color-text-tertiary)]">Campaign ID</p>
+                        <p className="font-mono text-[var(--color-text-primary)]">{d.meta_campaign_id}</p>
                       </div>
                     )}
                     {d.meta_ad_id && (
                       <div>
-                        <p className="text-gray-400">Ad ID</p>
-                        <p className="font-mono text-gray-800">{d.meta_ad_id}</p>
+                        <p className="text-[var(--color-text-tertiary)]">Ad ID</p>
+                        <p className="font-mono text-[var(--color-text-primary)]">{d.meta_ad_id}</p>
                       </div>
                     )}
                     {d.launched_by_profile && (
                       <div>
-                        <p className="text-gray-400">Launched by</p>
-                        <p className="text-gray-800">{d.launched_by_profile.first_name} {d.launched_by_profile.last_name}</p>
+                        <p className="text-[var(--color-text-tertiary)]">Launched by</p>
+                        <p className="text-[var(--color-text-primary)]">{d.launched_by_profile.first_name} {d.launched_by_profile.last_name}</p>
                       </div>
                     )}
                     {d.ended_at && (
                       <div>
-                        <p className="text-gray-400">Ended</p>
-                        <p className="text-gray-800">{format(parseISO(d.ended_at), "d MMM yyyy")}</p>
+                        <p className="text-[var(--color-text-tertiary)]">Ended</p>
+                        <p className="text-[var(--color-text-primary)]">{format(parseISO(d.ended_at), "d MMM yyyy")}</p>
                       </div>
                     )}
                   </div>
 
-                  {d.notes && <p className="text-sm text-gray-600">{d.notes}</p>}
+                  {d.notes && <p className="text-sm text-[var(--color-text-secondary)]">{d.notes}</p>}
 
                   <div className="flex items-center gap-2 flex-wrap pt-1">
                     {(NEXT_STATUSES[d.status] ?? []).map((nextStatus) => (
                       <button
                         key={nextStatus}
                         onClick={() => updateStatus(d.id, nextStatus)}
-                        className="text-xs border border-gray-200 bg-white px-3 py-1.5 rounded-lg hover:bg-gray-100 text-gray-700"
+                        className="text-xs border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-active)] text-[var(--color-text-primary)]"
                       >
                         → {nextStatus}
                       </button>
                     ))}
                     <button
                       onClick={() => openEdit(d)}
-                      className="text-xs text-gray-400 hover:text-gray-700 ml-auto"
+                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] ml-auto"
                     >
                       Edit
                     </button>
                     {canManage && (
-                      <button onClick={() => handleDelete(d.id)} className="text-xs text-gray-300 hover:text-red-400">
+                      <button onClick={() => handleDelete(d.id)} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400">
                         Delete
                       </button>
                     )}
@@ -283,19 +283,19 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
               {editDep ? "Edit Deployment" : "New Deployment"}
             </h2>
             <form onSubmit={handleSave} className="space-y-4">
               {!editDep && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Asset</label>
+                    <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Asset</label>
                     <select
                       value={form.asset_id}
                       onChange={(e) => setForm((f) => ({ ...f, asset_id: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     >
                       <option value="">None</option>
                       {approvedAssets.map((a) => (
@@ -304,11 +304,11 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Meta Account</label>
+                    <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Meta Account</label>
                     <select
                       value={form.meta_account_id}
                       onChange={(e) => setForm((f) => ({ ...f, meta_account_id: e.target.value }))}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                      className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                     >
                       <option value="">None</option>
                       {metaAccounts.map((a) => (
@@ -319,74 +319,74 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
                 </div>
               )}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Campaign Name</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Campaign Name</label>
                 <input
                   type="text"
                   value={form.campaign_name}
                   onChange={(e) => setForm((f) => ({ ...f, campaign_name: e.target.value }))}
                   placeholder="e.g. Summer 2026 — TOF"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Campaign ID</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Campaign ID</label>
                   <input
                     type="text"
                     value={form.meta_campaign_id}
                     onChange={(e) => setForm((f) => ({ ...f, meta_campaign_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Ad Set ID</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Ad Set ID</label>
                   <input
                     type="text"
                     value={form.meta_adset_id}
                     onChange={(e) => setForm((f) => ({ ...f, meta_adset_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Ad ID</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Ad ID</label>
                   <input
                     type="text"
                     value={form.meta_ad_id}
                     onChange={(e) => setForm((f) => ({ ...f, meta_ad_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Daily Budget ($)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Daily Budget ($)</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={form.budget_daily}
                     onChange={(e) => setForm((f) => ({ ...f, budget_daily: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Total Budget ($)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Total Budget ($)</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
                     value={form.budget_total}
                     onChange={(e) => setForm((f) => ({ ...f, budget_total: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Status</label>
                 <select
                   value={form.status}
                   onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   {["draft", "active", "paused", "ended"].map((s) => (
                     <option key={s} value={s}>{s}</option>
@@ -394,26 +394,26 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

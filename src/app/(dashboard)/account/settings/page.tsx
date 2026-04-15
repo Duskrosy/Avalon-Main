@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { AccountSettingsView } from "./settings-view";
+import type { UserPreferences } from "@/types/database";
 
 export default async function AccountSettingsPage() {
   const supabase = await createClient();
@@ -14,16 +15,17 @@ export default async function AccountSettingsPage() {
     <AccountSettingsView
       userId={user.id}
       initialProfile={{
-        first_name:  user.first_name,
-        last_name:   user.last_name,
-        avatar_url:  user.avatar_url ?? null,
-        bio:         u.bio       as string | null ?? null,
-        job_title:   u.job_title as string | null ?? null,
-        fun_fact:    u.fun_fact  as string | null ?? null,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        avatar_url: user.avatar_url ?? null,
+        bio: u.bio as string | null ?? null,
+        job_title: u.job_title as string | null ?? null,
+        fun_fact: u.fun_fact as string | null ?? null,
       }}
       allowPasswordChange={(u.allow_password_change as boolean | null) ?? true}
       requireMfa={(u.require_mfa as boolean | null) ?? true}
       mustChangePassword={(u.must_change_password as boolean | null) ?? false}
+      initialPreferences={(u.user_preferences ?? {}) as UserPreferences}
     />
   );
 }

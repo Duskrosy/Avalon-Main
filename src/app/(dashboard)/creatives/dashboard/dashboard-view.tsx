@@ -48,7 +48,7 @@ const AVATAR_COLORS = [
   "bg-sky-100 text-sky-700",
   "bg-emerald-100 text-emerald-700",
   "bg-rose-100 text-rose-700",
-  "bg-amber-100 text-amber-700",
+  "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
   "bg-indigo-100 text-indigo-700",
   "bg-teal-100 text-teal-700",
   "bg-pink-100 text-pink-700",
@@ -78,12 +78,12 @@ function contentStatus(count: number, target: number): {
   label: string;
   color: string;
 } {
-  if (target === 0) return { label: "No target set", color: "text-gray-400" };
+  if (target === 0) return { label: "No target set", color: "text-[var(--color-text-tertiary)]" };
   const done = count / target;
   const elapsed = weekProgress();
   if (done >= 1) return { label: "Complete", color: "text-emerald-600" };
   if (done >= elapsed - 0.05) return { label: "On track", color: "text-sky-600" };
-  return { label: "Behind", color: "text-amber-600" };
+  return { label: "Behind", color: "text-[var(--color-warning)]" };
 }
 
 // ── Week label ────────────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ function CampaignSetupForm({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-3 text-sm px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-700 transition-colors"
+        className="mt-3 text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] transition-colors"
       >
         Set campaign name
       </button>
@@ -153,51 +153,51 @@ function CampaignSetupForm({
   return (
     <div className="mt-4 space-y-3">
       <div>
-        <label className="text-xs text-gray-500 font-medium">Campaign name</label>
+        <label className="text-xs text-[var(--color-text-secondary)] font-medium">Campaign name</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Andromeda Q2 Push"
-          className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="mt-1 w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
       </div>
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="text-xs text-gray-500 font-medium">Organic target</label>
+          <label className="text-xs text-[var(--color-text-secondary)] font-medium">Organic target</label>
           <input
             type="number"
             min={1}
             max={200}
             value={organicTarget}
             onChange={(e) => setOrganicTarget(Number(e.target.value))}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="mt-1 w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
         </div>
         <div className="flex-1">
-          <label className="text-xs text-gray-500 font-medium">Ads target</label>
+          <label className="text-xs text-[var(--color-text-secondary)] font-medium">Ads target</label>
           <input
             type="number"
             min={1}
             max={100}
             value={adsTarget}
             onChange={(e) => setAdsTarget(Number(e.target.value))}
-            className="mt-1 w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="mt-1 w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           />
         </div>
       </div>
-      {err && <p className="text-xs text-red-500">{err}</p>}
+      {err && <p className="text-xs text-[var(--color-error)]">{err}</p>}
       <div className="flex gap-2">
         <button
           onClick={submit}
           disabled={saving}
-          className="text-sm px-4 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
         >
           {saving ? "Saving…" : "Create"}
         </button>
         <button
           onClick={() => setOpen(false)}
-          className="text-sm px-3 py-2 text-gray-500 hover:text-gray-700"
+          className="text-sm px-3 py-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
         >
           Cancel
         </button>
@@ -219,7 +219,7 @@ function ProgressBar({
 }) {
   const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   return (
-    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden w-full">
+    <div className="h-2.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden w-full">
       <div
         className={`h-full rounded-full transition-all duration-500 ${color}`}
         style={{ width: `${pct}%` }}
@@ -252,21 +252,21 @@ export function CreativesDashboard({
     <div className="max-w-5xl mx-auto space-y-6">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Creatives</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Creatives</h1>
+        <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">
           Week of {weekLabel(weekStart)}
         </p>
       </div>
 
       {/* ── Andromeda Creatives card ────────────────────────────────────────── */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-6">
         {/* Card header */}
         <div className="flex items-center justify-between mb-5">
-          <span className="text-base font-semibold text-gray-900">
+          <span className="text-base font-semibold text-[var(--color-text-primary)]">
             Andromeda Creatives
           </span>
           {campaign && (
-            <span className="bg-gray-900 text-white text-xs font-medium px-3 py-1 rounded-full">
+            <span className="bg-[var(--color-text-primary)] text-white text-xs font-medium px-3 py-1 rounded-full">
               {campaign.campaign_name}
             </span>
           )}
@@ -278,14 +278,14 @@ export function CreativesDashboard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               {/* Organic Content */}
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
                   Organic Content
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-[var(--color-text-primary)]">
                     {organicCount}
                   </span>
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-[var(--color-text-tertiary)]">
                     / {weeklyOrganicTarget}
                   </span>
                 </div>
@@ -301,14 +301,14 @@ export function CreativesDashboard({
 
               {/* Ad Creatives */}
               <div className="space-y-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
                   Ad Creatives
                 </p>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-[var(--color-text-primary)]">
                     {adsCount}
                   </span>
-                  <span className="text-sm text-gray-400">
+                  <span className="text-sm text-[var(--color-text-tertiary)]">
                     / {weeklyAdsTarget}
                   </span>
                 </div>
@@ -320,16 +320,16 @@ export function CreativesDashboard({
                 <p className={`text-xs font-medium ${adsStatus.color}`}>
                   {adsStatus.label}
                 </p>
-                <p className="text-xs text-gray-400">from SMM post tracker</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">from SMM post tracker</p>
               </div>
             </div>
 
             {/* Divider */}
-            <div className="border-t border-gray-100 mb-5" />
+            <div className="border-t border-[var(--color-border-secondary)] mb-5" />
 
             {/* Mini bar chart — daily post breakdown */}
             <div>
-              <p className="text-xs font-medium text-gray-400 mb-3 uppercase tracking-wide">
+              <p className="text-xs font-medium text-[var(--color-text-tertiary)] mb-3 uppercase tracking-wide">
                 Daily posts this week
               </p>
               <div className="h-36">
@@ -378,11 +378,11 @@ export function CreativesDashboard({
               </div>
               {/* Legend */}
               <div className="flex items-center gap-4 mt-2">
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
                   <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500" />
                   Organic
                 </span>
-                <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
                   <span className="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-500" />
                   Ad
                 </span>
@@ -391,11 +391,11 @@ export function CreativesDashboard({
           </>
         ) : canManage ? (
           <div>
-            <p className="text-sm text-gray-500">No campaign set for this week.</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">No campaign set for this week.</p>
             <CampaignSetupForm weekStart={weekStart} onCreated={setCampaign} />
           </div>
         ) : (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-[var(--color-text-secondary)]">
             No campaign set for this week. Ask your manager to set one.
           </p>
         )}
@@ -404,10 +404,10 @@ export function CreativesDashboard({
       {/* ── Stats row ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Pending Tasks */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <svg
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-[var(--color-text-tertiary)]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -419,21 +419,21 @@ export function CreativesDashboard({
                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
               />
             </svg>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">
               Pending Tasks
             </p>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{pendingTasksCount}</p>
-          <p className="text-xs text-gray-400 mt-1">assigned to you</p>
+          <p className="text-3xl font-bold text-[var(--color-text-primary)]">{pendingTasksCount}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">assigned to you</p>
         </div>
 
         {/* Team */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
+          <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-2">
             Team
           </p>
-          <p className="text-3xl font-bold text-gray-900">{members.length}</p>
-          <p className="text-xs text-gray-400 mt-1">active members</p>
+          <p className="text-3xl font-bold text-[var(--color-text-primary)]">{members.length}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">active members</p>
           {members.length > 0 && (
             <div className="flex items-center mt-3 -space-x-1.5">
               {members.slice(0, 4).map((m, i) => (
@@ -446,7 +446,7 @@ export function CreativesDashboard({
                 </div>
               ))}
               {members.length > 4 && (
-                <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 text-xs font-semibold flex items-center justify-center ring-2 ring-white">
+                <div className="w-7 h-7 rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] text-xs font-semibold flex items-center justify-center ring-2 ring-white">
                   +{members.length - 4}
                 </div>
               )}
@@ -455,10 +455,10 @@ export function CreativesDashboard({
         </div>
 
         {/* Requests In Review */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <svg
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-[var(--color-text-tertiary)]"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -475,19 +475,19 @@ export function CreativesDashboard({
                 d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
               />
             </svg>
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">
               Requests In Review
             </p>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{requestsInReview}</p>
-          <p className="text-xs text-gray-400 mt-1">awaiting review</p>
+          <p className="text-3xl font-bold text-[var(--color-text-primary)]">{requestsInReview}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">awaiting review</p>
         </div>
       </div>
 
       {/* ── Team member list ───────────────────────────────────────────────────── */}
       {members.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
+          <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-4">
             Team Members
           </p>
           <ul className="divide-y divide-gray-50">
@@ -498,7 +498,7 @@ export function CreativesDashboard({
                 >
                   {initials(m)}
                 </div>
-                <span className="text-sm text-gray-800 font-medium">
+                <span className="text-sm text-[var(--color-text-primary)] font-medium">
                   {m.first_name} {m.last_name}
                 </span>
               </li>

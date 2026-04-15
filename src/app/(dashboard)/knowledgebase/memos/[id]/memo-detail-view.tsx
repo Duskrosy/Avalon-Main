@@ -13,7 +13,7 @@ function AttachmentViewer({ url, name }: { url: string; name: string }) {
     return (
       <iframe
         src={url}
-        className="w-full h-[60vh] rounded-lg border border-gray-200"
+        className="w-full h-[60vh] rounded-lg border border-[var(--color-border-primary)]"
         title={name}
       />
     );
@@ -23,7 +23,7 @@ function AttachmentViewer({ url, name }: { url: string; name: string }) {
     return (
       <iframe
         src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
-        className="w-full h-[60vh] rounded-lg border border-gray-200"
+        className="w-full h-[60vh] rounded-lg border border-[var(--color-border-primary)]"
         title={name}
       />
     );
@@ -31,12 +31,12 @@ function AttachmentViewer({ url, name }: { url: string; name: string }) {
 
   // Fallback: download link for unsupported types
   return (
-    <div className="flex items-center justify-center h-24 bg-gray-50 rounded-lg border border-gray-200">
+    <div className="flex items-center justify-center h-24 bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border-primary)]">
       <a
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2"
+        className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] flex items-center gap-2"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -132,7 +132,7 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
   return (
     <div>
       <div className="mb-4">
-        <Link href="/knowledgebase/memos" className="text-sm text-gray-400 hover:text-gray-600">
+        <Link href="/knowledgebase/memos" className="text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
           ← Memos
         </Link>
       </div>
@@ -140,15 +140,15 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content — memo text + file viewer */}
         <div className="lg:col-span-2">
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-6">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 mb-1">{memo.title}</h1>
-                <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+                <h1 className="text-xl font-semibold text-[var(--color-text-primary)] mb-1">{memo.title}</h1>
+                <div className="flex flex-wrap gap-2 text-xs text-[var(--color-text-tertiary)]">
                   {memo.department ? (
                     <span>{memo.department.name}</span>
                   ) : (
-                    <span className="text-blue-500">Global</span>
+                    <span className="text-[var(--color-accent)]">Global</span>
                   )}
                   {memo.created_by_profile && (
                     <>
@@ -164,28 +164,28 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="text-xs border border-red-200 text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-xs border border-red-200 text-[var(--color-error)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-error-light)] shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {deleting ? "Deleting..." : "Delete"}
                 </button>
               )}
             </div>
 
-            <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap border-t border-gray-100 pt-4">
+            <div className="prose prose-sm max-w-none text-[var(--color-text-primary)] whitespace-pre-wrap border-t border-[var(--color-border-secondary)] pt-4">
               {memo.content}
             </div>
 
             {/* Attachment */}
             {memo.attachment_name && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="mt-4 pt-4 border-t border-[var(--color-border-secondary)]">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-gray-500">Attachment</p>
+                  <p className="text-xs font-medium text-[var(--color-text-secondary)]">Attachment</p>
                   {memo.attachment_signed_url && (
                     <a
                       href={memo.attachment_signed_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                      className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] flex items-center gap-1"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -199,7 +199,7 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
                 {memo.attachment_signed_url ? (
                   <AttachmentViewer url={memo.attachment_signed_url} name={memo.attachment_name} />
                 ) : (
-                  <p className="text-xs text-gray-400 py-4 text-center bg-gray-50 rounded-lg">
+                  <p className="text-xs text-[var(--color-text-tertiary)] py-4 text-center bg-[var(--color-bg-secondary)] rounded-lg">
                     Attachment unavailable. The link may have expired — try refreshing.
                   </p>
                 )}
@@ -210,34 +210,34 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
 
         {/* Sidebar — signatures + sign button */}
         <div className="lg:col-span-1">
-          <div className="bg-white border border-gray-200 rounded-xl p-4">
-            <h3 className="text-sm font-semibold text-gray-900 mb-1">Signatures</h3>
-            <p className="text-xs text-gray-400 mb-3">{sigCount} of {totalStaff} staff</p>
+          <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Signatures</h3>
+            <p className="text-xs text-[var(--color-text-tertiary)] mb-3">{sigCount} of {totalStaff} staff</p>
 
             {/* Progress bar */}
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
+            <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden mb-4">
               <div
-                className="h-full bg-green-500 rounded-full transition-all"
+                className="h-full bg-[var(--color-success-light)]0 rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
 
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {sigList.length === 0 ? (
-                <p className="text-xs text-gray-400 py-2">No signatures yet.</p>
+                <p className="text-xs text-[var(--color-text-tertiary)] py-2">No signatures yet.</p>
               ) : (
                 sigList.map((sig) => (
                   <div key={sig.id} className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-xs shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-[var(--color-success-light)] flex items-center justify-center text-[var(--color-success)] text-xs shrink-0">
                       ✓
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-medium text-gray-800 truncate">
+                      <p className="text-xs font-medium text-[var(--color-text-primary)] truncate">
                         {sig.profile
                           ? `${sig.profile.first_name} ${sig.profile.last_name}`
                           : "Unknown"}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-[var(--color-text-tertiary)]">
                         {format(new Date(sig.signed_at), "d MMM")}
                       </p>
                     </div>
@@ -246,17 +246,17 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
               )}
             </div>
 
-            <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+            <div className="mt-6 pt-4 border-t border-[var(--color-border-secondary)] space-y-2">
               {error && (
-                <p className="text-xs text-red-600 text-center">{error}</p>
+                <p className="text-xs text-[var(--color-error)] text-center">{error}</p>
               )}
               <button
                 onClick={handleSign}
                 disabled={loading}
                 className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   signed
-                    ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
-                    : "bg-gray-900 text-white hover:bg-gray-700"
+                    ? "bg-[var(--color-success-light)] text-[var(--color-success)] border border-green-200 hover:bg-[var(--color-success-light)]"
+                    : "bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)]"
                 } disabled:opacity-50`}
               >
                 {loading ? "..." : signed ? "Signed — click to unsign" : "Sign this memo"}

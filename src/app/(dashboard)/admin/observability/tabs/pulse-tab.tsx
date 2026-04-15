@@ -16,9 +16,9 @@ type FeedbackItem = {
 
 const STATUS_COLORS: Record<string, string> = {
   open: "bg-yellow-100 text-yellow-800",
-  acknowledged: "bg-blue-100 text-blue-800",
-  resolved: "bg-green-100 text-green-800",
-  wontfix: "bg-gray-100 text-gray-600",
+  acknowledged: "bg-[var(--color-accent-light)] text-blue-800",
+  resolved: "bg-[var(--color-success-light)] text-green-800",
+  wontfix: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -89,23 +89,23 @@ export function PulseTab() {
     <div className="space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Feedback</p>
-          <p className="text-2xl font-bold text-gray-900">{totalCount}</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Total Feedback</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{totalCount}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Open</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Open</p>
           <p className="text-2xl font-bold text-yellow-600">{openCount}</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Acknowledged</p>
-          <p className="text-2xl font-bold text-blue-600">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Acknowledged</p>
+          <p className="text-2xl font-bold text-[var(--color-accent)]">
             {feedback.filter((f) => f.status === "acknowledged").length}
           </p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Resolved</p>
-          <p className="text-2xl font-bold text-green-600">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Resolved</p>
+          <p className="text-2xl font-bold text-[var(--color-success)]">
             {feedback.filter((f) => f.status === "resolved").length}
           </p>
         </div>
@@ -116,7 +116,7 @@ export function PulseTab() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 focus:border-gray-400 focus:outline-none"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-gray-400 focus:outline-none"
         >
           <option value="all">All statuses</option>
           <option value="open">Open</option>
@@ -128,7 +128,7 @@ export function PulseTab() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 focus:border-gray-400 focus:outline-none"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-gray-400 focus:outline-none"
         >
           <option value="all">All categories</option>
           <option value="bug">Bug</option>
@@ -140,74 +140,74 @@ export function PulseTab() {
 
         <button
           onClick={fetchFeedback}
-          className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-400 transition-colors"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
         >
           Refresh
         </button>
       </div>
 
       {/* Feedback table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">User Feedback</h2>
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">User Feedback</h2>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+          <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
         ) : error ? (
-          <div className="text-center py-16 text-red-500 text-sm">{error}</div>
+          <div className="text-center py-16 text-[var(--color-error)] text-sm">{error}</div>
         ) : feedback.length === 0 ? (
-          <div className="text-center py-16 text-gray-400 text-sm">
+          <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">
             No feedback yet. The feedback widget is live on all dashboard pages.
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">
                   From
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">
                   Category
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">
                   Feedback
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">
                   Page
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">
                   Date
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {feedback.map((f) => (
                 <Fragment key={f.id}>
                 <tr
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="hover:bg-[var(--color-surface-hover)] cursor-pointer"
                   onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
                 >
-                  <td className="px-4 py-2.5 text-gray-800 whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-[var(--color-text-primary)] whitespace-nowrap">
                     <span className="flex items-center gap-1.5">
-                      <span className={`text-gray-300 text-[10px] transition-transform ${expandedId === f.id ? "rotate-90" : ""}`}>&#9654;</span>
+                      <span className={`text-[var(--color-text-tertiary)] text-[10px] transition-transform ${expandedId === f.id ? "rotate-90" : ""}`}>&#9654;</span>
                       {f.profiles
                         ? `${f.profiles.first_name} ${f.profiles.last_name}`
                         : "Unknown"}
                     </span>
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
+                    <span className="inline-block rounded bg-[var(--color-bg-tertiary)] px-2 py-0.5 text-xs text-[var(--color-text-primary)]">
                       {CATEGORY_LABELS[f.category] ?? f.category}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-700 max-w-xs truncate">
+                  <td className="px-4 py-2.5 text-[var(--color-text-primary)] max-w-xs truncate">
                     {f.body}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-gray-400 max-w-[140px] truncate">
+                  <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-tertiary)] max-w-[140px] truncate">
                     {f.page_url ?? "-"}
                   </td>
                   <td className="px-4 py-2.5">
@@ -216,7 +216,7 @@ export function PulseTab() {
                       onChange={(e) => updateStatus(f.id, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                       disabled={updating === f.id}
-                      className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[f.status] ?? "bg-gray-100 text-gray-600"} ${updating === f.id ? "opacity-50" : ""}`}
+                      className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[f.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"} ${updating === f.id ? "opacity-50" : ""}`}
                     >
                       <option value="open">Open</option>
                       <option value="acknowledged">Acknowledged</option>
@@ -224,60 +224,60 @@ export function PulseTab() {
                       <option value="wontfix">Won&apos;t fix</option>
                     </select>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">
+                  <td className="px-4 py-2.5 text-[var(--color-text-tertiary)] text-xs whitespace-nowrap">
                     {f.created_at
                       ? format(parseISO(f.created_at), "d MMM HH:mm")
                       : "-"}
                   </td>
                 </tr>
                 {expandedId === f.id && (
-                  <tr className="bg-gray-50/80">
+                  <tr className="bg-[var(--color-bg-secondary)]/80">
                     <td colSpan={6} className="px-4 py-4">
                       <div className="space-y-3 max-w-3xl">
                         {/* Full feedback body */}
                         <div>
-                          <p className="text-xs font-medium text-gray-500 mb-1">Full Feedback</p>
-                          <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{f.body}</p>
+                          <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Full Feedback</p>
+                          <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">{f.body}</p>
                         </div>
 
                         {/* Metadata grid */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-gray-200">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-[var(--color-border-primary)]">
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Submitted by</p>
-                            <p className="text-sm text-gray-700 mt-0.5">
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Submitted by</p>
+                            <p className="text-sm text-[var(--color-text-primary)] mt-0.5">
                               {f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Unknown"}
                             </p>
                             {f.profiles?.email && (
-                              <p className="text-xs text-gray-400 mt-0.5">{f.profiles.email}</p>
+                              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{f.profiles.email}</p>
                             )}
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Category</p>
-                            <p className="text-sm text-gray-700 mt-0.5">{CATEGORY_LABELS[f.category] ?? f.category}</p>
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Category</p>
+                            <p className="text-sm text-[var(--color-text-primary)] mt-0.5">{CATEGORY_LABELS[f.category] ?? f.category}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Page</p>
-                            <p className="text-sm font-mono text-gray-600 break-all mt-0.5">{f.page_url ?? "\u2014"}</p>
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Page</p>
+                            <p className="text-sm font-mono text-[var(--color-text-secondary)] break-all mt-0.5">{f.page_url ?? "\u2014"}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Submitted</p>
-                            <p className="text-sm text-gray-700 mt-0.5">
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Submitted</p>
+                            <p className="text-sm text-[var(--color-text-primary)] mt-0.5">
                               {f.created_at ? format(parseISO(f.created_at), "d MMM yyyy 'at' HH:mm") : "\u2014"}
                             </p>
                           </div>
                         </div>
 
                         {/* Department + ID row */}
-                        <div className="flex items-center gap-4 pt-3 border-t border-gray-200">
+                        <div className="flex items-center gap-4 pt-3 border-t border-[var(--color-border-primary)]">
                           {f.department_id && (
                             <div>
-                              <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dept: </span>
-                              <span className="text-xs font-mono text-gray-500">{f.department_id.slice(0, 8)}...</span>
+                              <span className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Dept: </span>
+                              <span className="text-xs font-mono text-[var(--color-text-secondary)]">{f.department_id.slice(0, 8)}...</span>
                             </div>
                           )}
                           <div>
-                            <span className="text-[10px] text-gray-400 uppercase tracking-wide">ID: </span>
-                            <span className="text-xs font-mono text-gray-500">{f.id.slice(0, 8)}...</span>
+                            <span className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">ID: </span>
+                            <span className="text-xs font-mono text-[var(--color-text-secondary)]">{f.id.slice(0, 8)}...</span>
                           </div>
                           <div className="ml-auto">
                             <select
@@ -288,7 +288,7 @@ export function PulseTab() {
                               }}
                               onClick={(e) => e.stopPropagation()}
                               disabled={updating === f.id}
-                              className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[f.status] ?? "bg-gray-100 text-gray-600"} ${updating === f.id ? "opacity-50" : ""}`}
+                              className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[f.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"} ${updating === f.id ? "opacity-50" : ""}`}
                             >
                               <option value="open">Open</option>
                               <option value="acknowledged">Acknowledged</option>

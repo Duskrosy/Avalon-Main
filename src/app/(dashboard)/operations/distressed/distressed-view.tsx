@@ -43,13 +43,13 @@ const CONDITIONS = [
 ] as const;
 
 const CONDITION_BADGE: Record<string, string> = {
-  stuck:               "bg-amber-100 text-amber-800 border-amber-200",
-  returned:            "bg-blue-100 text-blue-800 border-blue-200",
-  damaged:             "bg-red-100 text-red-800 border-red-200",
-  lost:                "bg-red-100 text-red-800 border-red-200",
+  stuck:               "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)]",
+  returned:            "bg-[var(--color-accent-light)] text-blue-800 border-blue-200",
+  damaged:             "bg-[var(--color-error-light)] text-red-800 border-red-200",
+  lost:                "bg-[var(--color-error-light)] text-red-800 border-red-200",
   rts:                 "bg-purple-100 text-purple-800 border-purple-200",
   pending_redelivery:  "bg-yellow-100 text-yellow-800 border-yellow-200",
-  resolved:            "bg-green-100 text-green-800 border-green-200",
+  resolved:            "bg-[var(--color-success-light)] text-green-800 border-green-200",
 };
 
 function conditionLabel(c: string) {
@@ -193,14 +193,14 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Distressed Parcels</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Distressed Parcels</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {parcels.length} parcel{parcels.length !== 1 ? "s" : ""} shown
           </p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + Report Parcel
         </button>
@@ -219,7 +219,7 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
         <select
           value={conditionFilter}
           onChange={(e) => setConditionFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Conditions</option>
           {CONDITIONS.filter((c) => c !== "resolved").map((c) => (
@@ -227,12 +227,12 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
           ))}
         </select>
 
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+        <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer select-none">
           <input
             type="checkbox"
             checked={showResolved}
             onChange={(e) => setShowResolved(e.target.checked)}
-            className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+            className="rounded border-[var(--color-border-primary)] text-[var(--color-text-primary)] focus:ring-[var(--color-accent)]"
           />
           Show resolved
         </label>
@@ -240,7 +240,7 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
         {(conditionFilter || showResolved) && (
           <button
             onClick={() => { setConditionFilter(""); setShowResolved(false); }}
-            className="text-xs text-gray-400 hover:text-gray-700"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -249,10 +249,10 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
 
       {/* Card Queue */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : parcels.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No distressed parcels found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No distressed parcels found.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -272,16 +272,16 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
       {/* Create Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Report Distressed Parcel</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Report Distressed Parcel</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Condition *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Condition *</label>
                 <select
                   required
                   value={form.condition}
                   onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   {CONDITIONS.filter((c) => c !== "resolved").map((c) => (
                     <option key={c} value={c}>{conditionLabel(c)}</option>
@@ -291,67 +291,67 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Order ID</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Order ID</label>
                   <input
                     type="text"
                     value={form.order_id}
                     onChange={(e) => setForm((f) => ({ ...f, order_id: e.target.value }))}
                     placeholder="UUID (optional)"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Dispatch ID</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Dispatch ID</label>
                   <input
                     type="text"
                     value={form.dispatch_id}
                     onChange={(e) => setForm((f) => ({ ...f, dispatch_id: e.target.value }))}
                     placeholder="UUID (optional)"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Tracking Number</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Tracking Number</label>
                 <input
                   type="text"
                   value={form.tracking_number}
                   onChange={(e) => setForm((f) => ({ ...f, tracking_number: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Issue Reason</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Issue Reason</label>
                 <textarea
                   rows={2}
                   value={form.issue_reason}
                   onChange={(e) => setForm((f) => ({ ...f, issue_reason: e.target.value }))}
                   placeholder="Describe what happened..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Courier Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Courier Notes</label>
                 <textarea
                   rows={2}
                   value={form.courier_notes}
                   onChange={(e) => setForm((f) => ({ ...f, courier_notes: e.target.value }))}
                   placeholder="Notes from courier..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Action Needed</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Action Needed</label>
                 <input
                   type="text"
                   value={form.action_needed}
                   onChange={(e) => setForm((f) => ({ ...f, action_needed: e.target.value }))}
                   placeholder="e.g. Redeliver, Refund, Contact customer"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
@@ -359,14 +359,14 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Report Parcel"}
                 </button>
@@ -383,15 +383,15 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
 
 function SummaryCard({ label, value, accent }: { label: string; value: number; accent?: "amber" | "red" | "green" | "blue" }) {
   const accentColors = {
-    amber: "text-amber-600",
-    red: "text-red-500",
-    green: "text-green-600",
-    blue: "text-blue-600",
+    amber: "text-[var(--color-warning)]",
+    red: "text-[var(--color-error)]",
+    green: "text-[var(--color-success)]",
+    blue: "text-[var(--color-accent)]",
   };
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-2xl font-semibold mt-1 ${accent ? accentColors[accent] : "text-gray-900"}`}>
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-3">
+      <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
+      <p className={`text-2xl font-semibold mt-1 ${accent ? accentColors[accent] : "text-[var(--color-text-primary)]"}`}>
         {value}
       </p>
     </div>
@@ -410,10 +410,10 @@ function ParcelCard({
   onDelete: () => void;
 }) {
   const isResolved = parcel.condition === "resolved" || !!parcel.resolved_at;
-  const badgeClass = CONDITION_BADGE[parcel.condition] ?? "bg-gray-100 text-gray-700 border-gray-200";
+  const badgeClass = CONDITION_BADGE[parcel.condition] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border-primary)]";
 
   return (
-    <div className={`bg-white border rounded-xl p-4 flex flex-col gap-3 ${isResolved ? "border-gray-100 opacity-60" : "border-gray-200"}`}>
+    <div className={`bg-[var(--color-bg-primary)] border rounded-[var(--radius-lg)] p-4 flex flex-col gap-3 ${isResolved ? "border-[var(--color-border-secondary)] opacity-60" : "border-[var(--color-border-primary)]"}`}>
       {/* Header: badge + actions */}
       <div className="flex items-start justify-between gap-2">
         <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border ${badgeClass}`}>
@@ -423,14 +423,14 @@ function ParcelCard({
           {!isResolved && (
             <button
               onClick={onResolve}
-              className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full hover:bg-green-100 transition-colors font-medium"
+              className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] px-2.5 py-1 rounded-full hover:bg-[var(--color-success-light)] transition-colors font-medium"
             >
               Resolve
             </button>
           )}
           <button
             onClick={onDelete}
-            className="text-xs text-gray-300 hover:text-red-400"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400"
           >
             Del
           </button>
@@ -440,16 +440,16 @@ function ParcelCard({
       {/* Order + Tracking */}
       <div className="space-y-1">
         {parcel.order && (
-          <p className="text-sm text-gray-900">
+          <p className="text-sm text-[var(--color-text-primary)]">
             <span className="font-mono text-xs font-medium">{parcel.order.order_number}</span>
             {parcel.order.customer_name && (
-              <span className="text-gray-500 ml-1.5">- {parcel.order.customer_name}</span>
+              <span className="text-[var(--color-text-secondary)] ml-1.5">- {parcel.order.customer_name}</span>
             )}
           </p>
         )}
         {parcel.tracking_number && (
-          <p className="text-xs text-gray-500">
-            Tracking: <span className="font-mono font-medium text-gray-700">{parcel.tracking_number}</span>
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            Tracking: <span className="font-mono font-medium text-[var(--color-text-primary)]">{parcel.tracking_number}</span>
           </p>
         )}
       </div>
@@ -457,29 +457,29 @@ function ParcelCard({
       {/* Issue reason */}
       {parcel.issue_reason && (
         <div>
-          <p className="text-[10px] font-medium text-gray-400 uppercase">Issue</p>
-          <p className="text-sm text-gray-700 mt-0.5">{parcel.issue_reason}</p>
+          <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase">Issue</p>
+          <p className="text-sm text-[var(--color-text-primary)] mt-0.5">{parcel.issue_reason}</p>
         </div>
       )}
 
       {/* Courier notes */}
       {parcel.courier_notes && (
         <div>
-          <p className="text-[10px] font-medium text-gray-400 uppercase">Courier Notes</p>
-          <p className="text-sm text-gray-600 mt-0.5">{parcel.courier_notes}</p>
+          <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase">Courier Notes</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{parcel.courier_notes}</p>
         </div>
       )}
 
       {/* Action needed — highlighted */}
       {parcel.action_needed && (
-        <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          <p className="text-[10px] font-medium text-amber-600 uppercase">Action Needed</p>
+        <div className="bg-[var(--color-warning-light)] border border-amber-100 rounded-lg px-3 py-2">
+          <p className="text-[10px] font-medium text-[var(--color-warning)] uppercase">Action Needed</p>
           <p className="text-sm font-medium text-amber-900 mt-0.5">{parcel.action_needed}</p>
         </div>
       )}
 
       {/* Footer: creator + date */}
-      <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-[11px] text-gray-400 mt-auto">
+      <div className="flex items-center justify-between pt-1 border-t border-[var(--color-border-secondary)] text-[11px] text-[var(--color-text-tertiary)] mt-auto">
         <span>{profileName(parcel.creator)}</span>
         <span>{format(parseISO(parcel.created_at), "d MMM yyyy, h:mm a")}</span>
       </div>

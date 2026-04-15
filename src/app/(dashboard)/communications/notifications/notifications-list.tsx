@@ -65,25 +65,25 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
     if (!items.length) return null;
     return (
       <div>
-        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{title}</h2>
+        <h2 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">{title}</h2>
         <div className="space-y-1.5">
           {items.map((n) => (
             <div
               key={n.id}
               onClick={() => handleClick(n)}
-              className={`flex items-start gap-3 p-3 rounded-xl cursor-pointer transition-colors ${
-                n.is_read ? "bg-white border border-gray-100 hover:bg-gray-50" : "bg-blue-50 border border-blue-100 hover:bg-blue-100"
+              className={`flex items-start gap-3 p-3 rounded-[var(--radius-lg)] cursor-pointer transition-colors ${
+                n.is_read ? "bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] hover:bg-[var(--color-surface-hover)]" : "bg-[var(--color-accent-light)] border border-blue-100 hover:bg-[var(--color-accent-light)]"
               }`}
             >
-              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.is_read ? "bg-gray-200" : "bg-blue-500"}`} />
+              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.is_read ? "bg-[var(--color-border-primary)]" : "bg-[var(--color-accent-light)]0"}`} />
               <div className="flex-1 min-w-0">
-                <p className={`text-sm ${n.is_read ? "text-gray-700" : "text-gray-900 font-medium"}`}>
+                <p className={`text-sm ${n.is_read ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] font-medium"}`}>
                   {n.title}
                 </p>
                 {n.body && (
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{n.body}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 line-clamp-2">{n.body}</p>
                 )}
-                <p className="text-xs text-gray-400 mt-1">{timeAgo(n.created_at)}</p>
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{timeAgo(n.created_at)}</p>
               </div>
             </div>
           ))}
@@ -96,15 +96,15 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Notifications</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Notifications</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
           </p>
         </div>
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
-            className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50"
+            className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
           >
             Mark all read
           </button>
@@ -112,7 +112,7 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
       </div>
 
       {notifications.length === 0 ? (
-        <p className="text-sm text-gray-400 py-8 text-center">No notifications yet.</p>
+        <p className="text-sm text-[var(--color-text-tertiary)] py-8 text-center">No notifications yet.</p>
       ) : (
         <div className="space-y-6">
           <Section title="Today" items={today} />
