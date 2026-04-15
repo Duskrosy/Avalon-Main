@@ -98,7 +98,7 @@ function lastEventTime(
 type Props = {
   currentUser: {
     id: string;
-    department_id: string;
+    department_id: string | null;
     department_name: string;
   };
 };
