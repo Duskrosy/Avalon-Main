@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/client";
+import { useToast, Toast } from "@/components/ui/toast";
 
 const PRIORITY_COLORS = {
   low: "border-l-gray-300",
@@ -1467,6 +1468,7 @@ function FieldSettingsContent({
 }) {
   // NOTE: the old onClose prop was removed — SettingsPanel handles close now
   const [fields, setFields] = useState<FieldDefinition[]>(fieldDefinitions);
+  const { toast, setToast } = useToast();
   const [adding, setAdding] = useState(false);
   const [newField, setNewField] = useState({
     name: "",
@@ -1520,7 +1522,7 @@ function FieldSettingsContent({
       onUpdate(updated);
     } else {
       const err = await res.json();
-      alert(err.error || "Failed to delete field");
+      setToast({ message: err.error || "Failed to delete field", type: "error" });
     }
   };
 
@@ -1668,6 +1670,7 @@ function FieldSettingsContent({
                 + Add Custom Field
               </button>
             )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

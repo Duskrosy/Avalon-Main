@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { KanbanBoard } from "./kanban-board";
+import { useToast, Toast } from "@/components/ui/toast";
 
 type BoardScope = "global" | "team" | "personal";
 
@@ -59,21 +60,33 @@ const SCOPE_INFO = {
 };
 
 export function KanbanMultiBoard({
-  teamBoard,
-  personalBoard,
-  globalBoard,
+  teamBoard: initialTeamBoard,
+  personalBoard: initialPersonalBoard,
+  globalBoard: initialGlobalBoard,
   allUsers,
   departmentId,
   canManageTeam,
   canManageGlobal,
   currentUserId,
 }: Props) {
+  const [boards, setBoards] = useState<Record<BoardScope, BoardData>>({
+    team: initialTeamBoard,
+    personal: initialPersonalBoard,
+    global: initialGlobalBoard,
+  });
+  const { toast, setToast } = useToast();
+
   // Track which sections are expanded
   const [expanded, setExpanded] = useState<Record<BoardScope, boolean>>({
     team: true,
     personal: true,
     global: true,
   });
+
+  const handleBoardCreated = (scope: BoardScope, board: BoardData) => {
+    setBoards((prev) => ({ ...prev, [scope]: board }));
+    setToast({ message: `${SCOPE_INFO[scope].title} created`, type: "success" });
+  };
 
   const toggleSection = (scope: BoardScope) => {
     setExpanded((prev) => ({ ...prev, [scope]: !prev[scope] }));
@@ -137,7 +150,7 @@ export function KanbanMultiBoard({
                 compact
               />
             ) : (
-              <EmptyBoardState scope={scope} canCreate={canManage} departmentId={departmentId} currentUserId={currentUserId} />
+              <EmptyBoardState scope={scope} canCreate={canManage} departmentId={departmentId} currentUserId={currentUserId} onCreated={(board) => handleBoardCreated(scope, board)} />
             )}
           </div>
         )}
@@ -167,9 +180,11 @@ export function KanbanMultiBoard({
       </div>
 
       {/* Board Sections - Team at top, Personal middle, Global bottom */}
-      {renderBoardSection(teamBoard, "team", canManageTeam)}
-      {renderBoardSection(personalBoard, "personal", true)}
-      {renderBoardSection(globalBoard, "global", canManageGlobal)}
+      {renderBoardSection(boards.team, "team", canManageTeam)}
+      {renderBoardSection(boards.personal, "personal", true)}
+      {renderBoardSection(boards.global, "global", canManageGlobal)}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
@@ -179,11 +194,13 @@ function EmptyBoardState({
   canCreate,
   departmentId,
   currentUserId,
+  onCreated,
 }: {
   scope: BoardScope;
   canCreate: boolean;
   departmentId: string | null;
   currentUserId: string;
+  onCreated: (board: BoardData) => void;
 }) {
   const [creating, setCreating] = useState(false);
 
@@ -209,7 +226,13 @@ function EmptyBoardState({
       });
 
       if (res.ok) {
-        window.location.reload();
+        const created = await res.json();
+        // Ensure the board has the expected shape for the parent
+        onCreated({
+          ...created,
+          columns: created.columns ?? [],
+          fieldDefinitions: created.fieldDefinitions ?? [],
+        });
       }
     } finally {
       setCreating(false);

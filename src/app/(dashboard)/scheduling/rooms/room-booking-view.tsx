@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { format, parseISO, addDays, subDays, startOfWeek, isSameDay } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 type Room = {
   id: string;
@@ -184,12 +185,14 @@ function durationLabel(minutes: number): string {
 }
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
-export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserId, isOps, todayStr }: Props) {
+export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers, currentUserId, isOps, todayStr }: Props) {
   const today = parseISO(todayStr);
+  const [roomList, setRoomList] = useState<Room[]>(initialRooms);
   const [selectedDate, setSelectedDate] = useState(today);
   const [bookings, setBookings] = useState<Booking[]>(initialBookings);
   const [loading, setLoading] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<Room | null>(rooms[0] ?? null);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(initialRooms[0] ?? null);
+  const { toast, setToast } = useToast();
 
   // Selection state
   const [selectedSlots, setSelectedSlots] = useState<Set<number>>(new Set());
@@ -402,13 +405,21 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
         slot_duration: roomForm.slot_duration,
       }),
     });
-    if (res.ok) window.location.reload();
-  }, [roomForm]);
+    if (res.ok) {
+      const created = await res.json();
+      setRoomList((prev) => [...prev, created]);
+      setShowAddRoom(false);
+      setRoomForm({ name: "", capacity: "", location: "", open_time: "08:00", close_time: "18:00", slot_duration: 30 });
+      setToast({ message: `Room "${created.name}" created`, type: "success" });
+    } else {
+      setToast({ message: "Failed to create room", type: "error" });
+    }
+  }, [roomForm, setToast]);
 
   const handleSaveRoomSettings = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!showRoomSettings) return;
-    await fetch(`/api/rooms?id=${showRoomSettings.id}`, {
+    const res = await fetch(`/api/rooms?id=${showRoomSettings.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -419,15 +430,23 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
         location: showRoomSettings.location,
       }),
     });
-    window.location.reload();
-  }, [showRoomSettings]);
+    if (res.ok) {
+      const updated = showRoomSettings;
+      setRoomList((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      if (selectedRoom?.id === updated.id) setSelectedRoom({ ...selectedRoom, ...updated });
+      setShowRoomSettings(null);
+      setToast({ message: `Room "${updated.name}" updated`, type: "success" });
+    } else {
+      setToast({ message: "Failed to update room settings", type: "error" });
+    }
+  }, [showRoomSettings, selectedRoom, setToast]);
 
   // Week dates
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   const roomColor = (roomId: string) => {
-    const idx = rooms.findIndex((r) => r.id === roomId);
+    const idx = roomList.findIndex((r) => r.id === roomId);
     return ROOM_COLORS[idx % ROOM_COLORS.length];
   };
 
@@ -509,7 +528,7 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
           <div className="bg-white rounded-2xl border border-gray-200 p-4">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Rooms</h3>
             <div className="space-y-2">
-              {rooms.map((room) => {
+              {roomList.map((room) => {
                 const color = roomColor(room.id);
                 const isActive = selectedRoom?.id === room.id;
                 const bookingCount = allRoomBookings.get(room.id) ?? 0;
@@ -1015,6 +1034,8 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
           </div>
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
