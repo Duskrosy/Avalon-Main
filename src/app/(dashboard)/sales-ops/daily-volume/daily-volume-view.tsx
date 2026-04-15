@@ -10,6 +10,7 @@ type Props = {
   agents: Agent[];
   currentUserId: string;
   canManage: boolean;
+  initialRows?: DailyVolume[];
 };
 
 const CURRENT_MONTH = format(new Date(), "yyyy-MM");
@@ -24,10 +25,10 @@ function statusBadge(row: DailyVolume) {
   return <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Logged</span>;
 }
 
-export function DailyVolumeView({ agents, currentUserId, canManage }: Props) {
+export function DailyVolumeView({ agents, currentUserId, canManage, initialRows }: Props) {
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [selectedAgent, setSelectedAgent] = useState(currentUserId);
-  const [rows, setRows] = useState<DailyVolume[]>([]);
+  const [rows, setRows] = useState<DailyVolume[]>(initialRows ?? []);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editRow, setEditRow] = useState<DailyVolume | null>(null);
