@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -75,7 +75,7 @@ function peso(n: number | null | undefined) {
 /* ─── Component ────────────────────────────────────────────── */
 
 export function RemittanceView({ initialBatches, currentUserId }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [batches, setBatches] = useState<RemittanceBatch[]>(initialBatches);
   const [loading, setLoading] = useState(false);
 
@@ -195,7 +195,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
 
     if (res.ok) {
       setShowBatchModal(false);
-      router.refresh();
+      setToast({ message: "Batch created", type: "success" });
       fetchBatches();
     }
     setSaving(false);
@@ -238,7 +238,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
     if (res.ok) {
       setShowItemModal(false);
       fetchItems(itemForm.batch_id);
-      router.refresh();
+      setToast({ message: "Item added", type: "success" });
       fetchBatches();
     }
     setSaving(false);
@@ -270,7 +270,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
 
     setEditingItemId(null);
     if (expandedBatchId) fetchItems(expandedBatchId);
-    router.refresh();
+    setToast({ message: "Item updated", type: "success" });
     fetchBatches();
   }
 
@@ -291,13 +291,14 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
   /* ─── Update batch status ───────────────────────────────── */
 
   async function updateBatchStatus(batchId: string, newStatus: string) {
+    setBatches(prev => prev.map(b => b.id === batchId ? { ...b, status: newStatus } : b));
     await fetch("/api/operations/remittance", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: batchId, type: "batch", status: newStatus }),
     });
 
-    router.refresh();
+    setToast({ message: `Batch status updated to ${statusLabel(newStatus)}`, type: "success" });
     fetchBatches();
   }
 
@@ -305,12 +306,13 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
 
   async function handleDeleteBatch(id: string) {
     if (!confirm("Delete this remittance batch and all its items?")) return;
-    await fetch(`/api/operations/remittance?id=${id}&type=batch`, { method: "DELETE" });
+    setBatches(prev => prev.filter(b => b.id !== id));
     if (expandedBatchId === id) {
       setExpandedBatchId(null);
       setBatchItems([]);
     }
-    router.refresh();
+    await fetch(`/api/operations/remittance?id=${id}&type=batch`, { method: "DELETE" });
+    setToast({ message: "Batch deleted", type: "success" });
     fetchBatches();
   }
 
@@ -318,9 +320,10 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
 
   async function handleDeleteItem(itemId: string) {
     if (!confirm("Delete this remittance item?")) return;
+    setBatchItems(prev => prev.filter(i => i.id !== itemId));
     await fetch(`/api/operations/remittance?id=${itemId}&type=item`, { method: "DELETE" });
     if (expandedBatchId) fetchItems(expandedBatchId);
-    router.refresh();
+    setToast({ message: "Item deleted", type: "success" });
     fetchBatches();
   }
 
@@ -700,6 +703,8 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
           })}
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Create Batch Modal */}
       {showBatchModal && (

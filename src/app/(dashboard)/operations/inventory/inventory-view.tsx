@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, Fragment } from "react";
-import { useRouter } from "next/navigation";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ---------- types ---------- */
 
@@ -299,14 +299,23 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
 /* ---------- main view ---------- */
 
 export default function InventoryView({
-  records,
+  records: initialRecords,
 }: {
   records: InventoryRecord[];
 }) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
+  const [records, setRecords] = useState<InventoryRecord[]>(initialRecords);
   const [search, setSearch] = useState("");
   const [adjusting, setAdjusting] = useState<InventoryRecord | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchRecords = useCallback(async () => {
+    const res = await fetch("/api/operations/inventory");
+    if (res.ok) {
+      const json = await res.json();
+      setRecords(json.data ?? []);
+    }
+  }, []);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return records;
@@ -328,8 +337,9 @@ export default function InventoryView({
 
   const handleAdjusted = useCallback(() => {
     setAdjusting(null);
-    router.refresh();
-  }, [router]);
+    setToast({ message: "Stock adjusted", type: "success" });
+    fetchRecords();
+  }, [fetchRecords, setToast]);
 
   const toggleExpand = useCallback(
     (id: string) => setExpandedId((prev) => (prev === id ? null : id)),
@@ -508,6 +518,8 @@ export default function InventoryView({
           </table>
         </div>
       </div>
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Adjust stock modal */}
       {adjusting && (

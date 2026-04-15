@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -64,7 +64,7 @@ function profileName(p: Profile | null) {
 /* ─── Component ────────────────────────────────────────────── */
 
 export function DistressedView({ initialParcels, currentUserId }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [parcels, setParcels] = useState<DistressedParcel[]>(initialParcels);
   const [loading, setLoading] = useState(false);
 
@@ -116,12 +116,13 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
   /* ─── Resolve ────────────────────────────────────────────── */
 
   async function handleResolve(id: string) {
+    setParcels(prev => prev.map(p => p.id === id ? { ...p, condition: "resolved", resolved_at: new Date().toISOString() } : p));
     await fetch("/api/operations/distressed", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, condition: "resolved" }),
     });
-    router.refresh();
+    setToast({ message: "Parcel marked as resolved", type: "success" });
     fetchParcels();
   }
 
@@ -162,7 +163,7 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
 
     if (res.ok) {
       setShowModal(false);
-      router.refresh();
+      setToast({ message: "Parcel reported", type: "success" });
       fetchParcels();
     }
     setSaving(false);
@@ -172,8 +173,9 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this distressed parcel record?")) return;
+    setParcels(prev => prev.filter(p => p.id !== id));
     await fetch(`/api/operations/distressed?id=${id}`, { method: "DELETE" });
-    router.refresh();
+    setToast({ message: "Parcel record deleted", type: "success" });
     fetchParcels();
   }
 
@@ -264,6 +266,8 @@ export function DistressedView({ initialParcels, currentUserId }: Props) {
           ))}
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Create Modal */}
       {showModal && (

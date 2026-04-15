@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO, isAfter, startOfDay, subDays } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -96,7 +96,7 @@ function formatStatus(s: string) {
 /* ─── Component ────────────────────────────────────────────── */
 
 export function IssuesView({ initialIssues, orders, profiles, currentUserId }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [issues, setIssues] = useState<Issue[]>(initialIssues);
   const [loading, setLoading] = useState(false);
 
@@ -160,12 +160,13 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
   /* ─── Inline Status Update ──────────────────────────────── */
 
   async function updateStatus(issueId: string, status: string) {
+    setIssues(prev => prev.map(i => i.id === issueId ? { ...i, status } : i));
     await fetch("/api/operations/issues", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: issueId, status }),
     });
-    router.refresh();
+    setToast({ message: `Status updated to ${formatStatus(status)}`, type: "success" });
     fetchIssues();
   }
 
@@ -208,7 +209,7 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
 
     if (res.ok) {
       setShowModal(false);
-      router.refresh();
+      setToast({ message: "Issue created", type: "success" });
       fetchIssues();
     }
     setSaving(false);
@@ -218,8 +219,9 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this issue?")) return;
+    setIssues(prev => prev.filter(i => i.id !== id));
     await fetch(`/api/operations/issues?id=${id}`, { method: "DELETE" });
-    router.refresh();
+    setToast({ message: "Issue deleted", type: "success" });
     fetchIssues();
   }
 
@@ -345,6 +347,7 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
                   onToggle={() => setExpandedId(expandedId === issue.id ? null : issue.id)}
                   onStatusChange={(s) => updateStatus(issue.id, s)}
                   onDelete={() => handleDelete(issue.id)}
+                  onFieldUpdated={() => { setToast({ message: "Field updated", type: "success" }); fetchIssues(); }}
                   profiles={profiles}
                 />
               ))}
@@ -352,6 +355,8 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
           </table>
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Create Modal */}
       {showModal && (
@@ -506,6 +511,7 @@ function IssueRow({
   onToggle,
   onStatusChange,
   onDelete,
+  onFieldUpdated,
   profiles,
 }: {
   issue: Issue;
@@ -513,10 +519,9 @@ function IssueRow({
   onToggle: () => void;
   onStatusChange: (status: string) => void;
   onDelete: () => void;
+  onFieldUpdated: () => void;
   profiles: Profile[];
 }) {
-  const router = useRouter();
-
   /* ─── Inline field update ───────────────────────────────── */
   async function updateField(field: string, value: string | null) {
     await fetch("/api/operations/issues", {
@@ -524,7 +529,7 @@ function IssueRow({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: issue.id, [field]: value }),
     });
-    router.refresh();
+    onFieldUpdated();
   }
 
   const followUpOverdue =

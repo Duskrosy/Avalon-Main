@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO, isToday } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 /* ─── Types ────────────────────────────────────────────────── */
 
@@ -112,7 +112,7 @@ function toLocalDatetimeValue(d?: Date): string {
 /* ─── Component ────────────────────────────────────────────── */
 
 export function CourierView({ initialShipments }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [shipments, setShipments] = useState<Shipment[]>(initialShipments);
   const [search, setSearch] = useState("");
 
@@ -237,8 +237,7 @@ export function CourierView({ initialShipments }: Props) {
 
     if (res.ok) {
       setShowModal(false);
-      // Refresh data
-      router.refresh();
+      setToast({ message: "Event added", type: "success" });
       await fetchShipments();
       // If this dispatch is expanded, refresh timeline
       if (expandedId === modalDispatchId) {
@@ -504,6 +503,8 @@ export function CourierView({ initialShipments }: Props) {
           })}
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       {/* Add Event Modal */}
       {showModal && (
