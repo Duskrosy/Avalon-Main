@@ -251,15 +251,15 @@ export function CompetitorsView({ canManage }: Props) {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Competitor Tracker</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Competitor Tracker</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             Track competitor social media metrics across platforms.
           </p>
         </div>
         {canManage && (
           <button
             onClick={() => { setAddForm(EMPTY_ADD_FORM); setShowAddModal(true); }}
-            className="shrink-0 bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="shrink-0 bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + Add Competitor
           </button>
@@ -268,13 +268,13 @@ export function CompetitorsView({ canManage }: Props) {
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading…</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading…</div>
       ) : competitors.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           <p className="text-2xl mb-3">🔍</p>
-          <p className="text-sm font-medium text-gray-700">No competitors tracked yet</p>
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">No competitors tracked yet</p>
           {canManage && (
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
               Click &ldquo;+ Add Competitor&rdquo; to get started.
             </p>
           )}
@@ -302,12 +302,12 @@ export function CompetitorsView({ canManage }: Props) {
             className="absolute inset-0 bg-black/30"
             onClick={() => { setShowAddModal(false); setAddForm(EMPTY_ADD_FORM); }}
           />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900">Add Competitor</h2>
+          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Add Competitor</h2>
 
             {/* Name */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
                 Name <span className="text-red-400">*</span>
               </label>
               <input
@@ -315,25 +315,25 @@ export function CompetitorsView({ canManage }: Props) {
                 value={addForm.name}
                 onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="e.g. Competitor Brand"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Notes</label>
               <textarea
                 value={addForm.notes}
                 onChange={(e) => setAddForm((f) => ({ ...f, notes: e.target.value }))}
                 placeholder="Optional notes…"
                 rows={2}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
               />
             </div>
 
             {/* Platform checkboxes */}
             <div>
-              <p className="text-xs font-medium text-gray-600 mb-2">Platforms to track</p>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Platforms to track</p>
               <div className="space-y-3">
                 {PLATFORMS.map((p) => (
                   <div key={p}>
@@ -350,7 +350,7 @@ export function CompetitorsView({ canManage }: Props) {
                             },
                           }))
                         }
-                        className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                        className="rounded border-[var(--color-border-primary)] text-[var(--color-text-primary)] focus:ring-[var(--color-accent)]"
                       />
                       <PlatformBadge platform={p} />
                     </label>
@@ -368,7 +368,7 @@ export function CompetitorsView({ canManage }: Props) {
                           }))
                         }
                         placeholder={`@handle or URL`}
-                        className="mt-1.5 ml-6 w-[calc(100%-1.5rem)] border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="mt-1.5 ml-6 w-[calc(100%-1.5rem)] border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       />
                     )}
                   </div>
@@ -380,14 +380,14 @@ export function CompetitorsView({ canManage }: Props) {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={() => { setShowAddModal(false); setAddForm(EMPTY_ADD_FORM); }}
-                className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
               >
                 Cancel
               </button>
               <button
                 disabled={addSaving || !addForm.name.trim()}
                 onClick={handleAddCompetitor}
-                className="text-sm px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 {addSaving ? "Adding…" : "Add Competitor"}
               </button>
@@ -400,10 +400,10 @@ export function CompetitorsView({ canManage }: Props) {
       {fillModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/30" onClick={() => setFillModal(null)} />
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Update Metrics</h2>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Update Metrics</h2>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
                 {fillModal.competitor.name} ·{" "}
                 <PlatformBadge platform={fillModal.account.platform as Platform} />
                 {fillModal.account.handle ? ` · ${fillModal.account.handle}` : ""}
@@ -412,45 +412,45 @@ export function CompetitorsView({ canManage }: Props) {
 
             {/* Date */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Date</label>
               <input
                 type="date"
                 value={fillForm.snapshot_date}
                 onChange={(e) => setFillForm((f) => ({ ...f, snapshot_date: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
 
             {/* Follower count */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Follower Count</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Follower Count</label>
               <input
                 type="number"
                 min="0"
                 value={fillForm.follower_count}
                 onChange={(e) => setFillForm((f) => ({ ...f, follower_count: e.target.value }))}
                 placeholder="e.g. 125000"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
 
             {/* Post count */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Total Posts</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Total Posts</label>
               <input
                 type="number"
                 min="0"
                 value={fillForm.post_count}
                 onChange={(e) => setFillForm((f) => ({ ...f, post_count: e.target.value }))}
                 placeholder="e.g. 840"
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
 
             {/* 2-column row */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
                   Avg Engagement Rate (%)
                 </label>
                 <input
@@ -460,11 +460,11 @@ export function CompetitorsView({ canManage }: Props) {
                   value={fillForm.avg_engagement_rate}
                   onChange={(e) => setFillForm((f) => ({ ...f, avg_engagement_rate: e.target.value }))}
                   placeholder="e.g. 3.25"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
                   Posts / Week
                 </label>
                 <input
@@ -474,20 +474,20 @@ export function CompetitorsView({ canManage }: Props) {
                   value={fillForm.posting_frequency_week}
                   onChange={(e) => setFillForm((f) => ({ ...f, posting_frequency_week: e.target.value }))}
                   placeholder="e.g. 4.5"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
             </div>
 
             {/* Notes */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Notes</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Notes</label>
               <textarea
                 value={fillForm.notes}
                 onChange={(e) => setFillForm((f) => ({ ...f, notes: e.target.value }))}
                 placeholder="Any observations…"
                 rows={2}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
               />
             </div>
 
@@ -495,14 +495,14 @@ export function CompetitorsView({ canManage }: Props) {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={() => setFillModal(null)}
-                className="text-sm px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
               >
                 Cancel
               </button>
               <button
                 disabled={fillSaving}
                 onClick={handleSaveFill}
-                className="text-sm px-4 py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-50"
+                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 {fillSaving ? "Saving…" : "Save"}
               </button>
@@ -539,15 +539,15 @@ function CompetitorCard({
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
       {/* Card header */}
-      <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-gray-100">
+      <div className="px-5 py-4 flex items-start justify-between gap-3 border-b border-[var(--color-border-secondary)]">
         <div>
-          <h2 className="font-semibold text-gray-900">{competitor.name}</h2>
+          <h2 className="font-semibold text-[var(--color-text-primary)]">{competitor.name}</h2>
           {competitor.notes && (
-            <p className="text-xs text-gray-500 mt-0.5">{competitor.notes}</p>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">{competitor.notes}</p>
           )}
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
             Added {format(parseISO(competitor.created_at), "d MMM yyyy")}
           </p>
         </div>
@@ -555,7 +555,7 @@ function CompetitorCard({
           <button
             disabled={deleting}
             onClick={onDelete}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+            className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors disabled:opacity-50"
           >
             {deleting ? "Deleting…" : "Delete"}
           </button>
@@ -563,7 +563,7 @@ function CompetitorCard({
       </div>
 
       {/* Platform grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-[var(--color-border-secondary)]">
         {PLATFORMS.map((platform) => {
           const acc = accountsByPlatform[platform];
 
@@ -572,12 +572,12 @@ function CompetitorCard({
               <div key={platform} className="p-4 flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <PlatformBadge platform={platform} />
-                  <span className="text-xs text-gray-400">Not tracked</span>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">Not tracked</span>
                 </div>
                 {canManage && (
                   <button
                     onClick={() => onAddPlatform(platform)}
-                    className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-dashed border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors w-fit"
+                    className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-dashed border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 hover:text-[var(--color-text-primary)] transition-colors w-fit"
                   >
                     + Add platform
                   </button>
@@ -594,10 +594,10 @@ function CompetitorCard({
               <div className="flex items-center gap-2 flex-wrap">
                 <PlatformBadge platform={platform} />
                 {acc.handle && (
-                  <span className="text-xs text-gray-500 truncate max-w-[120px]">{acc.handle}</span>
+                  <span className="text-xs text-[var(--color-text-secondary)] truncate max-w-[120px]">{acc.handle}</span>
                 )}
                 {!acc.is_active && (
-                  <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Inactive</span>
+                  <span className="text-xs text-[var(--color-text-tertiary)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded">Inactive</span>
                 )}
               </div>
 
@@ -605,12 +605,12 @@ function CompetitorCard({
               {snap ? (
                 <div className="space-y-1.5">
                   <div>
-                    <p className="text-2xl font-bold text-gray-900 leading-none">
+                    <p className="text-2xl font-bold text-[var(--color-text-primary)] leading-none">
                       {formatNumber(snap.follower_count)}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">followers</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">followers</p>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
                     {snap.post_count != null && (
                       <span>
                         <span className="font-medium">{snap.post_count.toLocaleString()}</span>{" "}
@@ -630,19 +630,19 @@ function CompetitorCard({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-[var(--color-text-tertiary)]">
                     Updated {format(parseISO(snap.snapshot_date), "d MMM yyyy")}
                   </p>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic">No data yet</p>
+                <p className="text-xs text-[var(--color-text-tertiary)] italic">No data yet</p>
               )}
 
               {/* Update button */}
               {canManage && (
                 <button
                   onClick={() => onFill(acc)}
-                  className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-gray-200 text-gray-600 hover:border-gray-400 transition-colors w-fit"
+                  className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors w-fit"
                 >
                   Update
                 </button>

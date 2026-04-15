@@ -61,13 +61,13 @@ const PLANNED_STATUSES = ["idea", "in_production", "submitted", "approved", "sch
 const PUBLISHED_STATUSES = ["published", "archived"];
 
 const STATUS_STYLES: Record<string, string> = {
-  idea: "bg-gray-100 text-gray-600",
-  in_production: "bg-blue-100 text-blue-700",
-  submitted: "bg-amber-100 text-amber-700",
-  approved: "bg-green-100 text-green-700",
+  idea: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  in_production: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  submitted: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  approved: "bg-[var(--color-success-light)] text-[var(--color-success)]",
   scheduled: "bg-purple-100 text-purple-700",
   published: "bg-emerald-100 text-emerald-700",
-  archived: "bg-gray-100 text-gray-500",
+  archived: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
 };
 
 const STATUS_OPTIONS = [
@@ -94,10 +94,10 @@ const CHANNEL_TYPES = ["conversion", "messenger", "organic", "other"] as const;
 const FUNNEL_STAGES = ["TOF", "MOF", "BOF"] as const;
 
 const PLATFORM_STYLES: Record<string, string> = {
-  facebook: "bg-blue-100 text-blue-800",
+  facebook: "bg-[var(--color-accent-light)] text-blue-800",
   instagram: "bg-pink-100 text-pink-800",
-  tiktok: "bg-gray-900 text-white",
-  youtube: "bg-red-100 text-red-800",
+  tiktok: "bg-[var(--color-text-primary)] text-white",
+  youtube: "bg-[var(--color-error-light)] text-red-800",
 };
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -240,7 +240,7 @@ export default function TrackerView({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Creatives Tracker</h1>
+        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Creatives Tracker</h1>
         <button
           onClick={() => setShowCreate(true)}
           className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
@@ -276,13 +276,13 @@ export default function TrackerView({
           placeholder="Search title or campaign..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 sm:w-64"
+          className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 sm:w-64"
         />
         {tab === "planned" && (
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
           >
             <option value="">All statuses</option>
             {PLANNED_STATUSES.map((s) => (
@@ -296,16 +296,16 @@ export default function TrackerView({
 
       {/* Table (desktop) / Cards (mobile) */}
       {active.length === 0 ? (
-        <div className="rounded-xl border border-gray-100 bg-white p-12 text-center text-sm text-gray-400">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
           No items found.
         </div>
       ) : (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-100 bg-white">
+          <div className="hidden md:block overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)]">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Channel</th>
@@ -324,20 +324,20 @@ export default function TrackerView({
                   <tr
                     key={item.id}
                     onClick={() => setEditItem(item)}
-                    className={`cursor-pointer border-b border-gray-50 transition-colors hover:bg-indigo-50/40 ${
-                      idx % 2 === 0 ? "bg-white" : "bg-gray-50/30"
+                    className={`cursor-pointer border-b border-[var(--color-border-secondary)] transition-colors hover:bg-indigo-50/40 ${
+                      idx % 2 === 0 ? "bg-[var(--color-bg-primary)]" : "bg-[var(--color-bg-secondary)]/30"
                     }`}
                   >
-                    <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate">
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
                       {item.title}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {fmtLabel(item.content_type)}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {fmtLabel(item.channel_type)}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {item.funnel_stage ?? "-"}
                     </td>
                     <td className="px-4 py-3">
@@ -349,13 +349,13 @@ export default function TrackerView({
                         }}
                       />
                     </td>
-                    <td className="px-4 py-3 text-gray-600 max-w-[140px] truncate">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-[140px] truncate">
                       {item.campaign_label ?? "-"}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {profileName(item.assigned_profile)}
                     </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
                       {fmtDate(item.planned_week_start)}
                     </td>
                     {tab === "published" && (
@@ -389,21 +389,21 @@ export default function TrackerView({
               <div
                 key={item.id}
                 onClick={() => setEditItem(item)}
-                className="cursor-pointer rounded-xl border border-gray-100 bg-white p-4 space-y-2 hover:border-indigo-200 transition-colors"
+                className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2 hover:border-indigo-200 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-medium text-gray-900 text-sm leading-snug">
+                  <p className="font-medium text-[var(--color-text-primary)] text-sm leading-snug">
                     {item.title}
                   </p>
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                      STATUS_STYLES[item.status] ?? "bg-gray-100 text-gray-600"
+                      STATUS_STYLES[item.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
                     }`}
                   >
                     {fmtLabel(item.status)}
                   </span>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
                   <span>{fmtLabel(item.content_type)}</span>
                   <span>{fmtLabel(item.channel_type)}</span>
                   {item.funnel_stage && <span>{item.funnel_stage}</span>}
@@ -411,7 +411,7 @@ export default function TrackerView({
                     <span className="text-indigo-600">{item.campaign_label}</span>
                   )}
                 </div>
-                <div className="flex items-center justify-between text-xs text-gray-400">
+                <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
                   <span>{profileName(item.assigned_profile)}</span>
                   <span>{fmtDate(item.planned_week_start)}</span>
                 </div>
@@ -493,7 +493,7 @@ function TabPill({
       className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
         active
           ? "bg-indigo-600 text-white"
-          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+          : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border-primary)]"
       }`}
     >
       {label}
@@ -514,7 +514,7 @@ function StatusDropdown({
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => onChange(e.target.value)}
       className={`rounded-full px-2 py-0.5 text-xs font-medium border-0 cursor-pointer focus:ring-1 focus:ring-indigo-400 ${
-        STATUS_STYLES[current] ?? "bg-gray-100 text-gray-600"
+        STATUS_STYLES[current] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
       }`}
     >
       {STATUS_OPTIONS.map((s) => (
@@ -579,7 +579,7 @@ function ItemModal({
   return (
     <Overlay onClose={onClose}>
       <form onSubmit={submit} className="space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">
+        <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
           {isEdit ? "Edit Item" : "New Content Item"}
         </h2>
 
@@ -589,7 +589,7 @@ function ItemModal({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             autoFocus
           />
         </Field>
@@ -599,7 +599,7 @@ function ItemModal({
             <select
               value={contentType}
               onChange={(e) => setContentType(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
               {CONTENT_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -613,7 +613,7 @@ function ItemModal({
             <select
               value={channelType}
               onChange={(e) => setChannelType(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
               {CHANNEL_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -627,7 +627,7 @@ function ItemModal({
             <select
               value={funnelStage}
               onChange={(e) => setFunnelStage(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
               <option value="">-</option>
               {FUNNEL_STAGES.map((s) => (
@@ -642,7 +642,7 @@ function ItemModal({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
@@ -657,7 +657,7 @@ function ItemModal({
               type="text"
               value={campaign}
               onChange={(e) => setCampaign(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
           </Field>
 
@@ -666,7 +666,7 @@ function ItemModal({
               type="text"
               value={product}
               onChange={(e) => setProduct(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
           </Field>
 
@@ -675,7 +675,7 @@ function ItemModal({
               type="text"
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
           </Field>
 
@@ -684,7 +684,7 @@ function ItemModal({
               type="text"
               value={transferLink}
               onChange={(e) => setTransferLink(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
               placeholder="https://..."
             />
           </Field>
@@ -694,7 +694,7 @@ function ItemModal({
               type="date"
               value={plannedWeek}
               onChange={(e) => setPlannedWeek(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
           </Field>
 
@@ -703,7 +703,7 @@ function ItemModal({
               type="date"
               value={dateSubmitted}
               onChange={(e) => setDateSubmitted(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
           </Field>
 
@@ -711,7 +711,7 @@ function ItemModal({
             <select
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
               <option value="">Unassigned</option>
               {profiles.map((p) => (
@@ -728,7 +728,7 @@ function ItemModal({
             value={creativeAngle}
             onChange={(e) => setCreativeAngle(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y"
+            className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-y"
             placeholder="POV, hook, concept..."
           />
         </Field>
@@ -737,7 +737,7 @@ function ItemModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
           >
             Cancel
           </button>
@@ -786,17 +786,17 @@ function LinkModal({
   return (
     <Overlay onClose={onClose}>
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">
+        <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
           Link Published Content
         </h2>
-        <p className="text-sm text-gray-500">
-          Link <span className="font-medium text-gray-700">{item.title}</span>{" "}
+        <p className="text-sm text-[var(--color-text-secondary)]">
+          Link <span className="font-medium text-[var(--color-text-primary)]">{item.title}</span>{" "}
           to a published post or external URL.
         </p>
 
         {/* Post picker */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <label className="block text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
             Recent Published Posts
           </label>
           <input
@@ -804,11 +804,11 @@ function LinkModal({
             placeholder="Filter posts..."
             value={postSearch}
             onChange={(e) => setPostSearch(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
           />
-          <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-100">
+          <div className="max-h-56 overflow-y-auto rounded-lg border border-[var(--color-border-secondary)]">
             {filtered.length === 0 ? (
-              <p className="p-4 text-sm text-gray-400 text-center">
+              <p className="p-4 text-sm text-[var(--color-text-tertiary)] text-center">
                 No published posts found.
               </p>
             ) : (
@@ -819,25 +819,25 @@ function LinkModal({
                   onClick={() =>
                     setSelectedPost((prev) => (prev === p.id ? null : p.id))
                   }
-                  className={`w-full text-left px-4 py-3 border-b border-gray-50 transition-colors ${
+                  className={`w-full text-left px-4 py-3 border-b border-[var(--color-border-secondary)] transition-colors ${
                     selectedPost === p.id
                       ? "bg-indigo-50 border-indigo-100"
-                      : "hover:bg-gray-50"
+                      : "hover:bg-[var(--color-surface-hover)]"
                   }`}
                 >
                   <div className="flex items-center gap-2">
                     <span
                       className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                        PLATFORM_STYLES[p.platform] ?? "bg-gray-100 text-gray-700"
+                        PLATFORM_STYLES[p.platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
                       }`}
                     >
                       {p.platform}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-[var(--color-text-tertiary)]">
                       {fmtDate(p.published_at)}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-700 line-clamp-2">
+                  <p className="mt-1 text-sm text-[var(--color-text-primary)] line-clamp-2">
                     {p.caption ? p.caption.slice(0, 120) : "(no caption)"}
                   </p>
                 </button>
@@ -852,7 +852,7 @@ function LinkModal({
             type="url"
             value={externalUrl}
             onChange={(e) => setExternalUrl(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             placeholder="https://..."
           />
         </Field>
@@ -861,7 +861,7 @@ function LinkModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
           >
             Cancel
           </button>
@@ -889,7 +889,7 @@ function Overlay({
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[10vh] overflow-y-auto">
       <div
-        className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl"
+        className="w-full max-w-xl rounded-2xl bg-[var(--color-bg-primary)] p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -909,7 +909,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-gray-500 uppercase tracking-wider">
+      <span className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
         {label}
       </span>
       {children}
