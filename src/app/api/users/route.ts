@@ -107,5 +107,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 
+  // Sync must_change_password to app_metadata so middleware + login can enforce it
+  if (must_change_password) {
+    await admin.auth.admin.updateUserById(authData.user.id, {
+      app_metadata: { must_change_password: true },
+    });
+  }
+
   return NextResponse.json({ message: "User created successfully", user_id: authData.user.id });
 }
