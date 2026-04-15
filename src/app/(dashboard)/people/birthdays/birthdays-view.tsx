@@ -233,7 +233,7 @@ function BirthdayCardModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl bg-[var(--color-text-primary)] rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "92vh" }}>
+      <div className="relative w-full max-w-3xl bg-[#0F172A] rounded-2xl shadow-2xl border border-white/10 flex flex-col" style={{ maxHeight: "92vh" }}>
 
         {/* Header */}
         <div className="bg-gradient-to-r from-[#3A5635] to-[#4e7349] px-6 py-5 rounded-t-2xl shrink-0">
@@ -251,7 +251,7 @@ function BirthdayCardModal({
         </div>
 
         {/* Tabs + OPS delete-all */}
-        <div className="flex items-center border-b border-white/10 bg-[var(--color-text-primary)] shrink-0 px-1">
+        <div className="flex items-center border-b border-white/10 bg-[#0F172A] shrink-0 px-1">
           <button onClick={() => setTab("messages")} className={`flex-1 py-3 text-sm font-medium transition-colors ${tab === "messages" ? "text-amber-400 border-b-2 border-amber-400" : "text-white/40 hover:text-white/70"}`}>
             Messages {messages.length > 0 && `(${messages.length})`}
           </button>

@@ -43,7 +43,7 @@ export function Toast({ toast, onDismiss }: { toast: ToastData | null; onDismiss
           "flex items-center gap-2 px-4 py-3 rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] text-sm font-medium max-w-sm",
           toast.type === "success" && "bg-[var(--color-success)] text-white",
           toast.type === "error" && "bg-[var(--color-error)] text-white",
-          toast.type === "info" && "bg-[var(--color-text-primary)] text-white",
+          toast.type === "info" && "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]",
         )}
       >
         {toast.type === "success" && (

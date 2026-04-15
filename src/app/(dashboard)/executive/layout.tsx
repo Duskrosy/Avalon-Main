@@ -19,7 +19,7 @@ export default async function ExecutiveLayout({ children }: { children: React.Re
         <div className="pb-4">
           <div className="flex items-center gap-2.5 mb-0.5">
             <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Executive Dashboard</h1>
-            <span className="text-xs px-2 py-0.5 bg-[var(--color-text-primary)] text-white rounded-full font-medium">OPS</span>
+            <span className="text-xs px-2 py-0.5 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-full font-medium">OPS</span>
           </div>
           <p className="text-sm text-[var(--color-text-secondary)]">{format(new Date(), "EEEE, d MMMM yyyy")}</p>
         </div>

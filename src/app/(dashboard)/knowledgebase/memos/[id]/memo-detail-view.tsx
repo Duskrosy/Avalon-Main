@@ -217,7 +217,7 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
             {/* Progress bar */}
             <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden mb-4">
               <div
-                className="h-full bg-[var(--color-success-light)]0 rounded-full transition-all"
+                className="h-full bg-[var(--color-success)] rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -256,7 +256,7 @@ export function MemoDetailView({ memo, signatures, hasSigned: initialSigned, tot
                 className={`w-full py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   signed
                     ? "bg-[var(--color-success-light)] text-[var(--color-success)] border border-green-200 hover:bg-[var(--color-success-light)]"
-                    : "bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)]"
+                    : "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)]"
                 } disabled:opacity-50`}
               >
                 {loading ? "..." : signed ? "Signed — click to unsign" : "Sign this memo"}

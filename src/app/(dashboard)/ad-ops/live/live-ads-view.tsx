@@ -72,9 +72,9 @@ function spendPct(spend: number | null, cap: number | null) {
   return Math.min((spend / cap) * 100, 100);
 }
 function progressColor(pct: number) {
-  if (pct >= 90) return "bg-[var(--color-error-light)]0";
+  if (pct >= 90) return "bg-[var(--color-error)]";
   if (pct >= 70) return "bg-amber-400";
-  return "bg-[var(--color-success-light)]0";
+  return "bg-[var(--color-success)]";
 }
 
 const PERIOD_LABELS: Record<string, string> = { lifetime: "Lifetime", monthly: "This Month", daily: "Today" };
@@ -382,7 +382,7 @@ export function LiveAdsView() {
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-success-light)]0" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-success)]" />
             </span>
             <p className="text-sm text-[var(--color-text-secondary)]">
               Live · auto-refreshes every 50 min

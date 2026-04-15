@@ -170,7 +170,7 @@ export function AdDashboard({
               <button
                 onClick={handleSync}
                 disabled={syncing}
-                className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 {syncing ? "Syncing…" : "Sync Now"}
               </button>
@@ -265,7 +265,7 @@ export function AdDashboard({
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="shrink-0 bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="shrink-0 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {syncing ? (
               <>

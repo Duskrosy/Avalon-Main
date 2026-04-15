@@ -206,7 +206,7 @@ function AdjustModal({
             <button
               type="submit"
               disabled={submitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-text-primary)] hover:bg-[var(--color-text-secondary)] rounded-lg disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-[var(--color-text-inverted)] bg-[var(--color-text-primary)] hover:bg-[var(--color-text-secondary)] rounded-lg disabled:opacity-50"
             >
               {submitting ? "Saving..." : "Submit Adjustment"}
             </button>

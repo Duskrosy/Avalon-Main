@@ -323,7 +323,7 @@ export function AnalyticsView({ groups }: Props) {
           <button
             onClick={handleSync}
             disabled={syncState === "syncing" || !platId}
-            className="text-xs px-3 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+            className="text-xs px-3 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
           >
             {syncState === "syncing" ? "Syncing…" : syncState === "done" ? "✓ Synced" : "↻ Sync Now"}
           </button>
@@ -338,7 +338,7 @@ export function AnalyticsView({ groups }: Props) {
             onClick={() => setGroupId(g.id)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               groupId === g.id
-                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
@@ -377,7 +377,7 @@ export function AnalyticsView({ groups }: Props) {
               onClick={() => setPreset(p.days)}
               className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                 preset === p.days
-                  ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                  ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                   : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
               }`}
             >
@@ -438,7 +438,7 @@ export function AnalyticsView({ groups }: Props) {
             <button
               onClick={handleSync}
               disabled={syncState === "syncing"}
-              className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+              className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
             >
               {syncState === "syncing" ? "Syncing…" : "↻ Sync Now"}
             </button>
@@ -883,7 +883,7 @@ export function AnalyticsView({ groups }: Props) {
                   Cancel
                 </button>
                 <button type="submit" disabled={savingManual}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {savingManual ? "Saving…" : "Save"}
                 </button>

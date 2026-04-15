@@ -609,7 +609,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                   className={cn(
                     "px-4 py-2 rounded-[var(--radius-md)] text-sm font-medium transition-colors",
                     hasPendingChanges && !saving && !isBlocked
-                      ? "bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)]"
+                      ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)]"
                       : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] cursor-not-allowed"
                   )}
                 >

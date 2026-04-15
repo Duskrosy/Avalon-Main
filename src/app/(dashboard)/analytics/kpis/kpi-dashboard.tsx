@@ -109,9 +109,9 @@ function formatPeriod(date: string, freq: string): string {
 }
 
 const RAG_STYLES = {
-  green: { bg: "bg-[var(--color-success-light)]",   border: "border-green-200",  badge: "bg-[var(--color-success-light)] text-[var(--color-success)]",  dot: "bg-[var(--color-success-light)]0",  label: "On Track"  },
+  green: { bg: "bg-[var(--color-success-light)]",   border: "border-green-200",  badge: "bg-[var(--color-success-light)] text-[var(--color-success)]",  dot: "bg-[var(--color-success)]",  label: "On Track"  },
   amber: { bg: "bg-[var(--color-warning-light)]",   border: "border-[var(--color-border-primary)]",  badge: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",  dot: "bg-amber-400",  label: "Monitor"   },
-  red:   { bg: "bg-[var(--color-error-light)]",     border: "border-red-200",    badge: "bg-[var(--color-error-light)] text-[var(--color-error)]",      dot: "bg-[var(--color-error-light)]0",    label: "Critical"  },
+  red:   { bg: "bg-[var(--color-error-light)]",     border: "border-red-200",    badge: "bg-[var(--color-error-light)] text-[var(--color-error)]",      dot: "bg-[var(--color-error)]",    label: "Critical"  },
   none:  { bg: "bg-[var(--color-bg-secondary)]",    border: "border-[var(--color-border-primary)]",   badge: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",    dot: "bg-[var(--color-border-primary)]",   label: "No data"   },
 };
 
@@ -124,7 +124,7 @@ function TargetMeter({ value, def }: { value: number; def: KpiDef }) {
     pct = value > 0 ? Math.min((def.threshold_green / value) * 100, 110) : 0;
   }
   const status = rag(value, def);
-  const fillColor = status === "green" ? "bg-[var(--color-success-light)]0" : status === "amber" ? "bg-amber-400" : "bg-[var(--color-error-light)]0";
+  const fillColor = status === "green" ? "bg-[var(--color-success)]" : status === "amber" ? "bg-amber-400" : "bg-[var(--color-error)]";
   const amberPct = def.direction === "higher_better"
     ? Math.min((def.threshold_amber / def.threshold_green) * 100, 100)
     : Math.min((def.threshold_green / def.threshold_amber) * 100, 100);
@@ -342,7 +342,7 @@ function LogModal({
               await onSave(parseFloat(value), period, notes);
               onClose();
             }}
-            className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+            className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
           >
             {saving ? "Saving..." : "Log Value"}
           </button>
@@ -519,13 +519,13 @@ function DetailPanel({
                 <div className="flex rounded-lg overflow-hidden border border-[var(--color-border-primary)] text-xs">
                   <button
                     onClick={() => setTrendMode("line")}
-                    className={`px-2.5 py-1 transition-colors ${trendMode === "line" ? "bg-[var(--color-text-primary)] text-white" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
+                    className={`px-2.5 py-1 transition-colors ${trendMode === "line" ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
                   >
                     Line
                   </button>
                   <button
                     onClick={() => setTrendMode("bar")}
-                    className={`px-2.5 py-1 transition-colors border-l border-[var(--color-border-primary)] ${trendMode === "bar" ? "bg-[var(--color-text-primary)] text-white" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
+                    className={`px-2.5 py-1 transition-colors border-l border-[var(--color-border-primary)] ${trendMode === "bar" ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
                   >
                     Bar
                   </button>
@@ -575,7 +575,7 @@ function DetailPanel({
           {canLog && (
             <button
               onClick={onLog}
-              className="w-full bg-[var(--color-text-primary)] text-white text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] transition-colors"
+              className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] transition-colors"
             >
               Log new value
             </button>
@@ -755,7 +755,7 @@ export function KpiDashboard({
                 onClick={() => setDateRange(r.days)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                   dateRange === r.days
-                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                     : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
                 }`}
               >
@@ -815,9 +815,9 @@ export function KpiDashboard({
         <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 mb-6">
           <div className="flex items-center gap-6 mb-3 flex-wrap">
             {[
-              { label: "On Track",    count: summary.green,  color: "text-[var(--color-success)]",  bg: "bg-[var(--color-success-light)]0"  },
+              { label: "On Track",    count: summary.green,  color: "text-[var(--color-success)]",  bg: "bg-[var(--color-success)]"  },
               { label: "Monitor",     count: summary.amber,  color: "text-[var(--color-warning)]",  bg: "bg-amber-400"  },
-              { label: "Critical",    count: summary.red,    color: "text-[var(--color-error)]",    bg: "bg-[var(--color-error-light)]0"    },
+              { label: "Critical",    count: summary.red,    color: "text-[var(--color-error)]",    bg: "bg-[var(--color-error)]"    },
               { label: "No Data",     count: summary.noData, color: "text-[var(--color-text-tertiary)]",   bg: "bg-[var(--color-border-primary)]"   },
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-0.5 min-w-[56px]">
@@ -834,9 +834,9 @@ export function KpiDashboard({
           </div>
           {/* Proportional bar */}
           <div className="h-2.5 rounded-full overflow-hidden flex gap-0.5">
-            {summary.green > 0  && <div className="bg-[var(--color-success-light)]0 rounded-full" style={{ flex: summary.green  }} />}
+            {summary.green > 0  && <div className="bg-[var(--color-success)] rounded-full" style={{ flex: summary.green  }} />}
             {summary.amber > 0  && <div className="bg-amber-400 rounded-full" style={{ flex: summary.amber  }} />}
-            {summary.red > 0    && <div className="bg-[var(--color-error-light)]0   rounded-full" style={{ flex: summary.red    }} />}
+            {summary.red > 0    && <div className="bg-[var(--color-error)]   rounded-full" style={{ flex: summary.red    }} />}
             {summary.noData > 0 && <div className="bg-[var(--color-border-primary)]  rounded-full" style={{ flex: summary.noData }} />}
           </div>
         </div>

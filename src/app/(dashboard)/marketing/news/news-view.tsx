@@ -151,7 +151,7 @@ export function NewsView({ canManage }: Props) {
           <button
             onClick={handleRefresh}
             disabled={fetching}
-            className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-1.5"
+            className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-1.5"
           >
             <span className={fetching ? "animate-spin inline-block" : ""}>↻</span>
             {fetching ? "Fetching…" : "Refresh"}
@@ -175,7 +175,7 @@ export function NewsView({ canManage }: Props) {
             onClick={() => { if (category !== tab.value) { setCategory(tab.value); } }}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               category === tab.value
-                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
@@ -270,7 +270,7 @@ export function NewsView({ canManage }: Props) {
                 <button
                   type="submit"
                   disabled={savingSource || !addSourceForm.name.trim() || !addSourceForm.url.trim()}
-                  className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                  className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
                 >
                   {savingSource ? "Saving…" : "Add Source"}
                 </button>

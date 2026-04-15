@@ -162,7 +162,7 @@ function DrawerAvatarUploader({
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => fileRef.current?.click()}
-                className="px-3 py-1.5 bg-[var(--color-text-primary)] text-white text-xs font-medium rounded-[var(--radius-md)] hover:bg-[var(--color-text-secondary)] transition-colors"
+                className="px-3 py-1.5 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-xs font-medium rounded-[var(--radius-md)] hover:bg-[var(--color-text-secondary)] transition-colors"
               >
                 {currentUrl ? "Change photo" : "Add photo"}
               </button>
@@ -216,7 +216,7 @@ function DrawerAvatarUploader({
               <button
                 onClick={handleUpload}
                 disabled={uploading}
-                className="px-4 py-1.5 bg-[var(--color-text-primary)] text-white text-xs font-medium rounded-[var(--radius-md)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-xs font-medium rounded-[var(--radius-md)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
               >
                 {uploading ? "Saving…" : "Save photo"}
               </button>
@@ -424,7 +424,7 @@ function ProfileDrawer({
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving…" : "Save changes"}
                 </button>

@@ -214,7 +214,7 @@ export function MarketingRequestsView({ currentUserId }: Props) {
         </div>
         <button
           onClick={openCreate}
-          className="shrink-0 bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+          className="shrink-0 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           New Request
         </button>
@@ -228,7 +228,7 @@ export function MarketingRequestsView({ currentUserId }: Props) {
             onClick={() => setStatusFilter(f.value)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               statusFilter === f.value
-                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
@@ -310,7 +310,7 @@ export function MarketingRequestsView({ currentUserId }: Props) {
                         <button
                           disabled={actionLoading === r.id}
                           onClick={(e) => { e.stopPropagation(); submitRequest(r.id); }}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                          className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
                         >
                           Submit
                         </button>
@@ -413,7 +413,7 @@ export function MarketingRequestsView({ currentUserId }: Props) {
               <button
                 disabled={saving || !form.title.trim()}
                 onClick={handleSubmitNow}
-                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 Submit Now
               </button>

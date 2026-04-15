@@ -143,7 +143,7 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
         </div>
         <button
           onClick={openCreate}
-          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+          className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Asset
         </button>
@@ -374,7 +374,7 @@ export function LibraryView({ contentTypes, funnelStages, formats, canManage }: 
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

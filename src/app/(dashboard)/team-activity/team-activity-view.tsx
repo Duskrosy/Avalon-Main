@@ -47,16 +47,16 @@ type TimelineItem =
 // ── Style maps ────────────────────────────────────────────────────────────────
 
 const CATEGORY_DOT: Record<string, string> = {
-  product: "bg-[var(--color-accent-light)]0",
+  product: "bg-[var(--color-accent)]",
   audit: "bg-gray-400",
-  error: "bg-[var(--color-error-light)]0",
+  error: "bg-[var(--color-error)]",
   performance: "bg-purple-500",
 };
 
 const ACTION_DOT: Record<string, string> = {
-  INSERT: "bg-[var(--color-success-light)]0",
-  UPDATE: "bg-[var(--color-accent-light)]0",
-  DELETE: "bg-[var(--color-error-light)]0",
+  INSERT: "bg-[var(--color-success)]",
+  UPDATE: "bg-[var(--color-accent)]",
+  DELETE: "bg-[var(--color-error)]",
 };
 
 const DAYS_OPTIONS = [7, 14, 30] as const;
@@ -193,7 +193,7 @@ export default function TeamActivityView({ currentUser }: Props) {
             onClick={() => setSelectedUserId("")}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
               !selectedUserId
-                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
@@ -209,7 +209,7 @@ export default function TeamActivityView({ currentUser }: Props) {
                 onClick={() => setSelectedUserId(isSelected ? "" : u.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                   isSelected
-                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                     : "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >
@@ -234,7 +234,7 @@ export default function TeamActivityView({ currentUser }: Props) {
               onClick={() => setDays(d)}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 days === d
-                  ? "bg-[var(--color-text-primary)] text-white"
+                  ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                   : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >

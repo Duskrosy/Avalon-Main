@@ -13,10 +13,10 @@ function fmtK(n: number | null) {
 }
 
 const PLATFORM_META: Record<string, { label: string; bg: string; text: string; bar: string }> = {
-  facebook:  { label: "Facebook",  bg: "bg-[var(--color-accent-light)]",   text: "text-[var(--color-accent)]",  bar: "bg-[var(--color-accent-light)]0"  },
+  facebook:  { label: "Facebook",  bg: "bg-[var(--color-accent-light)]",   text: "text-[var(--color-accent)]",  bar: "bg-[var(--color-accent)]"  },
   instagram: { label: "Instagram", bg: "bg-pink-50",   text: "text-pink-700",  bar: "bg-pink-500"  },
-  tiktok:    { label: "TikTok",    bg: "bg-[var(--color-text-primary)]",  text: "text-white",     bar: "bg-gray-700"  },
-  youtube:   { label: "YouTube",   bg: "bg-[var(--color-error-light)]",    text: "text-[var(--color-error)]",   bar: "bg-[var(--color-error-light)]0"   },
+  tiktok:    { label: "TikTok",    bg: "bg-[var(--color-text-primary)]",  text: "text-[var(--color-text-inverted)]",     bar: "bg-gray-700"  },
+  youtube:   { label: "YouTube",   bg: "bg-[var(--color-error-light)]",    text: "text-[var(--color-error)]",   bar: "bg-[var(--color-error)]"   },
 };
 
 export default async function ExecutiveMarketingPage() {
@@ -157,7 +157,7 @@ export default async function ExecutiveMarketingPage() {
                 <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">{val > 0 ? fmtK(val) : ""}</span>
                 <div className="w-full flex items-end h-16">
                   <div
-                    className={`w-full rounded-t-md ${val === 0 ? "bg-[var(--color-bg-tertiary)]" : "bg-[var(--color-accent-light)]0"} ${date === today ? "ring-2 ring-gray-900 ring-offset-1" : ""}`}
+                    className={`w-full rounded-t-md ${val === 0 ? "bg-[var(--color-bg-tertiary)]" : "bg-[var(--color-accent)]"} ${date === today ? "ring-2 ring-gray-900 ring-offset-1" : ""}`}
                     style={{ height: `${Math.max(4, pct)}%` }}
                   />
                 </div>

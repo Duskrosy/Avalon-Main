@@ -94,7 +94,7 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+            className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + New Memo
           </button>
@@ -310,7 +310,7 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {creating ? "Posting..." : "Post Memo"}
                 </button>

@@ -22,7 +22,7 @@ const SEVERITY_STYLES: Record<string, string> = {
 };
 
 const SEVERITY_DOT: Record<string, string> = {
-  critical: "bg-[var(--color-error-light)]0",
+  critical: "bg-[var(--color-error)]",
   error:    "bg-orange-400",
   warning:  "bg-amber-400",
   info:     "bg-blue-400",
@@ -54,7 +54,7 @@ export function AlertsTab() {
     <div>
       {critCount > 0 && (
         <div className="mb-5 bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-4 py-3 flex items-center gap-3">
-          <span className="w-2 h-2 bg-[var(--color-error-light)]0 rounded-full animate-pulse" />
+          <span className="w-2 h-2 bg-[var(--color-error)] rounded-full animate-pulse" />
           <span className="text-sm text-[var(--color-error)] font-medium">{critCount} critical alert{critCount !== 1 ? "s" : ""} require attention</span>
         </div>
       )}

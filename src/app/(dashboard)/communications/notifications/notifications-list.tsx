@@ -75,7 +75,7 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
                 n.is_read ? "bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] hover:bg-[var(--color-surface-hover)]" : "bg-[var(--color-accent-light)] border border-[var(--color-border-primary)] hover:bg-[var(--color-accent-light)]"
               }`}
             >
-              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.is_read ? "bg-[var(--color-border-primary)]" : "bg-[var(--color-accent-light)]0"}`} />
+              <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.is_read ? "bg-[var(--color-border-primary)]" : "bg-[var(--color-accent)]"}`} />
               <div className="flex-1 min-w-0">
                 <p className={`text-sm ${n.is_read ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-primary)] font-medium"}`}>
                   {n.title}

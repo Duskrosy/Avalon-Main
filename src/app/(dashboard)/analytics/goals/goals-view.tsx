@@ -76,9 +76,9 @@ const RAG_BADGE = {
 };
 
 const RAG_BAR = {
-  green: "bg-[var(--color-success-light)]0",
+  green: "bg-[var(--color-success)]",
   amber: "bg-amber-400",
-  red: "bg-[var(--color-error-light)]0",
+  red: "bg-[var(--color-error)]",
 };
 
 const RAG_BORDER = {
@@ -410,7 +410,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
                 onClick={() => setDateRange(r.days)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                   dateRange === r.days
-                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                     : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
                 }`}
               >
@@ -436,7 +436,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
           {canManage && (
             <button
               onClick={() => setShowCreate(true)}
-              className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+              className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
             >
               + New Goal
             </button>
@@ -606,7 +606,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="flex items-center gap-1.5 text-[10px] text-[var(--color-success)] font-medium mb-1">
-                      <span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0" /> Green if days remaining
+                      <span className="w-2 h-2 rounded-full bg-[var(--color-success)]" /> Green if days remaining
                     </label>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-[var(--color-text-tertiary)]">&ge;</span>
@@ -651,7 +651,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {creating ? "Creating..." : "Create Goal"}
                 </button>

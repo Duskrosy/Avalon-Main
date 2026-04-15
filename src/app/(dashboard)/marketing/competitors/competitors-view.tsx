@@ -259,7 +259,7 @@ export function CompetitorsView({ canManage }: Props) {
         {canManage && (
           <button
             onClick={() => { setAddForm(EMPTY_ADD_FORM); setShowAddModal(true); }}
-            className="shrink-0 bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+            className="shrink-0 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + Add Competitor
           </button>
@@ -387,7 +387,7 @@ export function CompetitorsView({ canManage }: Props) {
               <button
                 disabled={addSaving || !addForm.name.trim()}
                 onClick={handleAddCompetitor}
-                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 {addSaving ? "Adding…" : "Add Competitor"}
               </button>
@@ -502,7 +502,7 @@ export function CompetitorsView({ canManage }: Props) {
               <button
                 disabled={fillSaving}
                 onClick={handleSaveFill}
-                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
               >
                 {fillSaving ? "Saving…" : "Save"}
               </button>

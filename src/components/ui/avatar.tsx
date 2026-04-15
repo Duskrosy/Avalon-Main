@@ -38,7 +38,7 @@ export function Avatar({ url, initials, size = "sm", className }: AvatarProps) {
 
   return (
     <div className={cn(
-      "rounded-full bg-[var(--color-text-primary)] flex items-center justify-center text-white font-semibold shrink-0",
+      "rounded-full bg-[var(--color-text-primary)] flex items-center justify-center text-[var(--color-text-inverted)] font-semibold shrink-0",
       wrapper, text, className
     )}>
       {initials.toUpperCase().slice(0, 2)}

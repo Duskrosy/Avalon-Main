@@ -143,7 +143,7 @@ function CampaignSetupForm({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="mt-3 text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] transition-colors"
+        className="mt-3 text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] transition-colors"
       >
         Set campaign name
       </button>
@@ -191,7 +191,7 @@ function CampaignSetupForm({
         <button
           onClick={submit}
           disabled={saving}
-          className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+          className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
         >
           {saving ? "Saving…" : "Create"}
         </button>
@@ -266,7 +266,7 @@ export function CreativesDashboard({
             Andromeda Creatives
           </span>
           {campaign && (
-            <span className="bg-[var(--color-text-primary)] text-white text-xs font-medium px-3 py-1 rounded-full">
+            <span className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-xs font-medium px-3 py-1 rounded-full">
               {campaign.campaign_name}
             </span>
           )}

@@ -351,7 +351,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
         </div>
         <button
           onClick={openBatchModal}
-          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+          className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + Create Batch
         </button>
@@ -788,7 +788,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Creating..." : "Create Batch"}
                 </button>
@@ -903,7 +903,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Adding..." : "Add Item"}
                 </button>

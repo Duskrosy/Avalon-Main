@@ -61,7 +61,7 @@ export function FeedbackWidget() {
       {/* Floating button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-text-primary)] text-white shadow-[var(--shadow-lg)] transition-transform hover:scale-105 active:scale-95"
+        className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] shadow-[var(--shadow-lg)] transition-transform hover:scale-105 active:scale-95"
         aria-label="Send feedback"
       >
         <svg
@@ -162,7 +162,7 @@ export function FeedbackWidget() {
               <button
                 type="submit"
                 disabled={submitting || !body.trim()}
-                className="w-full rounded-[var(--radius-md)] bg-[var(--color-text-primary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-[var(--radius-md)] bg-[var(--color-text-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-inverted)] transition-colors hover:bg-[var(--color-text-secondary)] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? "Sending..." : "Send feedback"}
               </button>

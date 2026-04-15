@@ -25,7 +25,7 @@ type DeptSummary = {
 const PAGE_SIZE = 25;
 
 function ProgressBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? "bg-[var(--color-success-light)]0" : pct >= 50 ? "bg-amber-400" : pct > 0 ? "bg-red-400" : "bg-[var(--color-border-primary)]";
+  const color = pct >= 80 ? "bg-[var(--color-success)]" : pct >= 50 ? "bg-amber-400" : pct > 0 ? "bg-red-400" : "bg-[var(--color-border-primary)]";
   return (
     <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden w-24">
       <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />

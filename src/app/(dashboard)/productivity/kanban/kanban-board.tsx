@@ -443,7 +443,7 @@ function CustomFieldInput({
                 }}
                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                   isSelected
-                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                     : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
                 }`}
               >
@@ -647,7 +647,7 @@ function CardModal({
               color: form.color,
             }, fieldValues, assigneeIds)}
             disabled={!form.title.trim()}
-            className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+            className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
           >
             Save
           </button>
@@ -1107,7 +1107,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                       <td className="px-4 py-3">
                         <div className="flex items-start gap-2">
                           <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
-                            card.priority === "urgent" ? "bg-[var(--color-error-light)]0" :
+                            card.priority === "urgent" ? "bg-[var(--color-error)]" :
                             card.priority === "high"   ? "bg-amber-400" :
                             card.priority === "medium" ? "bg-blue-400" : "bg-[var(--color-border-primary)]"
                           }`} />
@@ -1246,7 +1246,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                 />
                 <button
                   onClick={handleAddColumn}
-                  className="text-sm px-3 py-1.5 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)]"
+                  className="text-sm px-3 py-1.5 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)]"
                 >
                   Add
                 </button>
@@ -1656,7 +1656,7 @@ function FieldSettingsContent({
                   <button
                     onClick={handleAddField}
                     disabled={!newField.name.trim() || saving}
-                    className="flex-1 text-sm px-3 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                    className="flex-1 text-sm px-3 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                   >
                     {saving ? "..." : "Add Field"}
                   </button>

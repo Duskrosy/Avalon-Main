@@ -160,7 +160,7 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
         </div>
         <button
           onClick={openCreate}
-          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+          className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Deployment
         </button>
@@ -172,7 +172,7 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"}`}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"}`}
           >
             {s === "" ? "All" : s}
           </button>
@@ -413,7 +413,7 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

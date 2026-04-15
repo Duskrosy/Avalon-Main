@@ -253,7 +253,7 @@ function EmptyBoardState({
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 text-sm"
+          className="px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 text-sm"
         >
           {creating ? "Creating..." : `Create ${info.title}`}
         </button>

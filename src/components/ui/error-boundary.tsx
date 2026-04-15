@@ -34,7 +34,7 @@ export class ErrorBoundary extends Component<Props, State> {
           </p>
           <button
             onClick={() => this.setState({ hasError: false })}
-            className="px-4 py-2 bg-[var(--color-text-primary)] text-white text-sm font-medium rounded-[var(--radius-md)] hover:bg-[var(--color-text-secondary)] transition-colors"
+            className="px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm font-medium rounded-[var(--radius-md)] hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             Try again
           </button>

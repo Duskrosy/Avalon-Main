@@ -327,7 +327,7 @@ function UserModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 bg-[var(--color-text-primary)] text-white py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+              className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             >
               {saving ? (mode === "create" ? "Creating…" : "Saving…") : (mode === "create" ? "Create user" : "Save changes")}
             </button>
@@ -440,7 +440,7 @@ export function AccountsView({
         {activeTab === "active" && (
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-[var(--color-text-primary)] text-white px-4 py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] transition-colors"
+            className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] px-4 py-2 rounded-[var(--radius-md)] text-sm font-medium hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + New user
           </button>
@@ -468,7 +468,7 @@ export function AccountsView({
               <span className={cn(
                 "text-xs px-1.5 py-0.5 rounded-full font-medium",
                 activeTab === tab.key
-                  ? tab.key === "deactivated" ? "bg-[var(--color-border-primary)] text-[var(--color-text-secondary)]" : "bg-[var(--color-text-primary)] text-white"
+                  ? tab.key === "deactivated" ? "bg-[var(--color-border-primary)] text-[var(--color-text-secondary)]" : "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                   : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
               )}>
                 {tab.count}

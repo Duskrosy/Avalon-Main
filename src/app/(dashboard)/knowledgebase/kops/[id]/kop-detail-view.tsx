@@ -147,7 +147,7 @@ function AssignmentPanel({ kopId, staff, canManage }: { kopId: string; staff: St
           <button
             onClick={handleAssign}
             disabled={selected.size === 0 || assigning}
-            className="w-full bg-[var(--color-text-primary)] text-white text-xs py-1.5 rounded-lg disabled:opacity-50"
+            className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-xs py-1.5 rounded-lg disabled:opacity-50"
           >
             {assigning ? "Assigning..." : `Assign ${selected.size} user${selected.size !== 1 ? "s" : ""}`}
           </button>
@@ -231,7 +231,7 @@ function FileViewer({ version }: { version: Version }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
+        className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
       >
         Download file
       </a>
@@ -332,7 +332,7 @@ export function KopDetailView({ kop, versions: initialVersions, currentVersion, 
           {canManage && (
             <button
               onClick={() => setShowUpload(true)}
-              className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
+              className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
             >
               New version
             </button>
@@ -446,7 +446,7 @@ export function KopDetailView({ kop, versions: initialVersions, currentVersion, 
                 <button
                   type="submit"
                   disabled={uploading}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {uploading ? "Uploading..." : "Upload"}
                 </button>

@@ -258,7 +258,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
           <button
             onClick={() => addAccount(groupId)}
             disabled={addingAccount || !newAccountId.trim() || !newAccountName.trim()}
-            className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {addingAccount ? <><Spinner /> Adding…</> : "Add Account"}
           </button>
@@ -369,7 +369,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
         </div>
         <button
           onClick={() => setShowNewGroup(true)}
-          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+          className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Group
         </button>
@@ -420,7 +420,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
               <button
                 onClick={createGroup}
                 disabled={creatingGroup || !newGroupName.trim()}
-                className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {creatingGroup ? <><Spinner /> Creating…</> : "Create Group"}
               </button>

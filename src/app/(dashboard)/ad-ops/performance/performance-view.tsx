@@ -251,7 +251,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
         {selectedId && viewMode === "charts" && (
           <button
             onClick={() => setShowAddModal(true)}
-            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+            className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + Log Metrics
           </button>
@@ -576,7 +576,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save"}
                 </button>

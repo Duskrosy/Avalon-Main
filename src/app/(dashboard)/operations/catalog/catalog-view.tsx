@@ -148,7 +148,7 @@ function ItemModal({
             <button
               type="submit"
               disabled={saving || !form.sku.trim() || !form.product_name.trim()}
-              className="px-4 py-2 text-sm bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
             >
               {saving ? "Saving..." : initial ? "Update" : "Create"}
             </button>
@@ -281,7 +281,7 @@ export default function CatalogView({
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2 text-sm bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+          className="px-4 py-2 text-sm bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Item
         </button>
@@ -393,7 +393,7 @@ export default function CatalogView({
                           handleToggleActive(item);
                         }}
                         className={`inline-block w-9 h-5 rounded-full relative transition-colors ${
-                          item.is_active ? "bg-[var(--color-success-light)]0" : "bg-[var(--color-border-primary)]"
+                          item.is_active ? "bg-[var(--color-success)]" : "bg-[var(--color-border-primary)]"
                         }`}
                       >
                         <span

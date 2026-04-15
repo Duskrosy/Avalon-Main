@@ -288,7 +288,7 @@ function LoginInner() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                  className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                 >
                   {loading ? "Signing in…" : "Sign in"}
                 </button>
@@ -363,7 +363,7 @@ function LoginInner() {
               <button
                 type="submit"
                 disabled={loading || mfaCode.length < 6}
-                className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
               >
                 {loading ? "Verifying…" : "Verify"}
               </button>
@@ -401,7 +401,7 @@ function LoginInner() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                    className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                   >
                     {loading ? "Sending…" : "Send reset link"}
                   </button>
@@ -459,7 +459,7 @@ function LoginInner() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                    className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
                   >
                     {loading ? "Sending…" : "Send sign-in link"}
                   </button>
@@ -523,7 +523,7 @@ function LoginInner() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[var(--color-text-primary)] text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 px-4 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
               >
                 {loading ? "Saving…" : "Set new password"}
               </button>

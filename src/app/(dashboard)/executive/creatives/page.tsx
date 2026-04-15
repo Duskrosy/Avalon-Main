@@ -35,16 +35,16 @@ function fmtKpi(value: number, unit: string): string {
 }
 
 const RAG_COLORS = {
-  green: { dot: "bg-[var(--color-success-light)]0", bg: "bg-[var(--color-success-light)]", text: "text-[var(--color-success)]", border: "border-green-200" },
+  green: { dot: "bg-[var(--color-success)]", bg: "bg-[var(--color-success-light)]", text: "text-[var(--color-success)]", border: "border-green-200" },
   amber: { dot: "bg-amber-400", bg: "bg-[var(--color-warning-light)]", text: "text-[var(--color-warning-text)]", border: "border-[var(--color-border-primary)]" },
-  red:   { dot: "bg-[var(--color-error-light)]0",   bg: "bg-[var(--color-error-light)]",   text: "text-[var(--color-error)]",   border: "border-red-200" },
+  red:   { dot: "bg-[var(--color-error)]",   bg: "bg-[var(--color-error-light)]",   text: "text-[var(--color-error)]",   border: "border-red-200" },
   none:  { dot: "bg-[var(--color-border-primary)]",  bg: "bg-[var(--color-bg-secondary)]",  text: "text-[var(--color-text-tertiary)]",  border: "border-[var(--color-border-primary)]" },
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
   facebook:  "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   instagram: "bg-pink-100 text-pink-800",
-  tiktok:    "bg-[var(--color-text-primary)] text-white",
+  tiktok:    "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]",
   youtube:   "bg-[var(--color-error-light)] text-red-800",
 };
 
@@ -227,7 +227,7 @@ export default async function ExecutiveCreativesPage() {
     { key: "idea",      label: "Ideas",     color: "bg-[var(--color-border-primary)]" },
     { key: "draft",     label: "Drafts",    color: "bg-amber-400" },
     { key: "scheduled", label: "Scheduled", color: "bg-blue-400" },
-    { key: "published", label: "Published", color: "bg-[var(--color-success-light)]0" },
+    { key: "published", label: "Published", color: "bg-[var(--color-success)]" },
     { key: "backlog",   label: "Backlog",   color: "bg-purple-400" },
   ];
 
@@ -243,16 +243,16 @@ export default async function ExecutiveCreativesPage() {
           </div>
           <div className="flex items-center gap-3">
             <div className="flex-1 h-3 rounded-full bg-[var(--color-bg-tertiary)] overflow-hidden flex">
-              {kpiGreen  > 0 && <div className="bg-[var(--color-success-light)]0 h-full" style={{ flex: kpiGreen }} />}
+              {kpiGreen  > 0 && <div className="bg-[var(--color-success)] h-full" style={{ flex: kpiGreen }} />}
               {kpiAmber  > 0 && <div className="bg-amber-400 h-full" style={{ flex: kpiAmber }} />}
-              {kpiRed    > 0 && <div className="bg-[var(--color-error-light)]0   h-full" style={{ flex: kpiRed }} />}
+              {kpiRed    > 0 && <div className="bg-[var(--color-error)]   h-full" style={{ flex: kpiRed }} />}
               {kpiNoData > 0 && <div className="bg-[var(--color-border-primary)]  h-full" style={{ flex: kpiNoData }} />}
             </div>
           </div>
           <div className="flex items-center gap-4 mt-3 text-xs">
-            {kpiGreen  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0" /><span className="text-[var(--color-text-secondary)]">{kpiGreen} on target</span></span>}
+            {kpiGreen  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-success)]" /><span className="text-[var(--color-text-secondary)]">{kpiGreen} on target</span></span>}
             {kpiAmber  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-[var(--color-text-secondary)]">{kpiAmber} needs attention</span></span>}
-            {kpiRed    > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0" /><span className="text-[var(--color-text-secondary)]">{kpiRed} off target</span></span>}
+            {kpiRed    > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-error)]" /><span className="text-[var(--color-text-secondary)]">{kpiRed} off target</span></span>}
             {kpiNoData > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-border-primary)]" /><span className="text-[var(--color-text-secondary)]">{kpiNoData} no data</span></span>}
           </div>
         </div>

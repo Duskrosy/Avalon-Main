@@ -24,10 +24,10 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 const STATUS_DOT: Record<string, string> = {
-  completed: "bg-[var(--color-success-light)]0",
-  running:   "bg-[var(--color-accent-light)]0 animate-pulse",
+  completed: "bg-[var(--color-success)]",
+  running:   "bg-[var(--color-accent)] animate-pulse",
   pending:   "bg-gray-400",
-  failed:    "bg-[var(--color-error-light)]0",
+  failed:    "bg-[var(--color-error)]",
   cancelled: "bg-[var(--color-border-primary)]",
 };
 

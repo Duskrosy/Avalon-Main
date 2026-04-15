@@ -33,7 +33,7 @@ const TYPE_LABELS = {
 
 const TYPE_COLORS = {
   leave: "bg-amber-400",
-  booking: "bg-[var(--color-accent-light)]0",
+  booking: "bg-[var(--color-accent)]",
   birthday: "bg-pink-400",
   task: "bg-purple-500",
   post: "bg-gray-700",
@@ -190,7 +190,7 @@ export function CalendarView({
             onClick={() => setFilters((f) => ({ ...f, [type]: !f[type] }))}
             className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-colors ${
               filters[type]
-                ? "border-transparent bg-[var(--color-text-primary)] text-white"
+                ? "border-transparent bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                 : "border-[var(--color-border-primary)] text-[var(--color-text-tertiary)]"
             }`}
           >
@@ -237,7 +237,7 @@ export function CalendarView({
                     >
                       <div
                         className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${
-                          isToday ? "bg-[var(--color-text-primary)] text-white" : "text-[var(--color-text-secondary)]"
+                          isToday ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]" : "text-[var(--color-text-secondary)]"
                         }`}
                       >
                         {day}
@@ -394,7 +394,7 @@ export function CalendarView({
               <button
                 onClick={saveSettings}
                 disabled={saving}
-                className="w-full bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
               >
                 {saving ? "Saving…" : "Save preferences"}
               </button>

@@ -50,7 +50,7 @@ export function DateRangeBar() {
     <div className="flex items-center gap-2.5 pb-4">
       {activePreset === "today" && (
         <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse" />
           <span className="text-xs text-[var(--color-success)] font-semibold">Live</span>
         </div>
       )}
@@ -63,7 +63,7 @@ export function DateRangeBar() {
               i > 0 ? "border-l border-[var(--color-border-primary)]" : ""
             } ${
               activePreset === p.key
-                ? "bg-[var(--color-text-primary)] text-white"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >

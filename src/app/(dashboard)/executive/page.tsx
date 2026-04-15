@@ -83,10 +83,10 @@ function KpiBar({
     "green";
 
   const dot =
-    status === "red"   ? "bg-[var(--color-error-light)]0" :
+    status === "red"   ? "bg-[var(--color-error)]" :
     status === "amber" ? "bg-amber-400" :
     status === "none"  ? "bg-[var(--color-border-primary)]" :
-    "bg-[var(--color-success-light)]0";
+    "bg-[var(--color-success)]";
 
   return (
     <Link href={href} className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
@@ -99,9 +99,9 @@ function KpiBar({
         {noData > 0 && <span className="text-[var(--color-text-tertiary)]">{noData}—</span>}
       </div>
       <div className="w-24 h-1.5 rounded-full bg-[var(--color-bg-tertiary)] overflow-hidden flex gap-px shrink-0">
-        {green  > 0 && <div className="bg-[var(--color-success-light)]0 rounded-full" style={{ flex: green  }} />}
+        {green  > 0 && <div className="bg-[var(--color-success)] rounded-full" style={{ flex: green  }} />}
         {amber  > 0 && <div className="bg-amber-400 rounded-full" style={{ flex: amber  }} />}
-        {red    > 0 && <div className="bg-[var(--color-error-light)]0   rounded-full" style={{ flex: red    }} />}
+        {red    > 0 && <div className="bg-[var(--color-error)]   rounded-full" style={{ flex: red    }} />}
         {noData > 0 && <div className="bg-[var(--color-border-primary)]  rounded-full" style={{ flex: noData }} />}
       </div>
       <span className="text-xs text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-secondary)]">→</span>
@@ -331,7 +331,7 @@ export default async function ExecutiveOverviewPage({
         <Link href="/admin/observability"
           className="flex items-center justify-between bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-5 py-3 hover:bg-[var(--color-error-light)] transition-colors">
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0 animate-pulse inline-block" />
+            <span className="w-2 h-2 rounded-full bg-[var(--color-error)] animate-pulse inline-block" />
             <span className="text-sm font-semibold text-[var(--color-error)]">
               {obsAlerts} unacknowledged system {obsAlerts === 1 ? "alert" : "alerts"}
             </span>
@@ -436,7 +436,7 @@ export default async function ExecutiveOverviewPage({
               {agentRanking.map((agent, i) => {
                 const pct = (agent.pairs / maxDailyPairs) * 100;
                 const color =
-                  agent.pairs >= 8 ? "bg-[var(--color-success-light)]0" :
+                  agent.pairs >= 8 ? "bg-[var(--color-success)]" :
                   agent.pairs >= 6 ? "bg-amber-400" :
                   "bg-red-400";
                 const badge =

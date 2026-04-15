@@ -456,7 +456,7 @@ function ProfileTab({ userId, profile, allowPasswordChange, requireMfa, mustChan
             disabled={saving}
             className={cn(
               "px-5 py-2 rounded-lg text-sm font-medium transition-colors",
-              saved ? "bg-[var(--color-success)] text-white" : "bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+              saved ? "bg-[var(--color-success)] text-[var(--color-text-inverted)]" : "bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             )}
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}

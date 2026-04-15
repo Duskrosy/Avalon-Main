@@ -453,7 +453,7 @@ function CreditsModal({
                             className={cn(
                               "text-xs px-3 py-1.5 rounded-lg font-medium transition-colors",
                               isBalanceDirty
-                                ? "bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)]"
+                                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)]"
                                 : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed"
                             )}
                           >
@@ -521,7 +521,7 @@ function CreditsModal({
                           className={cn(
                             "text-xs px-3 py-1.5 rounded-lg font-medium transition-colors",
                             isDirty
-                              ? "bg-[var(--color-text-primary)] text-white hover:bg-[var(--color-text-secondary)]"
+                              ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)]"
                               : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed"
                           )}
                         >
@@ -595,7 +595,7 @@ function DocRequestModal({
           <button
             onClick={handleSend}
             disabled={sending}
-            className="flex-1 bg-[var(--color-text-primary)] text-white py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+            className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
           >
             {sending ? "Sending…" : "Send request"}
           </button>

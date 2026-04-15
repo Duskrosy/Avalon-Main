@@ -75,7 +75,7 @@ export function FeedbackButton({ pageUrl = "/" }: { pageUrl?: string }) {
                 <button
                   type="submit"
                   disabled={sending || !text.trim()}
-                  className="text-xs bg-[var(--color-text-primary)] text-white px-3 py-1 rounded-md hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="text-xs bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] px-3 py-1 rounded-md hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {sending ? "Sending..." : "Send"}
                 </button>

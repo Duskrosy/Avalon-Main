@@ -70,12 +70,12 @@ const EVENT_LABEL: Record<EventType, string> = {
 };
 
 const EVENT_DOT_COLOR: Record<EventType, string> = {
-  picked_up: "bg-[var(--color-accent-light)]0",
+  picked_up: "bg-[var(--color-accent)]",
   in_transit: "bg-indigo-500",
-  out_for_delivery: "bg-[var(--color-warning-light)]0",
-  delivered: "bg-[var(--color-success-light)]0",
-  failed_attempt: "bg-[var(--color-error-light)]0",
-  returned_to_sender: "bg-[var(--color-error-light)]0",
+  out_for_delivery: "bg-amber-400",
+  delivered: "bg-[var(--color-success)]",
+  failed_attempt: "bg-[var(--color-error)]",
+  returned_to_sender: "bg-[var(--color-error)]",
   rts_received: "bg-purple-500",
   redelivery_scheduled: "bg-yellow-500",
   other: "bg-gray-400",
@@ -280,19 +280,19 @@ export function CourierView({ initialShipments }: Props) {
           label="Out for Delivery"
           count={outForDeliveryCount}
           color="bg-[var(--color-warning-light)] text-[var(--color-warning-text)]"
-          dotColor="bg-[var(--color-warning-light)]0"
+          dotColor="bg-amber-400"
         />
         <SummaryCard
           label="Delivered Today"
           count={deliveredTodayCount}
           color="bg-[var(--color-success-light)] text-[var(--color-success)]"
-          dotColor="bg-[var(--color-success-light)]0"
+          dotColor="bg-[var(--color-success)]"
         />
         <SummaryCard
           label="Failed / RTS"
           count={failedRtsCount}
           color="bg-[var(--color-error-light)] text-[var(--color-error)]"
-          dotColor="bg-[var(--color-error-light)]0"
+          dotColor="bg-[var(--color-error)]"
         />
       </div>
 
@@ -396,7 +396,7 @@ export function CourierView({ initialShipments }: Props) {
                         e.stopPropagation();
                         openAddEvent(s.id);
                       }}
-                      className="text-xs bg-[var(--color-text-primary)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+                      className="text-xs bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
                     >
                       + Event
                     </button>
@@ -588,7 +588,7 @@ export function CourierView({ initialShipments }: Props) {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Add Event"}
                 </button>

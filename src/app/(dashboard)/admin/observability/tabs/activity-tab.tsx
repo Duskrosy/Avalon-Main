@@ -49,16 +49,16 @@ type TypeFilter = "all" | "events" | "audit";
 // ── Style maps ────────────────────────────────────────────────────────────────
 
 const CATEGORY_DOT: Record<string, string> = {
-  product: "bg-[var(--color-accent-light)]0",
+  product: "bg-[var(--color-accent)]",
   audit: "bg-gray-400",
-  error: "bg-[var(--color-error-light)]0",
+  error: "bg-[var(--color-error)]",
   performance: "bg-purple-500",
 };
 
 const ACTION_DOT: Record<string, string> = {
-  INSERT: "bg-[var(--color-success-light)]0",
-  UPDATE: "bg-[var(--color-accent-light)]0",
-  DELETE: "bg-[var(--color-error-light)]0",
+  INSERT: "bg-[var(--color-success)]",
+  UPDATE: "bg-[var(--color-accent)]",
+  DELETE: "bg-[var(--color-error)]",
 };
 
 const DAYS_OPTIONS = [7, 14, 30] as const;
@@ -204,7 +204,7 @@ export function ActivityTab() {
               onClick={() => setDays(d)}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 days === d
-                  ? "bg-[var(--color-text-primary)] text-white"
+                  ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                   : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
@@ -235,7 +235,7 @@ export function ActivityTab() {
               onClick={() => setTypeFilter(t)}
               className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                 typeFilter === t
-                  ? "bg-[var(--color-text-primary)] text-white"
+                  ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                   : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >

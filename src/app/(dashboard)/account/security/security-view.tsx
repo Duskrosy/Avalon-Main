@@ -181,7 +181,7 @@ export function SecurityView() {
         <button
           onClick={startEnroll}
           disabled={enrolling}
-          className="w-full py-2.5 px-4 bg-[var(--color-text-primary)] text-white text-sm font-medium rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+          className="w-full py-2.5 px-4 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm font-medium rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
         >
           {enrolling ? "Setting up..." : "Add authenticator app"}
         </button>
@@ -252,7 +252,7 @@ export function SecurityView() {
               <button
                 onClick={confirmEnroll}
                 disabled={verifyCode.length !== 6 || verifying}
-                className="flex-1 py-2.5 px-4 bg-[var(--color-text-primary)] text-white text-sm font-medium rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-40 transition-colors"
+                className="flex-1 py-2.5 px-4 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm font-medium rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-40 transition-colors"
               >
                 {verifying ? "Verifying..." : "Activate"}
               </button>

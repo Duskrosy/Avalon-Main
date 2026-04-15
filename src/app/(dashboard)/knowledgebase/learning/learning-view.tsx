@@ -319,7 +319,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
+            className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + Add Material
           </button>
@@ -330,7 +330,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
       {materials.length > 0 && (
         <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden mb-6">
           <div
-            className="h-full bg-[var(--color-success-light)]0 rounded-full transition-all"
+            className="h-full bg-[var(--color-success)] rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -643,7 +643,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {creating ? "Uploading..." : "Upload"}
                 </button>

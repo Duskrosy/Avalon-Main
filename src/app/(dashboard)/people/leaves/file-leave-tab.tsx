@@ -330,13 +330,13 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
                       className={cn(
                         "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
                         active
-                          ? "border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-white"
+                          ? "border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                           : "border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)] text-[var(--color-text-secondary)]"
                       )}
                     >
                       <span className="text-base mb-1">{cfg.icon}</span>
                       <span className="text-sm font-semibold leading-tight">{cfg.label}</span>
-                      <span className={cn("text-xs mt-0.5", active ? "text-white/70" : "text-[var(--color-text-muted)]")}>
+                      <span className={cn("text-xs mt-0.5", active ? "text-[var(--color-text-inverted)]/70" : "text-[var(--color-text-muted)]")}>
                         {cfg.description}
                       </span>
                     </button>
@@ -407,7 +407,7 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[var(--color-text-primary)] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+              className="w-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
             >
               {submitting ? "Submitting…" : "Submit leave request"}
             </button>

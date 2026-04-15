@@ -147,7 +147,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
                 onClick={() => setTab("new")}
                 className={`text-xs px-3 py-1.5 rounded-[var(--radius-md)] font-medium transition-colors ${
                   tab === "new"
-                    ? "bg-[var(--color-text-primary)] text-white"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                     : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
                 }`}
               >
@@ -157,7 +157,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
                 onClick={() => setTab("unread")}
                 className={`text-xs px-3 py-1.5 rounded-[var(--radius-md)] font-medium transition-colors ${
                   tab === "unread"
-                    ? "bg-[var(--color-text-primary)] text-white"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                     : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
                 }`}
               >

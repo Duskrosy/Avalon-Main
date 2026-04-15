@@ -239,7 +239,7 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
         <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Manage Groups & Platforms</h2>
         <button
           onClick={() => setShowNewGroup(true)}
-          className="ml-auto text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)]"
+          className="ml-auto text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)]"
         >
           + New Group
         </button>
@@ -283,7 +283,7 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
             <button
               onClick={createGroup}
               disabled={creating}
-              className="text-sm px-3 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+              className="text-sm px-3 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             >
               {creating ? "Creating…" : "Create"}
             </button>
@@ -363,7 +363,7 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                     <button
                       onClick={() => togglePlatform(group.id, platform)}
                       className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
-                        isActive ? "bg-[var(--color-text-primary)] text-white" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border-primary)]"
+                        isActive ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-border-primary)]"
                       }`}
                     >
                       {isActive ? "Active" : "Enable"}
@@ -472,7 +472,7 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
               </button>
               <button
                 onClick={savePlatform}
-                className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
+                className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)]"
               >
                 Save
               </button>

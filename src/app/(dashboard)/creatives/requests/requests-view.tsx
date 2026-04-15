@@ -35,7 +35,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 // Transitions available from the fulfillment side
 const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; style: string }[]> = {
-  submitted:   [{ label: "Accept →  In Progress", next: "in_progress", style: "bg-[var(--color-warning-light)]0 text-white hover:bg-amber-600" }],
+  submitted:   [{ label: "Accept →  In Progress", next: "in_progress", style: "bg-amber-400 text-white hover:bg-amber-600" }],
   in_progress: [{ label: "Send for Review", next: "review", style: "bg-purple-600 text-white hover:bg-purple-700" }],
   review:      [
     { label: "Mark Approved", next: "approved",    style: "bg-[var(--color-success)] text-white hover:bg-green-700" },
@@ -115,7 +115,7 @@ export function CreativesRequestsView({ members, currentUserId, canManage }: Pro
             onClick={() => setStatusFilter(f.value)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               statusFilter === f.value
-                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >

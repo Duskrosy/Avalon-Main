@@ -125,9 +125,9 @@ function KpiHealthBar({
         ))}
       </div>
       <div className="h-2 rounded-full overflow-hidden flex gap-0.5">
-        {status.green  > 0 && <div className="bg-[var(--color-success-light)]0 rounded-full" style={{ flex: status.green  }} />}
+        {status.green  > 0 && <div className="bg-[var(--color-success)] rounded-full" style={{ flex: status.green  }} />}
         {status.amber  > 0 && <div className="bg-amber-400 rounded-full" style={{ flex: status.amber  }} />}
-        {status.red    > 0 && <div className="bg-[var(--color-error-light)]0   rounded-full" style={{ flex: status.red    }} />}
+        {status.red    > 0 && <div className="bg-[var(--color-error)]   rounded-full" style={{ flex: status.red    }} />}
         {status.noData > 0 && <div className="bg-[var(--color-border-primary)]  rounded-full" style={{ flex: status.noData }} />}
       </div>
     </Link>
@@ -436,7 +436,7 @@ export default async function DashboardPage() {
                 ? goalRag(g.deadline, g.deadline_green_days, g.deadline_amber_days)
                 : "green";
               const barColor =
-                color === "green" ? "bg-[var(--color-success-light)]0" : color === "amber" ? "bg-amber-400" : "bg-[var(--color-error-light)]0";
+                color === "green" ? "bg-[var(--color-success)]" : color === "amber" ? "bg-amber-400" : "bg-[var(--color-error)]";
               const badgeColor =
                 color === "green"
                   ? "bg-[var(--color-success-light)] text-[var(--color-success)]"
@@ -475,7 +475,7 @@ export default async function DashboardPage() {
           className="flex items-center justify-between bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-5 py-3 hover:bg-[var(--color-error-light)] transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0 animate-pulse" />
+            <div className="w-2 h-2 rounded-full bg-[var(--color-error)] animate-pulse" />
             <span className="text-sm font-medium text-[var(--color-error)]">
               {obsAlertCount} unacknowledged {obsAlertCount === 1 ? "alert" : "alerts"} in Observability
             </span>

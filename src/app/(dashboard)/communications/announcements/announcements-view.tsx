@@ -187,7 +187,7 @@ export function AnnouncementsView({
         {canPost && (
           <button
             onClick={() => setShowForm(true)}
-            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors flex items-center gap-1.5"
+            className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors flex items-center gap-1.5"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M7 1v12M1 7h12"/></svg>
             New Announcement
@@ -220,7 +220,7 @@ export function AnnouncementsView({
                 <div className="p-4 cursor-pointer" onClick={() => toggle(a.id)}>
                   <div className="flex items-start gap-3">
                     {/* Author Avatar */}
-                    <div className="w-9 h-9 rounded-full bg-[var(--color-text-primary)] text-white flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
+                    <div className="w-9 h-9 rounded-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
                       {a.created_by_profile
                         ? getInitials(a.created_by_profile.first_name, a.created_by_profile.last_name)
                         : "?"}
@@ -602,7 +602,7 @@ export function AnnouncementsView({
                 <button
                   type="submit"
                   disabled={posting}
-                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {posting ? "Posting..." : "Post Announcement"}
                 </button>

@@ -42,7 +42,7 @@ export function UsageTab() {
             onClick={() => setDays(d)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               days === d
-                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >

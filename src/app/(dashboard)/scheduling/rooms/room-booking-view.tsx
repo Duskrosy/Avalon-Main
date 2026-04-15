@@ -43,10 +43,10 @@ type Props = {
 };
 
 const ROOM_COLORS = [
-  { bg: "bg-[var(--color-accent-light)]", border: "border-[var(--color-accent)]", text: "text-[var(--color-accent)]", fill: "bg-[var(--color-accent-light)]0", light: "bg-[var(--color-accent-light)]", accent: "bg-[var(--color-accent)]" },
+  { bg: "bg-[var(--color-accent-light)]", border: "border-[var(--color-accent)]", text: "text-[var(--color-accent)]", fill: "bg-[var(--color-accent)]", light: "bg-[var(--color-accent-light)]", accent: "bg-[var(--color-accent)]" },
   { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", fill: "bg-violet-500", light: "bg-violet-100", accent: "bg-violet-600" },
   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", fill: "bg-emerald-500", light: "bg-emerald-100", accent: "bg-emerald-600" },
-  { bg: "bg-[var(--color-warning-light)]", border: "border-[var(--color-border-primary)]", text: "text-[var(--color-warning-text)]", fill: "bg-[var(--color-warning-light)]0", light: "bg-[var(--color-warning-light)]", accent: "bg-amber-600" },
+  { bg: "bg-[var(--color-warning-light)]", border: "border-[var(--color-border-primary)]", text: "text-[var(--color-warning-text)]", fill: "bg-amber-400", light: "bg-[var(--color-warning-light)]", accent: "bg-amber-600" },
   { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-700", fill: "bg-rose-500", light: "bg-rose-100", accent: "bg-rose-600" },
   { bg: "bg-cyan-50", border: "border-cyan-200", text: "text-cyan-700", fill: "bg-cyan-500", light: "bg-cyan-100", accent: "bg-cyan-600" },
 ];
@@ -509,7 +509,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                     onClick={() => handleDateChange(d)}
                     disabled={isPast}
                     className={`w-9 h-9 rounded-[var(--radius-lg)] text-sm font-medium transition-all flex items-center justify-center ${
-                      isSelected ? "bg-[var(--color-text-primary)] text-white shadow-[var(--shadow-sm)]" : isToday ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]" : isPast ? "text-[var(--color-text-tertiary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-active)]"
+                      isSelected ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] shadow-[var(--shadow-sm)]" : isToday ? "bg-[var(--color-accent-light)] text-[var(--color-accent)]" : isPast ? "text-[var(--color-text-tertiary)]" : "text-[var(--color-text-primary)] hover:bg-[var(--color-surface-active)]"
                     }`}
                   >
                     {format(d, "d")}

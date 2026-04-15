@@ -174,7 +174,7 @@ export default async function ExecutiveSalesPage() {
           {dailyTotals.map((day) => {
             const heightPct = (day.total / maxDayTotal) * 100;
             const isToday = day.date === today;
-            const color = day.total >= 40 ? "bg-[var(--color-success-light)]0" : day.total >= 25 ? "bg-amber-400" : day.total === 0 ? "bg-[var(--color-border-primary)]" : "bg-red-400";
+            const color = day.total >= 40 ? "bg-[var(--color-success)]" : day.total >= 25 ? "bg-amber-400" : day.total === 0 ? "bg-[var(--color-border-primary)]" : "bg-red-400";
             return (
               <div key={day.date} className="flex-1 flex flex-col items-center gap-1.5">
                 <span className="text-xs font-bold text-[var(--color-text-primary)]">{day.total > 0 ? day.total : ""}</span>
@@ -206,7 +206,7 @@ export default async function ExecutiveSalesPage() {
             {agentRanking.map((agent, i) => {
               const pct = (agent.pairs / maxAgentPairs) * 100;
               const dailyAvg = agent.days > 0 ? (agent.pairs / agent.days).toFixed(1) : "—";
-              const color = agent.pairs >= 40 ? "bg-[var(--color-success-light)]0" : agent.pairs >= 25 ? "bg-amber-400" : "bg-red-400";
+              const color = agent.pairs >= 40 ? "bg-[var(--color-success)]" : agent.pairs >= 25 ? "bg-amber-400" : "bg-red-400";
               const badge = agent.pairs >= 40 ? "bg-[var(--color-success-light)] text-[var(--color-success)]" : agent.pairs >= 25 ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]" : "bg-[var(--color-error-light)] text-[var(--color-error)]";
               return (
                 <div key={agent.name} className="space-y-1.5">

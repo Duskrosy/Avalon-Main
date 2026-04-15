@@ -37,7 +37,7 @@ type TopPost = {
 const PLATFORM_COLORS: Record<string, string> = {
   facebook:  "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   instagram: "bg-pink-100 text-pink-800",
-  tiktok:    "bg-[var(--color-text-primary)] text-white",
+  tiktok:    "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]",
   youtube:   "bg-[var(--color-error-light)] text-red-800",
 };
 
@@ -177,7 +177,7 @@ function PostModal({
               caption: form.caption || null,
               scheduled_at: form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null,
             })}
-            className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] ml-auto"
+            className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)] ml-auto"
           >
             {initial ? "Save changes" : "Create post"}
           </button>
@@ -385,7 +385,7 @@ export function ContentManager({
             onClick={() => setViewMode("planned")}
             className={`text-sm px-4 py-2 transition-colors ${
               viewMode === "planned"
-                ? "bg-[var(--color-text-primary)] text-white"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
@@ -395,7 +395,7 @@ export function ContentManager({
             onClick={() => setViewMode("published")}
             className={`text-sm px-4 py-2 transition-colors border-l border-[var(--color-border-primary)] ${
               viewMode === "published"
-                ? "bg-[var(--color-text-primary)] text-white"
+                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
@@ -430,7 +430,7 @@ export function ContentManager({
           {viewMode === "planned" && (
             <button
               onClick={() => setModal("new")}
-              className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)]"
+              className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)]"
             >
               + New Post
             </button>
@@ -471,7 +471,7 @@ export function ContentManager({
                 onClick={() => setActivePlatform("all")}
                 className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                   activePlatform === "all"
-                    ? "bg-[var(--color-text-primary)] text-white border-transparent"
+                    ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-transparent"
                     : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
@@ -483,7 +483,7 @@ export function ContentManager({
                   onClick={() => setActivePlatform(p.platform)}
                   className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
                     activePlatform === p.platform
-                      ? "bg-[var(--color-text-primary)] text-white border-transparent"
+                      ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-transparent"
                       : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                   }`}
                 >
@@ -505,7 +505,7 @@ export function ContentManager({
                     onClick={() => setActiveStatus(s)}
                     className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                       activeStatus === s
-                        ? "bg-[var(--color-text-primary)] text-white border-transparent"
+                        ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-transparent"
                         : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                     }`}
                   >
@@ -690,7 +690,7 @@ export function ContentManager({
         />
       )}
       {saving && (
-        <div className="fixed bottom-4 right-4 bg-[var(--color-text-primary)] text-white text-xs px-4 py-2 rounded-lg">
+        <div className="fixed bottom-4 right-4 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-xs px-4 py-2 rounded-lg">
           Saving…
         </div>
       )}

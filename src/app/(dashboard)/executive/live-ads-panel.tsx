@@ -97,7 +97,7 @@ export function LiveAdsPanel() {
             <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Ad Operations</h2>
             {!loading && (
               <span className="flex items-center gap-1 text-[10px] font-medium text-[var(--color-success)] bg-[var(--color-success-light)] px-1.5 py-0.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success-light)]0 animate-pulse inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-success)] animate-pulse inline-block" />
                 Live
               </span>
             )}
@@ -170,7 +170,7 @@ export function LiveAdsPanel() {
                 <div key={c.id} className="px-5 py-3 flex items-center gap-3">
                   {/* Status indicator */}
                   <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    autoPaused ? "bg-amber-400" : isActive ? "bg-[var(--color-success-light)]0" : "bg-[var(--color-border-primary)]"
+                    autoPaused ? "bg-amber-400" : isActive ? "bg-[var(--color-success)]" : "bg-[var(--color-border-primary)]"
                   }`} />
 
                   {/* Name + account */}
