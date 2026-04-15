@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { CREATIVE_GROUPS } from "@/lib/creatives/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,8 +38,10 @@ type Props = {
   pendingTasksCount: number;
   requestsInReview: number;
   adsApprovedCount: number;
-  weekStart: string; // YYYY-MM-DD (Monday)
+  weekStart: string;
   weeklyPostsByDay: DayData[];
+  groupCounts: Record<string, number>;
+  statusCounts: Record<string, number>;
 };
 
 // ── Avatar palette ────────────────────────────────────────────────────────────
@@ -242,8 +245,15 @@ export function CreativesDashboard({
   requestsInReview,
   weekStart,
   weeklyPostsByDay,
+  adsApprovedCount,
+  groupCounts,
+  statusCounts,
 }: Props) {
   const [campaign, setCampaign] = useState<Campaign | null>(initialCampaign);
+  const [editing, setEditing] = useState(false);
+  const [editOrganic, setEditOrganic] = useState(weeklyOrganicTarget);
+  const [editAds, setEditAds] = useState(weeklyAdsTarget);
+  const [editSaving, setEditSaving] = useState(false);
 
   const organicStatus = contentStatus(organicCount, weeklyOrganicTarget);
   const adsStatus = contentStatus(adsCount, weeklyAdsTarget);
@@ -263,69 +273,137 @@ export function CreativesDashboard({
         {/* Card header */}
         <div className="flex items-center justify-between mb-5">
           <span className="text-base font-semibold text-[var(--color-text-primary)]">
-            Andromeda Creatives
+            {campaign?.campaign_name ?? "Creatives"}
           </span>
           {campaign && (
             <span className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-xs font-medium px-3 py-1 rounded-full">
               {campaign.campaign_name}
             </span>
           )}
+          {campaign && canManage && (
+            <button
+              onClick={() => setEditing(true)}
+              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors"
+            >
+              Edit targets
+            </button>
+          )}
         </div>
 
         {campaign ? (
           <>
-            {/* Two progress sections */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Organic Content */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
-                  Organic Content
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-[var(--color-text-primary)]">
-                    {organicCount}
-                  </span>
-                  <span className="text-sm text-[var(--color-text-tertiary)]">
-                    / {weeklyOrganicTarget}
-                  </span>
+            {editing ? (
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-[var(--color-text-secondary)] font-medium">Organic target</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={editOrganic}
+                      onChange={(e) => setEditOrganic(Number(e.target.value))}
+                      className="mt-1 w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-[var(--color-text-secondary)] font-medium">Ads target</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={editAds}
+                      onChange={(e) => setEditAds(Number(e.target.value))}
+                      className="mt-1 w-full border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                    />
+                  </div>
                 </div>
-                <ProgressBar
-                  value={organicCount}
-                  max={weeklyOrganicTarget}
-                  color="bg-emerald-500"
-                />
-                <p className={`text-xs font-medium ${organicStatus.color}`}>
-                  {organicStatus.label}
-                </p>
-              </div>
-
-              {/* Ad Creatives */}
-              <div className="space-y-3">
-                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
-                  Ad Creatives
-                </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold text-[var(--color-text-primary)]">
-                    {adsCount}
-                  </span>
-                  <span className="text-sm text-[var(--color-text-tertiary)]">
-                    / {weeklyAdsTarget}
-                  </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      setEditSaving(true);
+                      await fetch("/api/creatives/campaigns", {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          id: campaign!.id,
+                          organic_target: editOrganic,
+                          ads_target: editAds,
+                        }),
+                      });
+                      setCampaign({ ...campaign!, organic_target: editOrganic, ads_target: editAds });
+                      setEditing(false);
+                      setEditSaving(false);
+                    }}
+                    disabled={editSaving}
+                    className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
+                  >
+                    {editSaving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={() => { setEditing(false); setEditOrganic(weeklyOrganicTarget); setEditAds(weeklyAdsTarget); }}
+                    className="text-sm px-3 py-2 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                  >
+                    Cancel
+                  </button>
                 </div>
-                <ProgressBar
-                  value={adsCount}
-                  max={weeklyAdsTarget}
-                  color="bg-indigo-500"
-                />
-                <p className={`text-xs font-medium ${adsStatus.color}`}>
-                  {adsStatus.label}
-                </p>
-                <p className="text-xs text-[var(--color-text-tertiary)]">from SMM post tracker</p>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Two progress sections */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  {/* Organic Content */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+                      Organic Content
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-[var(--color-text-primary)]">
+                        {organicCount}
+                      </span>
+                      <span className="text-sm text-[var(--color-text-tertiary)]">
+                        / {weeklyOrganicTarget}
+                      </span>
+                    </div>
+                    <ProgressBar
+                      value={organicCount}
+                      max={weeklyOrganicTarget}
+                      color="bg-emerald-500"
+                    />
+                    <p className={`text-xs font-medium ${organicStatus.color}`}>
+                      {organicStatus.label}
+                    </p>
+                  </div>
 
-            {/* Divider */}
-            <div className="border-t border-[var(--color-border-secondary)] mb-5" />
+                  {/* Ad Creatives */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide">
+                      Ad Creatives
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-4xl font-bold text-[var(--color-text-primary)]">
+                        {adsCount}
+                      </span>
+                      <span className="text-sm text-[var(--color-text-tertiary)]">
+                        / {weeklyAdsTarget}
+                      </span>
+                    </div>
+                    <ProgressBar
+                      value={adsCount}
+                      max={weeklyAdsTarget}
+                      color="bg-indigo-500"
+                    />
+                    <p className={`text-xs font-medium ${adsStatus.color}`}>
+                      {adsStatus.label}
+                    </p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">from SMM post tracker</p>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-[var(--color-border-secondary)] mb-5" />
+              </>
+            )}
 
             {/* Mini bar chart — daily post breakdown */}
             <div>
@@ -402,7 +480,7 @@ export function CreativesDashboard({
       </div>
 
       {/* ── Stats row ──────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Pending Tasks */}
         <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
@@ -481,6 +559,68 @@ export function CreativesDashboard({
           </div>
           <p className="text-3xl font-bold text-[var(--color-text-primary)]">{requestsInReview}</p>
           <p className="text-xs text-[var(--color-text-tertiary)] mt-1">awaiting review</p>
+        </div>
+
+        {/* Ads Approved */}
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-[var(--color-text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">
+              Ads Approved
+            </p>
+          </div>
+          <p className="text-3xl font-bold text-[var(--color-text-primary)]">{adsApprovedCount}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">this week</p>
+        </div>
+      </div>
+
+      {/* Content by Group */}
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-6">
+        <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-4">
+          Content by Group — This Week
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {CREATIVE_GROUPS.map((g) => {
+            const count = groupCounts[g.slug] ?? 0;
+            return (
+              <div key={g.slug} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-[var(--color-text-primary)]">{g.label}</span>
+                  <span className="text-sm font-bold text-[var(--color-text-primary)]">{count}</span>
+                </div>
+                <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+                    style={{ width: `${Math.min((count / Math.max(weeklyOrganicTarget / 3, 1)) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Pipeline Status */}
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-6">
+        <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-4">
+          Pipeline Status — This Week
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {[
+            { key: "idea", label: "Ideas", color: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]" },
+            { key: "in_production", label: "In Production", color: "bg-[var(--color-accent-light)] text-[var(--color-accent)]" },
+            { key: "submitted", label: "Submitted", color: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]" },
+            { key: "approved", label: "Approved", color: "bg-[var(--color-success-light)] text-[var(--color-success)]" },
+            { key: "scheduled", label: "Scheduled", color: "bg-purple-100 text-purple-700" },
+            { key: "published", label: "Published", color: "bg-emerald-100 text-emerald-700" },
+          ].map((s) => (
+            <div key={s.key} className={`rounded-xl px-4 py-3 text-center min-w-[100px] ${s.color}`}>
+              <p className="text-2xl font-bold">{statusCounts[s.key] ?? 0}</p>
+              <p className="text-xs font-medium mt-0.5">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
