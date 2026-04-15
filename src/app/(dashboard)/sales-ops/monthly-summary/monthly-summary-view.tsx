@@ -27,18 +27,18 @@ type Payout = {
 };
 
 const BRACKET_STYLES: Record<string, string> = {
-  "Bronze":   "bg-amber-50 text-amber-700",
-  "Silver":   "bg-gray-100 text-gray-600",
+  "Bronze":   "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  "Silver":   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
   "Gold":     "bg-yellow-50 text-yellow-700",
-  "Platinum": "bg-blue-50 text-blue-700",
-  "None":     "bg-gray-50 text-gray-400",
+  "Platinum": "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  "None":     "bg-[var(--color-bg-secondary)] text-[var(--color-text-tertiary)]",
 };
 
 const PAYOUT_STATUS_STYLES: Record<string, string> = {
-  draft:    "bg-gray-100 text-gray-500",
-  approved: "bg-blue-50 text-blue-600",
-  paid:     "bg-green-50 text-green-700",
-  disputed: "bg-red-50 text-red-500",
+  draft:    "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  approved: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  paid:     "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  disputed: "bg-[var(--color-error-light)] text-[var(--color-error)]",
 };
 
 function getDefaultMonth(): string {
@@ -114,53 +114,53 @@ export function MonthlySummaryView({ agents }: { agents: Agent[] }) {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Monthly Summary</h1>
-          <p className="text-sm text-gray-500 mt-1">{displayMonth} · {fpsResults.length} agents</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Monthly Summary</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{displayMonth} · {fpsResults.length} agents</p>
         </div>
         <input
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
       </div>
 
       {/* Aggregate summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Team CR</p>
-          <p className="text-2xl font-bold text-gray-900">{totalCr.toLocaleString()}</p>
-          <p className="text-xs text-gray-400 mt-1">confirmed regular</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Team CR</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{totalCr.toLocaleString()}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">confirmed regular</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Gates Passed</p>
-          <p className="text-2xl font-bold text-gray-900">{gatesPassed}</p>
-          <p className="text-xs text-gray-400 mt-1">of {fpsResults.length} agents</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Gates Passed</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{gatesPassed}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">of {fpsResults.length} agents</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Avg Monthly FPS</p>
-          <p className="text-2xl font-bold text-gray-900">{avgMonthlyFps > 0 ? avgMonthlyFps.toFixed(1) : "—"}</p>
-          <p className="text-xs text-gray-400 mt-1">team average</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Avg Monthly FPS</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{avgMonthlyFps > 0 ? avgMonthlyFps.toFixed(1) : "—"}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">team average</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <p className="text-xs text-gray-500 mb-1">Total Payouts</p>
-          <p className="text-2xl font-bold text-gray-900">{fmtCurrency(totalPayouts)}</p>
-          <p className="text-xs text-gray-400 mt-1">{paidPayouts} paid of {payouts.length}</p>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <p className="text-xs text-[var(--color-text-secondary)] mb-1">Total Payouts</p>
+          <p className="text-2xl font-bold text-[var(--color-text-primary)]">{fmtCurrency(totalPayouts)}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{paidPayouts} paid of {payouts.length}</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : allRows.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No data for {displayMonth}.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No data for {displayMonth}.</p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs text-gray-400 border-b border-gray-100 bg-gray-50">
+                <tr className="text-xs text-[var(--color-text-tertiary)] border-b border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]">
                   <th className="px-4 py-3 text-left font-medium">Agent</th>
                   <th className="px-4 py-3 text-right font-medium">CR</th>
                   <th className="px-4 py-3 text-center font-medium">Gate</th>
@@ -179,62 +179,62 @@ export function MonthlySummaryView({ agents }: { agents: Agent[] }) {
                 {allRows.map(({ fps, payout }) => {
                   const id = fps?.agent_id ?? payout?.agent_id ?? "";
                   return (
-                    <tr key={id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">
+                    <tr key={id} className="hover:bg-[var(--color-surface-hover)]">
+                      <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">
                         {agentName(agents, id)}
                       </td>
 
                       {/* FPS columns */}
-                      <td className="px-4 py-3 text-right text-gray-700">
-                        {fps ? fps.mtd_confirmed_regular : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">
+                        {fps ? fps.mtd_confirmed_regular : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {fps ? (
                           fps.gate_passed ? (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">PASS</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-success-light)] text-[var(--color-success)] font-medium">PASS</span>
                           ) : (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-medium">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-[var(--color-error-light)] text-[var(--color-error)] font-medium">
                               FAIL {fps.gate_remaining > 0 ? `(−${fps.gate_remaining})` : ""}
                             </span>
                           )
-                        ) : <span className="text-gray-300">—</span>}
+                        ) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {fps ? fps.avg_fps.toFixed(1) : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
+                        {fps ? fps.avg_fps.toFixed(1) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {fps ? (fps.consistency_score > 0 ? `+${fps.consistency_score}` : "0") : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
+                        {fps ? (fps.consistency_score > 0 ? `+${fps.consistency_score}` : "0") : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        {fps ? fps.monthly_fps.toFixed(1) : <span className="text-gray-300 font-normal">—</span>}
+                      <td className="px-4 py-3 text-right font-semibold text-[var(--color-text-primary)]">
+                        {fps ? fps.monthly_fps.toFixed(1) : <span className="text-[var(--color-text-tertiary)] font-normal">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {fps ? (
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${BRACKET_STYLES[fps.bracket] ?? "bg-gray-50 text-gray-400"}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${BRACKET_STYLES[fps.bracket] ?? "bg-[var(--color-bg-secondary)] text-[var(--color-text-tertiary)]"}`}>
                             {fps.bracket}
                           </span>
-                        ) : <span className="text-gray-300">—</span>}
+                        ) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
 
                       {/* Payout columns */}
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {payout ? fmtCurrency(payout.main_payout) : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
+                        {payout ? fmtCurrency(payout.main_payout) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {payout ? fmtCurrency(payout.abandoned_payout) : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
+                        {payout ? fmtCurrency(payout.abandoned_payout) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-600">
-                        {payout ? fmtCurrency(payout.onhand_payout) : <span className="text-gray-300">—</span>}
+                      <td className="px-4 py-3 text-right text-[var(--color-text-secondary)]">
+                        {payout ? fmtCurrency(payout.onhand_payout) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
-                        {payout ? fmtCurrency(payout.total_payout) : <span className="text-gray-300 font-normal">—</span>}
+                      <td className="px-4 py-3 text-right font-semibold text-[var(--color-text-primary)]">
+                        {payout ? fmtCurrency(payout.total_payout) : <span className="text-[var(--color-text-tertiary)] font-normal">—</span>}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {payout ? (
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PAYOUT_STATUS_STYLES[payout.status] ?? ""}`}>
                             {payout.status}
                           </span>
-                        ) : <span className="text-gray-300">—</span>}
+                        ) : <span className="text-[var(--color-text-tertiary)]">—</span>}
                       </td>
                     </tr>
                   );
@@ -242,13 +242,13 @@ export function MonthlySummaryView({ agents }: { agents: Agent[] }) {
               </tbody>
               {allRows.length > 1 && (
                 <tfoot>
-                  <tr className="border-t border-gray-200 bg-gray-50 font-semibold text-gray-700 text-sm">
+                  <tr className="border-t border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] font-semibold text-[var(--color-text-primary)] text-sm">
                     <td className="px-4 py-3">Total</td>
                     <td className="px-4 py-3 text-right">{totalCr.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-center text-xs text-gray-500">
+                    <td className="px-4 py-3 text-center text-xs text-[var(--color-text-secondary)]">
                       {gatesPassed}/{fpsResults.length} passed
                     </td>
-                    <td className="px-4 py-3 text-right text-gray-500 font-normal">
+                    <td className="px-4 py-3 text-right text-[var(--color-text-secondary)] font-normal">
                       {avgMonthlyFps > 0 ? avgMonthlyFps.toFixed(1) : "—"}
                     </td>
                     <td className="px-4 py-3" />
@@ -264,7 +264,7 @@ export function MonthlySummaryView({ agents }: { agents: Agent[] }) {
                       {fmtCurrency(payouts.reduce((s, p) => s + (p.onhand_payout ?? 0), 0))}
                     </td>
                     <td className="px-4 py-3 text-right">{fmtCurrency(totalPayouts)}</td>
-                    <td className="px-4 py-3 text-center text-xs text-gray-500">
+                    <td className="px-4 py-3 text-center text-xs text-[var(--color-text-secondary)]">
                       {paidPayouts}/{payouts.length} paid
                     </td>
                   </tr>

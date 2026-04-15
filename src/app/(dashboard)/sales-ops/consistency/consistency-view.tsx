@@ -40,7 +40,7 @@ function RangeHitPicker({
           className={`w-8 h-8 rounded-lg text-sm font-semibold transition-all border ${
             value === n
               ? "bg-[#3A5635] text-white border-[#3A5635]"
-              : "bg-white text-gray-400 border-gray-200 hover:border-gray-400"
+              : "bg-[var(--color-bg-primary)] text-[var(--color-text-tertiary)] border-[var(--color-border-primary)] hover:border-gray-400"
           } ${disabled ? "opacity-50 cursor-default" : "cursor-pointer"}`}
         >
           {n}
@@ -51,10 +51,10 @@ function RangeHitPicker({
 }
 
 function scorePill(score: number) {
-  let cls = "bg-gray-100 text-gray-500";
-  if (score >= 20) cls = "bg-green-50 text-green-700";
-  else if (score >= 12) cls = "bg-blue-50 text-blue-600";
-  else if (score >= 5) cls = "bg-amber-50 text-amber-600";
+  let cls = "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
+  if (score >= 20) cls = "bg-[var(--color-success-light)] text-[var(--color-success)]";
+  else if (score >= 12) cls = "bg-[var(--color-accent-light)] text-[var(--color-accent)]";
+  else if (score >= 5) cls = "bg-[var(--color-warning-light)] text-[var(--color-warning)]";
 
   return (
     <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${cls}`}>
@@ -132,8 +132,8 @@ export function ConsistencyView({ agents, canManage }: Props) {
     <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Consistency Tracker</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Consistency Tracker</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             Monthly review — how many of the 3 date ranges hit ≥70 avg FPS?
           </p>
         </div>
@@ -146,7 +146,7 @@ export function ConsistencyView({ agents, canManage }: Props) {
             {r.label} · {r.desc}
           </div>
         ))}
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-[var(--color-text-tertiary)]">
           Bonus: 3 hit = +20pts, 2 = +12pts, 1 = +5pts, 0 = +0pts
         </div>
       </div>
@@ -156,12 +156,12 @@ export function ConsistencyView({ agents, canManage }: Props) {
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : (
         <div className="space-y-3">
           {agents.map((agent) => {
@@ -171,17 +171,17 @@ export function ConsistencyView({ agents, canManage }: Props) {
             const isSavingThis = saving === agent.id;
 
             return (
-              <div key={agent.id} className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-4 flex-wrap">
+              <div key={agent.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 flex items-center gap-4 flex-wrap">
                 <div className="flex-1 min-w-40">
-                  <p className="font-medium text-gray-900">{agentName(agent)}</p>
+                  <p className="font-medium text-[var(--color-text-primary)]">{agentName(agent)}</p>
                   {row?.evaluator && (
-                    <p className="text-xs text-gray-400 mt-0.5">by {row.evaluator}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">by {row.evaluator}</p>
                   )}
                 </div>
 
                 {/* Ranges hit picker */}
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-500">Ranges hit:</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">Ranges hit:</span>
                   <RangeHitPicker
                     value={currentRanges}
                     onChange={(v) => setLocalRanges((prev) => ({ ...prev, [agent.id]: v }))}
@@ -202,7 +202,7 @@ export function ConsistencyView({ agents, canManage }: Props) {
                       placeholder="Evaluator"
                       value={localEvaluators[agent.id] ?? ""}
                       onChange={(e) => setLocalEvaluators((prev) => ({ ...prev, [agent.id]: e.target.value }))}
-                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-[#3A5635]"
+                      className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-[#3A5635]"
                     />
                     <button
                       onClick={() => handleSave(agent.id)}

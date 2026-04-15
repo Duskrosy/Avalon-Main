@@ -20,9 +20,9 @@ function agentName(a: Agent) {
 }
 
 function statusBadge(row: DailyVolume) {
-  if (row.on_leave) return <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">Leave</span>;
-  if (row.follow_ups === 0 && row.confirmed_total === 0) return <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">No data</span>;
-  return <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full">Logged</span>;
+  if (row.on_leave) return <span className="text-xs bg-[var(--color-accent-light)] text-[var(--color-accent)] px-2 py-0.5 rounded-full">Leave</span>;
+  if (row.follow_ups === 0 && row.confirmed_total === 0) return <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] px-2 py-0.5 rounded-full">No data</span>;
+  return <span className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] px-2 py-0.5 rounded-full">Logged</span>;
 }
 
 export function DailyVolumeView({ agents, currentUserId, canManage, initialRows }: Props) {
@@ -137,8 +137,8 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Daily Volume Log</h1>
-          <p className="text-sm text-gray-500 mt-1">{rows.length} entries for {month}</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Daily Volume Log</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{rows.length} entries for {month}</p>
         </div>
         <button
           onClick={openCreate}
@@ -154,13 +154,13 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
           type="month"
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
         />
         {canManage && (
           <select
             value={selectedAgent}
             onChange={(e) => setSelectedAgent(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
           >
             {agents.map((a) => (
               <option key={a.id} value={a.id}>{agentName(a)}</option>
@@ -171,48 +171,48 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : rows.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No entries for this period.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No entries for this period.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Follow-ups</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Confirmed</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Abandoned</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Regular</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Buffer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Date</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Follow-ups</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Confirmed</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Abandoned</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Regular</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Buffer</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
                 {canManage && <th className="px-4 py-3" />}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {rows.map((row) => (
-                <tr key={row.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
+                <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]">
+                  <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">
                     {format(parseISO(row.date), "EEE d MMM")}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-700">{row.follow_ups.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{row.confirmed_total}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{row.confirmed_abandoned}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-900">{row.confirmed_regular}</td>
+                  <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.follow_ups.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.confirmed_total}</td>
+                  <td className="px-4 py-3 text-right text-[var(--color-text-primary)]">{row.confirmed_abandoned}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-[var(--color-text-primary)]">{row.confirmed_regular}</td>
                   <td className="px-4 py-3">
                     {row.buffer_approved ? (
                       <span className="text-xs bg-[#F4E2D0] text-[#D57B0E] px-2 py-0.5 rounded-full">Approved</span>
                     ) : row.buffer_reason ? (
-                      <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">Pending</span>
+                      <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] px-2 py-0.5 rounded-full">Pending</span>
                     ) : null}
                   </td>
                   <td className="px-4 py-3">{statusBadge(row)}</td>
                   {canManage && (
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => openEdit(row)} className="text-xs text-gray-400 hover:text-gray-700 mr-3">Edit</button>
-                      <button onClick={() => handleDelete(row.id)} className="text-xs text-gray-300 hover:text-red-400">Del</button>
+                      <button onClick={() => openEdit(row)} className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] mr-3">Edit</button>
+                      <button onClick={() => handleDelete(row.id)} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400">Del</button>
                     </td>
                   )}
                 </tr>
@@ -225,25 +225,25 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
               {editRow ? "Edit Entry" : "Log Day"}
-              {agentObj && <span className="text-sm font-normal text-gray-500 ml-2">— {agentName(agentObj)}</span>}
+              {agentObj && <span className="text-sm font-normal text-[var(--color-text-secondary)] ml-2">— {agentName(agentObj)}</span>}
             </h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Date *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Date *</label>
                 <input
                   required
                   type="date"
                   value={form.date}
                   onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
               <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <label className="flex items-center gap-2 text-sm text-[var(--color-text-primary)] cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.on_leave}
@@ -258,43 +258,43 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
                 <>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Follow-ups</label>
+                      <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Follow-ups</label>
                       <input
                         type="number"
                         min={0}
                         value={form.follow_ups}
                         onChange={(e) => setForm((f) => ({ ...f, follow_ups: e.target.value }))}
                         placeholder="0"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Confirmed Total</label>
+                      <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Confirmed Total</label>
                       <input
                         type="number"
                         min={0}
                         value={form.confirmed_total}
                         onChange={(e) => setForm((f) => ({ ...f, confirmed_total: e.target.value }))}
                         placeholder="0"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Abandoned</label>
+                      <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Abandoned</label>
                       <input
                         type="number"
                         min={0}
                         value={form.confirmed_abandoned}
                         onChange={(e) => setForm((f) => ({ ...f, confirmed_abandoned: e.target.value }))}
                         placeholder="0"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                       />
                     </div>
                   </div>
 
                   {canManage && (
                     <div className="border border-[#F4E2D0] rounded-lg p-3 space-y-2 bg-[#FBF6F0]">
-                      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                      <label className="flex items-center gap-2 text-sm text-[var(--color-text-primary)] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={form.buffer_approved}
@@ -310,14 +310,14 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
                             placeholder="Buffer reason"
                             value={form.buffer_reason}
                             onChange={(e) => setForm((f) => ({ ...f, buffer_reason: e.target.value }))}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none"
                           />
                           <input
                             type="url"
                             placeholder="Proof link (optional)"
                             value={form.buffer_proof_link}
                             onChange={(e) => setForm((f) => ({ ...f, buffer_proof_link: e.target.value }))}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+                            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none"
                           />
                         </>
                       )}
@@ -327,12 +327,12 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
               )}
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#3A5635]"
                 />
               </div>
 
@@ -340,7 +340,7 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
