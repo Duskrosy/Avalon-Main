@@ -60,95 +60,95 @@ function ItemModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
-        <h2 className="text-base font-semibold text-gray-900 mb-4">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">
           {initial ? "Edit Catalog Item" : "New Catalog Item"}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">SKU *</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">SKU *</label>
               <input
                 type="text"
                 value={form.sku}
                 onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 required
                 disabled={!!initial}
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Product Name *</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Product Name *</label>
               <input
                 type="text"
                 value={form.product_name}
                 onChange={(e) => setForm((f) => ({ ...f, product_name: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 required
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Color</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Color</label>
               <input
                 type="text"
                 value={form.color}
                 onChange={(e) => setForm((f) => ({ ...f, color: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Size</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Size</label>
               <input
                 type="text"
                 value={form.size}
                 onChange={(e) => setForm((f) => ({ ...f, size: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Product Family</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Product Family</label>
               <input
                 type="text"
                 value={form.product_family}
                 onChange={(e) => setForm((f) => ({ ...f, product_family: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Collection</label>
+              <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Collection</label>
               <input
                 type="text"
                 value={form.collection}
                 onChange={(e) => setForm((f) => ({ ...f, collection: e.target.value }))}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Supplier Ref</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Supplier Ref</label>
             <input
               type="text"
               value={form.supplier_ref}
               onChange={(e) => setForm((f) => ({ ...f, supplier_ref: e.target.value }))}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              className="px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !form.sku.trim() || !form.product_name.trim()}
-              className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              className="px-4 py-2 text-sm bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
             >
               {saving ? "Saving..." : initial ? "Update" : "Create"}
             </button>
@@ -274,14 +274,14 @@ export default function CatalogView({
       {/* Header */}
       <div className="flex items-end justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Catalog</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Catalog</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">
             {filtered.length} item{filtered.length !== 1 ? "s" : ""}
           </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}
-          className="px-4 py-2 text-sm bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+          className="px-4 py-2 text-sm bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Item
         </button>
@@ -294,12 +294,12 @@ export default function CatalogView({
           placeholder="Search by name or SKU..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm w-64 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
         <select
           value={familyFilter}
           onChange={(e) => setFamilyFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Families</option>
           {families.map((f) => (
@@ -308,57 +308,57 @@ export default function CatalogView({
             </option>
           ))}
         </select>
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] cursor-pointer">
           <input
             type="checkbox"
             checked={showInactive}
             onChange={(e) => setShowInactive(e.target.checked)}
-            className="rounded border-gray-300"
+            className="rounded border-[var(--color-border-primary)]"
           />
           Show inactive
         </label>
       </div>
 
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/60">
-                <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+              <tr className="border-b border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)]/60">
+                <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   SKU
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   Product Name
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   Color
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   Size
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   Family
                 </th>
-                <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                <th className="text-left px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   Collection
                 </th>
-                <th className="text-center px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                <th className="text-center px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                   Active
                 </th>
                 {isOps && (
-                  <th className="text-center px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wider">
+                  <th className="text-center px-4 py-3 font-medium text-[var(--color-text-secondary)] text-xs uppercase tracking-wider">
                     Actions
                   </th>
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan={isOps ? 8 : 7}
-                    className="px-4 py-12 text-center text-gray-400"
+                    className="px-4 py-12 text-center text-[var(--color-text-tertiary)]"
                   >
                     No catalog items found.
                   </td>
@@ -368,22 +368,22 @@ export default function CatalogView({
                   <tr
                     key={item.id}
                     onClick={() => setEditItem(item)}
-                    className={`hover:bg-gray-50 cursor-pointer transition-colors ${
+                    className={`hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors ${
                       !item.is_active ? "opacity-50" : ""
                     }`}
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-gray-700">
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--color-text-primary)]">
                       {item.sku}
                     </td>
-                    <td className="px-4 py-3 text-gray-900 font-medium">
+                    <td className="px-4 py-3 text-[var(--color-text-primary)] font-medium">
                       {item.product_name ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">{item.color ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{item.size ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{item.color ?? "—"}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{item.size ?? "—"}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {item.product_family ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {item.collection ?? "—"}
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -393,11 +393,11 @@ export default function CatalogView({
                           handleToggleActive(item);
                         }}
                         className={`inline-block w-9 h-5 rounded-full relative transition-colors ${
-                          item.is_active ? "bg-green-500" : "bg-gray-300"
+                          item.is_active ? "bg-[var(--color-success-light)]0" : "bg-gray-300"
                         }`}
                       >
                         <span
-                          className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                          className={`absolute top-0.5 left-0.5 w-4 h-4 bg-[var(--color-bg-primary)] rounded-full transition-transform ${
                             item.is_active ? "translate-x-4" : ""
                           }`}
                         />
@@ -411,7 +411,7 @@ export default function CatalogView({
                             handleDelete(item.id);
                           }}
                           disabled={deleting === item.id}
-                          className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors"
+                          className="text-xs text-[var(--color-error)] hover:text-[var(--color-error)] disabled:opacity-50 transition-colors"
                         >
                           {deleting === item.id ? "..." : "Delete"}
                         </button>

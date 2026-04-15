@@ -47,11 +47,11 @@ type Props = {
 const STATUSES = ["draft", "pending", "reconciled", "disputed", "settled"] as const;
 
 const STATUS_BADGE: Record<string, string> = {
-  draft:       "bg-gray-100 text-gray-700 border-gray-200",
-  pending:     "bg-amber-100 text-amber-800 border-amber-200",
-  reconciled:  "bg-green-100 text-green-800 border-green-200",
-  disputed:    "bg-red-100 text-red-800 border-red-200",
-  settled:     "bg-blue-100 text-blue-800 border-blue-200",
+  draft:       "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border-primary)]",
+  pending:     "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)]",
+  reconciled:  "bg-[var(--color-success-light)] text-green-800 border-green-200",
+  disputed:    "bg-[var(--color-error-light)] text-red-800 border-red-200",
+  settled:     "bg-[var(--color-accent-light)] text-blue-800 border-blue-200",
 };
 
 function statusLabel(s: string) {
@@ -344,14 +344,14 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Remittance</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Remittance</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {batches.length} batch{batches.length !== 1 ? "es" : ""} shown
           </p>
         </div>
         <button
           onClick={openBatchModal}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + Create Batch
         </button>
@@ -382,7 +382,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Statuses</option>
           {STATUSES.map((s) => (
@@ -395,7 +395,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
         <select
           value={courierFilter}
           onChange={(e) => setCourierFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Couriers</option>
           {uniqueCouriers.map((c) => (
@@ -411,7 +411,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
               setStatusFilter("");
               setCourierFilter("");
             }}
-            className="text-xs text-gray-400 hover:text-gray-700"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -420,10 +420,10 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
 
       {/* Batch List */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : batches.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No remittance batches found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No remittance batches found.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -432,22 +432,22 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
             const mismatch = Number(batch.mismatch_amount) || 0;
             const hasMismatch = mismatch !== 0;
             const badgeClass =
-              STATUS_BADGE[batch.status] ?? "bg-gray-100 text-gray-700 border-gray-200";
+              STATUS_BADGE[batch.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border-[var(--color-border-primary)]";
 
             return (
               <div
                 key={batch.id}
-                className="bg-white border border-gray-200 rounded-xl overflow-hidden"
+                className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden"
               >
                 {/* Batch card header */}
                 <button
                   onClick={() => toggleExpand(batch.id)}
-                  className="w-full text-left p-4 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left p-4 hover:bg-[var(--color-surface-hover)] transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-semibold text-gray-900">
+                        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
                           {batch.batch_name}
                         </h3>
                         <span
@@ -456,7 +456,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                           {statusLabel(batch.status)}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-1">
                         {batch.courier_name}
                         {batch.settlement_date && (
                           <span className="ml-3">
@@ -471,22 +471,22 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     <div className="text-right shrink-0">
                       <div className="flex items-center gap-4 text-xs">
                         <div>
-                          <p className="text-gray-400">Expected</p>
-                          <p className="font-semibold text-gray-900">
+                          <p className="text-[var(--color-text-tertiary)]">Expected</p>
+                          <p className="font-semibold text-[var(--color-text-primary)]">
                             {peso(batch.total_expected)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-400">Received</p>
-                          <p className="font-semibold text-gray-900">
+                          <p className="text-[var(--color-text-tertiary)]">Received</p>
+                          <p className="font-semibold text-[var(--color-text-primary)]">
                             {peso(batch.total_received)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-400">Mismatch</p>
+                          <p className="text-[var(--color-text-tertiary)]">Mismatch</p>
                           <p
                             className={`font-semibold ${
-                              hasMismatch ? "text-red-500" : "text-green-600"
+                              hasMismatch ? "text-[var(--color-error)]" : "text-[var(--color-success)]"
                             }`}
                           >
                             {peso(mismatch)}
@@ -496,13 +496,13 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     </div>
 
                     {/* Expand indicator */}
-                    <span className="text-gray-300 text-sm mt-1">
+                    <span className="text-[var(--color-text-tertiary)] text-sm mt-1">
                       {isExpanded ? "\u25B2" : "\u25BC"}
                     </span>
                   </div>
 
                   {/* Footer row */}
-                  <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
+                  <div className="flex items-center justify-between mt-2 text-[11px] text-[var(--color-text-tertiary)]">
                     <span>By {profileName(batch.creator)}</span>
                     <span>
                       {format(parseISO(batch.created_at), "d MMM yyyy, h:mm a")}
@@ -515,7 +515,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                   <select
                     value={batch.status}
                     onChange={(e) => updateBatchStatus(batch.id, e.target.value)}
-                    className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="text-xs border border-[var(--color-border-primary)] rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     {STATUSES.map((s) => (
                       <option key={s} value={s}>
@@ -525,7 +525,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                   </select>
                   <button
                     onClick={() => handleDeleteBatch(batch.id)}
-                    className="text-xs text-gray-300 hover:text-red-400 ml-auto"
+                    className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400 ml-auto"
                   >
                     Delete
                   </button>
@@ -533,32 +533,32 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
 
                 {/* Expanded: items table */}
                 {isExpanded && (
-                  <div className="border-t border-gray-100 p-4">
+                  <div className="border-t border-[var(--color-border-secondary)] p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
                         Items
                       </p>
                       <button
                         onClick={() => openItemModal(batch.id)}
-                        className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                        className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] px-3 py-1 rounded-lg hover:bg-[var(--color-border-primary)] transition-colors font-medium"
                       >
                         + Add Item
                       </button>
                     </div>
 
                     {itemsLoading ? (
-                      <div className="text-center py-6 text-gray-400 text-xs">
+                      <div className="text-center py-6 text-[var(--color-text-tertiary)] text-xs">
                         Loading items...
                       </div>
                     ) : batchItems.length === 0 ? (
-                      <div className="text-center py-6 text-gray-400 text-xs">
+                      <div className="text-center py-6 text-[var(--color-text-tertiary)] text-xs">
                         No items yet. Add one to start reconciling.
                       </div>
                     ) : (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="text-[11px] text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                            <tr className="text-[11px] text-[var(--color-text-tertiary)] uppercase tracking-wider border-b border-[var(--color-border-secondary)]">
                               <th className="text-left py-2 pr-3 font-medium">
                                 Order #
                               </th>
@@ -591,8 +591,8 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                               return (
                                 <tr
                                   key={item.id}
-                                  className={`border-b border-gray-50 ${
-                                    unmatched ? "bg-red-50" : ""
+                                  className={`border-b border-[var(--color-border-secondary)] ${
+                                    unmatched ? "bg-[var(--color-error-light)]" : ""
                                   }`}
                                 >
                                   <td className="py-2 pr-3">
@@ -612,13 +612,13 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                         onChange={(e) =>
                                           setEditReceivedAmount(e.target.value)
                                         }
-                                        className="w-24 border border-gray-200 rounded px-2 py-1 text-xs text-right focus:outline-none focus:ring-2 focus:ring-gray-900"
+                                        className="w-24 border border-[var(--color-border-primary)] rounded px-2 py-1 text-xs text-right focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                                       />
                                     ) : (
                                       <span
                                         className={
                                           unmatched
-                                            ? "text-red-600 font-semibold"
+                                            ? "text-[var(--color-error)] font-semibold"
                                             : ""
                                         }
                                       >
@@ -631,7 +631,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                       type="checkbox"
                                       checked={item.is_matched}
                                       onChange={() => toggleMatched(item)}
-                                      className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                      className="rounded border-[var(--color-border-primary)] text-[var(--color-success)] focus:ring-green-500"
                                     />
                                   </td>
                                   <td className="py-2 px-3">
@@ -642,10 +642,10 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                         onChange={(e) =>
                                           setEditItemNotes(e.target.value)
                                         }
-                                        className="w-full border border-gray-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900"
+                                        className="w-full border border-[var(--color-border-primary)] rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                                       />
                                     ) : (
-                                      <span className="text-xs text-gray-500">
+                                      <span className="text-xs text-[var(--color-text-secondary)]">
                                         {item.notes ?? ""}
                                       </span>
                                     )}
@@ -656,7 +656,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                         <>
                                           <button
                                             onClick={() => saveEditItem(item)}
-                                            className="text-xs text-green-600 hover:text-green-800 font-medium"
+                                            className="text-xs text-[var(--color-success)] hover:text-green-800 font-medium"
                                           >
                                             Save
                                           </button>
@@ -664,7 +664,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                             onClick={() =>
                                               setEditingItemId(null)
                                             }
-                                            className="text-xs text-gray-400 hover:text-gray-600"
+                                            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                                           >
                                             Cancel
                                           </button>
@@ -673,7 +673,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                         <>
                                           <button
                                             onClick={() => startEditItem(item)}
-                                            className="text-xs text-gray-400 hover:text-gray-700"
+                                            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                                           >
                                             Edit
                                           </button>
@@ -681,7 +681,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                                             onClick={() =>
                                               handleDeleteItem(item.id)
                                             }
-                                            className="text-xs text-gray-300 hover:text-red-400"
+                                            className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400"
                                           >
                                             Del
                                           </button>
@@ -709,13 +709,13 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
       {/* Create Batch Modal */}
       {showBatchModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
               Create Remittance Batch
             </h2>
             <form onSubmit={handleCreateBatch} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Batch Name *
                 </label>
                 <input
@@ -726,12 +726,12 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     setBatchForm((f) => ({ ...f, batch_name: e.target.value }))
                   }
                   placeholder="e.g. J&T Week 15 Remittance"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Courier Name *
                 </label>
                 <input
@@ -742,12 +742,12 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     setBatchForm((f) => ({ ...f, courier_name: e.target.value }))
                   }
                   placeholder="e.g. J&T Express"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Total Expected Amount
                 </label>
                 <input
@@ -758,12 +758,12 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     setBatchForm((f) => ({ ...f, total_expected: e.target.value }))
                   }
                   placeholder="0.00"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Notes
                 </label>
                 <textarea
@@ -773,7 +773,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     setBatchForm((f) => ({ ...f, notes: e.target.value }))
                   }
                   placeholder="Optional notes..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
@@ -781,14 +781,14 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowBatchModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Creating..." : "Create Batch"}
                 </button>
@@ -801,14 +801,14 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
       {/* Add Item Modal */}
       {showItemModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
               Add Remittance Item
             </h2>
             <form onSubmit={handleCreateItem} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                     Order ID
                   </label>
                   <input
@@ -818,11 +818,11 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                       setItemForm((f) => ({ ...f, order_id: e.target.value }))
                     }
                     placeholder="UUID (optional)"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                     Dispatch ID
                   </label>
                   <input
@@ -832,14 +832,14 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                       setItemForm((f) => ({ ...f, dispatch_id: e.target.value }))
                     }
                     placeholder="UUID (optional)"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                     Expected Amount *
                   </label>
                   <input
@@ -854,11 +854,11 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                       }))
                     }
                     placeholder="0.00"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                     Received Amount
                   </label>
                   <input
@@ -872,13 +872,13 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                       }))
                     }
                     placeholder="0.00 (optional)"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Notes
                 </label>
                 <textarea
@@ -888,7 +888,7 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                     setItemForm((f) => ({ ...f, notes: e.target.value }))
                   }
                   placeholder="Optional notes..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
@@ -896,14 +896,14 @@ export function RemittanceView({ initialBatches, currentUserId }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowItemModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Adding..." : "Add Item"}
                 </button>
@@ -928,17 +928,17 @@ function SummaryCard({
   accent?: "amber" | "red" | "green" | "blue";
 }) {
   const accentColors = {
-    amber: "text-amber-600",
-    red: "text-red-500",
-    green: "text-green-600",
-    blue: "text-blue-600",
+    amber: "text-[var(--color-warning)]",
+    red: "text-[var(--color-error)]",
+    green: "text-[var(--color-success)]",
+    blue: "text-[var(--color-accent)]",
   };
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-      <p className="text-xs text-gray-500">{label}</p>
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-3">
+      <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
       <p
         className={`text-2xl font-semibold mt-1 ${
-          accent ? accentColors[accent] : "text-gray-900"
+          accent ? accentColors[accent] : "text-[var(--color-text-primary)]"
         }`}
       >
         {value}

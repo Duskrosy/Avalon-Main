@@ -29,14 +29,14 @@ export default async function OperationsLayout({ children }: { children: React.R
       {/* Sidebar */}
       <nav className="hidden lg:block w-52 shrink-0">
         <div className="sticky top-6 space-y-1">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 px-3">
+          <p className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3 px-3">
             Operations
           </p>
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="block px-3 py-2 text-sm text-gray-600 rounded-lg hover:bg-gray-100 hover:text-gray-900 transition-colors"
+              className="block px-3 py-2 text-sm text-[var(--color-text-secondary)] rounded-lg hover:bg-[var(--color-surface-active)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               {item.label}
             </Link>

@@ -54,24 +54,24 @@ const ISSUE_TYPES = [
 const ISSUE_STATUSES = ["open", "in_progress", "resolved", "cancelled", "escalated"] as const;
 
 const STATUS_BADGE: Record<string, string> = {
-  open:        "bg-red-50 text-red-700",
-  in_progress: "bg-amber-50 text-amber-600",
-  resolved:    "bg-green-50 text-green-700",
-  cancelled:   "bg-gray-100 text-gray-400",
+  open:        "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  in_progress: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  resolved:    "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  cancelled:   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
   escalated:   "bg-purple-50 text-purple-700",
 };
 
 const ISSUE_TYPE_BADGE: Record<string, string> = {
-  wrong_size:            "bg-blue-50 text-blue-700",
+  wrong_size:            "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   wrong_item:            "bg-indigo-50 text-indigo-700",
-  defective:             "bg-red-50 text-red-600",
-  long_delivery:         "bg-amber-50 text-amber-700",
-  unresponsive_customer: "bg-gray-100 text-gray-600",
+  defective:             "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  long_delivery:         "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  unresponsive_customer: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
   changed_mind:          "bg-cyan-50 text-cyan-700",
   no_budget:             "bg-orange-50 text-orange-600",
   redelivery:            "bg-teal-50 text-teal-700",
   courier_issue:         "bg-pink-50 text-pink-700",
-  other:                 "bg-gray-50 text-gray-500",
+  other:                 "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]",
 };
 
 function profileName(p: Profile | null) {
@@ -257,12 +257,12 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Issues / Recovery</h1>
-          <p className="text-sm text-gray-500 mt-1">{filtered.length} issues loaded</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Issues / Recovery</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{filtered.length} issues loaded</p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Issue
         </button>
@@ -283,12 +283,12 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
           placeholder="Search order # or customer..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 w-64"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] w-64"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Status</option>
           {ISSUE_STATUSES.map((s) => (
@@ -298,7 +298,7 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Types</option>
           {ISSUE_TYPES.map((t) => (
@@ -308,7 +308,7 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
         {(search || statusFilter || typeFilter) && (
           <button
             onClick={() => { setSearch(""); setStatusFilter(""); setTypeFilter(""); }}
-            className="text-xs text-gray-400 hover:text-gray-700"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -317,28 +317,28 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : filtered.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No issues found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No issues found.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issue Type</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Follow-up</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owner</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Order #</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Customer</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Issue Type</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Description</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Follow-up</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Owner</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Created</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {filtered.map((issue) => (
                 <IssueRow
                   key={issue.id}
@@ -361,16 +361,16 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
       {/* Create Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Issue</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Issue</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Order *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Order *</label>
                 <select
                   required
                   value={form.order_id}
                   onChange={(e) => setForm((f) => ({ ...f, order_id: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">Select an order...</option>
                   {orders.map((o) => (
@@ -382,12 +382,12 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Issue Type *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Issue Type *</label>
                 <select
                   required
                   value={form.issue_type}
                   onChange={(e) => setForm((f) => ({ ...f, issue_type: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   {ISSUE_TYPES.map((t) => (
                     <option key={t} value={t}>{formatType(t)}</option>
@@ -396,53 +396,53 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Description</label>
                 <textarea
                   rows={3}
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                   placeholder="Describe the issue..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes After Call</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes After Call</label>
                 <textarea
                   rows={2}
                   value={form.notes_after_call}
                   onChange={(e) => setForm((f) => ({ ...f, notes_after_call: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Agent Remarks</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Agent Remarks</label>
                 <textarea
                   rows={2}
                   value={form.agent_remarks}
                   onChange={(e) => setForm((f) => ({ ...f, agent_remarks: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Summary</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Summary</label>
                 <input
                   type="text"
                   value={form.summary}
                   onChange={(e) => setForm((f) => ({ ...f, summary: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Follow-up Owner</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Follow-up Owner</label>
                   <select
                     value={form.follow_up_owner}
                     onChange={(e) => setForm((f) => ({ ...f, follow_up_owner: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">Unassigned</option>
                     {profiles.map((p) => (
@@ -451,12 +451,12 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Follow-up Date</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Follow-up Date</label>
                   <input
                     type="date"
                     value={form.follow_up_date}
                     onChange={(e) => setForm((f) => ({ ...f, follow_up_date: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
@@ -465,14 +465,14 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Create Issue"}
                 </button>
@@ -489,14 +489,14 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
 
 function SummaryCard({ label, value, accent }: { label: string; value: number; accent?: "amber" | "red" | "green" }) {
   const accentColors = {
-    amber: "text-amber-600",
-    red: "text-red-500",
-    green: "text-green-600",
+    amber: "text-[var(--color-warning)]",
+    red: "text-[var(--color-error)]",
+    green: "text-[var(--color-success)]",
   };
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-2xl font-semibold mt-1 ${accent ? accentColors[accent] : "text-gray-900"}`}>
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-3">
+      <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
+      <p className={`text-2xl font-semibold mt-1 ${accent ? accentColors[accent] : "text-[var(--color-text-primary)]"}`}>
         {value}
       </p>
     </div>
@@ -546,15 +546,15 @@ function IssueRow({
 
   return (
     <>
-      <tr className="hover:bg-gray-50 cursor-pointer" onClick={onToggle}>
-        <td className="px-4 py-3 font-mono text-xs font-medium text-gray-900">
+      <tr className="hover:bg-[var(--color-surface-hover)] cursor-pointer" onClick={onToggle}>
+        <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--color-text-primary)]">
           {issue.order?.order_number ?? "\u2014"}
         </td>
-        <td className="px-4 py-3 text-gray-700">
-          {issue.order?.customer_name || <span className="text-gray-300">{"\u2014"}</span>}
+        <td className="px-4 py-3 text-[var(--color-text-primary)]">
+          {issue.order?.customer_name || <span className="text-[var(--color-text-tertiary)]">{"\u2014"}</span>}
         </td>
         <td className="px-4 py-3">
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ISSUE_TYPE_BADGE[issue.issue_type] ?? "bg-gray-100 text-gray-500"}`}>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ISSUE_TYPE_BADGE[issue.issue_type] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>
             {formatType(issue.issue_type)}
           </span>
         </td>
@@ -562,35 +562,35 @@ function IssueRow({
           <select
             value={issue.status}
             onChange={(e) => onStatusChange(e.target.value)}
-            className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-gray-900 ${STATUS_BADGE[issue.status] ?? "bg-gray-100 text-gray-500"}`}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-[var(--color-accent)] ${STATUS_BADGE[issue.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}
           >
             {ISSUE_STATUSES.map((s) => (
               <option key={s} value={s}>{formatStatus(s)}</option>
             ))}
           </select>
         </td>
-        <td className="px-4 py-3 text-xs text-gray-600 max-w-[200px] truncate">
+        <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)] max-w-[200px] truncate">
           {issue.description || "\u2014"}
         </td>
         <td className="px-4 py-3 text-xs">
           {issue.follow_up_date ? (
-            <span className={followUpOverdue ? "text-red-500 font-medium" : "text-gray-600"}>
+            <span className={followUpOverdue ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-secondary)]"}>
               {format(parseISO(issue.follow_up_date), "d MMM yyyy")}
             </span>
           ) : (
-            <span className="text-gray-300">{"\u2014"}</span>
+            <span className="text-[var(--color-text-tertiary)]">{"\u2014"}</span>
           )}
         </td>
-        <td className="px-4 py-3 text-xs text-gray-600">
+        <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
           {profileName(issue.follow_up_owner_profile)}
         </td>
-        <td className="px-4 py-3 text-xs text-gray-400">
+        <td className="px-4 py-3 text-xs text-[var(--color-text-tertiary)]">
           {format(parseISO(issue.created_at), "d MMM yyyy")}
         </td>
         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onDelete}
-            className="text-xs text-gray-300 hover:text-red-400"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400"
           >
             Del
           </button>
@@ -600,7 +600,7 @@ function IssueRow({
       {/* Expanded Detail */}
       {isExpanded && (
         <tr>
-          <td colSpan={9} className="bg-gray-50 px-6 py-4 border-t border-gray-100">
+          <td colSpan={9} className="bg-[var(--color-bg-secondary)] px-6 py-4 border-t border-[var(--color-border-secondary)]">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Left column */}
               <div className="space-y-3">
@@ -615,12 +615,12 @@ function IssueRow({
                 <DetailField label="Resolution" value={issue.resolution} />
 
                 <div>
-                  <p className="text-[10px] font-medium text-gray-400 uppercase mb-1">Follow-up Owner</p>
+                  <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase mb-1">Follow-up Owner</p>
                   <select
                     value={issue.follow_up_owner ?? ""}
                     onChange={(e) => updateField("follow_up_owner", e.target.value || null)}
                     onClick={(e) => e.stopPropagation()}
-                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">Unassigned</option>
                     {profiles.map((p) => (
@@ -630,18 +630,18 @@ function IssueRow({
                 </div>
 
                 <div>
-                  <p className="text-[10px] font-medium text-gray-400 uppercase mb-1">Follow-up Date</p>
+                  <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase mb-1">Follow-up Date</p>
                   <input
                     type="date"
                     value={issue.follow_up_date ?? ""}
                     onChange={(e) => updateField("follow_up_date", e.target.value || null)}
                     onClick={(e) => e.stopPropagation()}
-                    className="border border-gray-200 rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1 text-xs w-full focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
 
                 <div className="flex items-center gap-4 pt-1">
-                  <p className="text-[10px] text-gray-400">
+                  <p className="text-[10px] text-[var(--color-text-tertiary)]">
                     Created by {profileName(issue.created_by_profile)} on {format(parseISO(issue.created_at), "d MMM yyyy, h:mm a")}
                   </p>
                 </div>
@@ -659,9 +659,9 @@ function IssueRow({
 function DetailField({ label, value }: { label: string; value: string | null }) {
   return (
     <div>
-      <p className="text-[10px] font-medium text-gray-400 uppercase mb-0.5">{label}</p>
-      <p className="text-xs text-gray-700 whitespace-pre-wrap">
-        {value || <span className="text-gray-300">{"\u2014"}</span>}
+      <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase mb-0.5">{label}</p>
+      <p className="text-xs text-[var(--color-text-primary)] whitespace-pre-wrap">
+        {value || <span className="text-[var(--color-text-tertiary)]">{"\u2014"}</span>}
       </p>
     </div>
   );

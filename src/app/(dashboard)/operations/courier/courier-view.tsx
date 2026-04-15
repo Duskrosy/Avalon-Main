@@ -70,27 +70,27 @@ const EVENT_LABEL: Record<EventType, string> = {
 };
 
 const EVENT_DOT_COLOR: Record<EventType, string> = {
-  picked_up: "bg-blue-500",
+  picked_up: "bg-[var(--color-accent-light)]0",
   in_transit: "bg-indigo-500",
-  out_for_delivery: "bg-amber-500",
-  delivered: "bg-green-500",
-  failed_attempt: "bg-red-500",
-  returned_to_sender: "bg-red-500",
+  out_for_delivery: "bg-[var(--color-warning-light)]0",
+  delivered: "bg-[var(--color-success-light)]0",
+  failed_attempt: "bg-[var(--color-error-light)]0",
+  returned_to_sender: "bg-[var(--color-error-light)]0",
   rts_received: "bg-purple-500",
   redelivery_scheduled: "bg-yellow-500",
   other: "bg-gray-400",
 };
 
 const EVENT_BADGE: Record<EventType, string> = {
-  picked_up: "bg-blue-50 text-blue-700",
+  picked_up: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   in_transit: "bg-indigo-50 text-indigo-700",
-  out_for_delivery: "bg-amber-50 text-amber-700",
-  delivered: "bg-green-50 text-green-700",
-  failed_attempt: "bg-red-50 text-red-700",
-  returned_to_sender: "bg-red-50 text-red-600",
+  out_for_delivery: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  delivered: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  failed_attempt: "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  returned_to_sender: "bg-[var(--color-error-light)] text-[var(--color-error)]",
   rts_received: "bg-purple-50 text-purple-700",
   redelivery_scheduled: "bg-yellow-50 text-yellow-700",
-  other: "bg-gray-100 text-gray-600",
+  other: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
 };
 
 function formatDateTime(d: string | null) {
@@ -259,10 +259,10 @@ export function CourierView({ initialShipments }: Props) {
     <div>
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
           Courier Tracking
         </h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           {shipments.length} shipment{shipments.length !== 1 ? "s" : ""} with
           tracking
         </p>
@@ -279,20 +279,20 @@ export function CourierView({ initialShipments }: Props) {
         <SummaryCard
           label="Out for Delivery"
           count={outForDeliveryCount}
-          color="bg-amber-50 text-amber-700"
-          dotColor="bg-amber-500"
+          color="bg-[var(--color-warning-light)] text-[var(--color-warning-text)]"
+          dotColor="bg-[var(--color-warning-light)]0"
         />
         <SummaryCard
           label="Delivered Today"
           count={deliveredTodayCount}
-          color="bg-green-50 text-green-700"
-          dotColor="bg-green-500"
+          color="bg-[var(--color-success-light)] text-[var(--color-success)]"
+          dotColor="bg-[var(--color-success-light)]0"
         />
         <SummaryCard
           label="Failed / RTS"
           count={failedRtsCount}
-          color="bg-red-50 text-red-700"
-          dotColor="bg-red-500"
+          color="bg-[var(--color-error-light)] text-[var(--color-error)]"
+          dotColor="bg-[var(--color-error-light)]0"
         />
       </div>
 
@@ -303,14 +303,14 @@ export function CourierView({ initialShipments }: Props) {
           placeholder="Search by tracking #, order #, or courier..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full max-w-md border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
       </div>
 
       {/* Shipment List */}
       {filtered.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">
             {shipments.length === 0
               ? "No dispatches with tracking numbers yet."
               : "No shipments match your search."}
@@ -324,46 +324,46 @@ export function CourierView({ initialShipments }: Props) {
             return (
               <div
                 key={s.id}
-                className="border border-gray-200 rounded-xl overflow-hidden"
+                className="border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden"
               >
                 {/* Row */}
                 <div
                   onClick={() => toggleExpand(s.id)}
-                  className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex-wrap"
+                  className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors flex-wrap"
                 >
                   {/* Order # */}
                   <div className="min-w-[100px]">
-                    <p className="text-[11px] text-gray-400 uppercase font-medium">
+                    <p className="text-[11px] text-[var(--color-text-tertiary)] uppercase font-medium">
                       Order
                     </p>
-                    <p className="text-sm font-mono font-medium text-gray-900">
+                    <p className="text-sm font-mono font-medium text-[var(--color-text-primary)]">
                       {s.order?.order_number ?? "\u2014"}
                     </p>
                   </div>
 
                   {/* Tracking # */}
                   <div className="min-w-[140px]">
-                    <p className="text-[11px] text-gray-400 uppercase font-medium">
+                    <p className="text-[11px] text-[var(--color-text-tertiary)] uppercase font-medium">
                       Tracking
                     </p>
-                    <p className="text-sm font-mono text-gray-700">
+                    <p className="text-sm font-mono text-[var(--color-text-primary)]">
                       {s.tracking_number ?? "\u2014"}
                     </p>
                   </div>
 
                   {/* Courier */}
                   <div className="min-w-[100px]">
-                    <p className="text-[11px] text-gray-400 uppercase font-medium">
+                    <p className="text-[11px] text-[var(--color-text-tertiary)] uppercase font-medium">
                       Courier
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-[var(--color-text-primary)]">
                       {s.courier_name ?? "\u2014"}
                     </p>
                   </div>
 
                   {/* Latest Status Badge */}
                   <div className="min-w-[120px]">
-                    <p className="text-[11px] text-gray-400 uppercase font-medium">
+                    <p className="text-[11px] text-[var(--color-text-tertiary)] uppercase font-medium">
                       Status
                     </p>
                     {s.latest_event ? (
@@ -375,16 +375,16 @@ export function CourierView({ initialShipments }: Props) {
                         {EVENT_LABEL[eventType] ?? eventType}
                       </span>
                     ) : (
-                      <span className="text-xs text-gray-300">No events</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">No events</span>
                     )}
                   </div>
 
                   {/* Latest Event Time */}
                   <div className="min-w-[130px]">
-                    <p className="text-[11px] text-gray-400 uppercase font-medium">
+                    <p className="text-[11px] text-[var(--color-text-tertiary)] uppercase font-medium">
                       Last Update
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-[var(--color-text-secondary)]">
                       {formatDateTime(s.latest_event?.event_time ?? null)}
                     </p>
                   </div>
@@ -396,12 +396,12 @@ export function CourierView({ initialShipments }: Props) {
                         e.stopPropagation();
                         openAddEvent(s.id);
                       }}
-                      className="text-xs bg-gray-900 text-white px-3 py-1.5 rounded-lg hover:bg-gray-700 transition-colors"
+                      className="text-xs bg-[var(--color-text-primary)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
                     >
                       + Event
                     </button>
                     <svg
-                      className={`w-4 h-4 text-gray-400 transition-transform ${
+                      className={`w-4 h-4 text-[var(--color-text-tertiary)] transition-transform ${
                         isExpanded ? "rotate-180" : ""
                       }`}
                       fill="none"
@@ -420,19 +420,19 @@ export function CourierView({ initialShipments }: Props) {
 
                 {/* Expanded Timeline */}
                 {isExpanded && (
-                  <div className="border-t border-gray-100 bg-gray-50 px-6 py-4">
+                  <div className="border-t border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-6 py-4">
                     {loadingTimeline ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">
+                      <p className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">
                         Loading timeline...
                       </p>
                     ) : timelineEvents.length === 0 ? (
-                      <p className="text-sm text-gray-400 py-4 text-center">
+                      <p className="text-sm text-[var(--color-text-tertiary)] py-4 text-center">
                         No events recorded yet.
                       </p>
                     ) : (
                       <div className="relative pl-6">
                         {/* Vertical line */}
-                        <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-gray-200" />
+                        <div className="absolute left-[9px] top-2 bottom-2 w-0.5 bg-[var(--color-border-primary)]" />
 
                         {timelineEvents.map((ev, idx) => {
                           const evType = (ev.event_type ?? "other") as EventType;
@@ -445,7 +445,7 @@ export function CourierView({ initialShipments }: Props) {
                               <div
                                 className={`absolute -left-6 top-1 w-[18px] h-[18px] rounded-full border-2 border-white ${
                                   EVENT_DOT_COLOR[evType] ?? EVENT_DOT_COLOR.other
-                                } shadow-sm`}
+                                } shadow-[var(--shadow-sm)]`}
                               />
 
                               {/* Content */}
@@ -458,15 +458,15 @@ export function CourierView({ initialShipments }: Props) {
                                   >
                                     {EVENT_LABEL[evType] ?? evType}
                                   </span>
-                                  <span className="text-xs text-gray-400">
+                                  <span className="text-xs text-[var(--color-text-tertiary)]">
                                     {formatDateTime(ev.event_time)}
                                   </span>
                                 </div>
                                 {(ev.location || ev.notes || ev.courier_name) && (
-                                  <div className="mt-1 text-xs text-gray-500 space-y-0.5">
+                                  <div className="mt-1 text-xs text-[var(--color-text-secondary)] space-y-0.5">
                                     {ev.location && (
                                       <p>
-                                        <span className="font-medium text-gray-600">
+                                        <span className="font-medium text-[var(--color-text-secondary)]">
                                           Location:
                                         </span>{" "}
                                         {ev.location}
@@ -474,7 +474,7 @@ export function CourierView({ initialShipments }: Props) {
                                     )}
                                     {ev.courier_name && (
                                       <p>
-                                        <span className="font-medium text-gray-600">
+                                        <span className="font-medium text-[var(--color-text-secondary)]">
                                           Courier:
                                         </span>{" "}
                                         {ev.courier_name}
@@ -482,7 +482,7 @@ export function CourierView({ initialShipments }: Props) {
                                     )}
                                     {ev.notes && (
                                       <p>
-                                        <span className="font-medium text-gray-600">
+                                        <span className="font-medium text-[var(--color-text-secondary)]">
                                           Notes:
                                         </span>{" "}
                                         {ev.notes}
@@ -509,13 +509,13 @@ export function CourierView({ initialShipments }: Props) {
       {/* Add Event Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">
               Add Courier Event
             </h2>
             <form onSubmit={handleSaveEvent} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Event Type *
                 </label>
                 <select
@@ -524,7 +524,7 @@ export function CourierView({ initialShipments }: Props) {
                   onChange={(e) =>
                     setEventForm((f) => ({ ...f, event_type: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   {EVENT_TYPES.map((t) => (
                     <option key={t} value={t}>
@@ -535,7 +535,7 @@ export function CourierView({ initialShipments }: Props) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Event Time
                 </label>
                 <input
@@ -544,12 +544,12 @@ export function CourierView({ initialShipments }: Props) {
                   onChange={(e) =>
                     setEventForm((f) => ({ ...f, event_time: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Location
                 </label>
                 <input
@@ -559,12 +559,12 @@ export function CourierView({ initialShipments }: Props) {
                   onChange={(e) =>
                     setEventForm((f) => ({ ...f, location: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   Notes
                 </label>
                 <textarea
@@ -573,7 +573,7 @@ export function CourierView({ initialShipments }: Props) {
                   onChange={(e) =>
                     setEventForm((f) => ({ ...f, notes: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
@@ -581,14 +581,14 @@ export function CourierView({ initialShipments }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Add Event"}
                 </button>
@@ -615,7 +615,7 @@ function SummaryCard({
   dotColor: string;
 }) {
   return (
-    <div className={`rounded-xl p-4 ${color}`}>
+    <div className={`rounded-[var(--radius-lg)] p-4 ${color}`}>
       <div className="flex items-center gap-2 mb-1">
         <div className={`w-2 h-2 rounded-full ${dotColor}`} />
         <span className="text-xs font-medium uppercase tracking-wide">

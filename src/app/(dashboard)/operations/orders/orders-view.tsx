@@ -59,16 +59,16 @@ const CHANNELS = ["shopify", "instagram", "facebook", "tiktok", "walk_in", "othe
 const PAYMENT_METHODS = ["cod", "gcash", "bank_transfer", "credit_card", "paypal", "other"] as const;
 
 const FINANCIAL_BADGE: Record<string, string> = {
-  paid:     "bg-green-50 text-green-700",
-  pending:  "bg-amber-50 text-amber-600",
-  refunded: "bg-red-50 text-red-500",
-  voided:   "bg-gray-100 text-gray-400",
+  paid:     "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  pending:  "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  refunded: "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  voided:   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
 };
 
 const FULFILLMENT_BADGE: Record<string, string> = {
-  fulfilled:  "bg-green-50 text-green-700",
-  partial:    "bg-amber-50 text-amber-600",
-  unfulfilled: "bg-gray-100 text-gray-500",
+  fulfilled:  "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  partial:    "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  unfulfilled: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
 };
 
 function profileName(p: Profile | null) {
@@ -272,12 +272,12 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Orders</h1>
-          <p className="text-sm text-gray-500 mt-1">{totalOrders} orders loaded</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Orders</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">{totalOrders} orders loaded</p>
         </div>
         <button
           onClick={openCreate}
-          className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
         >
           + New Order
         </button>
@@ -298,12 +298,12 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
           placeholder="Search order # or customer..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 w-64"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] w-64"
         />
         <select
           value={financialFilter}
           onChange={(e) => setFinancialFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Payment</option>
           {FINANCIAL_STATUSES.map((s) => (
@@ -313,7 +313,7 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
         <select
           value={fulfillmentFilter}
           onChange={(e) => setFulfillmentFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All Fulfillment</option>
           {FULFILLMENT_STATUSES.map((s) => (
@@ -323,7 +323,7 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
         {(search || financialFilter || fulfillmentFilter) && (
           <button
             onClick={() => { setSearch(""); setFinancialFilter(""); setFulfillmentFilter(""); }}
-            className="text-xs text-gray-400 hover:text-gray-700"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           >
             Clear filters
           </button>
@@ -332,28 +332,28 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
 
       {/* Table */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : orders.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No orders found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No orders found.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Order #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fulfillment</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Channel</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Order #</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Customer</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Payment</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Fulfillment</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Channel</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Assigned</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Created</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {orders.map((order) => (
                 <OrderRow
                   key={order.id}
@@ -377,70 +377,70 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
       {/* Create Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Order</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Order</h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Order Number *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Order Number *</label>
                 <input
                   required
                   type="text"
                   value={form.order_number}
                   onChange={(e) => setForm((f) => ({ ...f, order_number: e.target.value }))}
                   placeholder="e.g. ORD-20260415-001"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Customer Name</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Customer Name</label>
                   <input
                     type="text"
                     value={form.customer_name}
                     onChange={(e) => setForm((f) => ({ ...f, customer_name: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Phone</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Phone</label>
                   <input
                     type="text"
                     value={form.customer_phone}
                     onChange={(e) => setForm((f) => ({ ...f, customer_phone: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Email</label>
                 <input
                   type="email"
                   value={form.customer_email}
                   onChange={(e) => setForm((f) => ({ ...f, customer_email: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Total Price</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Total Price</label>
                   <input
                     type="number"
                     step="0.01"
                     value={form.total_price}
                     onChange={(e) => setForm((f) => ({ ...f, total_price: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Payment</label>
                   <select
                     value={form.financial_status}
                     onChange={(e) => setForm((f) => ({ ...f, financial_status: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     {FINANCIAL_STATUSES.map((s) => (
                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -448,11 +448,11 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Fulfillment</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Fulfillment</label>
                   <select
                     value={form.fulfillment_status}
                     onChange={(e) => setForm((f) => ({ ...f, fulfillment_status: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     {FULFILLMENT_STATUSES.map((s) => (
                       <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -463,11 +463,11 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Payment Method</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Payment Method</label>
                   <select
                     value={form.payment_method}
                     onChange={(e) => setForm((f) => ({ ...f, payment_method: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">—</option>
                     {PAYMENT_METHODS.map((m) => (
@@ -476,11 +476,11 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Channel</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Channel</label>
                   <select
                     value={form.channel}
                     onChange={(e) => setForm((f) => ({ ...f, channel: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">—</option>
                     {CHANNELS.map((c) => (
@@ -491,11 +491,11 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Assigned To</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Assigned To</label>
                 <select
                   value={form.assigned_to}
                   onChange={(e) => setForm((f) => ({ ...f, assigned_to: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">Unassigned</option>
                   {profiles.map((p) => (
@@ -505,12 +505,12 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={form.notes}
                   onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
@@ -518,14 +518,14 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Create Order"}
                 </button>
@@ -542,14 +542,14 @@ export function OrdersView({ initialOrders, profiles, currentUserId }: Props) {
 
 function SummaryCard({ label, value, accent }: { label: string; value: number; accent?: "amber" | "red" | "green" }) {
   const accentColors = {
-    amber: "text-amber-600",
-    red: "text-red-500",
-    green: "text-green-600",
+    amber: "text-[var(--color-warning)]",
+    red: "text-[var(--color-error)]",
+    green: "text-[var(--color-success)]",
   };
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className={`text-2xl font-semibold mt-1 ${accent ? accentColors[accent] : "text-gray-900"}`}>
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-3">
+      <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
+      <p className={`text-2xl font-semibold mt-1 ${accent ? accentColors[accent] : "text-[var(--color-text-primary)]"}`}>
         {value}
       </p>
     </div>
@@ -579,24 +579,24 @@ function OrderRow({
 }) {
   return (
     <>
-      <tr className="hover:bg-gray-50 cursor-pointer" onClick={onToggle}>
-        <td className="px-4 py-3 font-mono text-xs font-medium text-gray-900">
+      <tr className="hover:bg-[var(--color-surface-hover)] cursor-pointer" onClick={onToggle}>
+        <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--color-text-primary)]">
           {order.order_number}
           {order.item_count > 0 && (
-            <span className="ml-1.5 text-[10px] text-gray-400">({order.item_count} items)</span>
+            <span className="ml-1.5 text-[10px] text-[var(--color-text-tertiary)]">({order.item_count} items)</span>
           )}
         </td>
-        <td className="px-4 py-3 text-gray-700">
-          {order.customer_name || <span className="text-gray-300">—</span>}
+        <td className="px-4 py-3 text-[var(--color-text-primary)]">
+          {order.customer_name || <span className="text-[var(--color-text-tertiary)]">—</span>}
         </td>
-        <td className="px-4 py-3 text-right font-semibold text-gray-900">
+        <td className="px-4 py-3 text-right font-semibold text-[var(--color-text-primary)]">
           {Number(order.total_price).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
         </td>
         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
           <select
             value={order.financial_status}
             onChange={(e) => onFinancialChange(e.target.value)}
-            className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-gray-900 ${FINANCIAL_BADGE[order.financial_status] ?? "bg-gray-100 text-gray-500"}`}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-[var(--color-accent)] ${FINANCIAL_BADGE[order.financial_status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}
           >
             {FINANCIAL_STATUSES.map((s) => (
               <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
@@ -607,26 +607,26 @@ function OrderRow({
           <select
             value={order.fulfillment_status}
             onChange={(e) => onFulfillmentChange(e.target.value)}
-            className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-gray-900 ${FULFILLMENT_BADGE[order.fulfillment_status] ?? "bg-gray-100 text-gray-500"}`}
+            className={`text-xs px-2 py-0.5 rounded-full font-medium border-0 cursor-pointer focus:ring-2 focus:ring-[var(--color-accent)] ${FULFILLMENT_BADGE[order.fulfillment_status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}
           >
             {FULFILLMENT_STATUSES.map((s) => (
               <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
             ))}
           </select>
         </td>
-        <td className="px-4 py-3 text-xs text-gray-500">
+        <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
           {order.channel ? order.channel.replace("_", " ") : "—"}
         </td>
-        <td className="px-4 py-3 text-xs text-gray-600">
+        <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
           {profileName(order.assigned)}
         </td>
-        <td className="px-4 py-3 text-xs text-gray-400">
+        <td className="px-4 py-3 text-xs text-[var(--color-text-tertiary)]">
           {format(parseISO(order.created_at), "d MMM yyyy")}
         </td>
         <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onDelete}
-            className="text-xs text-gray-300 hover:text-red-400"
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400"
           >
             Del
           </button>
@@ -636,17 +636,17 @@ function OrderRow({
       {/* Expanded Line Items */}
       {isExpanded && (
         <tr>
-          <td colSpan={9} className="bg-gray-50 px-6 py-4 border-t border-gray-100">
+          <td colSpan={9} className="bg-[var(--color-bg-secondary)] px-6 py-4 border-t border-[var(--color-border-secondary)]">
             {loadingItems ? (
-              <p className="text-xs text-gray-400">Loading items...</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">Loading items...</p>
             ) : lineItems.length === 0 ? (
-              <p className="text-xs text-gray-400">No line items for this order.</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">No line items for this order.</p>
             ) : (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase mb-2">Line Items</p>
+                <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase mb-2">Line Items</p>
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-gray-400">
+                    <tr className="text-[var(--color-text-tertiary)]">
                       <th className="text-left pb-1 font-medium">Product</th>
                       <th className="text-left pb-1 font-medium">SKU</th>
                       <th className="text-right pb-1 font-medium">Qty</th>
@@ -656,17 +656,17 @@ function OrderRow({
                   </thead>
                   <tbody>
                     {lineItems.map((item) => (
-                      <tr key={item.id} className="border-t border-gray-100">
-                        <td className="py-1.5 text-gray-700">
+                      <tr key={item.id} className="border-t border-[var(--color-border-secondary)]">
+                        <td className="py-1.5 text-[var(--color-text-primary)]">
                           {item.catalog?.product_name ?? item.product_name}
                           {item.catalog?.color && (
-                            <span className="text-gray-400 ml-1">({item.catalog.color}{item.catalog.size ? `, ${item.catalog.size}` : ""})</span>
+                            <span className="text-[var(--color-text-tertiary)] ml-1">({item.catalog.color}{item.catalog.size ? `, ${item.catalog.size}` : ""})</span>
                           )}
                         </td>
-                        <td className="py-1.5 font-mono text-gray-500">{item.sku ?? item.catalog?.sku ?? "—"}</td>
-                        <td className="py-1.5 text-right text-gray-700">{item.quantity}</td>
-                        <td className="py-1.5 text-right text-gray-700">{Number(item.unit_price).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td>
-                        <td className="py-1.5 text-right font-medium text-gray-900">
+                        <td className="py-1.5 font-mono text-[var(--color-text-secondary)]">{item.sku ?? item.catalog?.sku ?? "—"}</td>
+                        <td className="py-1.5 text-right text-[var(--color-text-primary)]">{item.quantity}</td>
+                        <td className="py-1.5 text-right text-[var(--color-text-primary)]">{Number(item.unit_price).toLocaleString("en-PH", { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1.5 text-right font-medium text-[var(--color-text-primary)]">
                           {(item.quantity * Number(item.unit_price)).toLocaleString("en-PH", { minimumFractionDigits: 2 })}
                         </td>
                       </tr>
@@ -676,7 +676,7 @@ function OrderRow({
               </div>
             )}
             {order.notes && (
-              <p className="text-xs text-gray-500 mt-3 pt-2 border-t border-gray-100">
+              <p className="text-xs text-[var(--color-text-secondary)] mt-3 pt-2 border-t border-[var(--color-border-secondary)]">
                 <span className="font-medium">Notes:</span> {order.notes}
               </p>
             )}
