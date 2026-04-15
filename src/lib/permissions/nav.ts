@@ -57,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: "Kanban Board", slug: "kanban", route: "/productivity/kanban" },
       { name: "Calendar", slug: "calendar", route: "/productivity/calendar" },
+      { name: "Team Activity", slug: "team-activity", route: "/team-activity", minTier: 2 },
     ],
   },
   {
