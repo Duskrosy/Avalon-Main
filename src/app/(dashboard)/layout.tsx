@@ -3,9 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps, resolveNavigation } from "@/lib/permissions";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { MfaBanner } from "@/components/layout/mfa-banner";
 import { PostHogProvider } from "@/lib/posthog/provider";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import type { UserPreferences } from "@/types/database";
 
 async function getBirthdayBanner(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -49,8 +52,6 @@ async function getUnreadCount(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ) {
-  // Notifications table will be created in migration 00002.
-  // Return 0 until then.
   try {
     const { count } = await supabase
       .from("notifications")
@@ -79,7 +80,6 @@ export default async function DashboardLayout({
   const userTier = user.role.tier;
   const deptSlug = user.department?.slug ?? "";
 
-  // Fetch per-user nav overrides (set via the Permissions page by OPS)
   const { data: overrideRows } = await supabase
     .from("nav_page_overrides")
     .select("nav_slug, visible")
@@ -105,33 +105,51 @@ export default async function DashboardLayout({
       .eq("is_active", true)
       .neq("slug", "ops")
       .order("name");
-
     departments = depts ?? [];
   }
 
   const userName = `${user.first_name} ${user.last_name}`;
   const userInitials = `${user.first_name[0]}${user.last_name[0]}`.toUpperCase();
   const userAvatarUrl = user.avatar_url ?? null;
+  const userPreferences = ((user as unknown as Record<string, unknown>).user_preferences ?? {}) as UserPreferences;
 
   return (
     <PostHogProvider userId={user.id} userEmail={user.email}>
-      <div className="min-h-screen bg-gray-50">
-        <Sidebar
-          navigation={navigation}
-          userName={userName}
-          userInitials={userInitials}
-          userAvatarUrl={userAvatarUrl}
-          departmentName={user.department?.name ?? ""}
-          isOps={userIsOps}
-          departments={departments}
-        />
-        <div className="ml-64">
-          <Topbar unreadCount={unreadCount} birthdayBanner={birthdayBanner} />
-          {userTier <= 2 && <MfaBanner />}
-          <main className="p-6">{children}</main>
+      <ThemeProvider userId={user.id} initialPreferences={userPreferences}>
+        <div className="min-h-screen bg-[var(--color-bg-secondary)]">
+          <Sidebar
+            navigation={navigation}
+            userName={userName}
+            userInitials={userInitials}
+            userAvatarUrl={userAvatarUrl}
+            departmentName={user.department?.name ?? ""}
+            isOps={userIsOps}
+            departments={departments}
+          />
+
+          {/* Desktop content area */}
+          <div className="lg:ml-64">
+            <Topbar
+              unreadCount={unreadCount}
+              birthdayBanner={birthdayBanner}
+              userName={userName}
+              userInitials={userInitials}
+              userAvatarUrl={userAvatarUrl}
+            />
+            {userTier <= 2 && <MfaBanner />}
+            <main className="p-4 lg:p-6 pb-20 lg:pb-6">{children}</main>
+          </div>
+
+          {/* Mobile bottom nav */}
+          <MobileNav
+            navigation={navigation}
+            deptSlug={deptSlug}
+            unreadCount={unreadCount}
+          />
+
+          <FeedbackWidget />
         </div>
-        <FeedbackWidget />
-      </div>
+      </ThemeProvider>
     </PostHogProvider>
   );
 }
