@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { format, parseISO } from "date-fns";
 import { useToast, Toast } from "@/components/ui/toast";
+import { CREATIVE_GROUPS } from "@/lib/creatives/constants";
 
 // ── Types ─────────────────────────────────────────────────────
 type Profile = {
@@ -27,6 +28,7 @@ type ContentItem = {
   date_submitted: string | null;
   status: string;
   assigned_to: string | null;
+  group_label: string | null;
   linked_card_id: string | null;
   linked_post_id: string | null;
   linked_ad_asset_id: string | null;
@@ -134,6 +136,7 @@ export default function TrackerView({
   const [tab, setTab] = useState<"planned" | "published">("planned");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [linkItem, setLinkItem] = useState<ContentItem | null>(null);
@@ -144,6 +147,7 @@ export default function TrackerView({
     () =>
       items
         .filter((i) => PLANNED_STATUSES.includes(i.status))
+        .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
         .filter(
           (i) =>
             !search ||
@@ -151,20 +155,21 @@ export default function TrackerView({
             (i.campaign_label ?? "").toLowerCase().includes(search.toLowerCase())
         )
         .filter((i) => !statusFilter || i.status === statusFilter),
-    [items, search, statusFilter]
+    [items, search, statusFilter, groupFilter]
   );
 
   const published = useMemo(
     () =>
       items
         .filter((i) => PUBLISHED_STATUSES.includes(i.status))
+        .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
         .filter(
           (i) =>
             !search ||
             i.title.toLowerCase().includes(search.toLowerCase()) ||
             (i.campaign_label ?? "").toLowerCase().includes(search.toLowerCase())
         ),
-    [items, search]
+    [items, search, groupFilter]
   );
 
   const active = tab === "planned" ? planned : published;
@@ -269,6 +274,23 @@ export default function TrackerView({
         />
       </div>
 
+      {/* Group tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <TabPill
+          label="All Groups"
+          active={groupFilter === "all"}
+          onClick={() => setGroupFilter("all")}
+        />
+        {CREATIVE_GROUPS.map((g) => (
+          <TabPill
+            key={g.slug}
+            label={g.label}
+            active={groupFilter === g.slug}
+            onClick={() => setGroupFilter(g.slug)}
+          />
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
@@ -307,6 +329,7 @@ export default function TrackerView({
               <thead>
                 <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                   <th className="px-4 py-3">Title</th>
+                  <th className="px-4 py-3">Group</th>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Channel</th>
                   <th className="px-4 py-3">Funnel</th>
@@ -330,6 +353,9 @@ export default function TrackerView({
                   >
                     <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
                       {item.title}
+                    </td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                      {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}
                     </td>
                     <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                       {fmtLabel(item.content_type)}
@@ -409,6 +435,11 @@ export default function TrackerView({
                   {item.funnel_stage && <span>{item.funnel_stage}</span>}
                   {item.campaign_label && (
                     <span className="text-indigo-600">{item.campaign_label}</span>
+                  )}
+                  {item.group_label && (
+                    <span className="text-indigo-600 font-medium">
+                      {CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
@@ -553,6 +584,7 @@ function ItemModal({
   const [dateSubmitted, setDateSubmitted] = useState(initial?.date_submitted ?? "");
   const [assignedTo, setAssignedTo] = useState(initial?.assigned_to ?? "");
   const [status, setStatus] = useState(initial?.status ?? "idea");
+  const [groupLabel, setGroupLabel] = useState(initial?.group_label ?? "local");
 
   const isEdit = !!initial;
 
@@ -573,6 +605,7 @@ function ItemModal({
       date_submitted: dateSubmitted || null,
       assigned_to: assignedTo || null,
       status,
+      group_label: groupLabel,
     });
   }
 
@@ -647,6 +680,20 @@ function ItemModal({
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
                   {fmtLabel(s)}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Group">
+            <select
+              value={groupLabel}
+              onChange={(e) => setGroupLabel(e.target.value)}
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            >
+              {CREATIVE_GROUPS.map((g) => (
+                <option key={g.slug} value={g.slug}>
+                  {g.label}
                 </option>
               ))}
             </select>
