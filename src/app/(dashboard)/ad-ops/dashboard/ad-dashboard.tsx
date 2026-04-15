@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 type Request = { id: string; title: string; status: string; target_date: string | null; created_at: string };
 type Asset = { id: string; asset_code: string; title: string; status: string; content_type: string | null; funnel_stage: string | null };
@@ -109,7 +109,7 @@ export function AdDashboard({
   perAccountSpend,
   totalsCurrency,
 }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -122,7 +122,7 @@ export function AdDashboard({
         const body = await res.json().catch(() => ({}));
         setSyncError(body.error ?? `Sync failed (${res.status})`);
       } else {
-        router.refresh();
+        setToast({ message: "Meta ads synced successfully", type: "success" });
       }
     } catch {
       setSyncError("Network error — sync request failed");
@@ -405,6 +405,7 @@ export function AdDashboard({
           </Link>
         ))}
       </div>
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

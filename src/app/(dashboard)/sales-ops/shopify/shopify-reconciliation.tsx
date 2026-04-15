@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
@@ -121,7 +121,7 @@ export function ShopifyReconciliation({
   mismatches,
   shopifyDomain,
 }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [tab, setTab]       = useState<"unmatched" | "unverified" | "mismatches">("unmatched");
   const [syncing, setSyncing] = useState(false);
 
@@ -151,13 +151,13 @@ export function ShopifyReconciliation({
     setSyncing(true);
     try {
       await fetch("/api/sales/shopify-sync", { method: "POST" });
-      router.refresh();
       // Refetch stats after sync
       await fetchStats(statsPreset);
+      setToast({ message: "Shopify data synced", type: "success" });
     } finally {
       setSyncing(false);
     }
-  }, [router, fetchStats, statsPreset]);
+  }, [fetchStats, statsPreset, setToast]);
 
   const tabs = [
     { key: "unmatched",  label: "Unmatched Orders",    count: unmatchedOrders.length },
@@ -580,6 +580,7 @@ export function ShopifyReconciliation({
           )}
         </div>
       )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

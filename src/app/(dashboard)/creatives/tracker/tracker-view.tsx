@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 // ── Types ─────────────────────────────────────────────────────
 type Profile = {
@@ -123,13 +123,14 @@ function profileName(p: { first_name: string; last_name: string } | null): strin
 
 // ── Component ─────────────────────────────────────────────────
 export default function TrackerView({
-  items,
+  items: initialItems,
   profiles,
   posts,
   currentUserId,
   isManager,
 }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
+  const [items, setItems] = useState<ContentItem[]>(initialItems);
   const [tab, setTab] = useState<"planned" | "published">("planned");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -171,14 +172,15 @@ export default function TrackerView({
   // ── Inline status change ──────────────────────────────────
   const changeStatus = useCallback(
     async (id: string, status: string) => {
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
       await fetch("/api/creatives/content-items", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status }),
       });
-      router.refresh();
+      setToast({ message: "Status updated", type: "success" });
     },
-    [router]
+    [setToast]
   );
 
   // ── Create / Edit submit ──────────────────────────────────
@@ -186,19 +188,25 @@ export default function TrackerView({
     async (data: Record<string, unknown>, isEdit: boolean) => {
       setSaving(true);
       try {
-        await fetch("/api/creatives/content-items", {
+        const res = await fetch("/api/creatives/content-items", {
           method: isEdit ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
+        const saved = await res.json().catch(() => null);
+        if (isEdit && saved) {
+          setItems((prev) => prev.map((i) => (i.id === saved.id ? { ...i, ...saved } : i)));
+        } else if (saved) {
+          setItems((prev) => [saved, ...prev]);
+        }
         setShowCreate(false);
         setEditItem(null);
-        router.refresh();
+        setToast({ message: isEdit ? "Item updated" : "Item created", type: "success" });
       } finally {
         setSaving(false);
       }
     },
-    [router]
+    [setToast]
   );
 
   // ── Link submit ───────────────────────────────────────────
@@ -209,18 +217,22 @@ export default function TrackerView({
         const body: Record<string, unknown> = { id: itemId };
         if (linkedPostId) body.linked_post_id = linkedPostId;
         if (externalUrl.trim()) body.linked_external_url = externalUrl.trim();
-        await fetch("/api/creatives/content-items", {
+        const res = await fetch("/api/creatives/content-items", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
+        const saved = await res.json().catch(() => null);
+        if (saved) {
+          setItems((prev) => prev.map((i) => (i.id === saved.id ? { ...i, ...saved } : i)));
+        }
         setLinkItem(null);
-        router.refresh();
+        setToast({ message: "Link updated", type: "success" });
       } finally {
         setSaving(false);
       }
     },
-    [router]
+    [setToast]
   );
 
   // ── Render ────────────────────────────────────────────────
@@ -459,6 +471,7 @@ export default function TrackerView({
           saving={saving}
         />
       )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -340,7 +340,7 @@ const DEFAULT_AD_COLUMNS: AdColumnConfig[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
 
   // Sync state
   const [syncing, setSyncing]   = useState(false);
@@ -468,7 +468,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         setSyncMsg({ type: "error", text: body.error ?? `Sync failed (${res.status})` });
       } else {
         setSyncMsg({ type: "ok", text: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads` });
-        router.refresh();
+        setToast({ message: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads`, type: "success" });
       }
     } catch {
       setSyncMsg({ type: "error", text: "Network error — sync request failed" });
@@ -1851,6 +1851,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           </div>
         </div>
       )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

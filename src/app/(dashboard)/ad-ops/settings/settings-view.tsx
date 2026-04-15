@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useToast, Toast } from "@/components/ui/toast";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ function Spinner() {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [groups,   setGroups]   = useState<Group[]>(initialGroups);
   const [accounts, setAccounts] = useState<MetaAccount[]>(initialAccounts);
 
@@ -154,12 +154,12 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
       });
       setAccounts((prev) => [...prev, a].sort((x, y) => x.name.localeCompare(y.name)));
       setAddingTo(null);
+      setToast({ message: "Ad account added", type: "success" });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to add account");
     } finally {
       setAddingAccount(false);
     }
-    router.refresh();
   }
 
   async function removeAccount(id: string) {
@@ -565,6 +565,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
         )}
       </div>
 
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

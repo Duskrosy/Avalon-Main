@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { useToast, Toast } from "@/components/ui/toast";
 
 type Version = {
   id: string;
@@ -238,8 +239,10 @@ function FileViewer({ version }: { version: Version }) {
   );
 }
 
-export function KopDetailView({ kop, versions, currentVersion, canManage, canDelete, staff = [] }: Props) {
+export function KopDetailView({ kop, versions: initialVersions, currentVersion, canManage, canDelete, staff = [] }: Props) {
   const router = useRouter();
+  const { toast, setToast } = useToast();
+  const [versions, setVersions] = useState<Version[]>(initialVersions);
   const [activeVersion, setActiveVersion] = useState<Version | null>(currentVersion);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -265,9 +268,14 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
 
     const res = await fetch(`/api/kops/${kop.id}/versions`, { method: "POST", body: fd });
     if (res.ok) {
-      router.refresh();
+      const newVersion = await res.json().catch(() => null);
+      if (newVersion) {
+        setVersions((prev) => [newVersion, ...prev]);
+        setActiveVersion(newVersion);
+      }
       setShowUpload(false);
       setUploadNotes("");
+      setToast({ message: "New version uploaded", type: "success" });
     } else {
       const data = await res.json().catch(() => null);
       setError(data?.error || "Failed to upload version. Please try again.");
@@ -447,6 +455,7 @@ export function KopDetailView({ kop, versions, currentVersion, canManage, canDel
           </div>
         </div>
       )}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
