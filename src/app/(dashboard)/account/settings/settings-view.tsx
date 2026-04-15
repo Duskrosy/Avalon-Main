@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { SecurityView } from "@/app/(dashboard)/account/security/security-view";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/ui/password-input";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -201,33 +202,27 @@ function ChangePasswordSection({ userId, allowed }: { userId: string; allowed: b
           )}
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Current password</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               value={form.current}
               onChange={(e) => setForm((f) => ({ ...f, current: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">New password</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={8}
               value={form.next}
               onChange={(e) => setForm((f) => ({ ...f, next: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
             />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Confirm new password</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               value={form.confirm}
               onChange={(e) => setForm((f) => ({ ...f, confirm: e.target.value }))}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
             />
           </div>
           {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
