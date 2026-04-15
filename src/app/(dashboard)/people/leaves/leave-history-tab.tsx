@@ -38,7 +38,7 @@ const STATUS_STYLES: Record<string, string> = {
   pre_approved: "bg-blue-100 text-blue-700",
   approved:     "bg-green-100 text-green-700",
   rejected:     "bg-red-100 text-red-700",
-  cancelled:    "bg-gray-100 text-gray-500",
+  cancelled:    "bg-[var(--color-bg-secondary)] text-[var(--color-text-tertiary)]",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -122,29 +122,29 @@ function LeaveCard({
     ) + 1;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-gray-900">
+            <span className="text-sm font-medium text-[var(--color-text-primary)]">
               {format(new Date(leave.start_date), "MMM d")}
               {leave.start_date !== leave.end_date && ` – ${format(new Date(leave.end_date), "MMM d, yyyy")}`}
               {leave.start_date === leave.end_date && `, ${new Date(leave.start_date).getFullYear()}`}
             </span>
-            <span className="text-xs text-gray-400">{days} day{days !== 1 ? "s" : ""}</span>
+            <span className="text-xs text-[var(--color-text-muted)]">{days} day{days !== 1 ? "s" : ""}</span>
           </div>
-          {leave.reason && <p className="text-sm text-gray-500 mt-0.5">{leave.reason}</p>}
+          {leave.reason && <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">{leave.reason}</p>}
 
           {/* Approval trail */}
           <div className="mt-1 space-y-0.5">
             {leave.pre_approver && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-[var(--color-text-muted)]">
                 Pre-approved by {leave.pre_approver.first_name} {leave.pre_approver.last_name}
                 {leave.pre_approved_at && ` · ${format(new Date(leave.pre_approved_at), "MMM d, yyyy")}`}
               </p>
             )}
             {leave.reviewer && leave.reviewed_at && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-[var(--color-text-muted)]">
                 {STATUS_LABELS[leave.status]} by {leave.reviewer.first_name} {leave.reviewer.last_name}
                 {" · "}{format(new Date(leave.reviewed_at), "MMM d, yyyy")}
               </p>
@@ -160,7 +160,7 @@ function LeaveCard({
             <button
               onClick={handleCancel}
               disabled={cancelling}
-              className="text-xs text-gray-400 hover:text-red-600 transition-colors"
+              className="text-xs text-[var(--color-text-muted)] hover:text-red-600 transition-colors"
             >
               {cancelling ? "…" : "Cancel"}
             </button>
@@ -170,7 +170,7 @@ function LeaveCard({
 
       {/* Supporting document section (sick + emergency only) */}
       {needsDocs && !docLoading && (
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-[var(--color-border-subtle)] pt-3">
           {doc?.requested_by && !doc.file_url && leave.user_id === currentUserId && (
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -179,7 +179,7 @@ function LeaveCard({
                   {doc.requester && ` by ${doc.requester.first_name} ${doc.requester.last_name}`}
                 </p>
                 {doc.request_note && (
-                  <p className="text-xs text-gray-500 mt-0.5">{doc.request_note}</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{doc.request_note}</p>
                 )}
               </div>
               <div>
@@ -197,14 +197,14 @@ function LeaveCard({
 
           {doc?.file_url && (
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500">
-                Supporting document: <span className="font-medium text-gray-700">{doc.file_name}</span>
+              <p className="text-xs text-[var(--color-text-tertiary)]">
+                Supporting document: <span className="font-medium text-[var(--color-text-secondary)]">{doc.file_name}</span>
               </p>
               <a
                 href={doc.file_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-[var(--color-accent)] hover:underline"
               >
                 View
               </a>
@@ -212,7 +212,7 @@ function LeaveCard({
           )}
 
           {!doc && !canManageDocs && leave.user_id === currentUserId && (
-            <p className="text-xs text-gray-400">No supporting document requested yet.</p>
+            <p className="text-xs text-[var(--color-text-muted)]">No supporting document requested yet.</p>
           )}
         </div>
       )}
@@ -262,7 +262,7 @@ export function LeaveHistoryTab({
     return (
       <div className="space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-20 bg-gray-100 rounded-xl animate-pulse" />
+          <div key={i} className="h-20 bg-[var(--color-bg-secondary)] rounded-xl animate-pulse" />
         ))}
       </div>
     );
@@ -270,8 +270,8 @@ export function LeaveHistoryTab({
 
   if (leaves.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
-        <p className="text-sm text-gray-400">No leave history yet.</p>
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-10 text-center">
+        <p className="text-sm text-[var(--color-text-muted)]">No leave history yet.</p>
       </div>
     );
   }
@@ -281,19 +281,19 @@ export function LeaveHistoryTab({
       {grouped.map(({ type, leaves: typeLeaves }) => {
         const open = openTypes.has(type);
         return (
-          <div key={type} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div key={type} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl overflow-hidden">
             <button
               onClick={() => toggleType(type)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--color-bg-hover)] transition-colors"
             >
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-900">{TYPE_LABELS[type]}</span>
-                <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">
+                <span className="text-sm font-semibold text-[var(--color-text-primary)]">{TYPE_LABELS[type]}</span>
+                <span className="px-2 py-0.5 bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] rounded-full text-xs font-medium">
                   {typeLeaves.length}
                 </span>
               </div>
               <svg
-                className={cn("w-4 h-4 text-gray-400 transition-transform", open && "rotate-180")}
+                className={cn("w-4 h-4 text-[var(--color-text-muted)] transition-transform", open && "rotate-180")}
                 viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
               >
                 <path d="M6 9l6 6 6-6" />
@@ -301,9 +301,9 @@ export function LeaveHistoryTab({
             </button>
 
             {open && (
-              <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+              <div className="px-4 pb-4 space-y-3 border-t border-[var(--color-border-subtle)] pt-3">
                 {typeLeaves.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center py-4">No {TYPE_LABELS[type].toLowerCase()} records.</p>
+                  <p className="text-sm text-[var(--color-text-muted)] text-center py-4">No {TYPE_LABELS[type].toLowerCase()} records.</p>
                 ) : (
                   typeLeaves.map((leave) => (
                     <LeaveCard

@@ -162,7 +162,7 @@ export function MobileNav({ navigation, deptSlug, unreadCount }: MobileNavProps)
               >
                 <div className="relative">
                   <tab.icon size={22} strokeWidth={1.5} />
-                  {tab.badge && tab.badge > 0 && (
+                  {tab.badge !== undefined && tab.badge > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 flex items-center justify-center rounded-full bg-[var(--color-error)] text-white text-[10px] font-semibold">
                       {tab.badge > 99 ? "99+" : tab.badge}
                     </span>

@@ -62,11 +62,11 @@ function getMinDate(type: LeaveType): string | undefined {
 }
 
 function getBarColor(remaining: number, total: number): string {
-  if (total === 0) return "bg-gray-300";
+  if (total === 0) return "bg-[var(--color-bg-tertiary)]";
   const pct = remaining / total;
-  if (pct > 0.5) return "bg-green-500";
+  if (pct > 0.5) return "bg-[var(--color-success)]";
   if (pct > 0.2) return "bg-amber-400";
-  return "bg-red-500";
+  return "bg-[var(--color-error)]";
 }
 
 // ─── Credit bar ───────────────────────────────────────────────────────────────
@@ -81,18 +81,18 @@ function CreditBar({ type, totals, used }: { type: LeaveType; totals: Credits["t
   return (
     <div className="flex-1 min-w-0">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-medium text-gray-700">{cfg.label}</span>
-        <span className="text-xs text-gray-500">
-          <span className="font-semibold text-gray-900">{remaining}</span> / {total} remaining
+        <span className="text-xs font-medium text-[var(--color-text-secondary)]">{cfg.label}</span>
+        <span className="text-xs text-[var(--color-text-tertiary)]">
+          <span className="font-semibold text-[var(--color-text-primary)]">{remaining}</span> / {total} remaining
         </span>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-[var(--color-bg-secondary)] rounded-full overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all duration-500", getBarColor(remaining, total))}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400 mt-0.5">{usedCount} day{usedCount !== 1 ? "s" : ""} used this year</p>
+      <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{usedCount} day{usedCount !== 1 ? "s" : ""} used this year</p>
     </div>
   );
 }
@@ -144,13 +144,13 @@ function WhoIsOffPanel() {
       : `${format(parseISO(l.start_date), "MMM d")} – ${format(parseISO(l.end_date), "MMM d")}`;
 
     return (
-      <div key={l.id} className="flex items-start gap-2.5 py-2 border-b border-gray-50 last:border-0">
-        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-500 shrink-0">
+      <div key={l.id} className="flex items-start gap-2.5 py-2 border-b border-[var(--color-border-subtle)] last:border-0">
+        <div className="w-7 h-7 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-xs font-semibold text-[var(--color-text-tertiary)] shrink-0">
           {(l.profile?.first_name?.[0] ?? "") + (l.profile?.last_name?.[0] ?? "")}
         </div>
         <div className="min-w-0">
-          <p className="text-xs font-medium text-gray-800 truncate">{name}</p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs font-medium text-[var(--color-text-primary)] truncate">{name}</p>
+          <p className="text-xs text-[var(--color-text-muted)]">
             {TYPE_CONFIG[l.leave_type]?.label} · {dateLabel}
             {isPre && <span className="ml-1 text-amber-500">· awaiting approval</span>}
           </p>
@@ -162,15 +162,15 @@ function WhoIsOffPanel() {
   return (
     <div className="space-y-3">
       {/* On leave today */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">
           On leave today
           {!loading && <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">{onLeaveToday.length}</span>}
         </h3>
         {loading ? (
-          <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-8 bg-gray-100 rounded animate-pulse" />)}</div>
+          <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-8 bg-[var(--color-bg-secondary)] rounded animate-pulse" />)}</div>
         ) : onLeaveToday.length === 0 ? (
-          <p className="text-xs text-gray-400">Everyone is in today.</p>
+          <p className="text-xs text-[var(--color-text-muted)]">Everyone is in today.</p>
         ) : (
           <div>{onLeaveToday.map(leaveChip)}</div>
         )}
@@ -178,15 +178,15 @@ function WhoIsOffPanel() {
 
       {/* Upcoming in next 14 days */}
       {!loading && soonLeaves.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Coming up (14 days)</h3>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-4">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Coming up (14 days)</h3>
           <div>{soonLeaves.slice(0, 5).map(leaveChip)}</div>
         </div>
       )}
 
       {/* Leave policy quick reference */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Leave policies</h3>
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)] mb-3">Leave policies</h3>
         <div className="space-y-3">
           {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => {
             const cfg = TYPE_CONFIG[t];
@@ -194,14 +194,14 @@ function WhoIsOffPanel() {
               <div key={t} className="flex gap-2.5">
                 <span className="text-base shrink-0 mt-0.5">{cfg.icon}</span>
                 <div>
-                  <p className="text-xs font-semibold text-gray-800">{cfg.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{cfg.policy}</p>
+                  <p className="text-xs font-semibold text-[var(--color-text-primary)]">{cfg.label}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{cfg.policy}</p>
                 </div>
               </div>
             );
           })}
         </div>
-        <p className="text-xs text-gray-400 mt-4 pt-3 border-t border-gray-50">
+        <p className="text-xs text-[var(--color-text-muted)] mt-4 pt-3 border-t border-[var(--color-border-subtle)]">
           All leave requests go through a two-step approval: manager pre-approval, then OPS final approval.
         </p>
       </div>
@@ -282,14 +282,14 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
       <div className="space-y-6">
 
         {/* Credit Dashboard */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
             Leave Balance · {new Date().getFullYear()}
           </h2>
           {creditsLoading ? (
             <div className="space-y-3">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-8 bg-gray-100 rounded-lg animate-pulse" />
+                <div key={i} className="h-8 bg-[var(--color-bg-secondary)] rounded-lg animate-pulse" />
               ))}
             </div>
           ) : credits ? (
@@ -299,13 +299,13 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">Could not load credits.</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Could not load credits.</p>
           )}
         </div>
 
         {/* Leave Request Form */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">File a Leave</h2>
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">File a Leave</h2>
 
           {success && (
             <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 font-medium">
@@ -317,7 +317,7 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
 
             {/* Leave type */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-2">Leave type</label>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-2">Leave type</label>
               <div className="grid grid-cols-3 gap-2">
                 {(["sick", "vacation", "emergency"] as LeaveType[]).map((t) => {
                   const cfg = TYPE_CONFIG[t];
@@ -330,13 +330,13 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
                       className={cn(
                         "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
                         active
-                          ? "border-gray-900 bg-gray-900 text-white"
-                          : "border-gray-200 hover:border-gray-400 text-gray-700"
+                          ? "border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-white"
+                          : "border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)] text-[var(--color-text-secondary)]"
                       )}
                     >
                       <span className="text-base mb-1">{cfg.icon}</span>
                       <span className="text-sm font-semibold leading-tight">{cfg.label}</span>
-                      <span className={cn("text-xs mt-0.5", active ? "text-gray-300" : "text-gray-400")}>
+                      <span className={cn("text-xs mt-0.5", active ? "text-white/70" : "text-[var(--color-text-muted)]")}>
                         {cfg.description}
                       </span>
                     </button>
@@ -344,7 +344,7 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
                 })}
               </div>
 
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-[var(--color-text-muted)]">
                 {TYPE_CONFIG[form.leave_type].policy}
               </p>
 
@@ -363,40 +363,40 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
             {/* Dates */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Start date</label>
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Start date</label>
                 <input
                   type="date"
                   required
                   min={minDate}
                   value={form.start_date}
                   onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-text-primary)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">End date</label>
+                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">End date</label>
                 <input
                   type="date"
                   required
                   min={form.start_date || minDate}
                   value={form.end_date}
                   onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-text-primary)]"
                 />
               </div>
             </div>
 
             {/* Reason */}
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Reason <span className="text-gray-400 font-normal">(optional)</span>
+              <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+                Reason <span className="text-[var(--color-text-muted)] font-normal">(optional)</span>
               </label>
               <textarea
                 rows={3}
                 value={form.reason}
                 onChange={(e) => setForm({ ...form, reason: e.target.value })}
                 placeholder="Add context for your manager…"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-text-primary)] resize-none"
               />
             </div>
 
@@ -407,7 +407,7 @@ export function FileLeaveTab({ onSubmitted }: { onSubmitted: () => void }) {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition-colors"
+              className="w-full bg-[var(--color-text-primary)] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
             >
               {submitting ? "Submitting…" : "Submit leave request"}
             </button>

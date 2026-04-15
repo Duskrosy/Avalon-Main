@@ -280,6 +280,18 @@ function ProfileStrip({
             <Pencil size={16} strokeWidth={1.5} />
             <span>Edit my Profile</span>
           </Link>
+          <Link
+            href="#feedback"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(false);
+              window.dispatchEvent(new CustomEvent("open-feedback"));
+            }}
+            className="flex items-center gap-3 px-4 py-3 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors border-t border-[var(--color-border-secondary)]"
+          >
+            <MessageSquare size={16} strokeWidth={1.5} />
+            <span>Send Feedback</span>
+          </Link>
 
           {/* Dark mode quick toggle */}
           <div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-[var(--color-border-secondary)]">

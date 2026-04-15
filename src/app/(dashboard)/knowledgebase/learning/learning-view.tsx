@@ -429,7 +429,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
               key={m.id}
               className={`bg-[var(--color-bg-primary)] border rounded-[var(--radius-lg)] p-4 flex items-center gap-4 transition-colors ${
                 m.completed ? "border-green-200 bg-[var(--color-success-light)]/30"
-                : m.viewed ? "border-blue-100"
+                : m.viewed ? "border-[var(--color-border-primary)]"
                 : "border-[var(--color-border-primary)]"
               }`}
             >

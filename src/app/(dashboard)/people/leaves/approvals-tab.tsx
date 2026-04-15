@@ -64,9 +64,9 @@ function DocRequestModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
-        <h3 className="text-base font-semibold text-gray-900 mb-1">Request supporting document</h3>
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-sm p-6">
+        <h3 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">Request supporting document</h3>
+        <p className="text-sm text-[var(--color-text-tertiary)] mb-4">
           A notification will be sent to <strong>{employeeName}</strong> asking them to upload.
         </p>
         <textarea
@@ -74,16 +74,16 @@ function DocRequestModal({
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Optional note for the employee…"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none mb-4"
+          className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-text-primary)] resize-none mb-4"
         />
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm hover:bg-gray-50">
+          <button onClick={onClose} className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] py-2 rounded-lg text-sm hover:bg-[var(--color-bg-hover)]">
             Cancel
           </button>
           <button
             onClick={handleSend}
             disabled={sending}
-            className="flex-1 bg-gray-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+            className="flex-1 bg-[var(--color-text-primary)] text-white py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
           >
             {sending ? "Sending…" : "Send request"}
           </button>
@@ -148,20 +148,20 @@ function ApprovalCard({
         />
       )}
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-4">
         <div className="flex items-start gap-3">
           {/* Avatar */}
-          <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600 shrink-0">
+          <div className="w-9 h-9 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-xs font-semibold text-[var(--color-text-secondary)] shrink-0">
             {(profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                   {profile?.first_name} {profile?.last_name}
                 </p>
-                <p className="text-xs text-gray-400">{profile?.department?.name}</p>
+                <p className="text-xs text-[var(--color-text-muted)]">{profile?.department?.name}</p>
               </div>
               <span className={cn(
                 "px-2.5 py-1 rounded-full text-xs font-medium shrink-0",
@@ -173,11 +173,11 @@ function ApprovalCard({
 
             {/* Leave details */}
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-[var(--color-text-secondary)]">
                 <span className="font-medium">{TYPE_LABELS[leave.leave_type]} leave</span>
                 {" · "}{days} day{days !== 1 ? "s" : ""}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
                 {format(new Date(leave.start_date), "MMM d")}
                 {leave.start_date !== leave.end_date &&
                   ` – ${format(new Date(leave.end_date), "MMM d, yyyy")}`}
@@ -187,12 +187,12 @@ function ApprovalCard({
             </div>
 
             {leave.reason && (
-              <p className="text-sm text-gray-500 mt-1 italic">&ldquo;{leave.reason}&rdquo;</p>
+              <p className="text-sm text-[var(--color-text-tertiary)] mt-1 italic">&ldquo;{leave.reason}&rdquo;</p>
             )}
 
             {/* Pre-approval info (for OPS final-approval view) */}
             {isPreApproved && leave.pre_approver && (
-              <p className="text-xs text-blue-600 mt-1.5">
+              <p className="text-xs text-[var(--color-accent)] mt-1.5">
                 Pre-approved by {leave.pre_approver.first_name} {leave.pre_approver.last_name}
                 {leave.pre_approved_at &&
                   ` on ${format(new Date(leave.pre_approved_at), "MMM d, yyyy")}`}
@@ -201,9 +201,9 @@ function ApprovalCard({
 
             {/* Document status (sick / emergency only) */}
             {needsDocs && (
-              <div className="mt-3 pt-3 border-t border-gray-50">
+              <div className="mt-3 pt-3 border-t border-[var(--color-border-subtle)]">
                 {!docLoaded ? (
-                  <p className="text-xs text-gray-400">Checking document status…</p>
+                  <p className="text-xs text-[var(--color-text-muted)]">Checking document status…</p>
                 ) : doc?.file_url ? (
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-green-700 font-medium">✓ Document uploaded</span>
@@ -211,7 +211,7 @@ function ApprovalCard({
                       href={doc.file_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-[var(--color-accent)] hover:underline"
                     >
                       View — {doc.file_name}
                     </a>
@@ -223,7 +223,7 @@ function ApprovalCard({
                 ) : (
                   <button
                     onClick={() => setShowDocModal(true)}
-                    className="text-xs border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="text-xs border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-bg-hover)] transition-colors"
                   >
                     Request supporting document
                   </button>
@@ -237,7 +237,7 @@ function ApprovalCard({
                 <button
                   onClick={() => act("pre_approve")}
                   disabled={acting !== null}
-                  className="px-4 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  className="px-4 py-1.5 bg-[var(--color-success)] text-white text-xs font-medium rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
                 >
                   {acting === "pre_approve" ? "Approving…" : "Pre-Approve"}
                 </button>
@@ -246,7 +246,7 @@ function ApprovalCard({
                 <button
                   onClick={() => act("approve")}
                   disabled={acting !== null}
-                  className="px-4 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  className="px-4 py-1.5 bg-[var(--color-success)] text-white text-xs font-medium rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
                 >
                   {acting === "approve" ? "Approving…" : "Final Approve"}
                 </button>
@@ -318,17 +318,17 @@ export function ApprovalsTab({
   if (loading) {
     return (
       <div className="space-y-3">
-        {[1, 2].map((i) => <div key={i} className="h-28 bg-gray-100 rounded-xl animate-pulse" />)}
+        {[1, 2].map((i) => <div key={i} className="h-28 bg-[var(--color-bg-secondary)] rounded-xl animate-pulse" />)}
       </div>
     );
   }
 
   if (totalPending === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-10 text-center">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-xl p-10 text-center">
         <div className="text-3xl mb-3">✓</div>
-        <p className="text-sm font-medium text-gray-700">All caught up</p>
-        <p className="text-xs text-gray-400 mt-1">No leave requests awaiting your action.</p>
+        <p className="text-sm font-medium text-[var(--color-text-secondary)]">All caught up</p>
+        <p className="text-xs text-[var(--color-text-muted)] mt-1">No leave requests awaiting your action.</p>
       </div>
     );
   }
@@ -340,7 +340,7 @@ export function ApprovalsTab({
       {pending.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
               {isOps ? "Pending — needs manager pre-approval" : "Pending requests"}
             </h3>
             <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs font-medium">
@@ -364,7 +364,7 @@ export function ApprovalsTab({
       {isOps && preApproved.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-sm font-semibold text-gray-900">Pre-approved — awaiting your final approval</h3>
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Pre-approved — awaiting your final approval</h3>
             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
               {preApproved.length}
             </span>

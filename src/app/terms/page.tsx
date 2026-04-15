@@ -8,24 +8,24 @@ const EFFECTIVE_DATE = "April 10, 2026";
 
 export default function TermsOfService() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="mb-10">
-          <p className="text-sm text-gray-400 uppercase tracking-widest mb-2">Finn Cotton</p>
-          <h1 className="text-3xl font-semibold text-gray-900">Terms of Service</h1>
-          <p className="text-sm text-gray-500 mt-2">Effective date: {EFFECTIVE_DATE}</p>
+          <p className="text-sm text-[var(--color-text-muted)] uppercase tracking-widest mb-2">Finn Cotton</p>
+          <h1 className="text-3xl font-semibold text-[var(--color-text-primary)]">Terms of Service</h1>
+          <p className="text-sm text-[var(--color-text-tertiary)] mt-2">Effective date: {EFFECTIVE_DATE}</p>
         </div>
 
-        <div className="prose prose-gray max-w-none text-gray-700 space-y-8 text-sm leading-relaxed">
+        <div className="prose prose-gray max-w-none text-[var(--color-text-secondary)] space-y-8 text-sm leading-relaxed">
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">1. Overview</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">1. Overview</h2>
             <p>
               These Terms of Service (&ldquo;Terms&rdquo;) govern your use of <strong>Avalon</strong>,
               an internal business operations platform operated by Finn Cotton
               (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;), accessible at{" "}
-              <a href="https://avalon.finncotton.com" className="text-blue-600 hover:underline">
+              <a href="https://avalon.finncotton.com" className="text-[var(--color-accent)] hover:underline">
                 avalon.finncotton.com
               </a>
               .
@@ -38,12 +38,12 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">2. Eligibility</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">2. Eligibility</h2>
             <p>
               Access to Avalon is restricted to individuals who have been explicitly invited by
               Finn Cotton. Unauthorised access to this platform is strictly prohibited. If you have
               received access in error, you must cease use immediately and notify us at{" "}
-              <a href="mailto:support@finncotton.com" className="text-blue-600 hover:underline">
+              <a href="mailto:support@finncotton.com" className="text-[var(--color-accent)] hover:underline">
                 support@finncotton.com
               </a>
               .
@@ -51,7 +51,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">3. Permitted Use</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">3. Permitted Use</h2>
             <p>You may use Avalon solely for legitimate internal business purposes authorised by Finn Cotton, including:</p>
             <ul className="list-disc ml-5 mt-2 space-y-1">
               <li>Viewing and managing internal content schedules and social media analytics</li>
@@ -62,7 +62,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">4. Prohibited Use</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">4. Prohibited Use</h2>
             <p>You must not:</p>
             <ul className="list-disc ml-5 mt-2 space-y-1">
               <li>Share your login credentials with any other person</li>
@@ -75,7 +75,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">5. Third-Party Platform Integrations</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">5. Third-Party Platform Integrations</h2>
             <p>
               Avalon integrates with third-party platforms including TikTok, Facebook, Instagram,
               and YouTube via their official APIs. When you connect a social media account, you
@@ -94,7 +94,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">6. Confidentiality</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">6. Confidentiality</h2>
             <p>
               Avalon contains confidential business information including financial KPIs, internal
               performance data, content strategies, and personnel information. All users agree to
@@ -104,7 +104,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">7. Intellectual Property</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">7. Intellectual Property</h2>
             <p>
               Avalon, including its design, code, and all content within it, is the property of
               Finn Cotton. No part of the platform may be reproduced, distributed, or used outside
@@ -113,7 +113,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">8. Termination of Access</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">8. Termination of Access</h2>
             <p>
               Finn Cotton reserves the right to suspend or terminate any user&apos;s access to
               Avalon at any time, with or without notice, particularly upon the end of employment
@@ -122,7 +122,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">9. Disclaimer of Warranties</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">9. Disclaimer of Warranties</h2>
             <p>
               Avalon is provided &ldquo;as is&rdquo; for internal use. While we make reasonable
               efforts to keep the platform operational and accurate, we make no warranties regarding
@@ -131,7 +131,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">10. Limitation of Liability</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">10. Limitation of Liability</h2>
             <p>
               To the fullest extent permitted by law, Finn Cotton shall not be liable for any
               indirect, incidental, or consequential damages arising from your use of, or inability
@@ -140,7 +140,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">11. Governing Law</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">11. Governing Law</h2>
             <p>
               These Terms are governed by the laws of the Republic of the Philippines. Any disputes
               arising from these Terms shall be subject to the exclusive jurisdiction of the courts
@@ -149,7 +149,7 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">12. Changes to These Terms</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">12. Changes to These Terms</h2>
             <p>
               We may update these Terms from time to time. The effective date at the top of this
               page will always reflect the most recent revision. Continued use of Avalon after an
@@ -158,15 +158,15 @@ export default function TermsOfService() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">13. Contact</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">13. Contact</h2>
             <p>For any questions about these Terms, please contact us:</p>
-            <address className="not-italic mt-2 text-gray-600">
+            <address className="not-italic mt-2 text-[var(--color-text-secondary)]">
               <strong>Finn Cotton</strong><br />
               Unit 1, Delcon Residences<br />
               Don Jesus Blvd, Cupang<br />
               Muntinlupa, 1771 Metro Manila<br />
               Philippines<br />
-              <a href="mailto:support@finncotton.com" className="text-blue-600 hover:underline">
+              <a href="mailto:support@finncotton.com" className="text-[var(--color-accent)] hover:underline">
                 support@finncotton.com
               </a>
             </address>
@@ -174,9 +174,9 @@ export default function TermsOfService() {
 
         </div>
 
-        <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+        <div className="mt-12 pt-8 border-t border-[var(--color-border-subtle)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
           <span>© {new Date().getFullYear()} Finn Cotton. All rights reserved.</span>
-          <a href="/privacy" className="hover:text-gray-600">← Privacy Policy</a>
+          <a href="/privacy" className="hover:text-[var(--color-text-secondary)]">← Privacy Policy</a>
         </div>
       </div>
     </div>

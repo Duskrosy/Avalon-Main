@@ -8,19 +8,19 @@ const EFFECTIVE_DATE = "April 10, 2026";
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <div className="max-w-3xl mx-auto px-6 py-16">
         {/* Header */}
         <div className="mb-10">
-          <p className="text-sm text-gray-400 uppercase tracking-widest mb-2">Finn Cotton</p>
-          <h1 className="text-3xl font-semibold text-gray-900">Privacy Policy</h1>
-          <p className="text-sm text-gray-500 mt-2">Effective date: {EFFECTIVE_DATE}</p>
+          <p className="text-sm text-[var(--color-text-muted)] uppercase tracking-widest mb-2">Finn Cotton</p>
+          <h1 className="text-3xl font-semibold text-[var(--color-text-primary)]">Privacy Policy</h1>
+          <p className="text-sm text-[var(--color-text-tertiary)] mt-2">Effective date: {EFFECTIVE_DATE}</p>
         </div>
 
-        <div className="prose prose-gray max-w-none text-gray-700 space-y-8 text-sm leading-relaxed">
+        <div className="prose prose-gray max-w-none text-[var(--color-text-secondary)] space-y-8 text-sm leading-relaxed">
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">1. About This Policy</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">1. About This Policy</h2>
             <p>
               This Privacy Policy describes how Finn Cotton (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or
               &ldquo;us&rdquo;) collects, uses, and protects information in connection with{" "}
@@ -34,7 +34,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">2. Information We Collect</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">2. Information We Collect</h2>
             <p>We collect the following categories of information:</p>
             <ul className="list-disc ml-5 mt-2 space-y-1">
               <li>
@@ -66,7 +66,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">3. How We Use Information</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">3. How We Use Information</h2>
             <p>All information collected through Avalon is used exclusively for internal business purposes:</p>
             <ul className="list-disc ml-5 mt-2 space-y-1">
               <li>Displaying social media performance dashboards to internal team members</li>
@@ -81,7 +81,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">4. TikTok API Data</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">4. TikTok API Data</h2>
             <p>
               Avalon integrates with the TikTok Display API to retrieve video performance statistics
               for TikTok accounts owned and operated by Finn Cotton. Specifically, we access:
@@ -101,7 +101,7 @@ export default function PrivacyPolicy() {
               by revoking access directly through your{" "}
               <a
                 href="https://www.tiktok.com/settings/connected-apps"
-                className="text-blue-600 hover:underline"
+                className="text-[var(--color-accent)] hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -112,7 +112,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">5. Data Sharing</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">5. Data Sharing</h2>
             <p>
               We do not sell, rent, or share personal data with third parties for commercial
               purposes. Data may be shared with:
@@ -133,12 +133,12 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">6. Data Retention</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">6. Data Retention</h2>
             <p>
               Social media statistics are retained for as long as the connected platform account
               remains active within Avalon. Internal user accounts are retained for the duration of
               employment or engagement with Finn Cotton. Data may be deleted upon written request to{" "}
-              <a href="mailto:support@finncotton.com" className="text-blue-600 hover:underline">
+              <a href="mailto:support@finncotton.com" className="text-[var(--color-accent)] hover:underline">
                 support@finncotton.com
               </a>
               .
@@ -146,7 +146,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">7. Security</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">7. Security</h2>
             <p>
               All data is stored in encrypted databases hosted on Supabase. Access tokens for
               third-party platforms (TikTok, Meta, YouTube) are stored securely and are never
@@ -156,11 +156,11 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">8. Your Rights</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">8. Your Rights</h2>
             <p>
               Internal users and individuals whose data appears in Avalon may request access to,
               correction of, or deletion of their data by contacting us at{" "}
-              <a href="mailto:support@finncotton.com" className="text-blue-600 hover:underline">
+              <a href="mailto:support@finncotton.com" className="text-[var(--color-accent)] hover:underline">
                 support@finncotton.com
               </a>
               . We will respond within 30 days.
@@ -168,7 +168,7 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">9. Changes to This Policy</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">9. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. The effective date at the top of
               this page will always reflect the most recent revision. Continued use of Avalon after
@@ -177,17 +177,17 @@ export default function PrivacyPolicy() {
           </section>
 
           <section>
-            <h2 className="text-base font-semibold text-gray-900 mb-2">10. Contact</h2>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-2">10. Contact</h2>
             <p>
               For any questions or concerns regarding this Privacy Policy, please contact us:
             </p>
-            <address className="not-italic mt-2 text-gray-600">
+            <address className="not-italic mt-2 text-[var(--color-text-secondary)]">
               <strong>Finn Cotton</strong><br />
               Unit 1, Delcon Residences<br />
               Don Jesus Blvd, Cupang<br />
               Muntinlupa, 1771 Metro Manila<br />
               Philippines<br />
-              <a href="mailto:support@finncotton.com" className="text-blue-600 hover:underline">
+              <a href="mailto:support@finncotton.com" className="text-[var(--color-accent)] hover:underline">
                 support@finncotton.com
               </a>
             </address>
@@ -195,9 +195,9 @@ export default function PrivacyPolicy() {
 
         </div>
 
-        <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+        <div className="mt-12 pt-8 border-t border-[var(--color-border-subtle)] flex items-center justify-between text-xs text-[var(--color-text-muted)]">
           <span>© {new Date().getFullYear()} Finn Cotton. All rights reserved.</span>
-          <a href="/terms" className="hover:text-gray-600">Terms of Service →</a>
+          <a href="/terms" className="hover:text-[var(--color-text-secondary)]">Terms of Service →</a>
         </div>
       </div>
     </div>

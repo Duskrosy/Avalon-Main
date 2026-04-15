@@ -119,7 +119,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
           <path d="M11.442 16.667a1.667 1.667 0 0 1-2.884 0" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white text-[10px] font-medium rounded-full w-4 h-4 flex items-center justify-center">
+          <span className="absolute -top-0.5 -right-0.5 bg-[var(--color-error)] text-white text-[10px] font-medium rounded-full w-4 h-4 flex items-center justify-center">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -135,7 +135,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="text-xs text-blue-600 hover:text-blue-700"
+                  className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
                 >
                   Mark all read
                 </button>
@@ -185,7 +185,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
                     key={n.id}
                     onClick={() => handleClick(n)}
                     className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                      n.is_read ? "hover:bg-[var(--color-surface-hover)]" : "bg-blue-50/50 hover:bg-blue-50"
+                      n.is_read ? "hover:bg-[var(--color-surface-hover)]" : "bg-[var(--color-accent-light)] hover:bg-[var(--color-accent-light)]"
                     }`}
                   >
                     <span className="text-sm mt-0.5 shrink-0">
@@ -203,7 +203,7 @@ export function NotificationDropdown({ unreadCount: initialCount }: { unreadCoun
                       </p>
                     </div>
                     {!n.is_read && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                      <div className="w-2 h-2 rounded-full bg-[var(--color-accent)] shrink-0 mt-1.5" />
                     )}
                   </div>
                 ))}
