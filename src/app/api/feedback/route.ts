@@ -78,7 +78,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("feedback")
-    .select("*, profiles:user_id(first_name, last_name, email)")
+    .select("*, profiles:user_id(first_name, last_name, email), department:department_id(name)")
     .order("created_at", { ascending: false })
     .limit(limit);
 
