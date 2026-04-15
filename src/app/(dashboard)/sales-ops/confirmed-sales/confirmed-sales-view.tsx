@@ -10,6 +10,7 @@ type Props = {
   agents: Agent[];
   currentUserId: string;
   canManage: boolean;
+  initialRows?: ConfirmedSale[];
 };
 
 const CURRENT_MONTH = format(new Date(), "yyyy-MM");
@@ -23,10 +24,10 @@ type ShopifyLookup = {
   source?: "db" | "shopify_live";
 };
 
-export function ConfirmedSalesView({ agents, currentUserId, canManage }: Props) {
+export function ConfirmedSalesView({ agents, currentUserId, canManage, initialRows }: Props) {
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [selectedAgent, setSelectedAgent] = useState("all");
-  const [rows, setRows] = useState<ConfirmedSale[]>([]);
+  const [rows, setRows] = useState<ConfirmedSale[]>(initialRows ?? []);
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editRow, setEditRow] = useState<ConfirmedSale | null>(null);
