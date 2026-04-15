@@ -541,7 +541,20 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+          <div className="w-full max-w-sm mx-auto space-y-6 px-4">
+            <div className="h-8 w-32 mx-auto animate-pulse rounded bg-gray-200" />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="h-3 w-16 animate-pulse rounded bg-gray-200" />
+                <div className="h-10 w-full animate-pulse rounded-lg bg-gray-100" />
+              </div>
+              <div className="space-y-2">
+                <div className="h-3 w-20 animate-pulse rounded bg-gray-200" />
+                <div className="h-10 w-full animate-pulse rounded-lg bg-gray-100" />
+              </div>
+              <div className="h-10 w-full animate-pulse rounded-lg bg-gray-200" />
+            </div>
+          </div>
         </div>
       }
     >

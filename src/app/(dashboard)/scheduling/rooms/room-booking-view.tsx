@@ -572,8 +572,17 @@ export function RoomBookingView({ rooms, initialBookings, allUsers, currentUserI
             {/* Timeline grid */}
             <div className="flex-1 overflow-y-auto px-5 py-3">
               {loading ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin" />
+                <div className="space-y-1 py-2">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="flex items-stretch">
+                      <div className="w-20 shrink-0 pr-3 py-2">
+                        {i % 2 === 0 && <div className="h-3 w-12 animate-pulse rounded bg-gray-200" />}
+                      </div>
+                      <div className="flex-1 py-1">
+                        <div className="h-8 animate-pulse rounded-lg bg-gray-100" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : selectedRoom ? (
                 <div className="space-y-1">

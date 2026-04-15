@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { format } from "date-fns";
 import { Avatar } from "@/components/ui/avatar";
+import { SkeletonAvatar, Skeleton } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/client";
 import type { BirthdayPerson } from "./page";
 
@@ -97,7 +98,13 @@ function GifPicker({ onSelect }: { onSelect: (gif: GifResult) => void }) {
         onChange={(e) => { setQuery(e.target.value); if (debounceRef.current) clearTimeout(debounceRef.current); debounceRef.current = setTimeout(() => search(e.target.value), 400); }}
         className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
       />
-      {loading && <div className="flex justify-center py-3"><div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>}
+      {loading && (
+        <div className="grid grid-cols-3 gap-1.5 rounded-lg">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded bg-white/10" />
+          ))}
+        </div>
+      )}
       {!loading && gifs.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5 rounded-lg">
           {gifs.map((g) => (
@@ -270,7 +277,19 @@ function BirthdayCardModal({
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4 min-h-0">
           {loading ? (
-            <div className="flex justify-center py-8"><div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>
+            <div className="space-y-4 py-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white/5 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <SkeletonAvatar size="xs" className="bg-white/10" />
+                    <Skeleton className="h-3 w-24 bg-white/10" />
+                    <Skeleton className="h-3 w-12 ml-auto bg-white/10" />
+                  </div>
+                  <Skeleton className="h-3 w-full bg-white/10" />
+                  <Skeleton className="h-3 w-3/4 bg-white/10" />
+                </div>
+              ))}
+            </div>
           ) : tab === "messages" ? (
             <>
               {!canSign && messages.length > 0 && (
