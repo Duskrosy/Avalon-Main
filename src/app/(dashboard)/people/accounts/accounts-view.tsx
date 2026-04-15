@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { Avatar } from "@/components/ui/avatar";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useToast, Toast } from "@/components/ui/toast";
 
 type Department = { id: string; name: string; slug: string };
 type Role = { id: string; name: string; slug: string; tier: number };
@@ -349,7 +349,7 @@ export function AccountsView({
   currentUserTier,
   isOps,
 }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
   const [activeTab,    setActiveTab]    = useState<"active" | "deactivated">("active");
   const [users,        setUsers]        = useState(initial);
   const [deactivated,  setDeactivated]  = useState(initialDeactivated);
@@ -369,8 +369,8 @@ export function AccountsView({
 
     const res  = await fetch(`/api/users/${userId}/signout`, { method: "POST" });
     const data = await res.json();
-    if (!res.ok) { alert(data.error); return; }
-    alert(`${name} has been signed out of all devices.`);
+    if (!res.ok) { setToast({ message: data.error, type: "error" }); return; }
+    setToast({ message: `${name} has been signed out of all devices.`, type: "success" });
   }
 
   // ── Deactivate ────────────────────────────────────────────────────────────
@@ -380,13 +380,14 @@ export function AccountsView({
 
     const res  = await fetch(`/api/users/${userId}`, { method: "DELETE" });
     const data = await res.json();
-    if (!res.ok) { alert(data.error); return; }
+    if (!res.ok) { setToast({ message: data.error, type: "error" }); return; }
 
     const moved = users.find((u) => u.id === userId);
     if (moved) {
       setUsers((prev) => prev.filter((u) => u.id !== userId));
       setDeactivated((prev) => [{ ...moved, status: "inactive", deleted_at: new Date().toISOString() }, ...prev]);
     }
+    setToast({ message: `${name} has been deactivated.`, type: "success" });
   }
 
   // ── Reactivate ────────────────────────────────────────────────────────────
@@ -400,7 +401,7 @@ export function AccountsView({
       body: JSON.stringify({ status: "active" }),
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error); return; }
+    if (!res.ok) { setToast({ message: data.error, type: "error" }); return; }
 
     const moved = deactivated.find((u) => u.id === userId);
     if (moved) {
@@ -417,8 +418,9 @@ export function AccountsView({
 
     const res  = await fetch(`/api/users/${userId}?permanent=true`, { method: "DELETE" });
     const data = await res.json();
-    if (!res.ok) { alert(data.error); return; }
+    if (!res.ok) { setToast({ message: data.error, type: "error" }); return; }
     setDeactivated((prev) => prev.filter((u) => u.id !== userId));
+    setToast({ message: `${name} has been permanently deleted.`, type: "success" });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -485,7 +487,12 @@ export function AccountsView({
           currentUserTier={currentUserTier}
           isOps={isOps}
           onClose={() => setShowCreate(false)}
-          onSaved={() => router.refresh()}
+          onSaved={() => {
+            fetch("/api/users").then(r => r.json()).then(data => {
+              if (data.users) setUsers(data.users);
+            });
+            setToast({ message: "User saved", type: "success" });
+          }}
         />
       )}
       {editingUser && (
@@ -497,7 +504,12 @@ export function AccountsView({
           currentUserTier={currentUserTier}
           isOps={isOps}
           onClose={() => setEditingUser(null)}
-          onSaved={() => router.refresh()}
+          onSaved={() => {
+            fetch("/api/users").then(r => r.json()).then(data => {
+              if (data.users) setUsers(data.users);
+            });
+            setToast({ message: "User saved", type: "success" });
+          }}
         />
       )}
 
@@ -669,6 +681,8 @@ export function AccountsView({
           </table>
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }

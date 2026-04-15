@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useToast, Toast } from "@/components/ui/toast";
 import { NAV_GROUPS } from "@/lib/permissions/nav";
 import type { NavGroup, NavItem } from "@/lib/permissions/nav";
 
@@ -308,7 +308,7 @@ function PageGroupSection({
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export function PermissionsView({ users, roles, departments, allOverrides, currentUserId }: Props) {
-  const router = useRouter();
+  const { toast, setToast } = useToast();
 
   // Left panel state
   const [activeTab, setActiveTab] = useState<"people" | "role" | "dept">("people");
@@ -396,13 +396,13 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
 
     if (!res.ok) {
       const data = await res.json();
-      alert(`Error: ${data.error}`);
+      setToast({ message: data.error, type: "error" });
       return;
     }
 
     setPending({});
-    router.refresh();
-  }, [selectedTarget, hasPendingChanges, pending, targetIds, router]);
+    setToast({ message: "Permissions saved", type: "success" });
+  }, [selectedTarget, hasPendingChanges, pending, targetIds, setToast]);
 
   // ── Left panel filtered lists ─────────────────────────────────────────────
 
@@ -683,6 +683,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
           )}
         </div>
       </div>
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
