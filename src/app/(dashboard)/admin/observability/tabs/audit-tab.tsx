@@ -22,9 +22,9 @@ type AuditResponse = {
 };
 
 const ACTION_STYLES: Record<string, string> = {
-  INSERT: "bg-green-50 text-green-700",
-  UPDATE: "bg-blue-50 text-blue-600",
-  DELETE: "bg-red-50 text-red-500",
+  INSERT: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  UPDATE: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  DELETE: "bg-[var(--color-error-light)] text-[var(--color-error)]",
 };
 
 export function AuditTab() {
@@ -63,56 +63,56 @@ export function AuditTab() {
           placeholder="Table name"
           value={filters.table}
           onChange={(e) => applyFilter("table", e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm w-36 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
         <select
           value={filters.action}
           onChange={(e) => applyFilter("action", e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All actions</option>
           <option value="INSERT">INSERT</option>
           <option value="UPDATE">UPDATE</option>
           <option value="DELETE">DELETE</option>
         </select>
-        <span className="text-xs text-gray-400 ml-auto">{data.total.toLocaleString()} total entries</span>
+        <span className="text-xs text-[var(--color-text-tertiary)] ml-auto">{data.total.toLocaleString()} total entries</span>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : data.rows.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No audit entries match these filters.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No audit entries match these filters.</p>
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-xl border border-gray-200 mb-4">
-            <table className="min-w-full divide-y divide-gray-100 text-sm">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] mb-4">
+            <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+              <thead className="bg-[var(--color-bg-secondary)]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">When</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actor</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Table</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Record</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">When</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Actor</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Action</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Table</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Record</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-50">
+              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
                 {data.rows.map((row) => (
                   <>
                     <tr
                       key={row.id}
-                      className="hover:bg-gray-50 cursor-pointer"
+                      className="hover:bg-[var(--color-surface-hover)] cursor-pointer"
                       onClick={() => setExpanded(expanded === row.id ? null : row.id)}
                     >
-                      <td className="px-4 py-2.5 text-xs text-gray-500">
+                      <td className="px-4 py-2.5 text-xs text-[var(--color-text-secondary)]">
                         {format(parseISO(row.created_at), "d MMM HH:mm:ss")}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="text-sm text-gray-800">{row.actor_name ?? "System"}</span>
+                        <span className="text-sm text-[var(--color-text-primary)]">{row.actor_name ?? "System"}</span>
                         {row.actor_email && (
-                          <span className="text-xs text-gray-400 ml-1">({row.actor_email})</span>
+                          <span className="text-xs text-[var(--color-text-tertiary)] ml-1">({row.actor_email})</span>
                         )}
                       </td>
                       <td className="px-4 py-2.5">
@@ -120,30 +120,30 @@ export function AuditTab() {
                           {row.action}
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-gray-700">{row.table_name}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-gray-400 truncate max-w-32">
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-primary)]">{row.table_name}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-tertiary)] truncate max-w-32">
                         {row.record_id ?? "—"}
                       </td>
-                      <td className="px-4 py-2.5 text-right text-xs text-gray-300">
+                      <td className="px-4 py-2.5 text-right text-xs text-[var(--color-text-tertiary)]">
                         {expanded === row.id ? "▲" : "▼"}
                       </td>
                     </tr>
                     {expanded === row.id && (
                       <tr key={`${row.id}-detail`}>
-                        <td colSpan={6} className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                        <td colSpan={6} className="px-4 py-3 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border-secondary)]">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {row.old_values && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 mb-1">Before</p>
-                                <pre className="text-xs text-gray-600 bg-white rounded-lg p-2.5 border border-gray-100 overflow-x-auto max-h-32">
+                                <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Before</p>
+                                <pre className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)] rounded-lg p-2.5 border border-[var(--color-border-secondary)] overflow-x-auto max-h-32">
                                   {JSON.stringify(row.old_values, null, 2)}
                                 </pre>
                               </div>
                             )}
                             {row.new_values && (
                               <div>
-                                <p className="text-xs font-medium text-gray-500 mb-1">After</p>
-                                <pre className="text-xs text-gray-600 bg-white rounded-lg p-2.5 border border-gray-100 overflow-x-auto max-h-32">
+                                <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">After</p>
+                                <pre className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)] rounded-lg p-2.5 border border-[var(--color-border-secondary)] overflow-x-auto max-h-32">
                                   {JSON.stringify(row.new_values, null, 2)}
                                 </pre>
                               </div>
@@ -160,21 +160,21 @@ export function AuditTab() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between text-sm">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-[var(--color-text-tertiary)]">
               Showing {offset + 1}–{Math.min(offset + LIMIT, data.total)} of {data.total.toLocaleString()}
             </span>
             <div className="flex gap-2">
               <button
                 disabled={offset === 0}
                 onClick={() => setOffset(Math.max(0, offset - LIMIT))}
-                className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-40"
+                className="text-xs border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
               >
                 Previous
               </button>
               <button
                 disabled={offset + LIMIT >= data.total}
                 onClick={() => setOffset(offset + LIMIT)}
-                className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-40"
+                className="text-xs border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
               >
                 Next
               </button>

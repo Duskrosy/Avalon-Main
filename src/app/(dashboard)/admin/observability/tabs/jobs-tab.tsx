@@ -16,18 +16,18 @@ type JobRun = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-  completed: "bg-green-50 text-green-700",
-  running:   "bg-blue-50 text-blue-600",
-  pending:   "bg-gray-100 text-gray-500",
-  failed:    "bg-red-50 text-red-500",
-  cancelled: "bg-gray-100 text-gray-400",
+  completed: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  running:   "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  pending:   "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
+  failed:    "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  cancelled: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
 };
 
 const STATUS_DOT: Record<string, string> = {
-  completed: "bg-green-500",
-  running:   "bg-blue-500 animate-pulse",
+  completed: "bg-[var(--color-success-light)]0",
+  running:   "bg-[var(--color-accent-light)]0 animate-pulse",
   pending:   "bg-gray-400",
-  failed:    "bg-red-500",
+  failed:    "bg-[var(--color-error-light)]0",
   cancelled: "bg-gray-300",
 };
 
@@ -69,16 +69,16 @@ export function JobsTab() {
       {jobSummary.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-6">
           {jobSummary.map(({ name, runs, latest, failRate }) => (
-            <div key={name} className="bg-white border border-gray-200 rounded-xl p-4">
+            <div key={name} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[latest.status]}`} />
-                <p className="font-medium text-sm text-gray-900 truncate">{name}</p>
+                <p className="font-medium text-sm text-[var(--color-text-primary)] truncate">{name}</p>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[var(--color-text-secondary)]">
                 {runs} run{runs !== 1 ? "s" : ""} · {failRate}% failure rate
               </p>
               {latest.started_at && (
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                   Last: {format(parseISO(latest.started_at), "d MMM HH:mm")}
                 </p>
               )}
@@ -92,7 +92,7 @@ export function JobsTab() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All statuses</option>
           <option value="completed">Completed</option>
@@ -103,39 +103,39 @@ export function JobsTab() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : jobs.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No job runs recorded yet.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No job runs recorded yet.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-primary)]">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Job</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Started</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Duration</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Records</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Error</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Job</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Started</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Duration</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Records</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Error</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
               {jobs.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-2.5 font-mono text-xs text-gray-800">{job.job_name}</td>
+                <tr key={job.id} className="hover:bg-[var(--color-surface-hover)]">
+                  <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-primary)]">{job.job_name}</td>
                   <td className="px-4 py-2.5">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[job.status]}`}>
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-gray-500">
+                  <td className="px-4 py-2.5 text-xs text-[var(--color-text-secondary)]">
                     {job.started_at ? format(parseISO(job.started_at), "d MMM HH:mm:ss") : "—"}
                   </td>
-                  <td className="px-4 py-2.5 text-right text-gray-700">{formatDuration(job.duration_ms)}</td>
-                  <td className="px-4 py-2.5 text-right text-gray-700">{job.records_processed.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-xs text-red-500 max-w-xs truncate">{job.error_message ?? ""}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-text-primary)]">{formatDuration(job.duration_ms)}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-text-primary)]">{job.records_processed.toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-xs text-[var(--color-error)] max-w-xs truncate">{job.error_message ?? ""}</td>
                 </tr>
               ))}
             </tbody>

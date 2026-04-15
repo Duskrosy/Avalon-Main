@@ -70,20 +70,20 @@ function deadlineLabel(deadline: string): string {
 }
 
 const RAG_BADGE = {
-  green: "bg-green-100 text-green-700 border-green-200",
-  amber: "bg-amber-100 text-amber-700 border-amber-200",
-  red: "bg-red-100 text-red-700 border-red-200",
+  green: "bg-[var(--color-success-light)] text-[var(--color-success)] border-green-200",
+  amber: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)]",
+  red: "bg-[var(--color-error-light)] text-[var(--color-error)] border-red-200",
 };
 
 const RAG_BAR = {
-  green: "bg-green-500",
+  green: "bg-[var(--color-success-light)]0",
   amber: "bg-amber-400",
-  red: "bg-red-500",
+  red: "bg-[var(--color-error-light)]0",
 };
 
 const RAG_BORDER = {
   green: "border-green-200",
-  amber: "border-amber-200",
+  amber: "border-[var(--color-border-primary)]",
   red: "border-red-200",
 };
 
@@ -121,19 +121,19 @@ function GoalCard({
     : "red";
 
   return (
-    <div className={`bg-white border ${RAG_BORDER[dlRag]} rounded-xl p-5 flex flex-col gap-3 ${
+    <div className={`bg-[var(--color-bg-primary)] border ${RAG_BORDER[dlRag]} rounded-[var(--radius-lg)] p-5 flex flex-col gap-3 ${
       goal.status === "achieved" ? "opacity-75" : ""
     }`}>
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
-            <h3 className="text-sm font-semibold text-gray-900">{goal.title}</h3>
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{goal.title}</h3>
             {goal.status === "achieved" && (
-              <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Achieved</span>
+              <span className="text-[10px] bg-[var(--color-success-light)] text-[var(--color-success)] px-2 py-0.5 rounded-full font-medium">Achieved</span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-400 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)] flex-wrap">
             {goal.department && <span>{goal.department.name}</span>}
             {goal.kpi_definition && (
               <>
@@ -154,7 +154,7 @@ function GoalCard({
       </div>
 
       {goal.description && (
-        <p className="text-xs text-gray-500 line-clamp-2">{goal.description}</p>
+        <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">{goal.description}</p>
       )}
 
       {/* Progress */}
@@ -180,25 +180,25 @@ function GoalCard({
                   }
                   if (e.key === "Escape") setEditingValue(false);
                 }}
-                className="w-20 border border-gray-200 rounded px-2 py-0.5 text-base font-bold text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-20 border border-[var(--color-border-primary)] rounded px-2 py-0.5 text-base font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               />
             ) : (
               <button
                 onClick={() => canManage && goal.status === "active" && setEditingValue(true)}
-                className={`text-base font-bold text-gray-900 ${canManage && goal.status === "active" ? "hover:text-blue-600 cursor-pointer" : "cursor-default"}`}
+                className={`text-base font-bold text-[var(--color-text-primary)] ${canManage && goal.status === "active" ? "hover:text-[var(--color-accent)] cursor-pointer" : "cursor-default"}`}
                 title={canManage ? "Click to update" : undefined}
               >
                 {goal.current_value.toLocaleString()}
               </button>
             )}
-            <span className="text-xs text-gray-400">/ {goal.target_value.toLocaleString()} {goal.unit}</span>
+            <span className="text-xs text-[var(--color-text-tertiary)]">/ {goal.target_value.toLocaleString()} {goal.unit}</span>
           </div>
           <span className={`text-sm font-semibold ${
-            progressRag === "green" ? "text-green-600" : progressRag === "amber" ? "text-amber-600" : "text-red-600"
+            progressRag === "green" ? "text-[var(--color-success)]" : progressRag === "amber" ? "text-[var(--color-warning)]" : "text-[var(--color-error)]"
           }`}>{pct}%</span>
         </div>
 
-        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-2.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
           <div
             className={`h-full ${RAG_BAR[progressRag]} rounded-full transition-all duration-500`}
             style={{ width: `${pct}%` }}
@@ -208,28 +208,28 @@ function GoalCard({
 
       {/* RAG thresholds indicator */}
       {goal.status === "active" && (
-        <div className="flex items-center gap-3 text-[10px] text-gray-400">
+        <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-tertiary)]">
           <span>Deadline: {format(parseISO(goal.deadline), "d MMM yyyy")}</span>
           <span>·</span>
-          <span className="text-green-600">{goal.deadline_green_days}d+ = green</span>
-          <span className="text-amber-600">{goal.deadline_amber_days}d+ = amber</span>
+          <span className="text-[var(--color-success)]">{goal.deadline_green_days}d+ = green</span>
+          <span className="text-[var(--color-warning)]">{goal.deadline_amber_days}d+ = amber</span>
         </div>
       )}
 
       {/* Actions */}
       {canManage && goal.status === "active" && (
-        <div className="flex items-center gap-2 pt-1 border-t border-gray-50">
+        <div className="flex items-center gap-2 pt-1 border-t border-[var(--color-border-secondary)]">
           {pct >= 100 && (
             <button
               onClick={() => onMarkAchieved(goal.id)}
-              className="text-xs bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100"
+              className="text-xs bg-[var(--color-success-light)] text-[var(--color-success)] border border-green-200 px-3 py-1.5 rounded-lg hover:bg-[var(--color-success-light)]"
             >
               Mark achieved
             </button>
           )}
           <button
             onClick={() => onDelete(goal.id)}
-            className="ml-auto text-xs text-gray-300 hover:text-red-400"
+            className="ml-auto text-xs text-[var(--color-text-tertiary)] hover:text-red-400"
           >
             Cancel
           </button>
@@ -251,21 +251,21 @@ function SummaryCards({ goals }: { goals: Goal[] }) {
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-1">Active</p>
-        <p className="text-2xl font-bold text-gray-900">{active.length}</p>
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+        <p className="text-xs text-[var(--color-text-secondary)] mb-1">Active</p>
+        <p className="text-2xl font-bold text-[var(--color-text-primary)]">{active.length}</p>
       </div>
-      <div className="bg-white border border-green-200 rounded-xl p-4">
-        <p className="text-xs text-green-600 mb-1">On Track</p>
-        <p className="text-2xl font-bold text-green-600">{onTrack.length}</p>
+      <div className="bg-[var(--color-bg-primary)] border border-green-200 rounded-[var(--radius-lg)] p-4">
+        <p className="text-xs text-[var(--color-success)] mb-1">On Track</p>
+        <p className="text-2xl font-bold text-[var(--color-success)]">{onTrack.length}</p>
       </div>
-      <div className="bg-white border border-red-200 rounded-xl p-4">
-        <p className="text-xs text-red-600 mb-1">Overdue</p>
-        <p className="text-2xl font-bold text-red-600">{overdue.length}</p>
+      <div className="bg-[var(--color-bg-primary)] border border-red-200 rounded-[var(--radius-lg)] p-4">
+        <p className="text-xs text-[var(--color-error)] mb-1">Overdue</p>
+        <p className="text-2xl font-bold text-[var(--color-error)]">{overdue.length}</p>
       </div>
-      <div className="bg-white border border-gray-200 rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-1">Achieved</p>
-        <p className="text-2xl font-bold text-gray-900">{achieved.length}</p>
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+        <p className="text-xs text-[var(--color-text-secondary)] mb-1">Achieved</p>
+        <p className="text-2xl font-bold text-[var(--color-text-primary)]">{achieved.length}</p>
       </div>
     </div>
   );
@@ -398,8 +398,8 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Goals & Deadlines</h1>
-          <p className="text-sm text-gray-500 mt-1">Set targets, track progress, and manage deadlines with RAG indicators</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Goals & Deadlines</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Set targets, track progress, and manage deadlines with RAG indicators</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Date range filter */}
@@ -410,8 +410,8 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
                 onClick={() => setDateRange(r.days)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                   dateRange === r.days
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
                 }`}
               >
                 {r.label}
@@ -424,7 +424,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
             <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               <option value="all">All departments</option>
               {departments.map((d) => (
@@ -436,7 +436,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
           {canManage && (
             <button
               onClick={() => setShowCreate(true)}
-              className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+              className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
             >
               + New Goal
             </button>
@@ -449,8 +449,8 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
 
       {/* Active goals */}
       {active.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center mb-6">
-          <p className="text-sm text-gray-400">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center mb-6">
+          <p className="text-sm text-[var(--color-text-tertiary)]">
             {dateRange > 0
               ? `No goals with deadlines within ${dateRange} days.`
               : "No active goals. Set a target to get started."}
@@ -474,7 +474,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
       {/* Achieved goals */}
       {achieved.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Achieved</h2>
+          <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">Achieved</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {achieved.map((goal) => (
               <GoalCard
@@ -493,33 +493,33 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Goal</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Goal</h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Title *</label>
                 <input
                   required
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   placeholder="e.g. Reach 1,500 pairs sold by Q2"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Description</label>
                 <textarea
                   rows={2}
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               {/* Link to KPI */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Link to KPI (optional)</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Link to KPI (optional)</label>
                 <select
                   value={form.kpi_definition_id}
                   onChange={(e) => {
@@ -530,67 +530,67 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
                       unit: kpi?.unit === "percent" ? "%" : kpi?.unit === "currency_php" ? "PHP" : kpi?.unit ?? f.unit,
                     }));
                   }}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 >
                   <option value="">No linked KPI</option>
                   {filteredKpiDefs.map((k) => (
                     <option key={k.id} value={k.id}>{k.name} ({k.category})</option>
                   ))}
                 </select>
-                <p className="text-[10px] text-gray-400 mt-1">Linking shows this goal on the KPI dashboard</p>
+                <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">Linking shows this goal on the KPI dashboard</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Target *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Target *</label>
                   <input
                     required
                     type="number"
                     step="0.01"
                     value={form.target_value}
                     onChange={(e) => setForm((f) => ({ ...f, target_value: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Current</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Current</label>
                   <input
                     type="number"
                     step="0.01"
                     value={form.current_value}
                     onChange={(e) => setForm((f) => ({ ...f, current_value: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Unit</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Unit</label>
                   <input
                     type="text"
                     value={form.unit}
                     onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
                     placeholder="%, pairs, PHP"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Deadline *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Deadline *</label>
                   <input
                     required
                     type="date"
                     value={form.deadline}
                     onChange={(e) => setForm((f) => ({ ...f, deadline: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Department</label>
                   <select
                     value={form.department_id}
                     onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value, kpi_definition_id: "" }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     {isOps && <option value="">Global</option>}
                     {departments.map((d) => (
@@ -601,57 +601,57 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
               </div>
 
               {/* Deadline RAG thresholds */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-xs font-medium text-gray-700 mb-3">Deadline RAG Thresholds</p>
+              <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-4">
+                <p className="text-xs font-medium text-[var(--color-text-primary)] mb-3">Deadline RAG Thresholds</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="flex items-center gap-1.5 text-[10px] text-green-600 font-medium mb-1">
-                      <span className="w-2 h-2 rounded-full bg-green-500" /> Green if days remaining
+                    <label className="flex items-center gap-1.5 text-[10px] text-[var(--color-success)] font-medium mb-1">
+                      <span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0" /> Green if days remaining
                     </label>
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-400">&ge;</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">&ge;</span>
                       <input
                         type="number"
                         min="1"
                         value={form.deadline_green_days}
                         onChange={(e) => setForm((f) => ({ ...f, deadline_green_days: e.target.value }))}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       />
-                      <span className="text-xs text-gray-400">days</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">days</span>
                     </div>
                   </div>
                   <div>
-                    <label className="flex items-center gap-1.5 text-[10px] text-amber-600 font-medium mb-1">
+                    <label className="flex items-center gap-1.5 text-[10px] text-[var(--color-warning)] font-medium mb-1">
                       <span className="w-2 h-2 rounded-full bg-amber-400" /> Amber if days remaining
                     </label>
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-gray-400">&ge;</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">&ge;</span>
                       <input
                         type="number"
                         min="1"
                         value={form.deadline_amber_days}
                         onChange={(e) => setForm((f) => ({ ...f, deadline_amber_days: e.target.value }))}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                       />
-                      <span className="text-xs text-gray-400">days</span>
+                      <span className="text-xs text-[var(--color-text-tertiary)]">days</span>
                     </div>
                   </div>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-2">Red when fewer days remain than the amber threshold</p>
+                <p className="text-[10px] text-[var(--color-text-tertiary)] mt-2">Red when fewer days remain than the amber threshold</p>
               </div>
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowCreate(false)}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {creating ? "Creating..." : "Create Goal"}
                 </button>

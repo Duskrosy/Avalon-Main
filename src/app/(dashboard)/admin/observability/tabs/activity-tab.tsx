@@ -49,16 +49,16 @@ type TypeFilter = "all" | "events" | "audit";
 // ── Style maps ────────────────────────────────────────────────────────────────
 
 const CATEGORY_DOT: Record<string, string> = {
-  product: "bg-blue-500",
+  product: "bg-[var(--color-accent-light)]0",
   audit: "bg-gray-400",
-  error: "bg-red-500",
+  error: "bg-[var(--color-error-light)]0",
   performance: "bg-purple-500",
 };
 
 const ACTION_DOT: Record<string, string> = {
-  INSERT: "bg-green-500",
-  UPDATE: "bg-blue-500",
-  DELETE: "bg-red-500",
+  INSERT: "bg-[var(--color-success-light)]0",
+  UPDATE: "bg-[var(--color-accent-light)]0",
+  DELETE: "bg-[var(--color-error-light)]0",
 };
 
 const DAYS_OPTIONS = [7, 14, 30] as const;
@@ -186,7 +186,7 @@ export function ActivityTab() {
         <select
           value={selectedUser}
           onChange={(e) => setSelectedUser(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 min-w-[180px]"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] min-w-[180px]"
         >
           <option value="">All users</option>
           {data.users.map((u) => (
@@ -197,15 +197,15 @@ export function ActivityTab() {
         </select>
 
         {/* Days toggle */}
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+        <div className="flex rounded-lg border border-[var(--color-border-primary)] overflow-hidden">
           {DAYS_OPTIONS.map((d) => (
             <button
               key={d}
               onClick={() => setDays(d)}
               className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                 days === d
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  ? "bg-[var(--color-text-primary)] text-white"
+                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
               {d}d
@@ -217,7 +217,7 @@ export function ActivityTab() {
         <select
           value={moduleFilter}
           onChange={(e) => setModuleFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="">All modules</option>
           {uniqueModules.map((m) => (
@@ -228,15 +228,15 @@ export function ActivityTab() {
         </select>
 
         {/* Type toggle */}
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+        <div className="flex rounded-lg border border-[var(--color-border-primary)] overflow-hidden">
           {(["all", "events", "audit"] as TypeFilter[]).map((t) => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
               className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
                 typeFilter === t
-                  ? "bg-gray-900 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  ? "bg-[var(--color-text-primary)] text-white"
+                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
               }`}
             >
               {t}
@@ -257,10 +257,10 @@ export function ActivityTab() {
 
       {/* Timeline */}
       {loading ? (
-        <div className="text-center py-16 text-gray-400 text-sm">Loading...</div>
+        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
       ) : timeline.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">
             {selectedUser
               ? "No activity found for this user in the selected period."
               : "Select a user or view all activity."}
@@ -270,7 +270,7 @@ export function ActivityTab() {
         <div>
           {groupedTimeline.map((group) => (
             <div key={group.key} className="mb-6">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              <h3 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">
                 {group.label}
               </h3>
               <div className="space-y-0">
@@ -290,14 +290,14 @@ export function ActivityTab() {
             <div className="text-center py-4">
               <button
                 onClick={() => setDisplayLimit((l) => l * 2)}
-                className="text-xs border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 text-gray-600"
+                className="text-xs border border-[var(--color-border-primary)] px-4 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)]"
               >
                 Load more ({timeline.length - displayLimit} remaining)
               </button>
             </div>
           )}
 
-          <p className="text-xs text-gray-400 text-center mt-2">
+          <p className="text-xs text-[var(--color-text-tertiary)] text-center mt-2">
             Showing {Math.min(displayLimit, timeline.length)} of {timeline.length} entries
           </p>
         </div>
@@ -310,9 +310,9 @@ export function ActivityTab() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl px-4 py-3">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-lg font-semibold text-gray-900 mt-0.5">
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-4 py-3">
+      <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
+      <p className="text-lg font-semibold text-[var(--color-text-primary)] mt-0.5">
         {typeof value === "number" ? value.toLocaleString() : value}
       </p>
     </div>
@@ -324,26 +324,26 @@ function TimelineRow({ item, users }: { item: TimelineItem; users: UserProfile[]
     const e = item.data;
     const dotColor = CATEGORY_DOT[e.category] ?? "bg-gray-400";
     return (
-      <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-b-0">
+      <div className="flex items-start gap-3 py-2.5 border-b border-[var(--color-border-secondary)] last:border-b-0">
         {/* Timestamp */}
-        <span className="text-xs text-gray-400 w-24 shrink-0 pt-0.5">
+        <span className="text-xs text-[var(--color-text-tertiary)] w-24 shrink-0 pt-0.5">
           {format(parseISO(e.created_at), "d MMM HH:mm")}
         </span>
         {/* Dot + description */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-          <span className="text-sm text-gray-800 truncate">{e.event_name}</span>
-          <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium shrink-0">
+          <span className="text-sm text-[var(--color-text-primary)] truncate">{e.event_name}</span>
+          <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded font-medium shrink-0">
             {e.module}
           </span>
           {!e.success && (
-            <span className="text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-semibold shrink-0">
+            <span className="text-[10px] bg-[var(--color-error-light)] text-[var(--color-error)] px-1.5 py-0.5 rounded font-semibold shrink-0">
               Failed
             </span>
           )}
         </div>
         {/* Actor */}
-        <span className="text-xs text-gray-400 shrink-0">{userName(users, e.actor_id)}</span>
+        <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{userName(users, e.actor_id)}</span>
       </div>
     );
   }
@@ -352,25 +352,25 @@ function TimelineRow({ item, users }: { item: TimelineItem; users: UserProfile[]
   const a = item.data;
   const dotColor = ACTION_DOT[a.action] ?? "bg-gray-400";
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-gray-50 last:border-b-0">
+    <div className="flex items-start gap-3 py-2.5 border-b border-[var(--color-border-secondary)] last:border-b-0">
       {/* Timestamp */}
-      <span className="text-xs text-gray-400 w-24 shrink-0 pt-0.5">
+      <span className="text-xs text-[var(--color-text-tertiary)] w-24 shrink-0 pt-0.5">
         {format(parseISO(a.created_at), "d MMM HH:mm")}
       </span>
       {/* Dot + description */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
-        <span className="text-sm text-gray-800 truncate">
+        <span className="text-sm text-[var(--color-text-primary)] truncate">
           {a.action} on {a.table_name}
         </span>
         {a.record_id && (
-          <span className="text-[10px] font-mono bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded shrink-0 truncate max-w-32">
+          <span className="text-[10px] font-mono bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded shrink-0 truncate max-w-32">
             {a.record_id}
           </span>
         )}
       </div>
       {/* Actor */}
-      <span className="text-xs text-gray-400 shrink-0">{userName(users, a.actor_id)}</span>
+      <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{userName(users, a.actor_id)}</span>
     </div>
   );
 }

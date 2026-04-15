@@ -8,10 +8,10 @@ export default function Loading() {
           <div key={i} className="flex items-start gap-3">
             <SkeletonAvatar size="sm" />
             <div className="flex-1">
-              <div className="h-4 w-40 animate-pulse rounded bg-gray-200 mb-1" />
-              <div className="h-3 w-64 animate-pulse rounded bg-gray-100" />
+              <div className="h-4 w-40 animate-pulse rounded bg-[var(--color-border-primary)] mb-1" />
+              <div className="h-3 w-64 animate-pulse rounded bg-[var(--color-bg-tertiary)]" />
             </div>
-            <div className="h-3 w-16 animate-pulse rounded bg-gray-100" />
+            <div className="h-3 w-16 animate-pulse rounded bg-[var(--color-bg-tertiary)]" />
           </div>
         ))}
       </div>

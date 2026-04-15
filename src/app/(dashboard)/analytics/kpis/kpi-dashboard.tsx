@@ -109,10 +109,10 @@ function formatPeriod(date: string, freq: string): string {
 }
 
 const RAG_STYLES = {
-  green: { bg: "bg-green-50",   border: "border-green-200",  badge: "bg-green-100 text-green-700",  dot: "bg-green-500",  label: "On Track"  },
-  amber: { bg: "bg-amber-50",   border: "border-amber-200",  badge: "bg-amber-100 text-amber-700",  dot: "bg-amber-400",  label: "Monitor"   },
-  red:   { bg: "bg-red-50",     border: "border-red-200",    badge: "bg-red-100 text-red-700",      dot: "bg-red-500",    label: "Critical"  },
-  none:  { bg: "bg-gray-50",    border: "border-gray-200",   badge: "bg-gray-100 text-gray-500",    dot: "bg-gray-300",   label: "No data"   },
+  green: { bg: "bg-[var(--color-success-light)]",   border: "border-green-200",  badge: "bg-[var(--color-success-light)] text-[var(--color-success)]",  dot: "bg-[var(--color-success-light)]0",  label: "On Track"  },
+  amber: { bg: "bg-[var(--color-warning-light)]",   border: "border-[var(--color-border-primary)]",  badge: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",  dot: "bg-amber-400",  label: "Monitor"   },
+  red:   { bg: "bg-[var(--color-error-light)]",     border: "border-red-200",    badge: "bg-[var(--color-error-light)] text-[var(--color-error)]",      dot: "bg-[var(--color-error-light)]0",    label: "Critical"  },
+  none:  { bg: "bg-[var(--color-bg-secondary)]",    border: "border-[var(--color-border-primary)]",   badge: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",    dot: "bg-gray-300",   label: "No data"   },
 };
 
 // ─── Target Meter ─────────────────────────────────────────────────────────────
@@ -124,13 +124,13 @@ function TargetMeter({ value, def }: { value: number; def: KpiDef }) {
     pct = value > 0 ? Math.min((def.threshold_green / value) * 100, 110) : 0;
   }
   const status = rag(value, def);
-  const fillColor = status === "green" ? "bg-green-500" : status === "amber" ? "bg-amber-400" : "bg-red-500";
+  const fillColor = status === "green" ? "bg-[var(--color-success-light)]0" : status === "amber" ? "bg-amber-400" : "bg-[var(--color-error-light)]0";
   const amberPct = def.direction === "higher_better"
     ? Math.min((def.threshold_amber / def.threshold_green) * 100, 100)
     : Math.min((def.threshold_green / def.threshold_amber) * 100, 100);
 
   return (
-    <div className="relative h-1.5 bg-gray-100 rounded-full overflow-hidden">
+    <div className="relative h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
       <div
         className={`absolute left-0 top-0 h-full rounded-full transition-all ${fillColor}`}
         style={{ width: `${Math.min(pct, 100)}%` }}
@@ -147,7 +147,7 @@ function TargetMeter({ value, def }: { value: number; def: KpiDef }) {
 // ─── Sparkline ────────────────────────────────────────────────────────────────
 function Sparkline({ entries, def }: { entries: KpiEntry[]; def: KpiDef }) {
   const last8 = entries.slice(-8);
-  if (last8.length < 2) return <div className="h-8 flex items-center text-xs text-gray-300">—</div>;
+  if (last8.length < 2) return <div className="h-8 flex items-center text-xs text-[var(--color-text-tertiary)]">—</div>;
 
   const data = last8.map((e) => ({ v: e.value_numeric }));
   const latestRag = rag(last8[last8.length - 1].value_numeric, def);
@@ -282,15 +282,15 @@ function LogModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-sm">
-        <h2 className="text-base font-semibold text-gray-900 mb-1">{def.name}</h2>
-        <p className="text-xs text-gray-400 mb-4">
+      <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-sm">
+        <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-1">{def.name}</h2>
+        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">
           Target: {def.direction === "higher_better" ? "≥" : "≤"}{formatValue(def.threshold_green, def.unit)}
         </p>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">
               Value ({def.unit === "currency_php" ? "₱" : def.unit === "percent" ? "%" : def.unit})
             </label>
             <input
@@ -299,7 +299,7 @@ function LogModal({
               step="0.01"
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
             {preview && (
               <div className={`mt-1.5 text-xs px-2 py-1 rounded-full inline-block ${RAG_STYLES[preview].badge}`}>
@@ -308,31 +308,31 @@ function LogModal({
             )}
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Period</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Period</label>
             <input
               type="date"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
               {def.frequency === "monthly" ? "Use first day of month (YYYY-MM-01)" : "Use Monday of the week"}
             </p>
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Notes</label>
+            <label className="block text-xs text-[var(--color-text-secondary)] mb-1">Notes</label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional context..."
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
           </div>
         </div>
 
         <div className="flex gap-3 mt-5">
-          <button onClick={onClose} className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50">
+          <button onClick={onClose} className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]">
             Cancel
           </button>
           <button
@@ -342,7 +342,7 @@ function LogModal({
               await onSave(parseFloat(value), period, notes);
               onClose();
             }}
-            className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+            className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
           >
             {saving ? "Saving..." : "Log Value"}
           </button>
@@ -379,21 +379,21 @@ function KpiCard({
 
   return (
     <div
-      className={`bg-white border ${style.border} rounded-xl p-4 flex flex-col gap-3 cursor-pointer hover:shadow-md transition-shadow`}
+      className={`bg-[var(--color-bg-primary)] border ${style.border} rounded-[var(--radius-lg)] p-4 flex flex-col gap-3 cursor-pointer hover:shadow-[var(--shadow-md)] transition-shadow`}
       onClick={onSelect}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-gray-500 mb-0.5 truncate">{def.name}</p>
+          <p className="text-xs text-[var(--color-text-secondary)] mb-0.5 truncate">{def.name}</p>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-gray-900">
+            <span className="text-2xl font-bold text-[var(--color-text-primary)]">
               {latest ? formatValue(latest.value_numeric, def.unit) : "—"}
             </span>
             {delta !== null && (
               <span className={`text-xs font-medium ${
                 (def.direction === "higher_better" ? delta >= 0 : delta <= 0)
-                  ? "text-green-600" : "text-red-500"
+                  ? "text-[var(--color-success)]" : "text-[var(--color-error)]"
               }`}>
                 {delta >= 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(1)}%
               </span>
@@ -406,10 +406,10 @@ function KpiCard({
       </div>
 
       {/* Target */}
-      <div className="text-xs text-gray-400">
+      <div className="text-xs text-[var(--color-text-tertiary)]">
         Target: {def.direction === "higher_better" ? "≥" : "≤"}{formatValue(def.threshold_green, def.unit)}
         {latest && (
-          <span className="ml-2 text-gray-300">
+          <span className="ml-2 text-[var(--color-text-tertiary)]">
             · {formatPeriod(latest.period_date, def.frequency)}
           </span>
         )}
@@ -429,14 +429,14 @@ function KpiCard({
               ? <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium border border-emerald-200">Meta Sync</span>
               : <span className="text-[10px] text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full font-medium border border-violet-200">Platform</span>
           ) : (
-            <span className="text-[10px] text-gray-500 bg-gray-50 px-2 py-0.5 rounded-full font-medium border border-gray-200">Manual</span>
+            <span className="text-[10px] text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)] px-2 py-0.5 rounded-full font-medium border border-[var(--color-border-primary)]">Manual</span>
           )}
-          <span className="text-[10px] text-gray-400">{def.frequency}</span>
+          <span className="text-[10px] text-[var(--color-text-tertiary)]">{def.frequency}</span>
         </div>
         {canLog && (
           <button
             onClick={(e) => { e.stopPropagation(); onLog(); }}
-            className="shrink-0 text-xs text-gray-400 hover:text-gray-700 border border-gray-200 hover:border-gray-300 px-2.5 py-1 rounded-lg transition-colors"
+            className="shrink-0 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)] px-2.5 py-1 rounded-lg transition-colors"
           >
             Log value
           </button>
@@ -468,43 +468,43 @@ function DetailPanel({
   return (
     <div className="fixed inset-0 z-40 flex justify-end" onClick={onClose}>
       <div
-        className="relative w-full max-w-lg bg-white shadow-2xl h-full overflow-y-auto"
+        className="relative w-full max-w-lg bg-[var(--color-bg-primary)] shadow-2xl h-full overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">
           {/* Header */}
           <div className="flex items-start justify-between gap-3 mb-2">
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">{def.name}</h2>
-              <p className="text-xs text-gray-400">{def.category} · {def.frequency}</p>
+              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">{def.name}</h2>
+              <p className="text-xs text-[var(--color-text-tertiary)]">{def.category} · {def.frequency}</p>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none mt-1">×</button>
+            <button onClick={onClose} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] text-xl leading-none mt-1">×</button>
           </div>
 
           {/* Current value */}
-          <div className={`rounded-xl p-4 mb-5 ${style.bg} border ${style.border}`}>
+          <div className={`rounded-[var(--radius-lg)] p-4 mb-5 ${style.bg} border ${style.border}`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Current value</p>
-                <p className="text-3xl font-bold text-gray-900">
+                <p className="text-xs text-[var(--color-text-secondary)] mb-1">Current value</p>
+                <p className="text-3xl font-bold text-[var(--color-text-primary)]">
                   {latest ? formatValue(latest.value_numeric, def.unit) : "No data"}
                 </p>
-                {latest && <p className="text-xs text-gray-400 mt-1">{format(parseISO(latest.period_date), "d MMMM yyyy")}</p>}
+                {latest && <p className="text-xs text-[var(--color-text-tertiary)] mt-1">{format(parseISO(latest.period_date), "d MMMM yyyy")}</p>}
               </div>
               <div className={`text-sm px-3 py-1.5 rounded-full font-medium ${style.badge}`}>
                 {style.label}
               </div>
             </div>
-            <div className="flex gap-4 mt-3 pt-3 border-t border-gray-100">
+            <div className="flex gap-4 mt-3 pt-3 border-t border-[var(--color-border-secondary)]">
               <div>
-                <p className="text-xs text-gray-400">Green target</p>
-                <p className="text-sm font-medium text-green-700">
+                <p className="text-xs text-[var(--color-text-tertiary)]">Green target</p>
+                <p className="text-sm font-medium text-[var(--color-success)]">
                   {def.direction === "higher_better" ? "≥" : "≤"}{formatValue(def.threshold_green, def.unit)}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Amber minimum</p>
-                <p className="text-sm font-medium text-amber-600">
+                <p className="text-xs text-[var(--color-text-tertiary)]">Amber minimum</p>
+                <p className="text-sm font-medium text-[var(--color-warning)]">
                   {def.direction === "higher_better" ? "≥" : "≤"}{formatValue(def.threshold_amber, def.unit)}
                 </p>
               </div>
@@ -515,17 +515,17 @@ function DetailPanel({
           {entries.length > 0 ? (
             <div className="mb-5">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Trend</p>
-                <div className="flex rounded-lg overflow-hidden border border-gray-200 text-xs">
+                <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Trend</p>
+                <div className="flex rounded-lg overflow-hidden border border-[var(--color-border-primary)] text-xs">
                   <button
                     onClick={() => setTrendMode("line")}
-                    className={`px-2.5 py-1 transition-colors ${trendMode === "line" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                    className={`px-2.5 py-1 transition-colors ${trendMode === "line" ? "bg-[var(--color-text-primary)] text-white" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
                   >
                     Line
                   </button>
                   <button
                     onClick={() => setTrendMode("bar")}
-                    className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${trendMode === "bar" ? "bg-gray-900 text-white" : "text-gray-500 hover:bg-gray-50"}`}
+                    className={`px-2.5 py-1 transition-colors border-l border-[var(--color-border-primary)] ${trendMode === "bar" ? "bg-[var(--color-text-primary)] text-white" : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"}`}
                   >
                     Bar
                   </button>
@@ -537,32 +537,32 @@ function DetailPanel({
               }
             </div>
           ) : (
-            <div className="mb-5 bg-gray-50 rounded-xl p-6 text-center text-sm text-gray-400">
+            <div className="mb-5 bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-6 text-center text-sm text-[var(--color-text-tertiary)]">
               No data logged yet.
             </div>
           )}
 
           {/* Hint */}
           {def.hint && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-5">
-              <p className="text-xs text-blue-700">📌 {def.hint}</p>
+            <div className="bg-[var(--color-accent-light)] border border-blue-100 rounded-[var(--radius-lg)] p-3 mb-5">
+              <p className="text-xs text-[var(--color-accent)]">📌 {def.hint}</p>
             </div>
           )}
 
           {/* History table */}
           {entries.length > 0 && (
             <div className="mb-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">History</p>
+              <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">History</p>
               <div className="space-y-1">
                 {[...entries].reverse().slice(0, 10).map((e) => {
                   const r = rag(e.value_numeric, def);
                   return (
-                    <div key={e.id} className="flex items-center justify-between py-1.5 border-b border-gray-50">
-                      <span className="text-xs text-gray-500">{format(parseISO(e.period_date), "d MMM yyyy")}</span>
+                    <div key={e.id} className="flex items-center justify-between py-1.5 border-b border-[var(--color-border-secondary)]">
+                      <span className="text-xs text-[var(--color-text-secondary)]">{format(parseISO(e.period_date), "d MMM yyyy")}</span>
                       <div className="flex items-center gap-2">
-                        {e.notes && <span className="text-xs text-gray-400 max-w-32 truncate">{e.notes}</span>}
+                        {e.notes && <span className="text-xs text-[var(--color-text-tertiary)] max-w-32 truncate">{e.notes}</span>}
                         <div className={`w-2 h-2 rounded-full ${RAG_STYLES[r].dot}`} />
-                        <span className="text-sm font-medium text-gray-900">{formatValue(e.value_numeric, def.unit)}</span>
+                        <span className="text-sm font-medium text-[var(--color-text-primary)]">{formatValue(e.value_numeric, def.unit)}</span>
                       </div>
                     </div>
                   );
@@ -575,7 +575,7 @@ function DetailPanel({
           {canLog && (
             <button
               onClick={onLog}
-              className="w-full bg-gray-900 text-white text-sm py-2.5 rounded-xl hover:bg-gray-700 transition-colors"
+              className="w-full bg-[var(--color-text-primary)] text-white text-sm py-2.5 rounded-[var(--radius-lg)] hover:bg-[var(--color-text-secondary)] transition-colors"
             >
               Log new value
             </button>
@@ -733,7 +733,7 @@ export function KpiDashboard({
     <div>
       {/* Back to overview breadcrumb */}
       <div className="mb-4">
-        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+        <Link href="/" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] flex items-center gap-1">
           ← Overview
         </Link>
       </div>
@@ -741,10 +741,10 @@ export function KpiDashboard({
       {/* Header */}
       <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">
             {currentDeptName ? `${currentDeptName}` : "KPI Dashboard"}
           </h1>
-          <p className="text-sm text-gray-500 mt-1">KPI performance tracking</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">KPI performance tracking</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Date range filter */}
@@ -755,8 +755,8 @@ export function KpiDashboard({
                 onClick={() => setDateRange(r.days)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                   dateRange === r.days
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-gray-400"
+                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
                 }`}
               >
                 {r.label}
@@ -784,7 +784,7 @@ export function KpiDashboard({
             <select
               value={deptId ?? ""}
               onChange={(e) => e.target.value && loadDept(e.target.value)}
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
@@ -796,37 +796,37 @@ export function KpiDashboard({
 
       {/* Sync result feedback */}
       {syncResult && (
-        <div className={`mb-4 px-4 py-3 rounded-xl text-sm flex items-center justify-between gap-3 ${
+        <div className={`mb-4 px-4 py-3 rounded-[var(--radius-lg)] text-sm flex items-center justify-between gap-3 ${
           syncResult.synced > 0
             ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
-            : "bg-amber-50 border border-amber-200 text-amber-800"
+            : "bg-[var(--color-warning-light)] border border-[var(--color-border-primary)] text-[var(--color-warning-text)]"
         }`}>
           <span>
             {syncResult.synced > 0
               ? `✅ Synced ${syncResult.synced} KPI${syncResult.synced !== 1 ? "s" : ""} for ${syncResult.week}`
               : `⚠ ${syncResult.message ?? "No data to sync"}`}
           </span>
-          <button onClick={() => setSyncResult(null)} className="text-gray-400 hover:text-gray-600">×</button>
+          <button onClick={() => setSyncResult(null)} className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">×</button>
         </div>
       )}
 
       {/* RAG Summary Bar */}
       {summary.total > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 mb-6">
           <div className="flex items-center gap-6 mb-3 flex-wrap">
             {[
-              { label: "On Track",    count: summary.green,  color: "text-green-600",  bg: "bg-green-500"  },
-              { label: "Monitor",     count: summary.amber,  color: "text-amber-600",  bg: "bg-amber-400"  },
-              { label: "Critical",    count: summary.red,    color: "text-red-600",    bg: "bg-red-500"    },
-              { label: "No Data",     count: summary.noData, color: "text-gray-400",   bg: "bg-gray-200"   },
+              { label: "On Track",    count: summary.green,  color: "text-[var(--color-success)]",  bg: "bg-[var(--color-success-light)]0"  },
+              { label: "Monitor",     count: summary.amber,  color: "text-[var(--color-warning)]",  bg: "bg-amber-400"  },
+              { label: "Critical",    count: summary.red,    color: "text-[var(--color-error)]",    bg: "bg-[var(--color-error-light)]0"    },
+              { label: "No Data",     count: summary.noData, color: "text-[var(--color-text-tertiary)]",   bg: "bg-[var(--color-border-primary)]"   },
             ].map((s) => (
               <div key={s.label} className="flex flex-col items-center gap-0.5 min-w-[56px]">
                 <div className="flex items-center gap-2">
                   <div className={`w-3 h-3 rounded-full ${s.bg}`} />
                   <span className={`text-sm font-semibold ${s.color}`}>{s.count}</span>
-                  <span className="text-xs text-gray-400">{s.label}</span>
+                  <span className="text-xs text-[var(--color-text-tertiary)]">{s.label}</span>
                 </div>
-                <span className="text-xs text-gray-300">
+                <span className="text-xs text-[var(--color-text-tertiary)]">
                   {summary.total > 0 ? Math.round((s.count / summary.total) * 100) : 0}%
                 </span>
               </div>
@@ -834,26 +834,26 @@ export function KpiDashboard({
           </div>
           {/* Proportional bar */}
           <div className="h-2.5 rounded-full overflow-hidden flex gap-0.5">
-            {summary.green > 0  && <div className="bg-green-500 rounded-full" style={{ flex: summary.green  }} />}
+            {summary.green > 0  && <div className="bg-[var(--color-success-light)]0 rounded-full" style={{ flex: summary.green  }} />}
             {summary.amber > 0  && <div className="bg-amber-400 rounded-full" style={{ flex: summary.amber  }} />}
-            {summary.red > 0    && <div className="bg-red-500   rounded-full" style={{ flex: summary.red    }} />}
-            {summary.noData > 0 && <div className="bg-gray-200  rounded-full" style={{ flex: summary.noData }} />}
+            {summary.red > 0    && <div className="bg-[var(--color-error-light)]0   rounded-full" style={{ flex: summary.red    }} />}
+            {summary.noData > 0 && <div className="bg-[var(--color-border-primary)]  rounded-full" style={{ flex: summary.noData }} />}
           </div>
         </div>
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-400 py-12 text-center">Loading KPIs...</p>
+        <p className="text-sm text-[var(--color-text-tertiary)] py-12 text-center">Loading KPIs...</p>
       ) : definitions.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-400">No KPI definitions found for this department.</p>
-          <p className="text-xs text-gray-300 mt-1">Apply migration 00005 and ensure the department is seeded.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-tertiary)]">No KPI definitions found for this department.</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">Apply migration 00005 and ensure the department is seeded.</p>
         </div>
       ) : (
         <div className="space-y-8">
           {Object.entries(byCategory).map(([category, defs]) => (
             <div key={category}>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+              <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">
                 {CATEGORY_ICONS[category] ?? "📋"} {category}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">

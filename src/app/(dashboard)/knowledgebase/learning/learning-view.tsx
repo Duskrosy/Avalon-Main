@@ -38,7 +38,7 @@ function TypeIcon({ type, className = "w-5 h-5" }: { type: string; className?: s
   switch (type) {
     case "pdf":
       return (
-        <svg {...props} className={`${className} text-red-500`}>
+        <svg {...props} className={`${className} text-[var(--color-error)]`}>
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
           <path d="M9 15v-2h2a1.5 1.5 0 0 1 0 3H9zm0 0v2" />
@@ -61,7 +61,7 @@ function TypeIcon({ type, className = "w-5 h-5" }: { type: string; className?: s
       );
     case "document":
       return (
-        <svg {...props} className={`${className} text-blue-500`}>
+        <svg {...props} className={`${className} text-[var(--color-accent)]`}>
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
           <line x1="8" y1="13" x2="16" y2="13" />
@@ -77,7 +77,7 @@ function TypeIcon({ type, className = "w-5 h-5" }: { type: string; className?: s
       );
     default:
       return (
-        <svg {...props} className={`${className} text-gray-400`}>
+        <svg {...props} className={`${className} text-[var(--color-text-tertiary)]`}>
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
           <polyline points="14 2 14 8 20 8" />
         </svg>
@@ -145,24 +145,24 @@ function MaterialViewer({
       aria-label={`Viewing: ${material.title}`}
     >
       <div
-        className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200"
+        className="flex items-center justify-between px-4 py-3 bg-[var(--color-bg-primary)] border-b border-[var(--color-border-primary)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">{material.title}</h2>
+          <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">{material.title}</h2>
           {material.department && (
-            <p className="text-xs text-gray-400">{material.department.name}</p>
+            <p className="text-xs text-[var(--color-text-tertiary)]">{material.department.name}</p>
           )}
         </div>
         <button
           onClick={onClose}
           aria-label="Close viewer"
-          className="text-gray-500 hover:text-gray-700 text-sm px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50"
+          className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] text-sm px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
         >
           Close
         </button>
       </div>
-      <div className="flex-1 overflow-hidden bg-gray-100" onClick={(e) => e.stopPropagation()}>
+      <div className="flex-1 overflow-hidden bg-[var(--color-bg-tertiary)]" onClick={(e) => e.stopPropagation()}>
         {!url ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-white text-sm">File unavailable. The link may have expired — try refreshing the page.</p>
@@ -307,19 +307,19 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
 
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Learning Materials</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Learning Materials</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             {completedCount}/{materials.length} completed
             {materials.length > 0 && (
-              <span className="ml-2 text-xs text-gray-400">({progress}%)</span>
+              <span className="ml-2 text-xs text-[var(--color-text-tertiary)]">({progress}%)</span>
             )}
-            <span className="ml-2 text-xs text-gray-400">{viewedCount} viewed</span>
+            <span className="ml-2 text-xs text-[var(--color-text-tertiary)]">{viewedCount} viewed</span>
           </p>
         </div>
         {canManage && (
           <button
             onClick={() => setShowCreate(true)}
-            className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors"
           >
             + Add Material
           </button>
@@ -328,9 +328,9 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
 
       {/* Overall progress bar */}
       {materials.length > 0 && (
-        <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-6">
+        <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden mb-6">
           <div
-            className="h-full bg-green-500 rounded-full transition-all"
+            className="h-full bg-[var(--color-success-light)]0 rounded-full transition-all"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -344,13 +344,13 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
           aria-label="Search materials"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="flex-1 min-w-48 border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
         <select
           value={statusFilter}
           aria-label="Filter by status"
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="all">All statuses</option>
           <option value="not_viewed">Not viewed</option>
@@ -361,7 +361,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
           value={typeFilter}
           aria-label="Filter by type"
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="all">All types</option>
           {Object.entries(TYPE_LABELS).map(([v, l]) => (
@@ -372,7 +372,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
           value={deptFilter}
           aria-label="Filter by department"
           onChange={(e) => setDeptFilter(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="all">All departments</option>
           <option value="global">Global</option>
@@ -384,19 +384,19 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
 
       {/* Error toast */}
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700 flex items-center justify-between">
+        <div className="mb-4 px-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-error-light)] border border-red-200 text-sm text-[var(--color-error)] flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">×</button>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-[var(--color-error)] ml-2">×</button>
         </div>
       )}
 
       {/* Result count when filtering */}
       {hasFilters && (
         <div className="flex items-center gap-2 mb-4">
-          <p className="text-xs text-gray-400">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)]">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
           <button
             onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all"); }}
-            className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-2 py-0.5 rounded"
+            className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-2 py-0.5 rounded"
           >
             Clear
           </button>
@@ -404,21 +404,21 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
       )}
 
       {filtered.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           {hasFilters ? (
             <>
-              <p className="text-sm text-gray-500 mb-2">No materials match your filters.</p>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-2">No materials match your filters.</p>
               <button
                 onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all"); }}
-                className="text-xs text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg"
+                className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
               >
                 Clear filters
               </button>
             </>
           ) : (
             <>
-              <p className="text-sm text-gray-500 mb-1">No learning materials yet.</p>
-              <p className="text-xs text-gray-400">Add training videos, PDFs, or links for your team.</p>
+              <p className="text-sm text-[var(--color-text-secondary)] mb-1">No learning materials yet.</p>
+              <p className="text-xs text-[var(--color-text-tertiary)]">Add training videos, PDFs, or links for your team.</p>
             </>
           )}
         </div>
@@ -427,37 +427,37 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
           {paginated.map((m) => (
             <div
               key={m.id}
-              className={`bg-white border rounded-xl p-4 flex items-center gap-4 transition-colors ${
-                m.completed ? "border-green-200 bg-green-50/30"
+              className={`bg-[var(--color-bg-primary)] border rounded-[var(--radius-lg)] p-4 flex items-center gap-4 transition-colors ${
+                m.completed ? "border-green-200 bg-[var(--color-success-light)]/30"
                 : m.viewed ? "border-blue-100"
-                : "border-gray-200"
+                : "border-[var(--color-border-primary)]"
               }`}
             >
-              <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center">
+              <div className="shrink-0 w-10 h-10 rounded-lg bg-[var(--color-bg-secondary)] flex items-center justify-center">
                 <TypeIcon type={m.material_type} className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-medium text-gray-900 truncate">{m.title}</h3>
-                  <span className="text-xs text-gray-400 shrink-0">{TYPE_LABELS[m.material_type]}</span>
+                  <h3 className="text-sm font-medium text-[var(--color-text-primary)] truncate">{m.title}</h3>
+                  <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{TYPE_LABELS[m.material_type]}</span>
                   {/* View/completion status badges */}
                   {m.completed ? (
-                    <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">Completed</span>
+                    <span className="text-[10px] bg-[var(--color-success-light)] text-[var(--color-success)] px-1.5 py-0.5 rounded font-medium">Completed</span>
                   ) : m.viewed ? (
-                    <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">Viewed</span>
+                    <span className="text-[10px] bg-[var(--color-accent-light)] text-[var(--color-accent)] px-1.5 py-0.5 rounded font-medium">Viewed</span>
                   ) : (
-                    <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">Not viewed</span>
+                    <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded font-medium">Not viewed</span>
                   )}
                 </div>
                 {m.description && (
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{m.description}</p>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 line-clamp-1">{m.description}</p>
                 )}
                 <div className="flex items-center gap-2 mt-0.5">
                   {m.department && (
-                    <p className="text-xs text-gray-400">{m.department.name}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)]">{m.department.name}</p>
                   )}
                   {m.view_duration_s > 0 && (
-                    <p className="text-[10px] text-gray-300">
+                    <p className="text-[10px] text-[var(--color-text-tertiary)]">
                       {m.view_duration_s >= 60
                         ? `${Math.round(m.view_duration_s / 60)}m viewed`
                         : `${m.view_duration_s}s viewed`}
@@ -469,7 +469,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 <button
                   onClick={() => setSelected(m)}
                   disabled={!m.signed_url && !m.external_link}
-                  className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="text-xs bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border-primary)] text-[var(--color-text-primary)] px-3 py-1.5 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   View
                 </button>
@@ -478,10 +478,10 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                   title={!m.viewed && !m.completed ? "View the material first" : undefined}
                   className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
                     m.completed
-                      ? "bg-green-100 text-green-700 hover:bg-green-200"
+                      ? "bg-[var(--color-success-light)] text-[var(--color-success)] hover:bg-green-200"
                       : m.viewed
-                      ? "border border-gray-200 text-gray-700 hover:bg-gray-50"
-                      : "border border-gray-200 text-gray-300 cursor-not-allowed"
+                      ? "border border-[var(--color-border-primary)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]"
+                      : "border border-[var(--color-border-primary)] text-[var(--color-text-tertiary)] cursor-not-allowed"
                   }`}
                 >
                   {m.completed ? "✓ Done" : "Mark done"}
@@ -490,7 +490,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                   <button
                     onClick={() => handleDelete(m.id, m.title)}
                     aria-label={`Delete ${m.title}`}
-                    className="text-xs text-red-400 hover:text-red-600 p-1.5"
+                    className="text-xs text-red-400 hover:text-[var(--color-error)] p-1.5"
                   >
                     ✕
                   </button>
@@ -507,17 +507,17 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Previous
           </button>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-[var(--color-text-tertiary)]">
             Page {page} of {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Next
           </button>
@@ -527,45 +527,45 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Learning Material</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Add Learning Material</h2>
 
             {error && (
-              <div className="mb-4 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+              <div className="mb-4 px-3 py-2 rounded-lg bg-[var(--color-error-light)] border border-red-200 text-xs text-[var(--color-error)]">
                 {error}
               </div>
             )}
 
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Title *</label>
                 <input
                   required
                   type="text"
                   maxLength={2000}
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Description</label>
                 <textarea
                   rows={2}
                   maxLength={2000}
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Type *</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Type *</label>
                   <select
                     required
                     value={form.material_type}
                     onChange={(e) => setForm((f) => ({ ...f, material_type: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="pdf">PDF</option>
                     <option value="video">Video</option>
@@ -575,11 +575,11 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Department</label>
                   <select
                     value={form.department_id}
                     onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     <option value="">Global</option>
                     {departments.map((d) => (
@@ -589,7 +589,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">
                   {form.material_type === "link" ? "URL *" : "File"}
                 </label>
                 {form.material_type === "link" ? (
@@ -599,7 +599,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                     placeholder="https://..."
                     value={form.external_link}
                     onChange={(e) => setForm((f) => ({ ...f, external_link: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 ) : (
                   <>
@@ -616,34 +616,34 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
                         }
                         setFile(f);
                       }}
-                      className="w-full text-sm text-gray-600"
+                      className="w-full text-sm text-[var(--color-text-secondary)]"
                     />
-                    <p className="text-[10px] text-gray-400 mt-1">Max 100MB</p>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">Max 100MB</p>
                   </>
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Sort order</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Sort order</label>
                 <input
                   type="number"
                   min="0"
                   value={form.sort_order}
                   onChange={(e) => setForm((f) => ({ ...f, sort_order: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => { setShowCreate(false); setError(null); }}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {creating ? "Uploading..." : "Upload"}
                 </button>

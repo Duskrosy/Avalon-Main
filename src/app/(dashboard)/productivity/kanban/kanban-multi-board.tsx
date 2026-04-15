@@ -40,8 +40,8 @@ const SCOPE_INFO = {
     title: "Team Board",
     description: "Shared with your department",
     icon: "👥",
-    color: "bg-blue-50 border-blue-200",
-    headerColor: "bg-blue-100",
+    color: "bg-[var(--color-accent-light)] border-blue-200",
+    headerColor: "bg-[var(--color-accent-light)]",
   },
   personal: {
     title: "My Board",
@@ -101,7 +101,7 @@ export function KanbanMultiBoard({
     const isExpanded = expanded[scope];
 
     return (
-      <div key={scope} className={`rounded-xl border-2 ${info.color} overflow-hidden`}>
+      <div key={scope} className={`rounded-[var(--radius-lg)] border-2 ${info.color} overflow-hidden`}>
         {/* Section Header */}
         <button
           onClick={() => toggleSection(scope)}
@@ -110,13 +110,13 @@ export function KanbanMultiBoard({
           <div className="flex items-center gap-3">
             <span className="text-xl">{info.icon}</span>
             <div className="text-left">
-              <h2 className="font-semibold text-gray-900">{info.title}</h2>
-              <p className="text-xs text-gray-600">{info.description}</p>
+              <h2 className="font-semibold text-[var(--color-text-primary)]">{info.title}</h2>
+              <p className="text-xs text-[var(--color-text-secondary)]">{info.description}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {board && (
-              <span className="text-xs text-gray-500 bg-white/60 px-2 py-1 rounded">
+              <span className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-primary)]/60 px-2 py-1 rounded">
                 {board.columns?.reduce((sum, col) => sum + (col.kanban_cards?.length ?? 0), 0) ?? 0} tasks
               </span>
             )}
@@ -161,18 +161,18 @@ export function KanbanMultiBoard({
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Kanban Boards</h1>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Kanban Boards</h1>
+        <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
           <button
             onClick={() => setExpanded({ team: true, personal: true, global: true })}
-            className="hover:text-gray-700"
+            className="hover:text-[var(--color-text-primary)]"
           >
             Expand All
           </button>
           <span>|</span>
           <button
             onClick={() => setExpanded({ team: false, personal: false, global: false })}
-            className="hover:text-gray-700"
+            className="hover:text-[var(--color-text-primary)]"
           >
             Collapse All
           </button>
@@ -244,7 +244,7 @@ function EmptyBoardState({
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <span className="text-4xl mb-3">{info.icon}</span>
-      <p className="text-gray-500 mb-4 text-sm">
+      <p className="text-[var(--color-text-secondary)] mb-4 text-sm">
         {scope === "team" && "No team board yet."}
         {scope === "personal" && "Set up your personal board to track your own tasks."}
         {scope === "global" && "No company-wide board yet."}
@@ -253,13 +253,13 @@ function EmptyBoardState({
         <button
           onClick={handleCreate}
           disabled={creating}
-          className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 text-sm"
+          className="px-4 py-2 bg-[var(--color-text-primary)] text-white rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 text-sm"
         >
           {creating ? "Creating..." : `Create ${info.title}`}
         </button>
       )}
       {!canCreate && (
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-[var(--color-text-tertiary)]">
           {scope === "team" && "Ask your manager to set this up."}
           {scope === "global" && "Ask OPS to set this up."}
         </p>

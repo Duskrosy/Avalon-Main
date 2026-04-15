@@ -33,12 +33,12 @@ type Props = {
 const REACTION_EMOJIS = ["👍", "❤️", "🎉", "😂", "🔥", "👀", "💯", "🙏"];
 
 const FLAIR_COLORS = [
-  { name: "Gray",    value: "#6b7280", bg: "bg-gray-100",    text: "text-gray-700",    ring: "ring-gray-200" },
-  { name: "Red",     value: "#ef4444", bg: "bg-red-50",      text: "text-red-700",     ring: "ring-red-200" },
+  { name: "Gray",    value: "#6b7280", bg: "bg-[var(--color-bg-tertiary)]",    text: "text-[var(--color-text-primary)]",    ring: "ring-gray-200" },
+  { name: "Red",     value: "#ef4444", bg: "bg-[var(--color-error-light)]",      text: "text-[var(--color-error)]",     ring: "ring-red-200" },
   { name: "Orange",  value: "#f97316", bg: "bg-orange-50",   text: "text-orange-700",  ring: "ring-orange-200" },
-  { name: "Amber",   value: "#f59e0b", bg: "bg-amber-50",    text: "text-amber-700",   ring: "ring-amber-200" },
-  { name: "Green",   value: "#22c55e", bg: "bg-green-50",    text: "text-green-700",   ring: "ring-green-200" },
-  { name: "Blue",    value: "#3b82f6", bg: "bg-blue-50",     text: "text-blue-700",    ring: "ring-blue-200" },
+  { name: "Amber",   value: "#f59e0b", bg: "bg-[var(--color-warning-light)]",    text: "text-[var(--color-warning-text)]",   ring: "ring-amber-200" },
+  { name: "Green",   value: "#22c55e", bg: "bg-[var(--color-success-light)]",    text: "text-[var(--color-success)]",   ring: "ring-green-200" },
+  { name: "Blue",    value: "#3b82f6", bg: "bg-[var(--color-accent-light)]",     text: "text-[var(--color-accent)]",    ring: "ring-blue-200" },
   { name: "Purple",  value: "#a855f7", bg: "bg-purple-50",   text: "text-purple-700",  ring: "ring-purple-200" },
   { name: "Pink",    value: "#ec4899", bg: "bg-pink-50",     text: "text-pink-700",    ring: "ring-pink-200" },
 ];
@@ -181,13 +181,13 @@ export function AnnouncementsView({
       {/* Header */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Announcements</h1>
-          <p className="text-sm text-gray-500 mt-1">Company and department notices</p>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Announcements</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Company and department notices</p>
         </div>
         {canPost && (
           <button
             onClick={() => setShowForm(true)}
-            className="bg-gray-900 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-1.5"
+            className="bg-[var(--color-text-primary)] text-white text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors flex items-center gap-1.5"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M7 1v12M1 7h12"/></svg>
             New Announcement
@@ -199,7 +199,7 @@ export function AnnouncementsView({
       {announcements.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-3">📢</div>
-          <p className="text-sm text-gray-400">No announcements yet.</p>
+          <p className="text-sm text-[var(--color-text-tertiary)]">No announcements yet.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -214,13 +214,13 @@ export function AnnouncementsView({
             return (
               <div
                 key={a.id}
-                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] overflow-hidden shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] transition-shadow"
               >
                 {/* Thread Header */}
                 <div className="p-4 cursor-pointer" onClick={() => toggle(a.id)}>
                   <div className="flex items-start gap-3">
                     {/* Author Avatar */}
-                    <div className="w-9 h-9 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
+                    <div className="w-9 h-9 rounded-full bg-[var(--color-text-primary)] text-white flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
                       {a.created_by_profile
                         ? getInitials(a.created_by_profile.first_name, a.created_by_profile.last_name)
                         : "?"}
@@ -228,8 +228,8 @@ export function AnnouncementsView({
 
                     <div className="flex-1 min-w-0">
                       {/* Author + Meta */}
-                      <div className="flex items-center gap-2 text-xs text-gray-500 mb-1 flex-wrap">
-                        <span className="font-medium text-gray-700">
+                      <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] mb-1 flex-wrap">
+                        <span className="font-medium text-[var(--color-text-primary)]">
                           {a.created_by_profile
                             ? `${a.created_by_profile.first_name} ${a.created_by_profile.last_name}`
                             : "System"}
@@ -239,14 +239,14 @@ export function AnnouncementsView({
                         {a.department ? (
                           <>
                             <span>·</span>
-                            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                            <span className="bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded text-[10px] font-medium">
                               {a.department.name}
                             </span>
                           </>
                         ) : (
                           <>
                             <span>·</span>
-                            <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                            <span className="bg-[var(--color-accent-light)] text-[var(--color-accent)] px-1.5 py-0.5 rounded text-[10px] font-medium">
                               Global
                             </span>
                           </>
@@ -268,7 +268,7 @@ export function AnnouncementsView({
                         )}
                         {/* Attachment indicator */}
                         {a.attachment_name && (
-                          <span className="text-gray-400 flex items-center gap-0.5">
+                          <span className="text-[var(--color-text-tertiary)] flex items-center gap-0.5">
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                               <path d="M10 6.5l-4.3 4.3a2.5 2.5 0 01-3.4-3.4L7.6 2a1.7 1.7 0 012.4 2.4L4.7 9.7a.8.8 0 01-1.2-1.2L8.2 3.8"/>
                             </svg>
@@ -277,11 +277,11 @@ export function AnnouncementsView({
                       </div>
 
                       {/* Title */}
-                      <h3 className="text-sm font-semibold text-gray-900 leading-snug">{a.title}</h3>
+                      <h3 className="text-sm font-semibold text-[var(--color-text-primary)] leading-snug">{a.title}</h3>
 
                       {/* Preview (collapsed) */}
                       {!isExpanded && (
-                        <p className="text-xs text-gray-500 mt-1.5 line-clamp-2 leading-relaxed">{a.content}</p>
+                        <p className="text-xs text-[var(--color-text-secondary)] mt-1.5 line-clamp-2 leading-relaxed">{a.content}</p>
                       )}
                     </div>
 
@@ -290,7 +290,7 @@ export function AnnouncementsView({
                       {canDelete && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(a.id); }}
-                          className="text-xs text-gray-300 hover:text-red-400 transition-colors p-1"
+                          className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400 transition-colors p-1"
                           title="Delete"
                         >
                           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -298,7 +298,7 @@ export function AnnouncementsView({
                           </svg>
                         </button>
                       )}
-                      <span className="text-gray-300 text-xs">{isExpanded ? "▲" : "▼"}</span>
+                      <span className="text-[var(--color-text-tertiary)] text-xs">{isExpanded ? "▲" : "▼"}</span>
                     </div>
                   </div>
 
@@ -314,8 +314,8 @@ export function AnnouncementsView({
                             title={users.map((u) => u.name).join(", ")}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
                               isMine
-                                ? "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-                                : "bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100"
+                                ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
+                                : "bg-[var(--color-bg-secondary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
                             }`}
                           >
                             <span>{emoji}</span>
@@ -326,18 +326,18 @@ export function AnnouncementsView({
                       <div className="relative" ref={pickerOpen === a.id ? pickerRef : undefined}>
                         <button
                           onClick={() => setPickerOpen(pickerOpen === a.id ? null : a.id)}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-gray-300 text-gray-400 hover:border-gray-400 hover:text-gray-500 transition-colors text-xs"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-[var(--color-border-primary)] text-[var(--color-text-tertiary)] hover:border-gray-400 hover:text-[var(--color-text-secondary)] transition-colors text-xs"
                           title="Add reaction"
                         >
                           +
                         </button>
                         {pickerOpen === a.id && (
-                          <div className="absolute bottom-full mb-1 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 flex gap-1 z-20">
+                          <div className="absolute bottom-full mb-1 left-0 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-[var(--shadow-lg)] p-1.5 flex gap-1 z-20">
                             {REACTION_EMOJIS.map((emoji) => (
                               <button
                                 key={emoji}
                                 onClick={() => handleReaction(a.id, emoji)}
-                                className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 text-base transition-colors"
+                                className="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--color-surface-active)] text-base transition-colors"
                               >
                                 {emoji}
                               </button>
@@ -351,9 +351,9 @@ export function AnnouncementsView({
 
                 {/* Expanded Content */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="px-4 pb-4 border-t border-[var(--color-border-secondary)]">
                     <div className="ml-12 pt-3">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{a.content}</p>
+                      <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">{a.content}</p>
 
                       {/* Attachment Preview */}
                       {a.attachment_signed_url && (
@@ -364,7 +364,7 @@ export function AnnouncementsView({
                               <img
                                 src={a.attachment_signed_url}
                                 alt={a.attachment_name ?? "Attachment"}
-                                className="max-w-sm max-h-64 rounded-lg border border-gray-200 object-cover hover:opacity-90 transition-opacity"
+                                className="max-w-sm max-h-64 rounded-lg border border-[var(--color-border-primary)] object-cover hover:opacity-90 transition-opacity"
                               />
                             </a>
                           ) : (
@@ -372,7 +372,7 @@ export function AnnouncementsView({
                               href={a.attachment_signed_url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                              className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-lg text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-surface-active)] transition-colors"
                             >
                               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
                                 <path d="M4 14h8a1 1 0 001-1V5l-4-4H4a1 1 0 00-1 1v11a1 1 0 001 1z"/>
@@ -388,7 +388,7 @@ export function AnnouncementsView({
                       )}
 
                       {a.expires_at && (
-                        <p className="text-xs text-gray-400 mt-3 flex items-center gap-1">
+                        <p className="text-xs text-[var(--color-text-tertiary)] mt-3 flex items-center gap-1">
                           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="6" cy="6" r="5"/><path d="M6 3v3l2 1"/></svg>
                           Expires {formatDistanceToNow(new Date(a.expires_at), { addSuffix: true })}
                         </p>
@@ -399,18 +399,18 @@ export function AnnouncementsView({
                         <div className="mt-3 relative" ref={pickerOpen === a.id ? pickerRef : undefined}>
                           <button
                             onClick={() => setPickerOpen(pickerOpen === a.id ? null : a.id)}
-                            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-50"
+                            className="inline-flex items-center gap-1.5 text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] transition-colors px-2 py-1 rounded-lg hover:bg-[var(--color-surface-hover)]"
                           >
                             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="7" cy="7" r="6"/><path d="M4.5 8.5s1 1.5 2.5 1.5 2.5-1.5 2.5-1.5M5 5.5h.01M9 5.5h.01"/></svg>
                             React
                           </button>
                           {pickerOpen === a.id && (
-                            <div className="absolute bottom-full mb-1 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-1.5 flex gap-1 z-20">
+                            <div className="absolute bottom-full mb-1 left-0 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-[var(--shadow-lg)] p-1.5 flex gap-1 z-20">
                               {REACTION_EMOJIS.map((emoji) => (
                                 <button
                                   key={emoji}
                                   onClick={() => handleReaction(a.id, emoji)}
-                                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 text-base transition-colors"
+                                  className="w-8 h-8 flex items-center justify-center rounded hover:bg-[var(--color-surface-active)] text-base transition-colors"
                                 >
                                   {emoji}
                                 </button>
@@ -431,35 +431,35 @@ export function AnnouncementsView({
       {/* Post Announcement Modal */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">New Announcement</h2>
+          <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">New Announcement</h2>
             <form onSubmit={handlePost} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Title *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Title *</label>
                 <input
                   required
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   placeholder="What's the announcement about?"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Content *</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Content *</label>
                 <textarea
                   required
                   rows={4}
                   value={form.content}
                   onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
                   placeholder="Write the full announcement details..."
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                 />
               </div>
 
               {/* Flair */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Flair (optional)</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Flair (optional)</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -467,12 +467,12 @@ export function AnnouncementsView({
                     onChange={(e) => setForm((f) => ({ ...f, flair_text: e.target.value }))}
                     placeholder="e.g. Policy Update, Urgent, FYI"
                     maxLength={30}
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="flex-1 border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
                 {/* Color selector */}
                 <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-[10px] text-gray-400 mr-1">Color:</span>
+                  <span className="text-[10px] text-[var(--color-text-tertiary)] mr-1">Color:</span>
                   {FLAIR_COLORS.map((c) => (
                     <button
                       key={c.value}
@@ -489,7 +489,7 @@ export function AnnouncementsView({
                 {/* Flair preview */}
                 {form.flair_text.trim() && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="text-[10px] text-gray-400">Preview:</span>
+                    <span className="text-[10px] text-[var(--color-text-tertiary)]">Preview:</span>
                     {form.flair_color ? (
                       (() => {
                         const preset = FLAIR_COLORS.find((c) => c.value === form.flair_color);
@@ -507,7 +507,7 @@ export function AnnouncementsView({
                         );
                       })()
                     ) : (
-                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700 ring-1 ring-gray-200">
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] ring-1 ring-gray-200">
                         {form.flair_text.trim()}
                       </span>
                     )}
@@ -518,11 +518,11 @@ export function AnnouncementsView({
               {/* Department + Expires */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Department</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Department</label>
                   <select
                     value={form.department_id}
                     onChange={(e) => setForm((f) => ({ ...f, department_id: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   >
                     {isOps && <option value="">Global (all staff)</option>}
                     {departments.map((d) => (
@@ -531,34 +531,34 @@ export function AnnouncementsView({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Expires (optional)</label>
+                  <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Expires (optional)</label>
                   <input
                     type="date"
                     value={form.expires_at}
                     onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))}
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   />
                 </div>
               </div>
 
               {/* Attachment */}
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Attachment (optional)</label>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Attachment (optional)</label>
                 {!file ? (
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-200 rounded-lg py-4 text-center hover:border-gray-400 hover:bg-gray-50 transition-colors"
+                    className="w-full border-2 border-dashed border-[var(--color-border-primary)] rounded-lg py-4 text-center hover:border-gray-400 hover:bg-[var(--color-surface-hover)] transition-colors"
                   >
                     <svg className="mx-auto mb-1" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round">
                       <path d="M10 4v8M6 8l4-4 4 4"/>
                       <path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/>
                     </svg>
-                    <p className="text-xs text-gray-500">Click to upload</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Images, PDF, Office docs up to 50MB</p>
+                    <p className="text-xs text-[var(--color-text-secondary)]">Click to upload</p>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">Images, PDF, Office docs up to 50MB</p>
                   </button>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg p-3">
+                  <div className="border border-[var(--color-border-primary)] rounded-lg p-3">
                     {filePreview && (
                       <div className="mb-2">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -571,12 +571,12 @@ export function AnnouncementsView({
                           <path d="M3.5 12h7a1 1 0 001-1V4.5l-3.5-3.5h-4.5a1 1 0 00-1 1v9a1 1 0 001 1z"/>
                           <path d="M8 1v3.5h3.5"/>
                         </svg>
-                        <span className="text-xs text-gray-700 truncate">{file.name}</span>
-                        <span className="text-[10px] text-gray-400 shrink-0">
+                        <span className="text-xs text-[var(--color-text-primary)] truncate">{file.name}</span>
+                        <span className="text-[10px] text-[var(--color-text-tertiary)] shrink-0">
                           {(file.size / 1024 / 1024).toFixed(1)}MB
                         </span>
                       </div>
-                      <button type="button" onClick={clearFile} className="text-xs text-gray-400 hover:text-red-400 ml-2 shrink-0">
+                      <button type="button" onClick={clearFile} className="text-xs text-[var(--color-text-tertiary)] hover:text-red-400 ml-2 shrink-0">
                         Remove
                       </button>
                     </div>
@@ -595,14 +595,14 @@ export function AnnouncementsView({
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); clearFile(); }}
-                  className="flex-1 border border-gray-200 text-gray-700 text-sm py-2 rounded-lg hover:bg-gray-50"
+                  className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={posting}
-                  className="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-white text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {posting ? "Posting..." : "Post Announcement"}
                 </button>

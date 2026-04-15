@@ -25,9 +25,9 @@ type DeptSummary = {
 const PAGE_SIZE = 25;
 
 function ProgressBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-amber-400" : pct > 0 ? "bg-red-400" : "bg-gray-200";
+  const color = pct >= 80 ? "bg-[var(--color-success-light)]0" : pct >= 50 ? "bg-amber-400" : pct > 0 ? "bg-red-400" : "bg-[var(--color-border-primary)]";
   return (
-    <div className="h-2 bg-gray-100 rounded-full overflow-hidden w-24">
+    <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden w-24">
       <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -35,7 +35,7 @@ function ProgressBar({ pct }: { pct: number }) {
 
 function InitialsAvatar({ first, last }: { first: string; last: string }) {
   return (
-    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 shrink-0">
+    <div className="w-8 h-8 rounded-full bg-[var(--color-border-primary)] flex items-center justify-center text-xs font-medium text-[var(--color-text-secondary)] shrink-0">
       {first[0]}{last[0]}
     </div>
   );
@@ -92,8 +92,8 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  if (loading) return <div className="text-center py-16 text-gray-400 text-sm">Loading team progress...</div>;
-  if (error) return <div className="text-center py-16 text-red-500 text-sm">{error}</div>;
+  if (loading) return <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading team progress...</div>;
+  if (error) return <div className="text-center py-16 text-[var(--color-error)] text-sm">{error}</div>;
 
   return (
     <div className="space-y-6">
@@ -104,17 +104,17 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
             <button
               key={d.id}
               onClick={() => setDeptFilter(d.id === deptFilter ? "all" : d.id)}
-              className={`text-left p-3 rounded-xl border transition-colors ${
+              className={`text-left p-3 rounded-[var(--radius-lg)] border transition-colors ${
                 d.id === deptFilter
-                  ? "border-gray-900 bg-gray-50"
-                  : "border-gray-200 hover:border-gray-300"
+                  ? "border-gray-900 bg-[var(--color-bg-secondary)]"
+                  : "border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
               }`}
             >
-              <p className="text-xs text-gray-500 truncate">{d.name}</p>
-              <p className={`text-lg font-bold ${d.avg_pct >= 80 ? "text-green-600" : d.avg_pct >= 50 ? "text-amber-600" : "text-gray-900"}`}>
+              <p className="text-xs text-[var(--color-text-secondary)] truncate">{d.name}</p>
+              <p className={`text-lg font-bold ${d.avg_pct >= 80 ? "text-[var(--color-success)]" : d.avg_pct >= 50 ? "text-[var(--color-warning)]" : "text-[var(--color-text-primary)]"}`}>
                 {d.avg_pct}%
               </p>
-              <p className="text-[10px] text-gray-400">{d.total_users} member{d.total_users !== 1 ? "s" : ""}</p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)]">{d.total_users} member{d.total_users !== 1 ? "s" : ""}</p>
             </button>
           ))}
         </div>
@@ -128,14 +128,14 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
           aria-label="Search team members"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-48 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="flex-1 min-w-48 border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         />
         {isOps && (
           <select
             value={deptFilter}
             aria-label="Filter by department"
             onChange={(e) => setDeptFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           >
             <option value="all">All departments</option>
             {departments.map((d) => (
@@ -147,7 +147,7 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
           value={sortBy}
           aria-label="Sort by"
           onChange={(e) => setSortBy(e.target.value as "name" | "pct" | "activity")}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
         >
           <option value="pct">Sort by progress</option>
           <option value="name">Sort by name</option>
@@ -156,49 +156,49 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
       </div>
 
       {/* Summary line */}
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-[var(--color-text-tertiary)]">
         {filtered.length} team member{filtered.length !== 1 ? "s" : ""} · {totalMaterials} material{totalMaterials !== 1 ? "s" : ""}
       </p>
 
       {/* User table */}
       {filtered.length === 0 ? (
-        <div className="bg-gray-50 rounded-xl p-12 text-center">
-          <p className="text-sm text-gray-500">No team members found.</p>
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+          <p className="text-sm text-[var(--color-text-secondary)]">No team members found.</p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-100 text-sm">
-            <thead className="bg-gray-50">
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
+            <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Team member</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Department</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Viewed</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Completed</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Last activity</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Team member</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Department</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase">Viewed</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-[var(--color-text-secondary)] uppercase">Completed</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Progress</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Last activity</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
               {paginated.map((u) => (
-                <tr key={u.user_id} className="hover:bg-gray-50">
+                <tr key={u.user_id} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <InitialsAvatar first={u.first_name} last={u.last_name} />
-                      <span className="font-medium text-gray-900">{u.first_name} {u.last_name}</span>
+                      <span className="font-medium text-[var(--color-text-primary)]">{u.first_name} {u.last_name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{u.department?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-center text-gray-700">{u.viewed}/{u.total}</td>
-                  <td className="px-4 py-3 text-center text-gray-700">{u.completed}/{u.total}</td>
+                  <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">{u.department?.name ?? "—"}</td>
+                  <td className="px-4 py-3 text-center text-[var(--color-text-primary)]">{u.viewed}/{u.total}</td>
+                  <td className="px-4 py-3 text-center text-[var(--color-text-primary)]">{u.completed}/{u.total}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <ProgressBar pct={u.pct} />
                       <span className={`text-xs font-medium ${
-                        u.pct >= 80 ? "text-green-600" : u.pct >= 50 ? "text-amber-600" : u.pct > 0 ? "text-red-500" : "text-gray-400"
+                        u.pct >= 80 ? "text-[var(--color-success)]" : u.pct >= 50 ? "text-[var(--color-warning)]" : u.pct > 0 ? "text-[var(--color-error)]" : "text-[var(--color-text-tertiary)]"
                       }`}>{u.pct}%</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right text-xs text-gray-400">
+                  <td className="px-4 py-3 text-right text-xs text-[var(--color-text-tertiary)]">
                     {u.last_activity
                       ? new Date(u.last_activity).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
                       : "No activity"}
@@ -216,15 +216,15 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
           >
             Previous
           </button>
-          <span className="text-xs text-gray-400">Page {page} of {totalPages}</span>
+          <span className="text-xs text-[var(--color-text-tertiary)]">Page {page} of {totalPages}</span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
           >
             Next
           </button>
