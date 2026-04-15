@@ -7,12 +7,14 @@ import { AuditTab } from "./tabs/audit-tab";
 import { AlertsTab } from "./tabs/alerts-tab";
 import { JobsTab } from "./tabs/jobs-tab";
 import { PulseTab } from "./tabs/pulse-tab";
+import { ActivityTab } from "./tabs/activity-tab";
 
 const TABS = [
   { id: "pulse",  label: "Pulse" },
   { id: "usage",  label: "Usage" },
   { id: "errors", label: "Errors" },
   { id: "audit",  label: "Audit" },
+  { id: "activity", label: "Activity" },
   { id: "alerts", label: "Alerts" },
   { id: "jobs",   label: "Jobs" },
 ] as const;
@@ -51,6 +53,7 @@ export function ObsDashboard() {
       {activeTab === "usage"  && <UsageTab />}
       {activeTab === "errors" && <ErrorsTab />}
       {activeTab === "audit"  && <AuditTab />}
+      {activeTab === "activity" && <ActivityTab />}
       {activeTab === "alerts" && <AlertsTab />}
       {activeTab === "jobs"   && <JobsTab />}
     </div>
