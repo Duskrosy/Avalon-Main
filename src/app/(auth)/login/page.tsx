@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type Step = "credentials" | "mfa" | "forgot" | "magic" | "force_change";
 
@@ -272,14 +273,13 @@ function LoginInner() {
                       Forgot password?
                     </button>
                   </div>
-                  <input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="••••••••"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
                   />
                 </div>
 
@@ -498,27 +498,25 @@ function LoginInner() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">New password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={8}
                   value={forceNew}
                   onChange={(e) => setForceNew(e.target.value)}
                   placeholder="At least 8 characters"
                   autoFocus
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Confirm new password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={8}
                   value={forceConfirm}
                   onChange={(e) => setForceConfirm(e.target.value)}
                   placeholder="Repeat your new password"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm pr-9 focus:outline-none focus:ring-2 focus:ring-gray-900"
                 />
               </div>
               {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
