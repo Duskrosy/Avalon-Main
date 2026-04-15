@@ -44,7 +44,7 @@ const CONDITIONS = [
 
 const CONDITION_BADGE: Record<string, string> = {
   stuck:               "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)]",
-  returned:            "bg-[var(--color-accent-light)] text-blue-800 border-blue-200",
+  returned:            "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-[var(--color-accent)]",
   damaged:             "bg-[var(--color-error-light)] text-red-800 border-red-200",
   lost:                "bg-[var(--color-error-light)] text-red-800 border-red-200",
   rts:                 "bg-purple-100 text-purple-800 border-purple-200",

@@ -353,7 +353,7 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                 <div
                   key={platform}
                   className={`border rounded-[var(--radius-lg)] p-3 transition-colors ${
-                    isActive ? "border-gray-900 bg-[var(--color-bg-secondary)]" : "border-[var(--color-border-primary)]"
+                    isActive ? "border-[var(--color-text-primary)] bg-[var(--color-bg-secondary)]" : "border-[var(--color-border-primary)]"
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">

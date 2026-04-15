@@ -31,7 +31,7 @@ export function TabNav() {
             href={href}
             className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
               active
-                ? "border-gray-900 text-[var(--color-text-primary)]"
+                ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
                 : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >

@@ -228,8 +228,8 @@ export function MarketingRequestsView({ currentUserId }: Props) {
             onClick={() => setStatusFilter(f.value)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               statusFilter === f.value
-                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
             {f.label}
@@ -316,7 +316,7 @@ export function MarketingRequestsView({ currentUserId }: Props) {
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); openEdit(r); }}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+                          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
                         >
                           Edit
                         </button>
@@ -399,7 +399,7 @@ export function MarketingRequestsView({ currentUserId }: Props) {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={closeModal}
-                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
               >
                 Cancel
               </button>

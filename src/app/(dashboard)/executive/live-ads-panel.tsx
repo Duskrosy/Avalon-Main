@@ -150,7 +150,7 @@ export function LiveAdsPanel() {
           </div>
 
           {/* Campaign rows */}
-          <div className="divide-y divide-gray-50 mt-2">
+          <div className="divide-y divide-[var(--color-border-secondary)] mt-2">
             {campaigns.slice(0, 6).map((c) => {
               const cur          = c.account?.currency ?? currency;
               const campSpend    = c.adsets.reduce((s, a) => s + a.spend, 0);
@@ -170,7 +170,7 @@ export function LiveAdsPanel() {
                 <div key={c.id} className="px-5 py-3 flex items-center gap-3">
                   {/* Status indicator */}
                   <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    autoPaused ? "bg-amber-400" : isActive ? "bg-[var(--color-success-light)]0" : "bg-gray-300"
+                    autoPaused ? "bg-amber-400" : isActive ? "bg-[var(--color-success-light)]0" : "bg-[var(--color-border-primary)]"
                   }`} />
 
                   {/* Name + account */}

@@ -40,26 +40,26 @@ export function FeedbackButton({ pageUrl = "/" }: { pageUrl?: string }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-5 h-5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600 text-xs flex items-center justify-center transition-colors"
+        className="w-5 h-5 rounded-full bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-surface-active)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] text-xs flex items-center justify-center transition-colors"
         title="This isn't right?"
       >
         ?
       </button>
       {open && (
-        <div className="absolute right-0 top-7 z-50 w-64 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+        <div className="absolute right-0 top-7 z-50 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-lg p-3">
           {sent ? (
             <p className="text-xs text-green-600 font-medium py-2 text-center">
               Thanks for the feedback!
             </p>
           ) : (
             <form onSubmit={handleSubmit}>
-              <label className="text-xs font-medium text-gray-600 block mb-1">
+              <label className="text-xs font-medium text-[var(--color-text-secondary)] block mb-1">
                 What should this show instead?
               </label>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="w-full border border-gray-200 rounded-md text-xs p-2 resize-none focus:outline-none focus:ring-1 focus:ring-gray-300"
+                className="w-full border border-[var(--color-border-primary)] rounded-md text-xs p-2 resize-none focus:outline-none focus:ring-1 focus:ring-[var(--color-border-primary)]"
                 rows={3}
                 placeholder="Describe what you expected..."
                 autoFocus
@@ -68,14 +68,14 @@ export function FeedbackButton({ pageUrl = "/" }: { pageUrl?: string }) {
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="text-xs text-gray-400 hover:text-gray-600"
+                  className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={sending || !text.trim()}
-                  className="text-xs bg-gray-900 text-white px-3 py-1 rounded-md hover:bg-gray-800 disabled:opacity-50"
+                  className="text-xs bg-[var(--color-text-primary)] text-white px-3 py-1 rounded-md hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
                 >
                   {sending ? "Sending..." : "Send"}
                 </button>

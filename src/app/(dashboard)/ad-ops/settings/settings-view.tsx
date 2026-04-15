@@ -455,7 +455,7 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
                       if (e.key === "Escape") setEditingGroupId(null);
                     }}
                     onBlur={() => saveGroupName(group.id)}
-                    className="flex-1 text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border-primary)] focus:outline-none focus:border-gray-900 bg-transparent"
+                    className="flex-1 text-base font-semibold text-[var(--color-text-primary)] border-b border-[var(--color-border-primary)] focus:outline-none focus:border-[var(--color-text-primary)] bg-transparent"
                   />
                 ) : (
                   <button

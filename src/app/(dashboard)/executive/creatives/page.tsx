@@ -38,11 +38,11 @@ const RAG_COLORS = {
   green: { dot: "bg-[var(--color-success-light)]0", bg: "bg-[var(--color-success-light)]", text: "text-[var(--color-success)]", border: "border-green-200" },
   amber: { dot: "bg-amber-400", bg: "bg-[var(--color-warning-light)]", text: "text-[var(--color-warning-text)]", border: "border-[var(--color-border-primary)]" },
   red:   { dot: "bg-[var(--color-error-light)]0",   bg: "bg-[var(--color-error-light)]",   text: "text-[var(--color-error)]",   border: "border-red-200" },
-  none:  { dot: "bg-gray-300",  bg: "bg-[var(--color-bg-secondary)]",  text: "text-[var(--color-text-tertiary)]",  border: "border-[var(--color-border-primary)]" },
+  none:  { dot: "bg-[var(--color-border-primary)]",  bg: "bg-[var(--color-bg-secondary)]",  text: "text-[var(--color-text-tertiary)]",  border: "border-[var(--color-border-primary)]" },
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  facebook:  "bg-[var(--color-accent-light)] text-blue-800",
+  facebook:  "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   instagram: "bg-pink-100 text-pink-800",
   tiktok:    "bg-[var(--color-text-primary)] text-white",
   youtube:   "bg-[var(--color-error-light)] text-red-800",
@@ -253,7 +253,7 @@ export default async function ExecutiveCreativesPage() {
             {kpiGreen  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-success-light)]0" /><span className="text-[var(--color-text-secondary)]">{kpiGreen} on target</span></span>}
             {kpiAmber  > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" /><span className="text-[var(--color-text-secondary)]">{kpiAmber} needs attention</span></span>}
             {kpiRed    > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-error-light)]0" /><span className="text-[var(--color-text-secondary)]">{kpiRed} off target</span></span>}
-            {kpiNoData > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-300" /><span className="text-[var(--color-text-secondary)]">{kpiNoData} no data</span></span>}
+            {kpiNoData > 0 && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[var(--color-border-primary)]" /><span className="text-[var(--color-text-secondary)]">{kpiNoData} no data</span></span>}
           </div>
         </div>
       )}
@@ -367,7 +367,7 @@ export default async function ExecutiveCreativesPage() {
           {upcoming.length === 0 ? (
             <p className="px-5 py-8 text-sm text-[var(--color-text-tertiary)] text-center">No upcoming scheduled posts.</p>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[var(--color-border-secondary)]">
               {upcoming.map((p) => (
                 <div key={p.id} className="px-5 py-3 flex items-center gap-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLATFORM_COLORS[p.platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}>

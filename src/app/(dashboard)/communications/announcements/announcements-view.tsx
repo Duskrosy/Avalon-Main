@@ -33,7 +33,7 @@ type Props = {
 const REACTION_EMOJIS = ["👍", "❤️", "🎉", "😂", "🔥", "👀", "💯", "🙏"];
 
 const FLAIR_COLORS = [
-  { name: "Gray",    value: "#6b7280", bg: "bg-[var(--color-bg-tertiary)]",    text: "text-[var(--color-text-primary)]",    ring: "ring-gray-200" },
+  { name: "Gray",    value: "#6b7280", bg: "bg-[var(--color-bg-tertiary)]",    text: "text-[var(--color-text-primary)]",    ring: "ring-[var(--color-border-primary)]" },
   { name: "Red",     value: "#ef4444", bg: "bg-[var(--color-error-light)]",      text: "text-[var(--color-error)]",     ring: "ring-red-200" },
   { name: "Orange",  value: "#f97316", bg: "bg-orange-50",   text: "text-orange-700",  ring: "ring-orange-200" },
   { name: "Amber",   value: "#f59e0b", bg: "bg-[var(--color-warning-light)]",    text: "text-[var(--color-warning-text)]",   ring: "ring-amber-200" },
@@ -314,7 +314,7 @@ export function AnnouncementsView({
                             title={users.map((u) => u.name).join(", ")}
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
                               isMine
-                                ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
+                                ? "bg-[var(--color-accent-light)] border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
                                 : "bg-[var(--color-bg-secondary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
                             }`}
                           >
@@ -326,7 +326,7 @@ export function AnnouncementsView({
                       <div className="relative" ref={pickerOpen === a.id ? pickerRef : undefined}>
                         <button
                           onClick={() => setPickerOpen(pickerOpen === a.id ? null : a.id)}
-                          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-[var(--color-border-primary)] text-[var(--color-text-tertiary)] hover:border-gray-400 hover:text-[var(--color-text-secondary)] transition-colors text-xs"
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-[var(--color-border-primary)] text-[var(--color-text-tertiary)] hover:border-[var(--color-border-primary)] hover:text-[var(--color-text-secondary)] transition-colors text-xs"
                           title="Add reaction"
                         >
                           +
@@ -479,7 +479,7 @@ export function AnnouncementsView({
                       type="button"
                       onClick={() => setForm((f) => ({ ...f, flair_color: f.flair_color === c.value ? "" : c.value }))}
                       className={`w-6 h-6 rounded-full border-2 transition-all ${
-                        form.flair_color === c.value ? "border-gray-900 scale-110" : "border-transparent hover:scale-105"
+                        form.flair_color === c.value ? "border-[var(--color-text-primary)] scale-110" : "border-transparent hover:scale-105"
                       }`}
                       style={{ backgroundColor: c.value }}
                       title={c.name}
@@ -507,7 +507,7 @@ export function AnnouncementsView({
                         );
                       })()
                     ) : (
-                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] ring-1 ring-gray-200">
+                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] ring-1 ring-[var(--color-border-primary)]">
                         {form.flair_text.trim()}
                       </span>
                     )}
@@ -548,7 +548,7 @@ export function AnnouncementsView({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-[var(--color-border-primary)] rounded-lg py-4 text-center hover:border-gray-400 hover:bg-[var(--color-surface-hover)] transition-colors"
+                    className="w-full border-2 border-dashed border-[var(--color-border-primary)] rounded-lg py-4 text-center hover:border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
                   >
                     <svg className="mx-auto mb-1" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round">
                       <path d="M10 4v8M6 8l4-4 4 4"/>

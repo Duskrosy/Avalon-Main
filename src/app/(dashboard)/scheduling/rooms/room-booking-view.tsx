@@ -43,7 +43,7 @@ type Props = {
 };
 
 const ROOM_COLORS = [
-  { bg: "bg-[var(--color-accent-light)]", border: "border-blue-200", text: "text-[var(--color-accent)]", fill: "bg-[var(--color-accent-light)]0", light: "bg-[var(--color-accent-light)]", accent: "bg-[var(--color-accent)]" },
+  { bg: "bg-[var(--color-accent-light)]", border: "border-[var(--color-accent)]", text: "text-[var(--color-accent)]", fill: "bg-[var(--color-accent-light)]0", light: "bg-[var(--color-accent-light)]", accent: "bg-[var(--color-accent)]" },
   { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", fill: "bg-violet-500", light: "bg-violet-100", accent: "bg-violet-600" },
   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", fill: "bg-emerald-500", light: "bg-emerald-100", accent: "bg-emerald-600" },
   { bg: "bg-[var(--color-warning-light)]", border: "border-[var(--color-border-primary)]", text: "text-[var(--color-warning-text)]", fill: "bg-[var(--color-warning-light)]0", light: "bg-[var(--color-warning-light)]", accent: "bg-amber-600" },
@@ -518,7 +518,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
               })}
             </div>
             {!isSameDay(selectedDate, today) && (
-              <button onClick={() => handleDateChange(today)} className="mt-3 w-full text-xs text-[var(--color-accent)] hover:text-blue-800 font-medium">
+              <button onClick={() => handleDateChange(today)} className="mt-3 w-full text-xs text-[var(--color-accent)] hover:text-[var(--color-accent)] font-medium">
                 Go to today
               </button>
             )}
@@ -708,7 +708,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                         onClick={() => expandSelection(opt.slots)}
                         className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                           selectedSlots.size === opt.slots
-                            ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] font-medium"
+                            ? "bg-[var(--color-accent-light)] border-[var(--color-accent)] text-[var(--color-accent)] font-medium"
                             : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                         }`}
                       >
@@ -935,7 +935,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                       onClick={() => setShowRoomSettings((r) => r ? { ...r, slot_duration: d } : null)}
                       className={`flex-1 py-2 text-sm rounded-[var(--radius-lg)] border-2 transition-colors ${
                         showRoomSettings.slot_duration === d
-                          ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] font-medium"
+                          ? "bg-[var(--color-accent-light)] border-[var(--color-accent)] text-[var(--color-accent)] font-medium"
                           : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}
                     >
@@ -1007,7 +1007,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                   {[15, 30, 60].map((d) => (
                     <button key={d} type="button" onClick={() => setRoomForm((f) => ({ ...f, slot_duration: d }))}
                       className={`flex-1 py-2 text-sm rounded-[var(--radius-lg)] border-2 transition-colors ${
-                        roomForm.slot_duration === d ? "bg-[var(--color-accent-light)] border-blue-200 text-[var(--color-accent)] font-medium" : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                        roomForm.slot_duration === d ? "bg-[var(--color-accent-light)] border-[var(--color-accent)] text-[var(--color-accent)] font-medium" : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
                       }`}>
                       {d} min
                     </button>

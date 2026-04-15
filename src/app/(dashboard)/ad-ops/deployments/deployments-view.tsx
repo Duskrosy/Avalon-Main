@@ -39,8 +39,8 @@ const STATUS_STYLES: Record<string, string> = {
 const STATUS_DOT: Record<string, string> = {
   active: "bg-green-400",
   paused: "bg-amber-400",
-  draft:  "bg-gray-300",
-  ended:  "bg-gray-300",
+  draft:  "bg-[var(--color-border-primary)]",
+  ended:  "bg-[var(--color-border-primary)]",
 };
 
 const NEXT_STATUSES: Record<string, string[]> = {
@@ -172,7 +172,7 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-white border-gray-900" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"}`}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"}`}
           >
             {s === "" ? "All" : s}
           </button>
@@ -193,7 +193,7 @@ export function DeploymentsView({ metaAccounts, approvedAssets, canManage }: Pro
                 className="px-5 py-4 flex items-start gap-3 cursor-pointer hover:bg-[var(--color-surface-hover)]"
                 onClick={() => setExpanded(expanded === d.id ? null : d.id)}
               >
-                <span className={`w-2 h-2 rounded-full shrink-0 mt-2 ${STATUS_DOT[d.status] ?? "bg-gray-300"}`} />
+                <span className={`w-2 h-2 rounded-full shrink-0 mt-2 ${STATUS_DOT[d.status] ?? "bg-[var(--color-border-primary)]"}`} />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[var(--color-text-primary)]">
                     {d.campaign_name ?? d.asset?.title ?? "Unnamed deployment"}

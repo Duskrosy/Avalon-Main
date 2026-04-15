@@ -28,7 +28,7 @@ const STATUS_DOT: Record<string, string> = {
   running:   "bg-[var(--color-accent-light)]0 animate-pulse",
   pending:   "bg-gray-400",
   failed:    "bg-[var(--color-error-light)]0",
-  cancelled: "bg-gray-300",
+  cancelled: "bg-[var(--color-border-primary)]",
 };
 
 function formatDuration(ms: number | null): string {
@@ -121,7 +121,7 @@ export function JobsTab() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Error</th>
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
               {jobs.map((job) => (
                 <tr key={job.id} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-primary)]">{job.job_name}</td>

@@ -414,7 +414,7 @@ export function ShopifyReconciliation({
                     <th className="px-4 py-2.5" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[var(--color-border-secondary)]">
                   {unmatchedOrders.map((o) => (
                     <tr key={o.shopify_order_id} className="hover:bg-[var(--color-surface-hover)]">
                       <td className="px-4 py-3 font-mono text-sm font-semibold text-[var(--color-text-primary)]">
@@ -482,7 +482,7 @@ export function ShopifyReconciliation({
                     <th className="px-4 py-2.5" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[var(--color-border-secondary)]">
                   {unverifiedSales.map((cs) => (
                     <tr key={cs.id} className="hover:bg-[var(--color-surface-hover)]">
                       <td className="px-4 py-3 text-xs text-[var(--color-text-secondary)] whitespace-nowrap">
@@ -538,7 +538,7 @@ export function ShopifyReconciliation({
                     <th className="px-4 py-2.5" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[var(--color-border-secondary)]">
                   {mismatches.map((cs) => {
                     const absDiff = Math.abs(cs.diff);
                     const diffColor = absDiff > 100 ? "text-[var(--color-error)] font-semibold" : "text-[var(--color-warning)] font-semibold";

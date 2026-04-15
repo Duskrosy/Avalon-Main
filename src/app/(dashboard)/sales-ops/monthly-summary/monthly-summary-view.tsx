@@ -175,7 +175,7 @@ export function MonthlySummaryView({ agents }: { agents: Agent[] }) {
                   <th className="px-4 py-3 text-center font-medium">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-[var(--color-border-secondary)]">
                 {allRows.map(({ fps, payout }) => {
                   const id = fps?.agent_id ?? payout?.agent_id ?? "";
                   return (

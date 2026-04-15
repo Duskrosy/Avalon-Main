@@ -210,7 +210,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
             onClick={() => setSelectedGroupId(null)}
             className={`px-4 py-2.5 text-sm font-medium shrink-0 border-b-2 transition-colors ${
               selectedGroupId === null
-                ? "border-gray-900 text-[var(--color-text-primary)]"
+                ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
                 : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
@@ -222,7 +222,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
               onClick={() => setSelectedGroupId(g.id)}
               className={`px-4 py-2.5 text-sm font-medium shrink-0 border-b-2 transition-colors ${
                 selectedGroupId === g.id
-                  ? "border-gray-900 text-[var(--color-text-primary)]"
+                  ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
                   : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               }`}
             >
@@ -486,7 +486,7 @@ export function PerformanceView({ deployments, groups, accounts, canManage }: Pr
                         <th className="px-4 py-3 text-right font-medium">Conversions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-[var(--color-border-secondary)]">
                       {[...snapshots]
                         .sort((a, b) => b.metric_date.localeCompare(a.metric_date))
                         .map((s) => (

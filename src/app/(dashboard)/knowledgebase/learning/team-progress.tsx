@@ -106,7 +106,7 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
               onClick={() => setDeptFilter(d.id === deptFilter ? "all" : d.id)}
               className={`text-left p-3 rounded-[var(--radius-lg)] border transition-colors ${
                 d.id === deptFilter
-                  ? "border-gray-900 bg-[var(--color-bg-secondary)]"
+                  ? "border-[var(--color-text-primary)] bg-[var(--color-bg-secondary)]"
                   : "border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
               }`}
             >
@@ -178,7 +178,7 @@ export function TeamProgress({ isOps, departments }: { isOps: boolean; departmen
                 <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Last activity</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {paginated.map((u) => (
                 <tr key={u.user_id} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-3">

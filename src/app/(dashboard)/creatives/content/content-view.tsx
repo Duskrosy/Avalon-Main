@@ -35,7 +35,7 @@ type TopPost = {
 };
 
 const PLATFORM_COLORS: Record<string, string> = {
-  facebook:  "bg-[var(--color-accent-light)] text-blue-800",
+  facebook:  "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   instagram: "bg-pink-100 text-pink-800",
   tiktok:    "bg-[var(--color-text-primary)] text-white",
   youtube:   "bg-[var(--color-error-light)] text-red-800",
@@ -441,7 +441,7 @@ export function ContentManager({
       {groups.length === 0 ? (
         <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-12 text-center">
           <p className="text-sm text-[var(--color-text-secondary)]">No SMM groups configured yet.</p>
-          <a href="/ad-ops/settings" className="text-sm text-[var(--color-accent)] hover:text-blue-800 mt-2 inline-block">
+          <a href="/ad-ops/settings" className="text-sm text-[var(--color-accent)] hover:text-[var(--color-accent)] mt-2 inline-block">
             Go to Settings →
           </a>
         </div>
@@ -455,7 +455,7 @@ export function ContentManager({
                 onClick={() => { setActiveGroup(g.id); setActivePlatform("all"); }}
                 className={`text-sm px-4 py-2 font-medium border-b-2 transition-colors ${
                   activeGroup === g.id
-                    ? "border-gray-900 text-[var(--color-text-primary)]"
+                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
                     : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
                 }`}
               >

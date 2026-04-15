@@ -240,7 +240,7 @@ export default async function ExecutiveMarketingPage() {
           <div className="px-5 py-4 border-b border-[var(--color-border-secondary)]">
             <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">Top posts by reach</h2>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-[var(--color-border-secondary)]">
             {(topPosts ?? []).map((post) => {
               const plat = platMap[post.platform_id];
               const meta = PLATFORM_META[plat?.platform ?? ""] ?? { label: "?", bg: "bg-[var(--color-bg-secondary)]", text: "text-[var(--color-text-secondary)]", bar: "" };

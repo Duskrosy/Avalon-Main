@@ -72,7 +72,7 @@ export function NotificationsList({ initialNotifications }: { initialNotificatio
               key={n.id}
               onClick={() => handleClick(n)}
               className={`flex items-start gap-3 p-3 rounded-[var(--radius-lg)] cursor-pointer transition-colors ${
-                n.is_read ? "bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] hover:bg-[var(--color-surface-hover)]" : "bg-[var(--color-accent-light)] border border-blue-100 hover:bg-[var(--color-accent-light)]"
+                n.is_read ? "bg-[var(--color-bg-primary)] border border-[var(--color-border-secondary)] hover:bg-[var(--color-surface-hover)]" : "bg-[var(--color-accent-light)] border border-[var(--color-border-primary)] hover:bg-[var(--color-accent-light)]"
               }`}
             >
               <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${n.is_read ? "bg-[var(--color-border-primary)]" : "bg-[var(--color-accent-light)]0"}`} />

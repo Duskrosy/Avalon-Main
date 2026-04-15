@@ -40,7 +40,7 @@ const SCOPE_INFO = {
     title: "Team Board",
     description: "Shared with your department",
     icon: "👥",
-    color: "bg-[var(--color-accent-light)] border-blue-200",
+    color: "bg-[var(--color-accent-light)] border-[var(--color-accent)]",
     headerColor: "bg-[var(--color-accent-light)]",
   },
   personal: {

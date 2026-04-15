@@ -429,7 +429,7 @@ export default async function DashboardPage() {
               View all →
             </Link>
           </div>
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-[var(--color-border-secondary)]">
             {goalsList.map((g) => {
               const pct = g.target_value > 0 ? Math.min(100, Math.round((g.current_value / g.target_value) * 100)) : 0;
               const color = g.deadline
@@ -498,7 +498,7 @@ export default async function DashboardPage() {
       {kpiStatus.total === 0 && deptId && (userIsOps || userIsManager) && (
         <Link
           href="/analytics/kpis"
-          className="block bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4 hover:border-gray-400 hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="block bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4 hover:border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
         >
           <p className="text-sm text-[var(--color-text-secondary)]">
             {userIsOps
@@ -528,7 +528,7 @@ export default async function DashboardPage() {
               No volume logged yet today.
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[var(--color-border-secondary)]">
               {salesToday.map((row) => (
                 <div key={row.agent} className="px-5 py-3 flex items-center justify-between">
                   <span className="text-sm text-[var(--color-text-primary)]">{row.agent}</span>

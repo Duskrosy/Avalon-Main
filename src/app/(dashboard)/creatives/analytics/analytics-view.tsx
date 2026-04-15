@@ -338,8 +338,8 @@ export function AnalyticsView({ groups }: Props) {
             onClick={() => setGroupId(g.id)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               groupId === g.id
-                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
             {g.name}
@@ -357,7 +357,7 @@ export function AnalyticsView({ groups }: Props) {
               className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 platId === p.id
                   ? "text-white border-transparent"
-                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
               }`}
               style={platId === p.id ? { backgroundColor: PLATFORM_COLORS[p.platform] } : undefined}
             >
@@ -377,8 +377,8 @@ export function AnalyticsView({ groups }: Props) {
               onClick={() => setPreset(p.days)}
               className={`text-xs px-2.5 py-1 rounded-md border transition-colors ${
                 preset === p.days
-                  ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                  ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
               }`}
             >
               {p.label}
@@ -731,7 +731,7 @@ export function AnalyticsView({ groups }: Props) {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[var(--color-border-secondary)]">
                   {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-[var(--color-surface-hover)]">
                       <td className="px-4 py-2 text-[var(--color-text-primary)] whitespace-nowrap">{format(parseISO(r.metric_date), "d MMM yyyy")}</td>
@@ -783,7 +783,7 @@ export function AnalyticsView({ groups }: Props) {
 
             {/* Hint when auto-sync wasn't available */}
             {syncState === "no_api" && (
-              <div className="mb-4 bg-[var(--color-accent-light)] border border-blue-200 rounded-[var(--radius-lg)] px-3 py-2 text-xs text-[var(--color-accent)]">
+              <div className="mb-4 bg-[var(--color-accent-light)] border border-[var(--color-accent)] rounded-[var(--radius-lg)] px-3 py-2 text-xs text-[var(--color-accent)]">
                 Auto-sync wasn't available for this platform. Enter yesterday's stats from your platform's dashboard below.
               </div>
             )}

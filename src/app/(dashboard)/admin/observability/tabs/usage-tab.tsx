@@ -42,8 +42,8 @@ export function UsageTab() {
             onClick={() => setDays(d)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               days === d
-                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
             Last {d}d
@@ -146,7 +146,7 @@ export function UsageTab() {
                 <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Last seen</th>
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
               {data.events.map((ev) => (
                 <tr key={ev.event_name} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-primary)]">{ev.event_name}</td>

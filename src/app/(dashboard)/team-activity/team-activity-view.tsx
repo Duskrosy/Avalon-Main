@@ -193,7 +193,7 @@ export default function TeamActivityView({ currentUser }: Props) {
             onClick={() => setSelectedUserId("")}
             className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border ${
               !selectedUserId
-                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
                 : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
             }`}
           >
@@ -209,7 +209,7 @@ export default function TeamActivityView({ currentUser }: Props) {
                 onClick={() => setSelectedUserId(isSelected ? "" : u.id)}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                   isSelected
-                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
+                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
                     : "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
                 }`}
               >

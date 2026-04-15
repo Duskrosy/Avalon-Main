@@ -488,7 +488,7 @@ function BirthdayCard({ person, variant, currentUserId, currentUserIsOps }: { pe
   if (variant === "small") {
     return (
       <>
-        <div onClick={() => setOpen(true)} className="cursor-pointer bg-[var(--color-bg-secondary)] border border-dashed border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-3 flex items-center gap-2.5 hover:bg-[var(--color-surface-active)] hover:border-gray-400 transition-all">
+        <div onClick={() => setOpen(true)} className="cursor-pointer bg-[var(--color-bg-secondary)] border border-dashed border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-3 flex items-center gap-2.5 hover:bg-[var(--color-surface-active)] hover:border-[var(--color-border-primary)] transition-all">
           <div className="relative shrink-0">
             <Avatar url={person.avatar_url} initials={initials} size="sm" className="opacity-80" />
           </div>

@@ -131,7 +131,7 @@ export function FeedbackWidget() {
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-gray-400 focus:outline-none"
+                  className="w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
                 >
                   {CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>
@@ -151,7 +151,7 @@ export function FeedbackWidget() {
                   placeholder="Describe the issue or suggestion..."
                   rows={3}
                   maxLength={2000}
-                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-gray-400 focus:outline-none"
+                  className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-border-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:border-[var(--color-accent)] focus:outline-none"
                 />
               </div>
 

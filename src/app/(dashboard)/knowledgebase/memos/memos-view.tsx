@@ -183,7 +183,7 @@ export function MemosView({ memos: initial, departments, currentUserId, canManag
               <Link
                 key={memo.id}
                 href={`/knowledgebase/memos/${memo.id}`}
-                className="block bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:border-gray-400 transition-colors"
+                className="block bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:border-[var(--color-border-primary)] transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">

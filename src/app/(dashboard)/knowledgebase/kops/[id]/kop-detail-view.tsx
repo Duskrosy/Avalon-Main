@@ -367,7 +367,7 @@ export function KopDetailView({ kop, versions: initialVersions, currentVersion, 
               onClick={() => setActiveVersion(v)}
               className={`w-full text-left p-3 rounded-lg border transition-colors ${
                 activeVersion?.id === v.id
-                  ? "border-gray-900 bg-[var(--color-bg-secondary)]"
+                  ? "border-[var(--color-text-primary)] bg-[var(--color-bg-secondary)]"
                   : "border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
               }`}
             >

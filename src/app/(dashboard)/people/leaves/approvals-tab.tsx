@@ -165,7 +165,7 @@ function ApprovalCard({
               </div>
               <span className={cn(
                 "px-2.5 py-1 rounded-full text-xs font-medium shrink-0",
-                isPending ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"
+                isPending ? "bg-amber-100 text-amber-700" : "bg-[var(--color-accent-light)] text-[var(--color-accent)]"
               )}>
                 {isPending ? "Pending your review" : "Awaiting final approval"}
               </span>
@@ -254,7 +254,7 @@ function ApprovalCard({
               <button
                 onClick={() => act("reject")}
                 disabled={acting !== null}
-                className="px-4 py-1.5 bg-red-50 text-red-700 border border-red-200 text-xs font-medium rounded-lg hover:bg-red-100 disabled:opacity-50 transition-colors"
+                className="px-4 py-1.5 bg-red-50 text-red-700 border border-red-200 text-xs font-medium rounded-lg hover:bg-[var(--color-error-light)] disabled:opacity-50 transition-colors"
               >
                 {acting === "reject" ? "Rejecting…" : "Reject"}
               </button>
@@ -365,7 +365,7 @@ export function ApprovalsTab({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Pre-approved — awaiting your final approval</h3>
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            <span className="px-2 py-0.5 bg-[var(--color-accent-light)] text-[var(--color-accent)] rounded-full text-xs font-medium">
               {preApproved.length}
             </span>
           </div>

@@ -1008,7 +1008,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               <button
                 onClick={() => setSettingsOpen((o) => !o)}
                 title="Account settings"
-                className={`border rounded-lg p-1.5 transition-colors ${settingsOpen ? "border-gray-900 bg-[var(--color-text-primary)] text-white" : "border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-gray-400"}`}
+                className={`border rounded-lg p-1.5 transition-colors ${settingsOpen ? "border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-white" : "border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)]"}`}
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -1063,7 +1063,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                                 <button
                                   onClick={() => loadCustomConversions(account.id)}
                                   disabled={isLoadingConv}
-                                  className="text-xs text-[var(--color-accent)] hover:text-blue-800 disabled:opacity-50"
+                                  className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
                                 >
                                   {isLoadingConv ? "Loading…" : "Load from Meta"}
                                 </button>
@@ -1414,7 +1414,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                                   ))}
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-50">
+                              <tbody className="divide-y divide-[var(--color-border-secondary)]">
                                 {adRows.map((ad) => (
                                   <tr key={ad.ad_id} className="hover:bg-[var(--color-surface-hover)]">
                                     <td className="px-5 py-2.5">
@@ -1520,7 +1520,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                       <button
                         key={p.formula}
                         onClick={() => applyPreset(p)}
-                        className="text-xs px-2.5 py-1 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] hover:border-gray-400 text-[var(--color-text-secondary)] transition-colors"
+                        className="text-xs px-2.5 py-1 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-primary)] text-[var(--color-text-secondary)] transition-colors"
                       >
                         {p.label}
                       </button>
@@ -1693,7 +1693,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         {/* Toggle */}
                         <button
                           onClick={() => toggleCol(col.id)}
-                          className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-[var(--color-text-primary)]" : "bg-gray-300"}`}
+                          className={`w-8 h-4 rounded-full transition-colors shrink-0 ${col.visible ? "bg-[var(--color-text-primary)]" : "bg-[var(--color-border-primary)]"}`}
                         >
                           <span className={`block w-3 h-3 bg-[var(--color-bg-primary)] rounded-full shadow transition-transform mx-0.5 ${col.visible ? "translate-x-4" : "translate-x-0"}`} />
                         </button>
@@ -1734,7 +1734,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   <div className="flex flex-wrap gap-1.5">
                     {PRESET_FORMULAS.map((p) => (
                       <button key={p.formula} onClick={() => applyColPreset(p)}
-                        className="text-xs px-2.5 py-1 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] hover:border-gray-400 text-[var(--color-text-secondary)] transition-colors">
+                        className="text-xs px-2.5 py-1 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-primary)] text-[var(--color-text-secondary)] transition-colors">
                         {p.label}
                       </button>
                     ))}

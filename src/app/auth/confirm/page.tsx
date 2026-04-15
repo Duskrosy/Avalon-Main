@@ -108,10 +108,10 @@ function AuthConfirmInner() {
   }, [router, searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)]">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-[#3A5635] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-sm text-gray-500">Signing you in…</p>
+        <p className="text-sm text-[var(--color-text-secondary)]">Signing you in…</p>
       </div>
     </div>
   );
@@ -121,10 +121,10 @@ export default function AuthConfirmPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-secondary)]">
           <div className="text-center">
             <div className="w-8 h-8 border-2 border-[#3A5635] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm text-gray-500">Signing you in…</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">Signing you in…</p>
           </div>
         </div>
       }

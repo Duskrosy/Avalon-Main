@@ -143,7 +143,7 @@ export function NewsView({ canManage }: Props) {
           {canManage && (
             <button
               onClick={() => setShowAddSource(true)}
-              className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+              className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
             >
               + Add Source
             </button>
@@ -175,8 +175,8 @@ export function NewsView({ canManage }: Props) {
             onClick={() => { if (category !== tab.value) { setCategory(tab.value); } }}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               category === tab.value
-                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
             {tab.label}
@@ -207,7 +207,7 @@ export function NewsView({ canManage }: Props) {
         <div className="mt-6 text-center">
           <button
             onClick={handleLoadMore}
-            className="text-sm px-5 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+            className="text-sm px-5 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
           >
             Load more
           </button>
@@ -263,7 +263,7 @@ export function NewsView({ canManage }: Props) {
                 <button
                   type="button"
                   onClick={() => { setShowAddSource(false); setAddSourceForm(EMPTY_SOURCE_FORM); }}
-                  className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+                  className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
                 >
                   Cancel
                 </button>

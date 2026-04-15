@@ -201,7 +201,7 @@ export function PayoutsView({ agents, canManage }: Props) {
                         {payout.status === "draft" && (
                           <button
                             onClick={() => updateStatus(payout.id, "approved")}
-                            className="text-xs bg-[var(--color-accent-light)] text-[var(--color-accent)] border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-[var(--color-accent-light)]"
+                            className="text-xs bg-[var(--color-accent-light)] text-[var(--color-accent)] border border-[var(--color-accent)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-accent-light)]"
                           >
                             Approve
                           </button>

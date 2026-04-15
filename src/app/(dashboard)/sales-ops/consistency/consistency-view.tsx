@@ -40,7 +40,7 @@ function RangeHitPicker({
           className={`w-8 h-8 rounded-lg text-sm font-semibold transition-all border ${
             value === n
               ? "bg-[#3A5635] text-white border-[#3A5635]"
-              : "bg-[var(--color-bg-primary)] text-[var(--color-text-tertiary)] border-[var(--color-border-primary)] hover:border-gray-400"
+              : "bg-[var(--color-bg-primary)] text-[var(--color-text-tertiary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
           } ${disabled ? "opacity-50 cursor-default" : "cursor-pointer"}`}
         >
           {n}

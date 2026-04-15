@@ -16,7 +16,7 @@ type FeedbackItem = {
 
 const STATUS_COLORS: Record<string, string> = {
   open: "bg-yellow-100 text-yellow-800",
-  acknowledged: "bg-[var(--color-accent-light)] text-blue-800",
+  acknowledged: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   resolved: "bg-[var(--color-success-light)] text-green-800",
   wontfix: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",
 };
@@ -116,7 +116,7 @@ export function PulseTab() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-gray-400 focus:outline-none"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
         >
           <option value="all">All statuses</option>
           <option value="open">Open</option>
@@ -128,7 +128,7 @@ export function PulseTab() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-gray-400 focus:outline-none"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
         >
           <option value="all">All categories</option>
           <option value="bug">Bug</option>
@@ -140,7 +140,7 @@ export function PulseTab() {
 
         <button
           onClick={fetchFeedback}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
         >
           Refresh
         </button>
@@ -184,7 +184,7 @@ export function PulseTab() {
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
               {feedback.map((f) => (
                 <Fragment key={f.id}>
                 <tr

@@ -98,7 +98,7 @@ export function AuditTab() {
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
-              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
                 {data.rows.map((row) => (
                   <>
                     <tr

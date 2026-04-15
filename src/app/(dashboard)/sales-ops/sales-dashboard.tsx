@@ -126,7 +126,7 @@ export function SalesDashboard({ agents, volumeRows, payouts, canManage, current
                   <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase">Payout</th>
                 </tr>
               </thead>
-              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
                 {agentStats.map(({ agent, mtdCr, mtdFollowUps, payout, gatePassed, gateRemaining }) => (
                   <tr key={agent.id} className="hover:bg-[var(--color-surface-hover)]">
                     <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">{agentName(agent)}</td>

@@ -338,7 +338,7 @@ export function IssuesView({ initialIssues, orders, profiles, currentUserId }: P
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
               {filtered.map((issue) => (
                 <IssueRow
                   key={issue.id}

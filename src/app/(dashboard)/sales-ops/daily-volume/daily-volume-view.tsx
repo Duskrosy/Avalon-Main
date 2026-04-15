@@ -191,7 +191,7 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
                 {canManage && <th className="px-4 py-3" />}
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
               {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">

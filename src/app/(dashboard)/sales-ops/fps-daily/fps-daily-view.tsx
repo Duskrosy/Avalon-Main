@@ -151,7 +151,7 @@ export function FpsDailyView({ agents, currentUserId, canManage }: Props) {
                   <th className="px-4 py-3 text-right text-xs font-medium text-[var(--color-text-secondary)] uppercase font-bold">Final FPS</th>
                 </tr>
               </thead>
-              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+              <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
                 {result.daily.map((row) => (
                   <tr key={row.date} className={`hover:bg-[var(--color-surface-hover)] ${row.isNoData || row.isLeave ? "opacity-60" : ""}`}>
                     <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">

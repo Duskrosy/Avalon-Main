@@ -250,7 +250,7 @@ export default async function ExecutiveSalesPage() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-[var(--color-border-secondary)]">
                 {(confirmedThisMonth ?? []).slice(0, 10).map((s) => (
                   <tr key={s.confirmed_date + s.agent_id + s.net_value} className="hover:bg-[var(--color-surface-hover)]">
                     <td className="px-5 py-3 text-xs text-[var(--color-text-secondary)]">{format(new Date(s.confirmed_date + "T00:00:00"), "d MMM")}</td>

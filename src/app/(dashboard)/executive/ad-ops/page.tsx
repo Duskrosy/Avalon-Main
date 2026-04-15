@@ -24,7 +24,7 @@ const RAG_STYLES: Record<RagStatus, { bg: string; text: string; border: string; 
   green:  { bg: "bg-[var(--color-success-light)]",  text: "text-[var(--color-success)]",  border: "border-green-400", dot: "bg-[var(--color-success-light)]0"  },
   amber:  { bg: "bg-[var(--color-warning-light)]",  text: "text-[var(--color-warning-text)]",  border: "border-amber-400", dot: "bg-[var(--color-warning-light)]0"  },
   red:    { bg: "bg-[var(--color-error-light)]",    text: "text-[var(--color-error)]",    border: "border-red-400",   dot: "bg-[var(--color-error-light)]0"    },
-  noData: { bg: "bg-[var(--color-bg-secondary)]",   text: "text-[var(--color-text-tertiary)]",   border: "border-[var(--color-border-primary)]",  dot: "bg-gray-300"   },
+  noData: { bg: "bg-[var(--color-bg-secondary)]",   text: "text-[var(--color-text-tertiary)]",   border: "border-[var(--color-border-primary)]",  dot: "bg-[var(--color-border-primary)]"   },
 };
 
 function fmtKpi(value: number | null, unit: string): string {
@@ -186,7 +186,7 @@ export default async function ExecutiveAdOpsKpiPage() {
           )}
           {summary.noData > 0 && (
             <div
-              className="bg-gray-300 transition-all"
+              className="bg-[var(--color-border-primary)] transition-all"
               style={{ width: `${(summary.noData / totalKpis) * 100}%` }}
             />
           )}
@@ -197,7 +197,7 @@ export default async function ExecutiveAdOpsKpiPage() {
             { label: "Green", count: summary.green, color: "bg-[var(--color-success-light)]0" },
             { label: "Amber", count: summary.amber, color: "bg-amber-400" },
             { label: "Red", count: summary.red, color: "bg-[var(--color-error-light)]0" },
-            { label: "No data", count: summary.noData, color: "bg-gray-300" },
+            { label: "No data", count: summary.noData, color: "bg-[var(--color-border-primary)]" },
           ].map((item) => (
             <div key={item.label} className="flex items-center gap-1.5">
               <div className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
@@ -356,7 +356,7 @@ export default async function ExecutiveAdOpsKpiPage() {
                           ? "bg-amber-400"
                           : kpi.status === "red"
                           ? "bg-[var(--color-error-light)]0"
-                          : "bg-gray-300"
+                          : "bg-[var(--color-border-primary)]"
                       }`}
                       style={{ width: `${Math.min(progressPct, 100)}%` }}
                     />

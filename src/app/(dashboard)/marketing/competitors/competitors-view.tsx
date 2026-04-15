@@ -380,7 +380,7 @@ export function CompetitorsView({ canManage }: Props) {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={() => { setShowAddModal(false); setAddForm(EMPTY_ADD_FORM); }}
-                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
               >
                 Cancel
               </button>
@@ -495,7 +495,7 @@ export function CompetitorsView({ canManage }: Props) {
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
                 onClick={() => setFillModal(null)}
-                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
               >
                 Cancel
               </button>
@@ -577,7 +577,7 @@ function CompetitorCard({
                 {canManage && (
                   <button
                     onClick={() => onAddPlatform(platform)}
-                    className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-dashed border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 hover:text-[var(--color-text-primary)] transition-colors w-fit"
+                    className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-dashed border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] hover:text-[var(--color-text-primary)] transition-colors w-fit"
                   >
                     + Add platform
                   </button>
@@ -642,7 +642,7 @@ function CompetitorCard({
               {canManage && (
                 <button
                   onClick={() => onFill(acc)}
-                  className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-gray-400 transition-colors w-fit"
+                  className="mt-auto text-xs px-2.5 py-1 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors w-fit"
                 >
                   Update
                 </button>

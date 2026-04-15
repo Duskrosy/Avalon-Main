@@ -490,7 +490,7 @@ export function CreativesDashboard({
           <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-4">
             Team Members
           </p>
-          <ul className="divide-y divide-gray-50">
+          <ul className="divide-y divide-[var(--color-border-secondary)]">
             {members.map((m, i) => (
               <li key={m.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                 <div

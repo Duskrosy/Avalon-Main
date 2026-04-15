@@ -272,7 +272,7 @@ function PageGroupSection({
       </button>
 
       {open && (
-        <div className="divide-y divide-gray-50">
+        <div className="divide-y divide-[var(--color-border-secondary)]">
           {group.items.map((item: NavItem) => {
             const isDefault = defaultVisible.has(item.slug);
             const savedVal = savedOverrides[item.slug]; // boolean or undefined
@@ -282,7 +282,7 @@ function PageGroupSection({
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "w-2 h-2 rounded-full shrink-0",
-                    isDefault ? "bg-green-400" : "bg-gray-300"
+                    isDefault ? "bg-green-400" : "bg-[var(--color-border-primary)]"
                   )} title={isDefault ? "Visible by default" : "Hidden by default"} />
                   <div>
                     <p className="text-sm text-[var(--color-text-primary)]">{item.name}</p>
@@ -459,7 +459,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                 className={cn(
                   "flex-1 py-2.5 text-xs font-medium transition-colors",
                   activeTab === tab
-                    ? "text-[var(--color-text-primary)] border-b-2 border-gray-900"
+                    ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-text-primary)]"
                     : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                 )}
               >
@@ -482,7 +482,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
           )}
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--color-border-secondary)]">
 
             {/* People tab */}
             {activeTab === "people" && (
@@ -640,7 +640,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
               )}
 
               {!isBlocked && selectedTarget.type === "role" && (
-                <div className="mx-5 mt-4 px-4 py-3 bg-[var(--color-accent-light)] border border-blue-200 rounded-[var(--radius-md)] text-sm text-blue-800">
+                <div className="mx-5 mt-4 px-4 py-3 bg-[var(--color-accent-light)] border border-[var(--color-accent)] rounded-[var(--radius-md)] text-sm text-[var(--color-accent)]">
                   <strong>Tip:</strong> The &quot;default&quot; dots reflect tier-based access with no department applied. Department-restricted pages are shown as hidden by default for this role.
                 </div>
               )}
@@ -654,7 +654,7 @@ export function PermissionsView({ users, roles, departments, allOverrides, curre
                       Visible by default
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
-                      <div className="w-2 h-2 rounded-full bg-gray-300" />
+                      <div className="w-2 h-2 rounded-full bg-[var(--color-border-primary)]" />
                       Hidden by default
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">

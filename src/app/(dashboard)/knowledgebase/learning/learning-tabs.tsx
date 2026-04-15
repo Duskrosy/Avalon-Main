@@ -25,7 +25,7 @@ export function LearningPageTabs({ materials, departments, canManage, isOps }: P
             onClick={() => setTab("materials")}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
               tab === "materials"
-                ? "text-[var(--color-text-primary)] border-b-2 border-gray-900 -mb-px"
+                ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-text-primary)] -mb-px"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
@@ -35,7 +35,7 @@ export function LearningPageTabs({ materials, departments, canManage, isOps }: P
             onClick={() => setTab("progress")}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
               tab === "progress"
-                ? "text-[var(--color-text-primary)] border-b-2 border-gray-900 -mb-px"
+                ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-text-primary)] -mb-px"
                 : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >

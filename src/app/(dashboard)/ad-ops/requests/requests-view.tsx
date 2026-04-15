@@ -155,7 +155,7 @@ export function RequestsView({ creatives, currentUserId, canManage }: Props) {
       <div className="flex items-center gap-2 mb-5 flex-wrap">
         <button
           onClick={() => setStatusFilter("")}
-          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${!statusFilter ? "bg-[var(--color-text-primary)] text-white border-gray-900" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"}`}
+          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${!statusFilter ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"}`}
         >
           All
         </button>
@@ -163,7 +163,7 @@ export function RequestsView({ creatives, currentUserId, canManage }: Props) {
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-white border-gray-900" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"}`}
+            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]" : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"}`}
           >
             {s.replace("_", " ")}
           </button>

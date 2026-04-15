@@ -48,7 +48,7 @@ const DEFAULT_CREDITS = { sick: 5, vacation: 5, emergency: 5 };
 
 const STATUS_STYLES: Record<string, string> = {
   pending:      "bg-amber-100 text-amber-700",
-  pre_approved: "bg-blue-100 text-blue-700",
+  pre_approved: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   approved:     "bg-green-100 text-green-700",
   rejected:     "bg-red-100 text-red-700",
   cancelled:    "bg-[var(--color-bg-secondary)] text-[var(--color-text-tertiary)]",
@@ -70,7 +70,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 const TYPE_COLORS: Record<string, string> = {
   sick:      "bg-red-100 text-red-700",
-  vacation:  "bg-blue-100 text-blue-700",
+  vacation:  "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   emergency: "bg-orange-100 text-orange-700",
 };
 
@@ -373,7 +373,7 @@ function CreditsModal({
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center text-sm text-[var(--color-text-muted)]">No employees found.</div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-[var(--color-border-secondary)]">
               {filtered.map((row) => {
                 const isDirty  = !!edits[row.user_id];
                 const isSaving = saving[row.user_id];
@@ -728,7 +728,7 @@ function LeaveRow({ leave, isOps, onRefresh }: { leave: Leave; isOps: boolean; o
                 <button
                   onClick={handleRescind}
                   disabled={rescinding}
-                  className="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                  className="text-xs border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-[var(--color-error-light)] transition-colors disabled:opacity-50"
                 >
                   {rescinding ? "Rescinding…" : "Rescind approved leave"}
                 </button>

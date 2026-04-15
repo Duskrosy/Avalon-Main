@@ -274,7 +274,7 @@ function AssigneePicker({
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-sm px-2 py-1 border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+              className="w-full text-sm px-2 py-1 border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               autoFocus
             />
           </div>
@@ -327,8 +327,8 @@ function ColorPicker({
             onClick={() => onChange(color)}
             className={`w-7 h-7 rounded-md border-2 transition-all flex items-center justify-center ${
               selected === color
-                ? "border-gray-900 ring-2 ring-gray-400 ring-offset-1"
-                : "border-[var(--color-border-primary)] hover:border-gray-400 hover:scale-105"
+                ? "border-[var(--color-text-primary)] ring-2 ring-gray-400 ring-offset-1"
+                : "border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)] hover:scale-105"
             }`}
             style={{ backgroundColor: color ?? "#ffffff" }}
             title={color ?? "None"}
@@ -443,8 +443,8 @@ function CustomFieldInput({
                 }}
                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                   isSelected
-                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
                 }`}
               >
                 {opt.label}
@@ -1090,7 +1090,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-[var(--color-border-secondary)]">
                 {filteredSortedCards.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-12 text-sm text-[var(--color-text-tertiary)]">
@@ -1109,7 +1109,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                           <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${
                             card.priority === "urgent" ? "bg-[var(--color-error-light)]0" :
                             card.priority === "high"   ? "bg-amber-400" :
-                            card.priority === "medium" ? "bg-blue-400" : "bg-gray-300"
+                            card.priority === "medium" ? "bg-blue-400" : "bg-[var(--color-border-primary)]"
                           }`} />
                           <div>
                             <p className="font-medium text-[var(--color-text-primary)]">{card.title}</p>
@@ -1665,7 +1665,7 @@ function FieldSettingsContent({
             ) : (
               <button
                 onClick={() => setAdding(true)}
-                className="w-full text-sm px-4 py-2 border border-dashed border-[var(--color-border-primary)] rounded-lg text-[var(--color-text-secondary)] hover:border-gray-400 hover:text-[var(--color-text-primary)]"
+                className="w-full text-sm px-4 py-2 border border-dashed border-[var(--color-border-primary)] rounded-lg text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] hover:text-[var(--color-text-primary)]"
               >
                 + Add Custom Field
               </button>
@@ -1745,7 +1745,7 @@ function ListAssigneeFilter({
               placeholder="Search..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full text-sm px-2 py-1 border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-gray-400"
+              className="w-full text-sm px-2 py-1 border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
               autoFocus
             />
           </div>

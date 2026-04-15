@@ -112,7 +112,7 @@ const RAG_STYLES = {
   green: { bg: "bg-[var(--color-success-light)]",   border: "border-green-200",  badge: "bg-[var(--color-success-light)] text-[var(--color-success)]",  dot: "bg-[var(--color-success-light)]0",  label: "On Track"  },
   amber: { bg: "bg-[var(--color-warning-light)]",   border: "border-[var(--color-border-primary)]",  badge: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",  dot: "bg-amber-400",  label: "Monitor"   },
   red:   { bg: "bg-[var(--color-error-light)]",     border: "border-red-200",    badge: "bg-[var(--color-error-light)] text-[var(--color-error)]",      dot: "bg-[var(--color-error-light)]0",    label: "Critical"  },
-  none:  { bg: "bg-[var(--color-bg-secondary)]",    border: "border-[var(--color-border-primary)]",   badge: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",    dot: "bg-gray-300",   label: "No data"   },
+  none:  { bg: "bg-[var(--color-bg-secondary)]",    border: "border-[var(--color-border-primary)]",   badge: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]",    dot: "bg-[var(--color-border-primary)]",   label: "No data"   },
 };
 
 // ─── Target Meter ─────────────────────────────────────────────────────────────
@@ -544,7 +544,7 @@ function DetailPanel({
 
           {/* Hint */}
           {def.hint && (
-            <div className="bg-[var(--color-accent-light)] border border-blue-100 rounded-[var(--radius-lg)] p-3 mb-5">
+            <div className="bg-[var(--color-accent-light)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-3 mb-5">
               <p className="text-xs text-[var(--color-accent)]">📌 {def.hint}</p>
             </div>
           )}
@@ -755,8 +755,8 @@ export function KpiDashboard({
                 onClick={() => setDateRange(r.days)}
                 className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                   dateRange === r.days
-                    ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                    ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                    : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
                 }`}
               >
                 {r.label}

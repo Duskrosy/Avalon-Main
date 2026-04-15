@@ -269,7 +269,7 @@ function MovementHistory({ catalogItemId }: { catalogItemId: string }) {
             <th className="pb-1 font-medium">Notes</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-[var(--color-border-secondary)]">
           {movements.map((m) => (
             <tr key={m.id}>
               <td className="py-1.5 text-[var(--color-text-secondary)]">{fmtDate(m.created_at)}</td>
@@ -432,7 +432,7 @@ export default function InventoryView({
                 <th className="px-4 py-3 text-xs font-medium text-[var(--color-text-tertiary)]" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {filtered.length === 0 && (
                 <tr>
                   <td

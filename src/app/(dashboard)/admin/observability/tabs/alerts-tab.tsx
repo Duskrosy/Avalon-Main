@@ -18,7 +18,7 @@ const SEVERITY_STYLES: Record<string, string> = {
   critical: "bg-[var(--color-error-light)] text-[var(--color-error)] border-red-200",
   error:    "bg-orange-100 text-orange-700 border-orange-200",
   warning:  "bg-[var(--color-warning-light)] text-[var(--color-warning)] border-[var(--color-border-primary)]",
-  info:     "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-blue-200",
+  info:     "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-[var(--color-accent)]",
 };
 
 const SEVERITY_DOT: Record<string, string> = {

@@ -51,7 +51,7 @@ const STATUS_BADGE: Record<string, string> = {
   pending:     "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)]",
   reconciled:  "bg-[var(--color-success-light)] text-green-800 border-green-200",
   disputed:    "bg-[var(--color-error-light)] text-red-800 border-red-200",
-  settled:     "bg-[var(--color-accent-light)] text-blue-800 border-blue-200",
+  settled:     "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-[var(--color-accent)]",
 };
 
 function statusLabel(s: string) {

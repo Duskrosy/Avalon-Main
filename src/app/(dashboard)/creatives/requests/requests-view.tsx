@@ -115,8 +115,8 @@ export function CreativesRequestsView({ members, currentUserId, canManage }: Pro
             onClick={() => setStatusFilter(f.value)}
             className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
               statusFilter === f.value
-                ? "bg-[var(--color-text-primary)] text-white border-gray-900"
-                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-gray-400"
+                ? "bg-[var(--color-text-primary)] text-white border-[var(--color-text-primary)]"
+                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
             }`}
           >
             {f.label}

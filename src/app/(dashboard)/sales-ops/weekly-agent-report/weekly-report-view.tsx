@@ -197,7 +197,7 @@ export function WeeklyReportView({ agents }: { agents: Agent[] }) {
                     <th className="px-4 py-3 text-right font-medium">FPS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[var(--color-border-secondary)]">
                   {report.daily.map((row) => {
                     const isWeekend = ["Saturday", "Sunday"].includes(
                       format(parseISO(row.date), "EEEE")

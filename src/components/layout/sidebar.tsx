@@ -308,7 +308,7 @@ function ProfileStrip({
             >
               <span
                 className={cn(
-                  "inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform",
+                  "inline-block h-3.5 w-3.5 rounded-full bg-[var(--color-bg-primary)] transition-transform",
                   isDark ? "translate-x-[18px]" : "translate-x-[2px]"
                 )}
               />

@@ -94,7 +94,7 @@ const CHANNEL_TYPES = ["conversion", "messenger", "organic", "other"] as const;
 const FUNNEL_STAGES = ["TOF", "MOF", "BOF"] as const;
 
 const PLATFORM_STYLES: Record<string, string> = {
-  facebook: "bg-[var(--color-accent-light)] text-blue-800",
+  facebook: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
   instagram: "bg-pink-100 text-pink-800",
   tiktok: "bg-[var(--color-text-primary)] text-white",
   youtube: "bg-[var(--color-error-light)] text-red-800",

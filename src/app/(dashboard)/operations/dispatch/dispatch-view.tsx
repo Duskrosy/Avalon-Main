@@ -53,7 +53,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 const STATUS_PIPELINE_COLOR: Record<string, string> = {
-  pending:    "bg-gray-300",
+  pending:    "bg-[var(--color-border-primary)]",
   picking:    "bg-blue-400",
   packing:    "bg-amber-400",
   ready:      "bg-green-400",
@@ -324,7 +324,7 @@ export function DispatchView({ initialDispatches, profiles, orders, currentUserI
                 <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-gray-50">
+            <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
               {dispatches.map((d) => (
                 <tr key={d.id} className="hover:bg-[var(--color-surface-hover)]">
                   <td className="px-4 py-3 font-mono text-xs font-medium text-[var(--color-text-primary)]">

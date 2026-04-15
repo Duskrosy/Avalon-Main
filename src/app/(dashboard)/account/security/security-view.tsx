@@ -150,7 +150,7 @@ export function SecurityView() {
             No authenticator app registered yet.
           </div>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <ul className="divide-y divide-[var(--color-border-secondary)]">
             {verifiedFactors.map((f) => (
               <li key={f.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
                 <div>

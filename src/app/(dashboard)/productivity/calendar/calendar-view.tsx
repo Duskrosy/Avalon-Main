@@ -173,7 +173,7 @@ export function CalendarView({
               setSettingsForm(settings);
               setShowSettingsPanel(true);
             }}
-            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] text-sm px-2 py-1 rounded-lg border border-[var(--color-border-primary)] hover:border-gray-400"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] text-sm px-2 py-1 rounded-lg border border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
           >
             ⚙ Settings
           </button>

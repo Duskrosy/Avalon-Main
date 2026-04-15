@@ -42,7 +42,7 @@ function MetricCard({
     accent === "red"   ? "bg-[var(--color-error-light)] border-red-200" :
     accent === "amber" ? "bg-[var(--color-warning-light)] border-[var(--color-border-primary)]" :
     accent === "green" ? "bg-[var(--color-success-light)] border-green-200" :
-    accent === "blue"  ? "bg-[var(--color-accent-light)] border-blue-200" :
+    accent === "blue"  ? "bg-[var(--color-accent-light)] border-[var(--color-accent)]" :
     "bg-[var(--color-bg-primary)] border-[var(--color-border-primary)]";
   const valColor =
     accent === "red"   ? "text-[var(--color-error)]" :
@@ -85,7 +85,7 @@ function KpiBar({
   const dot =
     status === "red"   ? "bg-[var(--color-error-light)]0" :
     status === "amber" ? "bg-amber-400" :
-    status === "none"  ? "bg-gray-300" :
+    status === "none"  ? "bg-[var(--color-border-primary)]" :
     "bg-[var(--color-success-light)]0";
 
   return (

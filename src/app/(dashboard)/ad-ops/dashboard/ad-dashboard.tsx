@@ -315,7 +315,7 @@ export function AdDashboard({
           {recentRequests.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-[var(--color-text-tertiary)]">No requests yet</div>
           ) : (
-            <ul className="divide-y divide-gray-50">
+            <ul className="divide-y divide-[var(--color-border-secondary)]">
               {recentRequests.map((r) => (
                 <li key={r.id} className="px-5 py-3 flex items-center gap-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${REQUEST_STATUS_STYLES[r.status] ?? ""}`}>
@@ -342,7 +342,7 @@ export function AdDashboard({
           {activeDeployments.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-[var(--color-text-tertiary)]">No active deployments</div>
           ) : (
-            <ul className="divide-y divide-gray-50">
+            <ul className="divide-y divide-[var(--color-border-secondary)]">
               {activeDeployments.map((d) => (
                 <li key={d.id} className="px-5 py-3 flex items-center gap-3">
                   <span className="w-2 h-2 bg-green-400 rounded-full shrink-0" />
@@ -398,7 +398,7 @@ export function AdDashboard({
           <Link
             key={m.href}
             href={m.href}
-            className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:border-gray-400 hover:shadow-[var(--shadow-sm)] transition-all group"
+            className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 hover:border-[var(--color-border-primary)] hover:shadow-[var(--shadow-sm)] transition-all group"
           >
             <p className="font-medium text-[var(--color-text-primary)] group-hover:text-[var(--color-text-primary)]">{m.label}</p>
             <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">{m.desc}</p>

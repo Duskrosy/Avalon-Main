@@ -53,7 +53,7 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
               className={cn(
                 "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                 activeTab === t.id
-                  ? "border-gray-900 text-[var(--color-text-primary)]"
+                  ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
                   : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
               )}
             >
@@ -71,7 +71,7 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
                 className={cn(
                   "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
                   activeTab === t.id
-                    ? "border-gray-900 text-[var(--color-text-primary)]"
+                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
                     : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 )}
               >

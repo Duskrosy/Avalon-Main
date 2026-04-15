@@ -393,7 +393,7 @@ export default function CatalogView({
                           handleToggleActive(item);
                         }}
                         className={`inline-block w-9 h-5 rounded-full relative transition-colors ${
-                          item.is_active ? "bg-[var(--color-success-light)]0" : "bg-gray-300"
+                          item.is_active ? "bg-[var(--color-success-light)]0" : "bg-[var(--color-border-primary)]"
                         }`}
                       >
                         <span
