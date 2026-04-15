@@ -8,6 +8,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { SecurityView } from "@/app/(dashboard)/account/security/security-view";
 import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useTheme } from "@/components/providers/theme-provider";
+import { Sun, Moon, Monitor, Check } from "lucide-react";
+import type { UserPreferences } from "@/types/database";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -103,37 +106,37 @@ function AvatarUploader({ userId, currentUrl, initials, onUpdated }: {
         <Avatar url={currentUrl} initials={initials} size="xl" />
         <div className="space-y-2">
           <div className="flex gap-2">
-            <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-700 transition-colors">
+            <button onClick={() => fileRef.current?.click()} className="px-3 py-1.5 bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] text-xs font-medium rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors">
               {currentUrl ? "Change photo" : "Upload photo"}
             </button>
             {currentUrl && (
-              <button onClick={handleRemove} disabled={removing} className="px-3 py-1.5 border border-red-200 text-red-600 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50">
+              <button onClick={handleRemove} disabled={removing} className="px-3 py-1.5 border border-[var(--color-error-light)] text-[var(--color-error)] text-xs font-medium rounded-lg hover:bg-[var(--color-error-light)] transition-colors disabled:opacity-50">
                 {removing ? "Removing…" : "Remove"}
               </button>
             )}
           </div>
-          <p className="text-xs text-gray-400">JPEG, PNG or WebP · max 10 MB · cropped to circle</p>
+          <p className="text-xs text-[var(--color-text-tertiary)]">JPEG, PNG or WebP · max 10 MB · cropped to circle</p>
         </div>
       </div>
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFileChange} />
       {imageSrc && (
-        <div className="w-full border border-gray-200 rounded-xl overflow-hidden bg-gray-900">
+        <div className="w-full border border-[var(--color-border-primary)] rounded-xl overflow-hidden bg-[var(--color-text-primary)]">
           <div className="relative h-64 w-full">
             <Cropper image={imageSrc} crop={crop} zoom={zoom} aspect={1} cropShape="round" showGrid={false} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
           </div>
-          <div className="bg-white px-4 py-3 flex items-center gap-3 border-t border-gray-100">
-            <span className="text-xs text-gray-500 shrink-0">Zoom</span>
-            <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="flex-1 accent-gray-900" />
+          <div className="bg-[var(--color-bg-primary)] px-4 py-3 flex items-center gap-3 border-t border-[var(--color-border-secondary)]">
+            <span className="text-xs text-[var(--color-text-secondary)] shrink-0">Zoom</span>
+            <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} className="flex-1 accent-[var(--color-accent)]" />
             <div className="flex gap-2 shrink-0">
-              <button onClick={() => setImageSrc(null)} className="px-3 py-1.5 border border-gray-200 text-gray-600 text-xs rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleUpload} disabled={uploading} className="px-4 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors">
+              <button onClick={() => setImageSrc(null)} className="px-3 py-1.5 border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] text-xs rounded-lg hover:bg-[var(--color-bg-secondary)]">Cancel</button>
+              <button onClick={handleUpload} disabled={uploading} className="px-4 py-1.5 bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] text-xs font-medium rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors">
                 {uploading ? "Saving…" : "Save photo"}
               </button>
             </div>
           </div>
         </div>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[var(--color-error)]">{error}</p>}
     </div>
   );
 }
@@ -182,26 +185,26 @@ function ChangePasswordSection({ userId, allowed }: { userId: string; allowed: b
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-gray-900 mb-1">Change Password</h2>
+      <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Change Password</h2>
       {!allowed ? (
-        <div className="flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mt-3">
-          <svg className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-start gap-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-xl px-4 py-3 mt-3">
+          <svg className="w-4 h-4 text-[var(--color-text-tertiary)] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
           <div>
-            <p className="text-sm font-medium text-gray-700">Password changes are restricted</p>
-            <p className="text-xs text-gray-500 mt-0.5">Your account has been configured to prevent self-service password changes. Contact your manager or OPS Admin.</p>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">Password changes are restricted</p>
+            <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">Your account has been configured to prevent self-service password changes. Contact your manager or OPS Admin.</p>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3 mt-3 max-w-sm">
           {done && (
-            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 font-medium">
+            <div className="bg-[var(--color-success-light)] border border-[var(--color-success-border)] rounded-xl px-4 py-3 text-sm text-[var(--color-success-text)] font-medium">
               Password updated successfully.
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Current password</label>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Current password</label>
             <PasswordInput
               required
               value={form.current}
@@ -209,7 +212,7 @@ function ChangePasswordSection({ userId, allowed }: { userId: string; allowed: b
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">New password</label>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">New password</label>
             <PasswordInput
               required
               minLength={8}
@@ -218,18 +221,18 @@ function ChangePasswordSection({ userId, allowed }: { userId: string; allowed: b
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Confirm new password</label>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Confirm new password</label>
             <PasswordInput
               required
               value={form.confirm}
               onChange={(e) => setForm((f) => ({ ...f, confirm: e.target.value }))}
             />
           </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-lg">{error}</p>}
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 rounded-lg text-sm font-medium bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50 transition-colors"
+            className="px-5 py-2 rounded-lg text-sm font-medium bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors"
           >
             {saving ? "Updating…" : "Update password"}
           </button>
@@ -294,15 +297,14 @@ function DiscordSection({ userId }: { userId: string }) {
 
   return (
     <section>
-      <h2 className="text-sm font-semibold text-gray-900 mb-1">Connected Accounts</h2>
-      <p className="text-xs text-gray-400 mb-4">
+      <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Connected Accounts</h2>
+      <p className="text-xs text-[var(--color-text-tertiary)] mb-4">
         Link your Discord account to sign in without a password.
       </p>
-
       {loading ? (
-        <div className="h-14 animate-pulse bg-gray-100 rounded-xl" />
+        <div className="h-14 animate-pulse bg-[var(--color-bg-tertiary)] rounded-xl" />
       ) : (
-        <div className="flex items-center justify-between border border-gray-200 rounded-xl px-4 py-3">
+        <div className="flex items-center justify-between border border-[var(--color-border-primary)] rounded-xl px-4 py-3">
           <div className="flex items-center gap-3">
             {/* Discord logo */}
             <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#5865F2" }}>
@@ -311,11 +313,11 @@ function DiscordSection({ userId }: { userId: string }) {
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Discord</p>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">Discord</p>
               {identity ? (
-                <p className="text-xs text-gray-400">{discordName}</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">{discordName}</p>
               ) : (
-                <p className="text-xs text-gray-400">Not connected</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">Not connected</p>
               )}
             </div>
           </div>
@@ -324,7 +326,7 @@ function DiscordSection({ userId }: { userId: string }) {
             <button
               onClick={handleUnlink}
               disabled={working}
-              className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50 transition-colors"
+              className="text-xs text-[var(--color-error)] hover:opacity-80 font-medium disabled:opacity-50 transition-colors"
             >
               {working ? "Disconnecting…" : "Disconnect"}
             </button>
@@ -341,7 +343,7 @@ function DiscordSection({ userId }: { userId: string }) {
         </div>
       )}
 
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {error && <p className="text-xs text-[var(--color-error)] mt-2">{error}</p>}
     </section>
   );
 }
@@ -391,70 +393,70 @@ function ProfileTab({ userId, profile, allowPasswordChange, requireMfa, mustChan
 
       {/* Must-change-password banner */}
       {mustChangePassword && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <svg className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-start gap-3 bg-[var(--color-warning-light)] border border-[var(--color-border-primary)] rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-[var(--color-warning-text)] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-amber-800">You need to change your password</p>
-            <p className="text-xs text-amber-700 mt-0.5">Your admin has requested a password reset. Go to the <strong>Security & 2FA</strong> tab to update it.</p>
+            <p className="text-sm font-semibold text-[var(--color-warning-text)]">You need to change your password</p>
+            <p className="text-xs text-[var(--color-warning-text)] mt-0.5 opacity-80">Your admin has requested a password reset. Go to the <strong>Security & 2FA</strong> tab to update it.</p>
           </div>
         </div>
       )}
 
       {/* Profile picture */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Profile picture</h2>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">Profile picture</h2>
         <AvatarUploader userId={userId} currentUrl={avatarUrl} initials={initials} onUpdated={setAvatarUrl} />
       </section>
 
       {/* About me */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-900 mb-1">About me</h2>
-        <p className="text-xs text-gray-400 mb-4">Shown on your directory card. Keep it professional — a little personality goes a long way.</p>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">About me</h2>
+        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">Shown on your directory card. Keep it professional — a little personality goes a long way.</p>
         <form onSubmit={handleSave} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Display title <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Display title <span className="text-[var(--color-text-tertiary)] font-normal">(optional)</span></label>
             <input
               type="text"
               maxLength={100}
               value={form.job_title}
               onChange={(e) => setForm((f) => ({ ...f, job_title: e.target.value }))}
               placeholder="e.g. Senior Sales Agent · Team Lead"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]"
             />
-            <p className="text-xs text-gray-400 mt-1">Appears below your name — separate from your system role.</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-1">Appears below your name — separate from your system role.</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Bio <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Bio <span className="text-[var(--color-text-tertiary)] font-normal">(optional)</span></label>
             <textarea
               rows={3}
               maxLength={300}
               value={form.bio}
               onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
               placeholder="A short intro — what you do, what you're focused on…"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]"
             />
-            <p className="text-xs text-gray-400 mt-1 text-right">{form.bio.length}/300</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-1 text-right">{form.bio.length}/300</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Fun fact <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Fun fact <span className="text-[var(--color-text-tertiary)] font-normal">(optional)</span></label>
             <input
               type="text"
               maxLength={150}
               value={form.fun_fact}
               onChange={(e) => setForm((f) => ({ ...f, fun_fact: e.target.value }))}
               placeholder="e.g. Can solve a Rubik's cube in under 2 minutes"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]"
             />
           </div>
-          {error && <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {error && <p className="text-sm text-[var(--color-error)] bg-[var(--color-error-light)] px-3 py-2 rounded-lg">{error}</p>}
           <button
             type="submit"
             disabled={saving}
             className={cn(
               "px-5 py-2 rounded-lg text-sm font-medium transition-colors",
-              saved ? "bg-green-600 text-white" : "bg-gray-900 text-white hover:bg-gray-700 disabled:opacity-50"
+              saved ? "bg-[var(--color-success)] text-white" : "bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
             )}
           >
             {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
@@ -462,7 +464,7 @@ function ProfileTab({ userId, profile, allowPasswordChange, requireMfa, mustChan
         </form>
       </section>
 
-      <div className="border-t border-gray-100" />
+      <div className="border-t border-[var(--color-border-secondary)]" />
       <DiscordSection userId={userId} />
     </div>
   );
@@ -479,13 +481,13 @@ function SecurityTab({ userId, allowPasswordChange, requireMfa, mustChangePasswo
   return (
     <div className="max-w-lg space-y-8">
       {mustChangePassword && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <svg className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <div className="flex items-start gap-3 bg-[var(--color-warning-light)] border border-[var(--color-border-primary)] rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-[var(--color-warning-text)] mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
           </svg>
           <div>
-            <p className="text-sm font-semibold text-amber-800">Password change required</p>
-            <p className="text-xs text-amber-700 mt-0.5">Your admin has requested you update your password before continuing.</p>
+            <p className="text-sm font-semibold text-[var(--color-warning-text)]">Password change required</p>
+            <p className="text-xs text-[var(--color-warning-text)] mt-0.5 opacity-80">Your admin has requested you update your password before continuing.</p>
           </div>
         </div>
       )}
@@ -494,10 +496,109 @@ function SecurityTab({ userId, allowPasswordChange, requireMfa, mustChangePasswo
 
       {requireMfa && (
         <>
-          <div className="border-t border-gray-100" />
+          <div className="border-t border-[var(--color-border-secondary)]" />
           <SecurityView />
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Appearance tab ──────────────────────────────────────────────────────────
+
+const ACCENTS = [
+  { name: "blue",    color: "#2563EB", darkColor: "#60A5FA" },
+  { name: "violet",  color: "#7C3AED", darkColor: "#A78BFA" },
+  { name: "teal",    color: "#0D9488", darkColor: "#2DD4BF" },
+  { name: "rose",    color: "#E11D48", darkColor: "#FB7185" },
+  { name: "amber",   color: "#D97706", darkColor: "#FBBF24" },
+  { name: "emerald", color: "#059669", darkColor: "#34D399" },
+  { name: "orange",  color: "#EA580C", darkColor: "#FB923C" },
+  { name: "indigo",  color: "#4F46E5", darkColor: "#818CF8" },
+] as const;
+
+function AppearanceTab() {
+  const { theme, accent, density, resolvedTheme, setTheme, setAccent, setDensity } = useTheme();
+  const isDark = resolvedTheme === "dark";
+
+  return (
+    <div className="max-w-xl space-y-8">
+      {/* Theme */}
+      <section>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Theme</h2>
+        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">Choose how Avalon looks to you.</p>
+        <div className="grid grid-cols-3 gap-3">
+          {([
+            { value: "light", label: "Light", icon: Sun },
+            { value: "dark", label: "Dark", icon: Moon },
+            { value: "system", label: "System", icon: Monitor },
+          ] as const).map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => setTheme(value)}
+              className={cn(
+                "flex flex-col items-center gap-2 p-4 rounded-[var(--radius-lg)] border-2 transition-all",
+                theme === value
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                  : "border-[var(--color-border-primary)] hover:border-[var(--color-text-tertiary)] bg-[var(--color-surface-card)]"
+              )}
+            >
+              <Icon size={20} strokeWidth={1.5} className={theme === value ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"} />
+              <span className={cn("text-sm font-medium", theme === value ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Accent color */}
+      <section>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Accent color</h2>
+        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">Personalizes buttons, links, and highlights.</p>
+        <div className="flex gap-3 flex-wrap">
+          {ACCENTS.map((a) => (
+            <button
+              key={a.name}
+              onClick={() => setAccent(a.name as any)}
+              title={a.name.charAt(0).toUpperCase() + a.name.slice(1)}
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center transition-all ring-2 ring-offset-2",
+                accent === a.name
+                  ? "ring-[var(--color-accent)] ring-offset-[var(--color-bg-primary)]"
+                  : "ring-transparent ring-offset-transparent hover:ring-[var(--color-border-primary)] hover:ring-offset-[var(--color-bg-primary)]"
+              )}
+              style={{ backgroundColor: isDark ? a.darkColor : a.color }}
+            >
+              {accent === a.name && <Check size={14} strokeWidth={2.5} className="text-white" />}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Density */}
+      <section>
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Display density</h2>
+        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">Controls spacing and text size across the app.</p>
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            { value: "comfortable", label: "Comfortable", desc: "More breathing room" },
+            { value: "compact", label: "Compact", desc: "Fits more on screen" },
+          ] as const).map(({ value, label, desc }) => (
+            <button
+              key={value}
+              onClick={() => setDensity(value)}
+              className={cn(
+                "flex flex-col items-start gap-1 p-4 rounded-[var(--radius-lg)] border-2 transition-all text-left",
+                density === value
+                  ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                  : "border-[var(--color-border-primary)] hover:border-[var(--color-text-tertiary)] bg-[var(--color-surface-card)]"
+              )}
+            >
+              <span className={cn("text-sm font-medium", density === value ? "text-[var(--color-accent)]" : "text-[var(--color-text-primary)]")}>{label}</span>
+              <span className="text-xs text-[var(--color-text-tertiary)]">{desc}</span>
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
@@ -510,26 +611,29 @@ export function AccountSettingsView({
   allowPasswordChange,
   requireMfa,
   mustChangePassword,
+  initialPreferences,
 }: {
   userId: string;
   initialProfile: Profile;
   allowPasswordChange: boolean;
   requireMfa: boolean;
   mustChangePassword: boolean;
+  initialPreferences: UserPreferences;
 }) {
   const searchParams = useSearchParams();
   const router       = useRouter();
   const tabParam     = searchParams.get("tab");
-  const [tab, setTab] = useState<"profile" | "security">(
-    tabParam === "security" ? "security" : "profile"
+  const [tab, setTab] = useState<"profile" | "appearance" | "security">(
+    tabParam === "security" ? "security" : tabParam === "appearance" ? "appearance" : "profile"
   );
 
   useEffect(() => {
-    if (tabParam === "profile")  setTab("profile");
-    if (tabParam === "security") setTab("security");
+    if (tabParam === "profile")    setTab("profile");
+    if (tabParam === "appearance") setTab("appearance");
+    if (tabParam === "security")   setTab("security");
   }, [tabParam]);
 
-  function switchTab(t: "profile" | "security") {
+  function switchTab(t: "profile" | "appearance" | "security") {
     setTab(t);
     const url = new URL(window.location.href);
     url.searchParams.set("tab", t);
@@ -539,14 +643,15 @@ export function AccountSettingsView({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Account Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage your profile and security preferences.</p>
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Account Settings</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Manage your profile and security preferences.</p>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200 mb-8">
+      <div className="flex gap-1 border-b border-[var(--color-border-primary)] mb-8">
         {([
-          { key: "profile",  label: "My Profile" },
-          { key: "security", label: "Security & 2FA" },
+          { key: "profile",    label: "My Profile" },
+          { key: "appearance", label: "Appearance" },
+          { key: "security",   label: "Security & 2FA" },
         ] as const).map(({ key, label }) => (
           <button
             key={key}
@@ -554,8 +659,8 @@ export function AccountSettingsView({
             className={cn(
               "px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
               tab === key
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-400 hover:text-gray-700"
+                ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             )}
           >
             {label}
@@ -575,6 +680,7 @@ export function AccountSettingsView({
           mustChangePassword={mustChangePassword}
         />
       )}
+      {tab === "appearance" && <AppearanceTab />}
       {tab === "security" && (
         <SecurityTab
           userId={userId}
