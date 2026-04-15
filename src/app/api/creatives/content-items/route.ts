@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       date_submitted: body.date_submitted ?? null,
       status: body.status ?? "idea",
       assigned_to: body.assigned_to ?? null,
+      group_label: body.group_label ?? "local",
       created_by: user.id,
     })
     .select("id, title")
