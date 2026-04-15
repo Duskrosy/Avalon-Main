@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { format, parseISO } from "date-fns";
 
 type FeedbackItem = {
@@ -36,6 +36,7 @@ export function PulseTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFeedback();
@@ -185,11 +186,18 @@ export function PulseTab() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-50">
               {feedback.map((f) => (
-                <tr key={f.id} className="hover:bg-gray-50">
+                <Fragment key={f.id}>
+                <tr
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                >
                   <td className="px-4 py-2.5 text-gray-800 whitespace-nowrap">
-                    {f.profiles
-                      ? `${f.profiles.first_name} ${f.profiles.last_name}`
-                      : "Unknown"}
+                    <span className="flex items-center gap-1.5">
+                      <span className={`text-gray-300 text-[10px] transition-transform ${expandedId === f.id ? "rotate-90" : ""}`}>&#9654;</span>
+                      {f.profiles
+                        ? `${f.profiles.first_name} ${f.profiles.last_name}`
+                        : "Unknown"}
+                    </span>
                   </td>
                   <td className="px-4 py-2.5">
                     <span className="inline-block rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-700">
@@ -206,6 +214,7 @@ export function PulseTab() {
                     <select
                       value={f.status}
                       onChange={(e) => updateStatus(f.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
                       disabled={updating === f.id}
                       className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[f.status] ?? "bg-gray-100 text-gray-600"} ${updating === f.id ? "opacity-50" : ""}`}
                     >
@@ -221,6 +230,78 @@ export function PulseTab() {
                       : "-"}
                   </td>
                 </tr>
+                {expandedId === f.id && (
+                  <tr className="bg-gray-50/80">
+                    <td colSpan={6} className="px-4 py-4">
+                      <div className="space-y-3 max-w-3xl">
+                        {/* Full feedback body */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Full Feedback</p>
+                          <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{f.body}</p>
+                        </div>
+
+                        {/* Metadata grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-3 border-t border-gray-200">
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Submitted by</p>
+                            <p className="text-sm text-gray-700 mt-0.5">
+                              {f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Unknown"}
+                            </p>
+                            {f.profiles?.email && (
+                              <p className="text-xs text-gray-400 mt-0.5">{f.profiles.email}</p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Category</p>
+                            <p className="text-sm text-gray-700 mt-0.5">{CATEGORY_LABELS[f.category] ?? f.category}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Page</p>
+                            <p className="text-sm font-mono text-gray-600 break-all mt-0.5">{f.page_url ?? "\u2014"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Submitted</p>
+                            <p className="text-sm text-gray-700 mt-0.5">
+                              {f.created_at ? format(parseISO(f.created_at), "d MMM yyyy 'at' HH:mm") : "\u2014"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Department + ID row */}
+                        <div className="flex items-center gap-4 pt-3 border-t border-gray-200">
+                          {f.department_id && (
+                            <div>
+                              <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dept: </span>
+                              <span className="text-xs font-mono text-gray-500">{f.department_id.slice(0, 8)}...</span>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wide">ID: </span>
+                            <span className="text-xs font-mono text-gray-500">{f.id.slice(0, 8)}...</span>
+                          </div>
+                          <div className="ml-auto">
+                            <select
+                              value={f.status}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                updateStatus(f.id, e.target.value);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={updating === f.id}
+                              className={`text-xs px-2 py-1 rounded-full font-medium border-0 cursor-pointer ${STATUS_COLORS[f.status] ?? "bg-gray-100 text-gray-600"} ${updating === f.id ? "opacity-50" : ""}`}
+                            >
+                              <option value="open">Open</option>
+                              <option value="acknowledged">Acknowledged</option>
+                              <option value="resolved">Resolved</option>
+                              <option value="wontfix">Won&apos;t fix</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>
