@@ -24,6 +24,7 @@ export async function PATCH(
     first_name, last_name, department_id, role_id, birthday, phone, status,
     bio, job_title, fun_fact, avatar_require_approval,
     must_change_password, require_mfa, allow_password_change,
+    email, password,
   } = body;
 
   const admin = createAdminClient();
@@ -94,6 +95,23 @@ export async function PATCH(
       if (status === "active") {
         updates.deleted_at = null;
         updates.deleted_by = null;
+      }
+    }
+  }
+
+  // Email + password — OPS only, not self-service
+  if (isOps(currentUser) && !isSelf) {
+    if (email !== undefined && typeof email === "string" && email.trim()) {
+      const { error: emailError } = await admin.auth.admin.updateUserById(id, { email });
+      if (emailError) {
+        return NextResponse.json({ error: `Email update failed: ${emailError.message}` }, { status: 400 });
+      }
+      updates.email = email;
+    }
+    if (password !== undefined && typeof password === "string" && password.length >= 8) {
+      const { error: pwError } = await admin.auth.admin.updateUserById(id, { password });
+      if (pwError) {
+        return NextResponse.json({ error: `Password update failed: ${pwError.message}` }, { status: 400 });
       }
     }
   }

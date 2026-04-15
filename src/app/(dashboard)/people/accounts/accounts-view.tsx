@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import { Avatar } from "@/components/ui/avatar";
+import { PasswordInput } from "@/components/ui/password-input";
 
 type Department = { id: string; name: string; slug: string };
 type Role = { id: string; name: string; slug: string; tier: number };
@@ -142,7 +143,14 @@ function UserModal({
         body: JSON.stringify(form),
       });
     } else {
-      const { email: _e, password: _p, ...editBody } = form;
+      // OPS can change email/password; non-OPS strip them
+      const editBody: Record<string, unknown> = { ...form };
+      delete editBody.password;
+      if (!isOps) delete editBody.email;
+      if (isOps && form.password.trim().length >= 8) {
+        editBody.password = form.password;
+      }
+      if (!editBody.password) delete editBody.password;
       res = await fetch(`/api/users/${user!.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -197,31 +205,38 @@ function UserModal({
             </div>
           </div>
 
-          {/* Email + password (create only) */}
-          {mode === "create" && (
-            <>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-                <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) => setField("email", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={8}
-                  value={form.password}
-                  onChange={(e) => setField("password", e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                />
-              </div>
-            </>
+          {/* Email (create always, edit for OPS only) */}
+          {(mode === "create" || isOps) && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
+              <input
+                type="email"
+                required={mode === "create"}
+                value={form.email}
+                onChange={(e) => setField("email", e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
+              />
+              {mode === "edit" && (
+                <p className="text-xs text-gray-400 mt-1">Changing this will update their login email.</p>
+              )}
+            </div>
+          )}
+
+          {/* Password (create always, edit for OPS only) */}
+          {(mode === "create" || isOps) && (
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {mode === "create" ? "Password" : "New password"}
+                {mode === "edit" && <span className="text-gray-400 font-normal"> (leave blank to keep current)</span>}
+              </label>
+              <PasswordInput
+                required={mode === "create"}
+                minLength={mode === "create" ? 8 : undefined}
+                value={form.password}
+                onChange={(e) => setField("password", e.target.value)}
+                placeholder={mode === "edit" ? "Leave blank to keep current" : undefined}
+              />
+            </div>
           )}
 
           {/* Dept + Role */}
