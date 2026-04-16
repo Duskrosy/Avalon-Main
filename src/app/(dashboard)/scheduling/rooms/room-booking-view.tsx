@@ -196,7 +196,13 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
 
   // Selection state
   const [selectedSlots, setSelectedSlots] = useState<Set<number>>(new Set());
-  const [multiSelect, setMultiSelect] = useState(false);
+  const [multiSelect, setMultiSelect] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("room-multiselect") === "true";
+    return false;
+  });
+
+  // Persist multiSelect preference
+  useEffect(() => { localStorage.setItem("room-multiselect", String(multiSelect)); }, [multiSelect]);
 
   // Modal state
   const [showBookModal, setShowBookModal] = useState(false);
@@ -214,6 +220,11 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
   const [roomForm, setRoomForm] = useState({ name: "", capacity: "", location: "", open_time: "08:00", close_time: "18:00", slot_duration: 30 });
 
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+  // Current time for past-slot detection
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const isToday = dateStr === format(now, "yyyy-MM-dd");
 
   const fetchBookings = useCallback(async (d: string) => {
     setLoading(true);
@@ -481,9 +492,9 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
         </div>
       </div>
 
-      <div className="flex gap-6 flex-1 min-h-0">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         {/* Left sidebar */}
-        <div className="w-72 shrink-0 space-y-5">
+        <div className="lg:w-72 shrink-0 space-y-5">
           {/* Date navigation */}
           <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-4">
             <div className="flex items-center justify-between mb-3">
@@ -527,7 +538,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
           {/* Room selector */}
           <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-4">
             <h3 className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">Rooms</h3>
-            <div className="space-y-2">
+            <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-1 lg:pb-0">
               {roomList.map((room) => {
                 const color = roomColor(room.id);
                 const isActive = selectedRoom?.id === room.id;
@@ -539,7 +550,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                   <button
                     key={room.id}
                     onClick={() => { setSelectedRoom(room); setSelectedSlots(new Set()); setMultiSelect(false); }}
-                    className={`w-full text-left p-3 rounded-[var(--radius-lg)] border-2 transition-all ${
+                    className={`flex-shrink-0 min-w-[160px] lg:min-w-0 w-full text-left p-3 rounded-[var(--radius-lg)] border-2 transition-all ${
                       isActive ? `${color.bg} ${color.border}` : "border-transparent hover:bg-[var(--color-surface-hover)]"
                     }`}
                   >
@@ -605,12 +616,14 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                 </div>
               ) : selectedRoom ? (
                 <div className="space-y-1">
-                  {roomSlots.map((slot) => {
+                  {roomSlots.map((slot, slotIdx) => {
                     const booking = getSlotBooking(slot.startMin, slot.endMin);
                     const isBooked = !!booking;
                     const isSelected = selectedSlots.has(slot.index);
+                    const isPast = isToday && slot.endMin <= currentMinutes;
                     const color = roomColor(selectedRoom.id);
                     const isHour = slot.startMin % 60 === 0;
+                    const isLastSlot = slotIdx === roomSlots.length - 1;
 
                     // Only show booking info on first slot of the booking
                     let isBookingStart = false;
@@ -621,58 +634,68 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                     }
 
                     return (
-                      <div key={slot.index} className="flex items-stretch group">
-                        {/* Time */}
-                        <div className="w-20 shrink-0 pr-3 py-2">
-                          {isHour && <span className="text-xs text-[var(--color-text-tertiary)] font-medium">{minutesToLabel(slot.startMin)}</span>}
-                        </div>
+                      <div key={slot.index} className="flex flex-col">
+                        <div className="flex items-stretch group">
+                          {/* Time */}
+                          <div className="w-20 shrink-0 pr-3 py-2">
+                            {isHour && <span className="text-xs text-[var(--color-text-tertiary)] font-medium">{minutesToLabel(slot.startMin)}</span>}
+                          </div>
 
-                        {/* Slot */}
-                        <div
-                          onClick={() => handleSlotClick(slot.index)}
-                          className={`
-                            flex-1 py-2.5 px-4 rounded-[var(--radius-lg)] cursor-pointer transition-all relative min-h-[44px] flex items-center
-                            ${isBooked
-                              ? `${color.light} hover:opacity-90`
-                              : isSelected
-                                ? `${color.bg} border-2 ${color.border} shadow-[var(--shadow-sm)]`
-                                : "hover:bg-[var(--color-surface-hover)] border-2 border-transparent hover:border-[var(--color-border-primary)]"
-                            }
-                          `}
-                        >
-                          {isBooked && isBookingStart && booking && (
-                            <div className="flex items-center gap-2 w-full">
-                              <div className={`w-1 h-8 rounded-full ${color.fill} shrink-0`} />
-                              <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-medium ${color.text} truncate`}>{booking.title}</p>
-                                <p className="text-xs text-[var(--color-text-tertiary)] truncate">
-                                  {format(parseISO(booking.start_time), "h:mm a")} – {format(parseISO(booking.end_time), "h:mm a")}
-                                  {booking.booked_by_profile && ` · ${booking.booked_by_profile.first_name}`}
-                                </p>
-                              </div>
-                              {booking.invitees && booking.invitees.length > 0 && (
-                                <div className="flex -space-x-1.5">
-                                  {booking.invitees.slice(0, 3).map((inv) => inv.profile && (
-                                    <Avatar key={inv.id} user={inv.profile} size="sm" />
-                                  ))}
+                          {/* Slot */}
+                          <div
+                            onClick={isPast ? undefined : () => handleSlotClick(slot.index)}
+                            className={`
+                              flex-1 py-2.5 px-4 rounded-[var(--radius-lg)] transition-all relative min-h-[44px] flex items-center
+                              ${isPast
+                                ? "opacity-40 cursor-not-allowed border-2 border-transparent"
+                                : isBooked
+                                  ? `cursor-pointer ${color.light} hover:opacity-90`
+                                  : isSelected
+                                    ? `cursor-pointer ${color.bg} border-2 ${color.border} shadow-[var(--shadow-sm)]`
+                                    : "cursor-pointer hover:bg-[var(--color-surface-hover)] border-2 border-transparent hover:border-[var(--color-border-primary)]"
+                              }
+                            `}
+                          >
+                            {isBooked && isBookingStart && booking && (
+                              <div className="flex items-center gap-2 w-full">
+                                <div className={`w-1 h-8 rounded-full ${color.fill} shrink-0`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm font-medium ${color.text} truncate`}>{booking.title}</p>
+                                  <p className="text-xs text-[var(--color-text-tertiary)] truncate">
+                                    {format(parseISO(booking.start_time), "h:mm a")} – {format(parseISO(booking.end_time), "h:mm a")}
+                                    {booking.booked_by_profile && ` · ${booking.booked_by_profile.first_name}`}
+                                  </p>
                                 </div>
-                              )}
-                            </div>
-                          )}
-                          {isBooked && !isBookingStart && (
-                            <div className={`w-1 h-4 rounded-full ${color.fill} opacity-30 ml-0`} />
-                          )}
-                          {!isBooked && isSelected && (
-                            <span className={`text-xs font-medium ${color.text}`}>
-                              {minutesToLabel(slot.startMin)} – {minutesToLabel(slot.endMin)}
-                            </span>
-                          )}
-                          {!isBooked && !isSelected && (
-                            <span className="text-xs text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity">
-                              {minutesToLabel(slot.startMin)} — Available
-                            </span>
-                          )}
+                                {booking.invitees && booking.invitees.length > 0 && (
+                                  <div className="flex -space-x-1.5">
+                                    {booking.invitees.slice(0, 3).map((inv) => inv.profile && (
+                                      <Avatar key={inv.id} user={inv.profile} size="sm" />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {isBooked && !isBookingStart && (
+                              <div className={`w-1 h-4 rounded-full ${color.fill} opacity-30 ml-0`} />
+                            )}
+                            {!isBooked && isSelected && (
+                              <span className={`text-xs font-medium ${color.text}`}>
+                                {minutesToLabel(slot.startMin)} – {minutesToLabel(slot.endMin)}
+                              </span>
+                            )}
+                            {!isBooked && !isSelected && (
+                              <span className="text-xs text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity">
+                                {minutesToLabel(slot.startMin)} – {minutesToLabel(slot.endMin)}
+                                {!isPast && " · Available"}
+                              </span>
+                            )}
+                          </div>
                         </div>
+                        {isLastSlot && (
+                          <div className="flex items-center mt-2 ml-20">
+                            <span className="text-xs text-[var(--color-text-tertiary)] italic">Room closes at {minutesToLabel(slot.endMin)}</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -684,8 +707,8 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
           </div>
 
           {/* Sticky action bar — always visible at bottom */}
-          <div className="sticky bottom-0 z-10 mt-3">
-            <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-3 shadow-[var(--shadow-lg)]">
+          <div className="sticky bottom-0 z-[60] mt-3 w-full">
+            <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
               {selectedSlots.size > 0 && selectedRange ? (
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
@@ -760,8 +783,8 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
 
       {/* ─── BOOKING CONFIRMATION MODAL ──────────────────────────────────────── */}
       {showBookModal && selectedRange && selectedRoom && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowBookModal(false)}>
-          <div className="bg-[var(--color-bg-primary)] rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4" onClick={() => setShowBookModal(false)}>
+          <div className="bg-[var(--color-bg-primary)] rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center gap-3 mb-5">
                 <div className={`w-10 h-10 rounded-[var(--radius-lg)] ${roomColor(selectedRoom.id).light} flex items-center justify-center`}>
