@@ -20,7 +20,7 @@ interface SalesTabViewProps {
   salesCountLast: number;
   qaAvg: number | null;
   qaCount: number;
-  dailyTotals: { date: string; label: string; total: number }[];
+  dailyTotals: { date: string; label: string; total: number; agents: number }[];
   agentRanking: { name: string; pairs: number; days: number }[];
   confirmedSales: { confirmed_date: string; agent_id: string; sale_type: string | null; quantity: number | null; net_value: string }[];
   consistencyRows: { agent_id: string; consistent_days: number; total_days: number; name: string }[];
