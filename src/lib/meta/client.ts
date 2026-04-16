@@ -436,7 +436,10 @@ export async function fetchAdDemographics(
   const res = await fetch(
     `https://graph.facebook.com/v21.0/${campaignId}/insights?${params}`
   );
-  if (!res.ok) return [];
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Meta demographics fetch failed: ${res.status} ${text}`);
+  }
   const json = await res.json();
   return (json.data ?? []).map((row: Record<string, unknown>) => {
     const actions = (row.actions as { action_type: string; value: string }[]) ?? [];
