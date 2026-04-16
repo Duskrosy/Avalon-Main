@@ -998,7 +998,8 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
     }
   }, [boardState?.id]);
 
-  const isOverdue = (due: string | null) => due && new Date(due) < new Date();
+  const isOverdue = (due: string | null, completedAt?: string | null) =>
+    !completedAt && due && new Date(due) < new Date();
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (listSort.field !== field) return <span className="text-[var(--color-text-tertiary)] ml-1">↕</span>;
@@ -1176,7 +1177,7 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
                       </td>
                       <td className="px-4 py-3">
                         {card.due_date ? (
-                          <span className={`text-xs ${isOverdue(card.due_date) ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-secondary)]"}`}>
+                          <span className={`text-xs ${isOverdue(card.due_date, card.completed_at) ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-secondary)]"}`}>
                             {format(new Date(card.due_date), "d MMM yyyy")}
                           </span>
                         ) : (
