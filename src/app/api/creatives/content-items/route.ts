@@ -122,7 +122,8 @@ export async function PATCH(req: NextRequest) {
     updates.linked_at = new Date().toISOString();
   }
 
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("creative_content_items")
     .update(updates)
     .eq("id", id);
