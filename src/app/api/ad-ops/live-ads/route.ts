@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { resolveToken, fetchCampaignSpend, fetchAdsetSpend, updateCampaignStatus } from "@/lib/meta/client";
 import { z } from "zod";
 
@@ -234,6 +234,18 @@ export async function POST(req: NextRequest) {
   if (error) return error;
   if (!isManagerOrAbove(user!)) return NextResponse.json({ error: "Managers or above only" }, { status: 403 });
 
+  if (!isOps(user!)) {
+    const supabase = await createClient();
+    const { data: dept } = await supabase
+      .from("departments")
+      .select("slug")
+      .eq("id", user!.department_id)
+      .maybeSingle();
+    if (!["ad-ops", "marketing"].includes(dept?.slug ?? "")) {
+      return NextResponse.json({ error: "Only ad-ops and marketing can modify live ads" }, { status: 403 });
+    }
+  }
+
   const parsed = toggleSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
 
@@ -280,6 +292,18 @@ export async function PATCH(req: NextRequest) {
   const { error, user } = await requireAccess();
   if (error) return error;
   if (!isManagerOrAbove(user!)) return NextResponse.json({ error: "Managers or above only" }, { status: 403 });
+
+  if (!isOps(user!)) {
+    const supabase = await createClient();
+    const { data: dept } = await supabase
+      .from("departments")
+      .select("slug")
+      .eq("id", user!.department_id)
+      .maybeSingle();
+    if (!["ad-ops", "marketing"].includes(dept?.slug ?? "")) {
+      return NextResponse.json({ error: "Only ad-ops and marketing can modify live ads" }, { status: 403 });
+    }
+  }
 
   const parsed = capSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });

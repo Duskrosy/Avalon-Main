@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { resolveToken, updateAdsetStatus } from "@/lib/meta/client";
 import { z } from "zod";
 
 async function guard(req: NextRequest) {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
-  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null };
-  if (!isManagerOrAbove(user)) return { error: NextResponse.json({ error: "Managers or above only" }, { status: 403 }), user: null };
-  return { error: null, user };
+  if (!user) return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }), user: null, supabase: null };
+  if (!isManagerOrAbove(user)) return { error: NextResponse.json({ error: "Managers or above only" }, { status: 403 }), user: null, supabase: null };
+  return { error: null, user, supabase };
   void req;
 }
 
@@ -40,8 +40,19 @@ const toggleSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const { error } = await guard(req);
+  const { error, user, supabase } = await guard(req);
   if (error) return error;
+
+  if (!isOps(user!)) {
+    const { data: dept } = await supabase!
+      .from("departments")
+      .select("slug")
+      .eq("id", user!.department_id)
+      .maybeSingle();
+    if (!["ad-ops", "marketing"].includes(dept?.slug ?? "")) {
+      return NextResponse.json({ error: "Only ad-ops and marketing can modify live ads" }, { status: 403 });
+    }
+  }
 
   const parsed = toggleSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
@@ -74,8 +85,19 @@ const capSchema = z.object({
 });
 
 export async function PATCH(req: NextRequest) {
-  const { error } = await guard(req);
+  const { error, user, supabase } = await guard(req);
   if (error) return error;
+
+  if (!isOps(user!)) {
+    const { data: dept } = await supabase!
+      .from("departments")
+      .select("slug")
+      .eq("id", user!.department_id)
+      .maybeSingle();
+    if (!["ad-ops", "marketing"].includes(dept?.slug ?? "")) {
+      return NextResponse.json({ error: "Only ad-ops and marketing can modify live ads" }, { status: 403 });
+    }
+  }
 
   const parsed = capSchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
