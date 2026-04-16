@@ -183,6 +183,7 @@ export default function TrackerView({
   const [saving, setSaving] = useState(false);
   const [livePosts, setLivePosts] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
+  const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
 
   const handleSync = useCallback(async () => {
     setSyncing(true);
@@ -332,6 +333,21 @@ export default function TrackerView({
     },
     [setToast]
   );
+
+  // ── Assign post ───────────────────────────────────────────
+  const handleAssignPost = useCallback(async (postId: string) => {
+    if (!linkingItemId) return;
+    setItems((prev) => prev.map((i) =>
+      i.id === linkingItemId ? { ...i, linked_post_id: postId, transfer_link: null } : i
+    ));
+    await fetch("/api/creatives/content-items", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: linkingItemId, linked_post_id: postId, transfer_link: null }),
+    });
+    setLinkingItemId(null);
+    setToast({ message: "Post assigned", type: "success" });
+  }, [linkingItemId, setToast]);
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -507,6 +523,7 @@ export default function TrackerView({
                           {tab === "published" && (
                             <th className="px-4 py-3">Linked</th>
                           )}
+                          <th className="px-4 py-3"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -569,6 +586,14 @@ export default function TrackerView({
                                 )}
                               </td>
                             )}
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setLinkingItemId(item.id); }}
+                                className="text-xs px-2 py-1 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] whitespace-nowrap"
+                              >
+                                {item.linked_post_id ? "Reassign" : "Assign Post"}
+                              </button>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -631,6 +656,14 @@ export default function TrackerView({
                             )}
                           </div>
                         )}
+                        <div className="pt-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setLinkingItemId(item.id); }}
+                            className="text-xs px-2 py-1 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] whitespace-nowrap"
+                          >
+                            {item.linked_post_id ? "Reassign" : "Assign Post"}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -672,7 +705,85 @@ export default function TrackerView({
           saving={saving}
         />
       )}
+      {linkingItemId && (
+        <AssignPostModal
+          posts={posts}
+          onSelect={handleAssignPost}
+          onClose={() => setLinkingItemId(null)}
+        />
+      )}
       <Toast toast={toast} onDismiss={() => setToast(null)} />
+    </div>
+  );
+}
+
+// ── AssignPostModal ───────────────────────────────────────────
+function AssignPostModal({
+  posts,
+  onSelect,
+  onClose,
+}: {
+  posts: SmmPost[];
+  onSelect: (postId: string) => void;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<string>("all");
+  const [search, setSearch] = useState("");
+
+  const platforms = useMemo(() => ["all", ...new Set(posts.map((p) => p.platform))], [posts]);
+  const filtered = useMemo(() => posts.filter((p) => {
+    if (tab !== "all" && p.platform !== tab) return false;
+    if (search && !(p.caption ?? "").toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  }), [posts, tab, search]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] w-full max-w-lg max-h-[80vh] flex flex-col mx-4">
+        <div className="p-4 border-b border-[var(--color-border-secondary)]">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Assign to Live Post</h3>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by caption..."
+            className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
+          />
+          <div className="flex gap-1 mt-2 flex-wrap">
+            {platforms.map((p) => (
+              <button key={p} onClick={() => setTab(p)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                  tab === p ? "bg-[var(--color-accent)] text-white" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                }`}>
+                {p}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2">
+          {filtered.length === 0 && (
+            <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">No posts found</p>
+          )}
+          {filtered.map((post) => (
+            <button key={post.id} onClick={() => onSelect(post.id)}
+              className="w-full text-left p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-hover)] flex items-start gap-3 transition-colors">
+              <span className="text-xs font-medium capitalize px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex-shrink-0">
+                {post.platform}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-[var(--color-text-primary)] line-clamp-2">{post.caption ?? "(no caption)"}</p>
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+                  {post.published_at ? format(parseISO(post.published_at), "MMM d, yyyy") : "Not published"}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="p-3 border-t border-[var(--color-border-secondary)]">
+          <button onClick={onClose} className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
+        </div>
+      </div>
     </div>
   );
 }
