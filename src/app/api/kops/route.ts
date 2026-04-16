@@ -40,8 +40,9 @@ export async function POST(req: NextRequest) {
   if (!title) return NextResponse.json({ error: "title is required" }, { status: 400 });
   if (!file)  return NextResponse.json({ error: "file is required" }, { status: 400 });
 
-  // Create the KOP row
-  const { data: kop, error: kopErr } = await supabase
+  // Create the KOP row (use admin client to bypass RLS)
+  const admin = createAdminClient();
+  const { data: kop, error: kopErr } = await admin
     .from("kops")
     .insert({
       title,
@@ -57,7 +58,6 @@ export async function POST(req: NextRequest) {
   if (kopErr) return NextResponse.json({ error: kopErr.message }, { status: 500 });
 
   // Upload file to storage
-  const admin = createAdminClient();
   const ext = file.name.split(".").pop() ?? "bin";
   const storagePath = `${kop.id}/v1.${ext}`;
   const buffer = Buffer.from(await file.arrayBuffer());
@@ -67,12 +67,12 @@ export async function POST(req: NextRequest) {
     .upload(storagePath, buffer, { contentType: file.type, upsert: false });
 
   if (uploadErr) {
-    await supabase.from("kops").delete().eq("id", kop.id);
+    await admin.from("kops").delete().eq("id", kop.id);
     return NextResponse.json({ error: uploadErr.message }, { status: 500 });
   }
 
   // Insert version row
-  const { error: versionErr } = await supabase
+  const { error: versionErr } = await admin
     .from("kop_versions")
     .insert({
       kop_id: kop.id,

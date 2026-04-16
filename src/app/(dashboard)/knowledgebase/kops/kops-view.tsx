@@ -72,6 +72,7 @@ export function KopsView({ kops: initial, departments, canManage }: Props) {
     setCreating(false);
   }, [form, file]);
 
+  const KOP_CATEGORIES = ["BAU", "Tools", "Process", "Guidelines", "Installation", "Troubleshooting", "Reference"];
   const categories = [...new Set(kops.map((k) => k.category).filter(Boolean))] as string[];
   const hasFilters = search || deptFilter !== "all";
 
@@ -232,16 +233,16 @@ export function KopsView({ kops: initial, departments, canManage }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Category</label>
-                  <input
-                    type="text"
-                    list="category-options"
+                  <select
                     value={form.category}
                     onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                  />
-                  <datalist id="category-options">
-                    {categories.map((c) => <option key={c} value={c} />)}
-                  </datalist>
+                    className="w-full border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                  >
+                    <option value="">Select category</option>
+                    {KOP_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Department</label>
