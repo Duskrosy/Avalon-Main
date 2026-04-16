@@ -12,8 +12,9 @@ type KpiDefRef = {
   threshold_green: number;
   threshold_amber: number;
   direction: string;
+  data_source_status?: string;
 };
-type KpiDefOption = { id: string; name: string; department_id: string; unit: string; category: string };
+type KpiDefOption = { id: string; name: string; department_id: string; unit: string; category: string; data_source_status: string };
 
 type Goal = {
   id: string;
@@ -140,6 +141,18 @@ function GoalCard({
                 <span>·</span>
                 <span className="text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded text-[10px] font-medium">
                   KPI: {goal.kpi_definition.name}
+                </span>
+              </>
+            )}
+            {goal.kpi_definition?.data_source_status && goal.kpi_definition.data_source_status !== "standalone" && (
+              <>
+                <span>·</span>
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  goal.kpi_definition.data_source_status === "wired"
+                    ? "bg-green-50 text-green-600"
+                    : "bg-amber-50 text-amber-600"
+                }`}>
+                  {goal.kpi_definition.data_source_status === "wired" ? "Wired" : "To Wire"}
                 </span>
               </>
             )}
@@ -277,7 +290,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [dateRange, setDateRange] = useState<number>(0); // 0 = all
-  const [deptFilter, setDeptFilter] = useState<string>("all");
+  const [deptFilter, setDeptFilter] = useState<string>(isOps ? "all" : (currentDeptId ?? "all"));
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -289,6 +302,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
     kpi_definition_id: "",
     deadline_green_days: "14",
     deadline_amber_days: "7",
+    data_source_status: "standalone",
   });
 
   // Filter KPI definitions by selected department in the create form
@@ -369,7 +383,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
       };
       setGoals((gs) => [...gs, newGoal].sort((a, b) => a.deadline.localeCompare(b.deadline)));
       setShowCreate(false);
-      setForm({ title: "", description: "", target_value: "", current_value: "0", unit: "%", deadline: "", department_id: currentDeptId ?? "", kpi_definition_id: "", deadline_green_days: "14", deadline_amber_days: "7" });
+      setForm({ title: "", description: "", target_value: "", current_value: "0", unit: "%", deadline: "", department_id: currentDeptId ?? "", kpi_definition_id: "", deadline_green_days: "14", deadline_amber_days: "7", data_source_status: "standalone" });
     }
     setCreating(false);
   }, [form, departments, kpiDefinitions, currentDeptId]);
@@ -490,6 +504,37 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
         </div>
       )}
 
+      {/* Falling Behind — negative ranking */}
+      {(() => {
+        const negativeRanking = active
+          .filter((g) => {
+            if (!g.kpi_definition) return false;
+            const pct = progressPct(g.current_value, g.target_value);
+            return pct < 50;
+          })
+          .sort((a, b) => progressPct(a.current_value, a.target_value) - progressPct(b.current_value, b.target_value));
+
+        if (negativeRanking.length === 0) return null;
+        return (
+          <div className="mt-8">
+            <h3 className="text-sm font-semibold text-[var(--color-error)] mb-3">Falling Behind</h3>
+            <div className="space-y-2">
+              {negativeRanking.map((item) => (
+                <div key={item.id} className="flex items-center justify-between py-2 px-3 rounded-[var(--radius-md)] bg-[var(--color-error-light)] border border-red-200">
+                  <div>
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">{item.title}</span>
+                    <span className="text-xs text-[var(--color-text-tertiary)] ml-2">{item.department?.name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-[var(--color-error)]">
+                    {item.current_value} / {item.target_value} {item.unit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -538,6 +583,19 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
                   ))}
                 </select>
                 <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">Linking shows this goal on the KPI dashboard</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-[var(--color-text-primary)] mb-1">Data Source Status</label>
+                <select
+                  value={form.data_source_status ?? "standalone"}
+                  onChange={(e) => setForm((f) => ({ ...f, data_source_status: e.target.value }))}
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                >
+                  <option value="standalone">Standalone (Manual)</option>
+                  <option value="to_be_wired">To Be Wired</option>
+                  <option value="wired">Wired</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
