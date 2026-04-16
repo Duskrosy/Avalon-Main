@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfWeek, endOfWeek, subWeeks, isWithinInterval } from "date-fns";
 import { useToast, Toast } from "@/components/ui/toast";
 import { CREATIVE_GROUPS } from "@/lib/creatives/constants";
 
@@ -141,6 +141,27 @@ function fmtK(n: number | null | undefined): string {
   return n.toLocaleString();
 }
 
+function getWeekGroup(plannedWeekStart: string | null): "this_week" | "last_week" | "older" | "unscheduled" {
+  if (!plannedWeekStart) return "unscheduled";
+  const d = parseISO(plannedWeekStart);
+  const now = new Date();
+  const thisMonday = startOfWeek(now, { weekStartsOn: 1 });
+  const thisSunday = endOfWeek(now, { weekStartsOn: 1 });
+  const lastMonday = subWeeks(thisMonday, 1);
+  const lastSunday = subWeeks(thisSunday, 1);
+  if (isWithinInterval(d, { start: thisMonday, end: thisSunday })) return "this_week";
+  if (isWithinInterval(d, { start: lastMonday, end: lastSunday })) return "last_week";
+  return "older";
+}
+
+const WEEK_LABELS: Record<string, string> = {
+  this_week: "This Week",
+  last_week: "Last Week",
+  older: "Older",
+  unscheduled: "Unscheduled",
+};
+const WEEK_ORDER = ["this_week", "last_week", "older", "unscheduled"];
+
 // ── Component ─────────────────────────────────────────────────
 export default function TrackerView({
   items: initialItems,
@@ -226,6 +247,25 @@ export default function TrackerView({
   );
 
   const active = tab === "planned" ? planned : published;
+
+  const grouped = useMemo(() => {
+    const q = search.toLowerCase();
+    const base = items
+      .filter((i) => tab === "planned" ? PLANNED_STATUSES.includes(i.status) : PUBLISHED_STATUSES.includes(i.status))
+      .filter((i) => !statusFilter || i.status === statusFilter)
+      .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+      .filter((i) => {
+        if (!q) return true;
+        const assigneeName = i.assigned_profile ? `${i.assigned_profile.first_name} ${i.assigned_profile.last_name}` : "";
+        return `${i.title} ${assigneeName} ${i.campaign_label ?? ""} ${i.product_or_collection ?? ""}`.toLowerCase().includes(q);
+      });
+
+    return WEEK_ORDER.map((key) => ({
+      key,
+      label: WEEK_LABELS[key],
+      items: base.filter((i) => getWeekGroup(i.planned_week_start) === key),
+    })).filter((g) => g.items.length > 0);
+  }, [items, tab, statusFilter, groupFilter, search]);
 
   // ── Inline status change ──────────────────────────────────
   const changeStatus = useCallback(
@@ -356,10 +396,10 @@ export default function TrackerView({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
           type="text"
-          placeholder="Search title or campaign..."
+          placeholder="Search by title, assignee, campaign..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 sm:w-64"
+          className="w-full sm:w-64 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-focus)]"
         />
         {tab === "planned" && (
           <select
@@ -436,75 +476,144 @@ export default function TrackerView({
         </div>
       ) : (
         <>
-          {active.length === 0 ? (
+          {grouped.length === 0 ? (
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
               No items found.
             </div>
           ) : (
-            <>
-              {/* Desktop table */}
-              <div className="hidden md:block overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)]">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-                      <th className="px-4 py-3">Title</th>
-                      <th className="px-4 py-3">Group</th>
-                      <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Channel</th>
-                      <th className="px-4 py-3">Funnel</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Campaign</th>
-                      <th className="px-4 py-3">Assigned</th>
-                      <th className="px-4 py-3">Planned Week</th>
-                      {tab === "published" && (
-                        <th className="px-4 py-3">Linked</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {active.map((item, idx) => (
-                      <tr
+            <div className="space-y-6">
+              {grouped.map((group) => (
+                <div key={group.key}>
+                  {/* Week group header */}
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <h3 className="text-sm font-semibold text-[var(--color-text-secondary)]">{group.label}</h3>
+                    <span className="text-xs text-[var(--color-text-tertiary)]">({group.items.length})</span>
+                  </div>
+
+                  {/* Desktop table */}
+                  <div className="hidden md:block overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)]">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
+                          <th className="px-4 py-3">Title</th>
+                          <th className="px-4 py-3">Group</th>
+                          <th className="px-4 py-3">Type</th>
+                          <th className="px-4 py-3">Channel</th>
+                          <th className="px-4 py-3">Funnel</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Campaign</th>
+                          <th className="px-4 py-3">Assigned</th>
+                          <th className="px-4 py-3">Planned Week</th>
+                          {tab === "published" && (
+                            <th className="px-4 py-3">Linked</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.items.map((item, idx) => (
+                          <tr
+                            key={item.id}
+                            onClick={() => setEditItem(item)}
+                            className={`cursor-pointer border-b border-[var(--color-border-secondary)] transition-colors hover:bg-indigo-50/40 ${
+                              idx % 2 === 0 ? "bg-[var(--color-bg-primary)]" : "bg-[var(--color-bg-secondary)]/30"
+                            }`}
+                          >
+                            <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
+                              {item.title}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                              {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                              {fmtLabel(item.content_type)}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                              {fmtLabel(item.channel_type)}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                              {item.funnel_stage ?? "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <StatusDropdown
+                                current={item.status}
+                                onChange={(s) => {
+                                  changeStatus(item.id, s);
+                                }}
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-[140px] truncate">
+                              {item.campaign_label ?? "-"}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)]">
+                              {profileName(item.assigned_profile)}
+                            </td>
+                            <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
+                              {fmtDate(item.planned_week_start)}
+                            </td>
+                            {tab === "published" && (
+                              <td className="px-4 py-3">
+                                {item.linked_post_id || item.linked_external_url ? (
+                                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                    Linked
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setLinkItem(item);
+                                    }}
+                                    className="text-xs text-indigo-600 hover:text-indigo-800 underline"
+                                  >
+                                    Link
+                                  </button>
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="md:hidden space-y-3">
+                    {group.items.map((item) => (
+                      <div
                         key={item.id}
                         onClick={() => setEditItem(item)}
-                        className={`cursor-pointer border-b border-[var(--color-border-secondary)] transition-colors hover:bg-indigo-50/40 ${
-                          idx % 2 === 0 ? "bg-[var(--color-bg-primary)]" : "bg-[var(--color-bg-secondary)]/30"
-                        }`}
+                        className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2 hover:border-indigo-200 transition-colors"
                       >
-                        <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
-                          {item.title}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                          {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                          {fmtLabel(item.content_type)}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                          {fmtLabel(item.channel_type)}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                          {item.funnel_stage ?? "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusDropdown
-                            current={item.status}
-                            onChange={(s) => {
-                              // prevent row click
-                              changeStatus(item.id, s);
-                            }}
-                          />
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-[140px] truncate">
-                          {item.campaign_label ?? "-"}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                          {profileName(item.assigned_profile)}
-                        </td>
-                        <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
-                          {fmtDate(item.planned_week_start)}
-                        </td>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-medium text-[var(--color-text-primary)] text-sm leading-snug">
+                            {item.title}
+                          </p>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                              STATUS_STYLES[item.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
+                            }`}
+                          >
+                            {fmtLabel(item.status)}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
+                          <span>{fmtLabel(item.content_type)}</span>
+                          <span>{fmtLabel(item.channel_type)}</span>
+                          {item.funnel_stage && <span>{item.funnel_stage}</span>}
+                          {item.campaign_label && (
+                            <span className="text-indigo-600">{item.campaign_label}</span>
+                          )}
+                          {item.group_label && (
+                            <span className="text-indigo-600 font-medium">
+                              {CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
+                          <span>{profileName(item.assigned_profile)}</span>
+                          <span>{fmtDate(item.planned_week_start)}</span>
+                        </div>
                         {tab === "published" && (
-                          <td className="px-4 py-3">
+                          <div className="pt-1">
                             {item.linked_post_id || item.linked_external_url ? (
                               <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                                 Linked
@@ -517,77 +626,17 @@ export default function TrackerView({
                                 }}
                                 className="text-xs text-indigo-600 hover:text-indigo-800 underline"
                               >
-                                Link
+                                Link to published content
                               </button>
                             )}
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Mobile cards */}
-              <div className="md:hidden space-y-3">
-                {active.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setEditItem(item)}
-                    className="cursor-pointer rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2 hover:border-indigo-200 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="font-medium text-[var(--color-text-primary)] text-sm leading-snug">
-                        {item.title}
-                      </p>
-                      <span
-                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_STYLES[item.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"
-                        }`}
-                      >
-                        {fmtLabel(item.status)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
-                      <span>{fmtLabel(item.content_type)}</span>
-                      <span>{fmtLabel(item.channel_type)}</span>
-                      {item.funnel_stage && <span>{item.funnel_stage}</span>}
-                      {item.campaign_label && (
-                        <span className="text-indigo-600">{item.campaign_label}</span>
-                      )}
-                      {item.group_label && (
-                        <span className="text-indigo-600 font-medium">
-                          {CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
-                      <span>{profileName(item.assigned_profile)}</span>
-                      <span>{fmtDate(item.planned_week_start)}</span>
-                    </div>
-                    {tab === "published" && (
-                      <div className="pt-1">
-                        {item.linked_post_id || item.linked_external_url ? (
-                          <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                            Linked
-                          </span>
-                        ) : (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setLinkItem(item);
-                            }}
-                            className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                          >
-                            Link to published content
-                          </button>
+                          </div>
                         )}
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            </>
+                </div>
+              ))}
+            </div>
           )}
         </>
       )}
