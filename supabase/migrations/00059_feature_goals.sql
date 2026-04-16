@@ -1,5 +1,5 @@
 -- ============================================================
--- 00056_feature_goals.sql
+-- 00059_feature_goals.sql
 -- 1. feature_goals table
 -- 2. feature_goal_tickets junction table
 -- 3. RLS policies
