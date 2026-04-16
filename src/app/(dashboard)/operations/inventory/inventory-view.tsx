@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, Fragment } from "react";
 import { useToast, Toast } from "@/components/ui/toast";
+import { ItemTimeline } from "./item-timeline";
 
 /* ---------- types ---------- */
 
@@ -308,6 +309,7 @@ export default function InventoryView({
   const [search, setSearch] = useState("");
   const [adjusting, setAdjusting] = useState<InventoryRecord | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [timelineItem, setTimelineItem] = useState<{ id: string; label: string } | null>(null);
 
   const fetchRecords = useCallback(async () => {
     const res = await fetch("/api/operations/inventory");
@@ -491,15 +493,31 @@ export default function InventoryView({
                         {total}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setAdjusting(r);
-                          }}
-                          className="text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-2.5 py-1 rounded-lg hover:bg-[var(--color-surface-active)] transition-colors"
-                        >
-                          Adjust
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTimelineItem({
+                                id: r.id,
+                                label: r.catalog?.product_name
+                                  ? `${r.catalog.product_name}${r.catalog.sku ? ` (${r.catalog.sku})` : ""}`
+                                  : r.id,
+                              });
+                            }}
+                            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] px-2 py-1 rounded-lg hover:bg-[var(--color-surface-active)] transition-colors"
+                          >
+                            History
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAdjusting(r);
+                            }}
+                            className="text-xs font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-2.5 py-1 rounded-lg hover:bg-[var(--color-surface-active)] transition-colors"
+                          >
+                            Adjust
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {isExpanded && (
@@ -527,6 +545,16 @@ export default function InventoryView({
           record={adjusting}
           onClose={() => setAdjusting(null)}
           onSubmitted={handleAdjusted}
+        />
+      )}
+
+      {/* Item timeline modal */}
+      {timelineItem && (
+        <ItemTimeline
+          recordId={timelineItem.id}
+          tableName="inventory_records"
+          itemLabel={timelineItem.label}
+          onClose={() => setTimelineItem(null)}
         />
       )}
     </div>
