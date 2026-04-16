@@ -22,6 +22,8 @@ type AuditEntry = {
   action: string;
   table_name: string;
   record_id: string | null;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -81,6 +83,51 @@ function dateKey(dateStr: string): string {
   return format(parseISO(dateStr), "yyyy-MM-dd");
 }
 
+function getPage(item: TimelineItem): string {
+  if (item.kind === "event") {
+    const props = item.data.properties;
+    if (props && typeof props === "object" && "page" in props) {
+      return String(props.page);
+    }
+    return item.data.module || "-";
+  }
+  const TABLE_TO_PAGE: Record<string, string> = {
+    profiles: "People", departments: "People", leaves: "Leaves",
+    kanban_boards: "Kanban", kanban_columns: "Kanban", kanban_cards: "Kanban",
+    kops: "KOP Library", learning_materials: "Learning", memos: "Memos",
+    smm_posts: "Content", smm_groups: "Content", creative_content_items: "Tracker",
+    ad_assets: "Ad Ops", ad_requests: "Ad Ops", meta_campaigns: "Ad Ops",
+    feedback: "Pulse", inventory_records: "Inventory", inventory_movements: "Inventory",
+    catalog_items: "Catalog", ops_orders: "Orders", dispatch_queue: "Dispatch",
+    confirmed_sales: "Sales", daily_volumes: "Sales", room_bookings: "Rooms",
+  };
+  return TABLE_TO_PAGE[item.data.table_name] ?? item.data.table_name;
+}
+
+function getChangeSummary(item: TimelineItem): string {
+  if (item.kind === "event") {
+    return item.data.event_name;
+  }
+  const a = item.data;
+  if (a.action === "INSERT") {
+    const name = a.new_values?.title ?? a.new_values?.name ?? a.new_values?.product_name ?? a.new_values?.campaign_name ?? "";
+    return name ? `Created "${name}"` : "Created record";
+  }
+  if (a.action === "DELETE") {
+    const name = a.old_values?.title ?? a.old_values?.name ?? a.old_values?.product_name ?? "";
+    return name ? `Deleted "${name}"` : "Deleted record";
+  }
+  if (a.old_values && a.new_values) {
+    const changed = Object.keys(a.new_values).filter(
+      (k) => !["updated_at", "created_at", "id"].includes(k) && JSON.stringify(a.old_values![k]) !== JSON.stringify(a.new_values![k])
+    );
+    if (changed.length === 0) return "No visible changes";
+    if (changed.length <= 3) return `Updated ${changed.join(", ")}`;
+    return `Updated ${changed.length} fields`;
+  }
+  return `${a.action} on ${a.table_name}`;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function ActivityTab() {
@@ -91,6 +138,8 @@ export function ActivityTab() {
   const [moduleFilter, setModuleFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [displayLimit, setDisplayLimit] = useState(100);
+  const [sortCol, setSortCol] = useState<"time" | "user" | "page" | "module">("time");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
 
@@ -113,10 +162,19 @@ export function ActivityTab() {
     fetchActivity();
   }, [fetchActivity]);
 
+  function toggleSort(col: "time" | "user" | "page" | "module") {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  }
+
   // Reset display limit when filters change
   useEffect(() => {
     setDisplayLimit(100);
-  }, [days, selectedUser, moduleFilter, typeFilter]);
+  }, [days, selectedUser, moduleFilter, typeFilter, sortCol, sortDir]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
@@ -135,9 +193,29 @@ export function ActivityTab() {
       data.audit.forEach((a) => items.push({ kind: "audit", data: a, created_at: a.created_at }));
     }
 
-    items.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const dir = sortDir === "asc" ? 1 : -1;
+    items.sort((a, b) => {
+      if (sortCol === "time") {
+        return dir * (new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+      if (sortCol === "user") {
+        const aName = userName(data.users, a.kind === "event" ? a.data.actor_id : a.data.actor_id);
+        const bName = userName(data.users, b.kind === "event" ? b.data.actor_id : b.data.actor_id);
+        return dir * aName.localeCompare(bName);
+      }
+      if (sortCol === "page") {
+        return dir * getPage(a).localeCompare(getPage(b));
+      }
+      if (sortCol === "module") {
+        const am = a.kind === "event" ? a.data.module : a.data.table_name;
+        const bm = b.kind === "event" ? b.data.module : b.data.table_name;
+        return dir * am.localeCompare(bm);
+      }
+      return 0;
+    });
+
     return items;
-  }, [data.events, data.audit, typeFilter]);
+  }, [data.events, data.audit, typeFilter, sortCol, sortDir]);
 
   const groupedTimeline = useMemo(() => {
     const limited = timeline.slice(0, displayLimit);
@@ -255,6 +333,24 @@ export function ActivityTab() {
         </div>
       )}
 
+      {/* Sortable headers */}
+      {!loading && timeline.length > 0 && (
+        <div className="flex items-center gap-3 py-2 px-1 mb-2 border-b border-[var(--color-border-primary)]">
+          <button onClick={() => toggleSort("time")} className={`text-xs font-medium uppercase tracking-wider flex items-center gap-1 w-24 shrink-0 ${sortCol === "time" ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-tertiary)]"}`}>
+            Time {sortCol === "time" && <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>}
+          </button>
+          <button onClick={() => toggleSort("module")} className={`text-xs font-medium uppercase tracking-wider flex items-center gap-1 flex-1 ${sortCol === "module" ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-tertiary)]"}`}>
+            Action {sortCol === "module" && <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>}
+          </button>
+          <button onClick={() => toggleSort("page")} className={`text-xs font-medium uppercase tracking-wider flex items-center gap-1 w-28 shrink-0 ${sortCol === "page" ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-tertiary)]"}`}>
+            Page {sortCol === "page" && <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>}
+          </button>
+          <button onClick={() => toggleSort("user")} className={`text-xs font-medium uppercase tracking-wider flex items-center gap-1 w-36 shrink-0 ${sortCol === "user" ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-tertiary)]"}`}>
+            User {sortCol === "user" && <span className="text-[10px]">{sortDir === "asc" ? "▲" : "▼"}</span>}
+          </button>
+        </div>
+      )}
+
       {/* Timeline */}
       {loading ? (
         <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
@@ -320,16 +416,18 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 }
 
 function TimelineRow({ item, users }: { item: TimelineItem; users: UserProfile[] }) {
+  const actorId = item.kind === "event" ? item.data.actor_id : item.data.actor_id;
+  const user = users.find((p) => p.id === actorId);
+  const page = getPage(item);
+
   if (item.kind === "event") {
     const e = item.data;
     const dotColor = CATEGORY_DOT[e.category] ?? "bg-gray-400";
     return (
       <div className="flex items-start gap-3 py-2.5 border-b border-[var(--color-border-secondary)] last:border-b-0">
-        {/* Timestamp */}
         <span className="text-xs text-[var(--color-text-tertiary)] w-24 shrink-0 pt-0.5">
           {format(parseISO(e.created_at), "d MMM HH:mm")}
         </span>
-        {/* Dot + description */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           <span className="text-sm text-[var(--color-text-primary)] truncate">{e.event_name}</span>
@@ -342,35 +440,40 @@ function TimelineRow({ item, users }: { item: TimelineItem; users: UserProfile[]
             </span>
           )}
         </div>
-        {/* Actor */}
-        <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{userName(users, e.actor_id)}</span>
+        <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-medium shrink-0 w-28 text-center truncate">
+          {page}
+        </span>
+        <span className="text-xs text-[var(--color-text-tertiary)] shrink-0 w-36 truncate text-right">
+          {userName(users, actorId)}
+          {user?.departments?.name ? ` (${user.departments.name})` : ""}
+        </span>
       </div>
     );
   }
 
-  // Audit entry
   const a = item.data;
   const dotColor = ACTION_DOT[a.action] ?? "bg-gray-400";
   return (
     <div className="flex items-start gap-3 py-2.5 border-b border-[var(--color-border-secondary)] last:border-b-0">
-      {/* Timestamp */}
       <span className="text-xs text-[var(--color-text-tertiary)] w-24 shrink-0 pt-0.5">
         {format(parseISO(a.created_at), "d MMM HH:mm")}
       </span>
-      {/* Dot + description */}
       <div className="flex items-center gap-2 flex-1 min-w-0">
         <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
         <span className="text-sm text-[var(--color-text-primary)] truncate">
-          {a.action} on {a.table_name}
+          {getChangeSummary(item)}
         </span>
-        {a.record_id && (
-          <span className="text-[10px] font-mono bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded shrink-0 truncate max-w-32">
-            {a.record_id}
-          </span>
-        )}
+        <span className="text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-1.5 py-0.5 rounded font-medium shrink-0">
+          {a.table_name}
+        </span>
       </div>
-      {/* Actor */}
-      <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{userName(users, a.actor_id)}</span>
+      <span className="text-[10px] bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-medium shrink-0 w-28 text-center truncate">
+        {page}
+      </span>
+      <span className="text-xs text-[var(--color-text-tertiary)] shrink-0 w-36 truncate text-right">
+        {userName(users, actorId)}
+        {user?.departments?.name ? ` (${user.departments.name})` : ""}
+      </span>
     </div>
   );
 }

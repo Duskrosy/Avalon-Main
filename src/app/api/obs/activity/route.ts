@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   // 2. Audit logs
   let auditQuery = admin
     .from("obs_audit_logs")
-    .select("id, actor_id, action, table_name, record_id, created_at")
+    .select("id, actor_id, action, table_name, record_id, old_values, new_values, created_at")
     .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(limit);
