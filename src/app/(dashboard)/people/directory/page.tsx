@@ -27,13 +27,22 @@ export default async function DirectoryPage() {
     supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
   ]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sorted = [...(profiles ?? [])].sort((a: any, b: any) => {
+    const aDept = a.department?.id === currentUser.department_id ? 0 : 1;
+    const bDept = b.department?.id === currentUser.department_id ? 0 : 1;
+    if (aDept !== bDept) return aDept - bDept;
+    return (a.first_name ?? "").localeCompare(b.first_name ?? "");
+  });
+
   return (
     <DirectoryView
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      profiles={(profiles ?? []) as any}
+      profiles={sorted as any}
       departments={departments ?? []}
       currentUserId={currentUser.id}
       currentDeptId={currentUser.department_id ?? null}
+      currentDeptName={currentUser.department?.name ?? null}
       canManageProfiles={canManageProfiles}
       isOps={isOps(currentUser)}
     />

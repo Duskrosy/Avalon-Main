@@ -30,6 +30,7 @@ type Props = {
   departments: Department[];
   currentUserId: string;
   currentDeptId: string | null;
+  currentDeptName: string | null;
   canManageProfiles: boolean;
   isOps: boolean;
 };
@@ -546,6 +547,7 @@ export function DirectoryView({
   departments,
   currentUserId,
   currentDeptId,
+  currentDeptName,
   canManageProfiles,
   isOps,
 }: Props) {
@@ -614,17 +616,44 @@ export function DirectoryView({
           ))}
         </div>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).sort(([a], [b]) => a.localeCompare(b)).map(([dept, people]) => (
-            <div key={dept}>
-              <h2 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">{dept}</h2>
+        <div className="space-y-8">
+          {/* My Department section */}
+          {currentDeptName && grouped[currentDeptName] && (
+            <div>
+              <h2 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">My Department</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {people.map((p) => (
+                {grouped[currentDeptName].map((p) => (
                   <PersonCard key={p.id} person={p} onClick={() => setSelected(p)} />
                 ))}
               </div>
             </div>
-          ))}
+          )}
+          {/* Everyone Else section */}
+          {Object.entries(grouped)
+            .filter(([dept]) => dept !== currentDeptName)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .length > 0 && (
+            <div>
+              <h2 className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-3">
+                {currentDeptName ? "Everyone Else" : "All Employees"}
+              </h2>
+              <div className="space-y-6">
+                {Object.entries(grouped)
+                  .filter(([dept]) => dept !== currentDeptName)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([dept, people]) => (
+                    <div key={dept}>
+                      <h3 className="text-xs font-medium text-[var(--color-text-tertiary)] mb-2 pl-1">{dept}</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {people.map((p) => (
+                          <PersonCard key={p.id} person={p} onClick={() => setSelected(p)} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
