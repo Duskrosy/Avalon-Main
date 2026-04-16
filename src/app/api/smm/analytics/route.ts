@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
@@ -48,7 +49,8 @@ export async function GET(req: NextRequest) {
 
   if (!platformId) return NextResponse.json({ error: "platform_id required" }, { status: 400 });
 
-  let query = supabase!
+  const admin = createAdminClient();
+  let query = admin
     .from("smm_analytics")
     .select("*")
     .eq("platform_id", platformId)

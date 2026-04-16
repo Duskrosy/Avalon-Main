@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { AnalyticsView } from "./analytics-view";
@@ -18,8 +19,9 @@ export default async function CreativesAnalyticsPage() {
     if (!["creatives", "marketing", "ad-ops"].includes(dept?.slug ?? "")) redirect("/");
   }
 
-  // Fetch all SMM groups with their active platforms
-  const { data: groups } = await supabase
+  // Fetch all SMM groups with their active platforms (admin bypasses RLS)
+  const admin = createAdminClient();
+  const { data: groups } = await admin
     .from("smm_groups")
     .select(`
       id, name,
