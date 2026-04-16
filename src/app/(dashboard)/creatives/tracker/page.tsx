@@ -19,13 +19,17 @@ export default async function CreativesTrackerPage() {
         .select(
           `*,
           assigned_profile:profiles!assigned_to(id, first_name, last_name),
-          creator_profile:profiles!created_by(id, first_name, last_name)`
+          creator_profile:profiles!created_by(id, first_name, last_name),
+          assignees:content_item_assignees(
+            user_id,
+            profile:profiles!user_id(id, first_name, last_name, avatar_url)
+          )`
         )
         .order("created_at", { ascending: false }),
       // Profiles for assignment dropdown
       admin
         .from("profiles")
-        .select("id, first_name, last_name, department_id")
+        .select("id, first_name, last_name, department_id, avatar_url")
         .eq("status", "active")
         .is("deleted_at", null)
         .order("first_name"),
@@ -53,6 +57,7 @@ export default async function CreativesTrackerPage() {
       platforms={platforms ?? []}
       currentUserId={user.id}
       isManager={isManagerOrAbove(user)}
+      currentDeptId={user.department_id ?? null}
     />
   );
 }

@@ -66,6 +66,7 @@ type Props = {
   platforms: PlatformConnection[];
   currentUserId: string;
   isManager: boolean;
+  currentDeptId: string | null;
 };
 
 // ── Constants ─────────────────────────────────────────────────
