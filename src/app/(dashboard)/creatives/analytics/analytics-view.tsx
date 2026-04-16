@@ -138,6 +138,7 @@ export function AnalyticsView({ groups }: Props) {
   const [topPosts, setTopPosts] = useState<TopPost[]>([]);
   const [loading,  setLoading]  = useState(false);
 
+  const [selectedPost, setSelectedPost] = useState<TopPost | null>(null);
   const [syncState, setSyncState] = useState<SyncState>("idle");
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -656,7 +657,7 @@ export function AnalyticsView({ groups }: Props) {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {topPosts.map((p) => (
-                  <div key={p.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden flex flex-col">
+                  <div key={p.id} onClick={() => setSelectedPost(p)} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden flex flex-col cursor-pointer hover:ring-1 hover:ring-[var(--color-border-focus)] transition-shadow">
                     {/* Thumbnail */}
                     <div className="relative aspect-video bg-[var(--color-bg-tertiary)]">
                       {p.thumbnail_url ? (
@@ -889,6 +890,67 @@ export function AnalyticsView({ groups }: Props) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Post Detail Modal ──────────────────────────────────────── */}
+      {selectedPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSelectedPost(null)} />
+          <div className="relative bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] w-full max-w-md p-5 mx-4 max-h-[90vh] overflow-y-auto">
+            <button onClick={() => setSelectedPost(null)} className="absolute top-3 right-3 text-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">&times;</button>
+
+            {selectedPost.thumbnail_url && (
+              <img src={selectedPost.thumbnail_url} className="w-full h-48 object-cover rounded-[var(--radius-md)] mb-4" alt="" />
+            )}
+
+            <p className="text-sm text-[var(--color-text-primary)] mb-4 line-clamp-3">{selectedPost.caption_preview ?? "(no caption)"}</p>
+
+            <div className="grid grid-cols-2 gap-3">
+              {selectedPost.impressions != null && (
+                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Impressions</p>
+                  <p className="text-lg font-semibold text-[var(--color-text-primary)]">{fmtK(selectedPost.impressions)}</p>
+                </div>
+              )}
+              {selectedPost.reach != null && (
+                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Reach</p>
+                  <p className="text-lg font-semibold text-[var(--color-text-primary)]">{fmtK(selectedPost.reach)}</p>
+                </div>
+              )}
+              {selectedPost.engagements != null && (
+                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Engagements</p>
+                  <p className="text-lg font-semibold text-[var(--color-text-primary)]">{fmtK(selectedPost.engagements)}</p>
+                </div>
+              )}
+              {selectedPost.video_plays != null && selectedPost.video_plays > 0 && (
+                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                  <p className="text-xs text-[var(--color-text-tertiary)]">{activePlatform?.platform === "tiktok" ? "Views" : "Video Plays"}</p>
+                  <p className="text-lg font-semibold text-[var(--color-text-primary)]">{fmtK(selectedPost.video_plays)}</p>
+                </div>
+              )}
+              {selectedPost.avg_play_time_secs != null && selectedPost.avg_play_time_secs > 0 && (
+                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--color-bg-secondary)]">
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Avg Watch Time</p>
+                  <p className="text-lg font-semibold text-[var(--color-text-primary)]">{selectedPost.avg_play_time_secs.toFixed(1)}s</p>
+                </div>
+              )}
+            </div>
+
+            {selectedPost.published_at && (
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-4">
+                Published {format(parseISO(selectedPost.published_at), "MMM d, yyyy 'at' h:mm a")}
+              </p>
+            )}
+
+            {selectedPost.post_url && (
+              <a href={selectedPost.post_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm text-[var(--color-accent)] hover:underline">
+                View on {PLATFORM_LABELS[activePlatform?.platform ?? ""] ?? "platform"} &rarr;
+              </a>
+            )}
           </div>
         </div>
       )}
