@@ -18,7 +18,11 @@ export async function GET(req: NextRequest) {
     .select(`
       *,
       assigned_profile:profiles!assigned_to(id, first_name, last_name, avatar_url),
-      creator_profile:profiles!created_by(id, first_name, last_name, avatar_url)
+      creator_profile:profiles!created_by(id, first_name, last_name, avatar_url),
+      assignees:content_item_assignees(
+        user_id,
+        profile:profiles!user_id(id, first_name, last_name, avatar_url)
+      )
     `)
     .order("created_at", { ascending: false });
 
@@ -54,7 +58,7 @@ export async function POST(req: NextRequest) {
       planned_week_start: body.planned_week_start ?? null,
       date_submitted: body.date_submitted ?? null,
       status: body.status ?? "idea",
-      assigned_to: body.assigned_to ?? null,
+      assigned_to: body.assignee_ids?.[0] ?? body.assigned_to ?? null,
       group_label: body.group_label ?? "local",
       created_by: user.id,
     })
@@ -62,6 +66,16 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Insert junction-table assignees
+  if (Array.isArray(body.assignee_ids) && body.assignee_ids.length > 0 && item?.id) {
+    const assigneeRows = body.assignee_ids.map((uid: string) => ({
+      item_id: item.id,
+      user_id: uid,
+    }));
+    const adminForAssignees = createAdminClient();
+    await adminForAssignees.from("content_item_assignees").insert(assigneeRows);
+  }
 
   // Auto-create linked kanban card
   try {
@@ -124,6 +138,20 @@ export async function PATCH(req: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  if (Array.isArray(body.assignee_ids)) {
+    // Sync junction table
+    await admin.from("content_item_assignees").delete().eq("item_id", id);
+    if (body.assignee_ids.length > 0) {
+      await admin.from("content_item_assignees").insert(
+        body.assignee_ids.map((uid: string) => ({ item_id: id, user_id: uid }))
+      );
+    }
+    // Keep assigned_to in sync
+    updates.assigned_to = body.assignee_ids[0] ?? null;
+    delete updates.assignee_ids; // don't pass to the main update
+  }
+
   const { error } = await admin
     .from("creative_content_items")
     .update(updates)
