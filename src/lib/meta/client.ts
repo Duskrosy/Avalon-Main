@@ -430,6 +430,7 @@ export async function fetchAdDemographics(
     breakdowns: "gender",
     time_range: JSON.stringify({ since: date, until: date }),
     level: "campaign",
+    async: "false",
     access_token: token,
   });
   const res = await fetch(
