@@ -63,8 +63,13 @@ export function PulseTab() {
   const [exportStatus, setExportStatus] = useState<string>("unresolved");
   const [exportFrom, setExportFrom] = useState<string>("");
   const [exportTo, setExportTo] = useState<string>("");
+  const [goals, setGoals]           = useState<{ id: string; title: string }[]>([]);
+  const [linkingId, setLinkingId]   = useState<string | null>(null); // feedback row being linked
+  const [linkGoalId, setLinkGoalId] = useState<string>("");
+  const [linking, setLinking]       = useState(false);
+  const [linkedMap, setLinkedMap]   = useState<Record<string, string[]>>({}); // feedbackId -> goalIds[]
 
-  useEffect(() => { fetchFeedback(); }, [statusFilter, categoryFilter]);
+  useEffect(() => { fetchFeedback(); fetchGoals(); }, [statusFilter, categoryFilter]);
 
   async function fetchFeedback() {
     setLoading(true);
@@ -76,12 +81,42 @@ export function PulseTab() {
       const res = await fetch(`/api/feedback?${params}`);
       if (!res.ok) throw new Error("Failed to load feedback");
       const data = await res.json();
-      setFeedback(data.feedback ?? []);
+      const loadedFeedback = data.feedback ?? [];
+      setFeedback(loadedFeedback);
+      fetchLinked(loadedFeedback.map((f: { id: string }) => f.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load feedback");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function fetchGoals() {
+    try {
+      const res = await fetch("/api/feature-goals");
+      if (!res.ok) return;
+      const data = await res.json();
+      setGoals((data.goals ?? []).map((g: { id: string; title: string }) => ({ id: g.id, title: g.title })));
+    } catch { /* non-critical */ }
+  }
+
+  async function fetchLinked(feedbackIds: string[]) {
+    // Build a map of feedbackId -> linked goalIds by reading the embedded tickets
+    // from the goals response (avoids a separate query)
+    void feedbackIds; // used for conceptual filtering; currently loads all
+    try {
+      const res = await fetch("/api/feature-goals");
+      if (!res.ok) return;
+      const data = await res.json();
+      const map: Record<string, string[]> = {};
+      for (const goal of data.goals ?? []) {
+        for (const t of goal.feature_goal_tickets ?? []) {
+          if (!map[t.feedback_id]) map[t.feedback_id] = [];
+          map[t.feedback_id].push(goal.id);
+        }
+      }
+      setLinkedMap(map);
+    } catch { /* non-critical */ }
   }
 
   async function updateStatus(id: string, newStatus: string) {
@@ -98,6 +133,32 @@ export function PulseTab() {
       fetchFeedback();
     } finally {
       setUpdating(null);
+    }
+  }
+
+  async function handleLink(feedbackId: string) {
+    if (!linkGoalId) return;
+    setLinking(true);
+    try {
+      const res = await fetch(`/api/feature-goals/${linkGoalId}/tickets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedback_id: feedbackId }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        if (d.error === "Already linked") {
+          alert("This ticket is already linked to that goal.");
+        }
+        return;
+      }
+      setLinkingId(null);
+      setLinkGoalId("");
+      // Refresh linked map
+      const allIds = feedback.map(f => f.id);
+      await fetchLinked(allIds);
+    } finally {
+      setLinking(false);
     }
   }
 
@@ -438,6 +499,58 @@ export function PulseTab() {
                                 <option value="resolved">Resolved</option>
                                 <option value="wontfix">Won&apos;t fix</option>
                               </select>
+                            </div>
+                          </div>
+
+                          {/* Link to Feature Goal */}
+                          <div className="mt-4 pt-3 border-t border-[var(--color-border)]">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* Linked goal badges */}
+                              {(linkedMap[f.id] ?? []).map(goalId => {
+                                const g = goals.find(g => g.id === goalId);
+                                return g ? (
+                                  <span
+                                    key={goalId}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+                                  >
+                                    {g.title}
+                                  </span>
+                                ) : null;
+                              })}
+                              {linkingId === f.id ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={linkGoalId}
+                                    onChange={e => setLinkGoalId(e.target.value)}
+                                    className="rounded border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                                  >
+                                    <option value="">Select a goal…</option>
+                                    {goals.map(g => (
+                                      <option key={g.id} value={g.id}>{g.title}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => handleLink(f.id)}
+                                    disabled={linking || !linkGoalId}
+                                    className="px-2 py-1 text-xs font-medium rounded bg-[var(--color-accent)] text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+                                  >
+                                    {linking ? "Linking…" : "Link"}
+                                  </button>
+                                  <button
+                                    onClick={() => { setLinkingId(null); setLinkGoalId(""); }}
+                                    className="px-2 py-1 text-xs rounded border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => { setLinkingId(f.id); setLinkGoalId(""); }}
+                                  className="px-2 py-1 text-xs rounded border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+                                >
+                                  + Link to Feature Goal
+                                </button>
+                              )}
                             </div>
                           </div>
 

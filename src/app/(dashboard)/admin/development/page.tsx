@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { DevTasklistView } from "./dev-tasklist-view";
+import { FeatureGoalsView } from "./feature-goals-view";
 
 export default async function AdminDevelopmentPage() {
   const supabase = await createClient();
@@ -23,6 +24,9 @@ export default async function AdminDevelopmentPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <DevTasklistView kpis={(kpis ?? []) as any} departments={departments ?? []} />
+      <div className="mt-10 border-t border-[var(--color-border)] pt-8">
+        <FeatureGoalsView />
+      </div>
     </div>
   );
 }
