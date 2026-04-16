@@ -76,6 +76,8 @@ export function AnnouncementsView({
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState<string | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const [reactionPopover, setReactionPopover] = useState<{ announcementId: string; emoji: string } | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -307,20 +309,50 @@ export function AnnouncementsView({
                     <div className="flex items-center gap-1.5 mt-3 ml-12 flex-wrap" onClick={(e) => e.stopPropagation()}>
                       {reactionEntries.map(([emoji, users]) => {
                         const isMine = users.some((u) => u.user_id === currentUserId);
+                        const isPopoverOpen = reactionPopover?.announcementId === a.id && reactionPopover?.emoji === emoji;
                         return (
-                          <button
-                            key={emoji}
-                            onClick={() => handleReaction(a.id, emoji)}
-                            title={users.map((u) => u.name).join(", ")}
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
-                              isMine
-                                ? "bg-[var(--color-accent-light)] border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
-                                : "bg-[var(--color-bg-secondary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
-                            }`}
-                          >
-                            <span>{emoji}</span>
-                            <span className="font-medium">{users.length}</span>
-                          </button>
+                          <div key={emoji} className="relative">
+                            <button
+                              onClick={() => handleReaction(a.id, emoji)}
+                              onMouseDown={() => {
+                                longPressTimer.current = setTimeout(() => {
+                                  setReactionPopover({ announcementId: a.id, emoji });
+                                }, 400);
+                              }}
+                              onMouseUp={() => {
+                                if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                              }}
+                              onMouseLeave={() => {
+                                if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                                if (isPopoverOpen) setReactionPopover(null);
+                              }}
+                              onTouchStart={() => {
+                                longPressTimer.current = setTimeout(() => {
+                                  setReactionPopover({ announcementId: a.id, emoji });
+                                }, 400);
+                              }}
+                              onTouchEnd={() => {
+                                if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                              }}
+                              title={users.map((u) => u.name).join(", ")}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors ${
+                                isMine
+                                  ? "bg-[var(--color-accent-light)] border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent-light)]"
+                                  : "bg-[var(--color-bg-secondary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]"
+                              }`}
+                            >
+                              <span>{emoji}</span>
+                              <span className="font-medium">{users.length}</span>
+                            </button>
+                            {isPopoverOpen && (
+                              <div className="absolute bottom-full left-0 mb-1 p-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] z-50 min-w-[140px] max-h-[200px] overflow-y-auto">
+                                <p className="text-xs font-medium text-[var(--color-text-primary)] mb-1">{emoji}</p>
+                                {users.map((u, i) => (
+                                  <div key={i} className="text-xs text-[var(--color-text-secondary)] py-0.5">{u.name}</div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                       <div className="relative" ref={pickerOpen === a.id ? pickerRef : undefined}>
