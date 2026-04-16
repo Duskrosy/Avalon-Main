@@ -100,7 +100,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Dashboard",  slug: "creatives-dashboard", route: "/creatives/dashboard" },
       { name: "Tracker",    slug: "creatives-tracker",   route: "/creatives/tracker" },
       { name: "Analytics",  slug: "creatives-analytics", route: "/creatives/analytics" },
-      { name: "Requests",   slug: "creatives-requests",  route: "/creatives/requests" },
     ],
   },
   {
@@ -148,6 +147,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Observability", slug: "observability", route: "/admin/observability", minTier: 1 },
     ],
   },
+  {
+    // departments: [] means visible to ALL departments (no dept gate)
+    name: "Services",
+    slug: "services",
+    departments: [],
+    items: [
+      { name: "Request for Creatives", slug: "creatives-requests", route: "/creatives/requests" },
+    ],
+  },
 ];
 
 /**
@@ -181,8 +189,8 @@ export function resolveNavigation(
         if (item.departments && !ops && !item.departments.includes(departmentSlug)) return false;
         // Group-level tier gate
         if (group.minTier !== undefined && userTier > group.minTier) return false;
-        // Group-level dept gate
-        if (group.departments && !ops && !group.departments.includes(departmentSlug)) return false;
+        // Group-level dept gate (empty array means visible to all departments)
+        if (group.departments && group.departments.length > 0 && !ops && !group.departments.includes(departmentSlug)) return false;
         return true;
       });
 

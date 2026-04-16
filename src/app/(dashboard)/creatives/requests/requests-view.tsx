@@ -21,6 +21,8 @@ type Props = {
   members: Member[];         // creatives dept members for assignee dropdown
   currentUserId: string;
   canManage: boolean;        // manager+ can assign and delete
+  isCreativesDept?: boolean; // true when user belongs to creatives dept
+  isOps?: boolean;           // true when user is OPS tier
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -43,7 +45,7 @@ const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; sty
   ],
 };
 
-export function CreativesRequestsView({ members, currentUserId, canManage }: Props) {
+export function CreativesRequestsView({ members, currentUserId, canManage, isCreativesDept = false, isOps = false }: Props) {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("submitted");

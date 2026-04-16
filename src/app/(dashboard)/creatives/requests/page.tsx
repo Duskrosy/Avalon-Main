@@ -1,49 +1,51 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CreativesRequestsView } from "./requests-view";
 
 export default async function CreativesRequestsPage() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
-  const ops = isOps(currentUser);
-  if (!ops) {
-    const { data: dept } = await supabase
+  // Determine user context
+  let userDeptSlug: string | null = null;
+  if (currentUser.department_id) {
+    const { data: dept } = await admin
       .from("departments")
       .select("slug")
-      .eq("id", currentUser.department_id ?? "")
+      .eq("id", currentUser.department_id)
       .maybeSingle();
-    if (!["creatives", "ad-ops"].includes(dept?.slug ?? "")) redirect("/");
+    userDeptSlug = dept?.slug ?? null;
   }
+  const isCreativesDept = userDeptSlug === "creatives";
+  const isOpsUser = isOps(currentUser);
 
-  // Fetch creatives department members for assignee dropdown
-  const { data: creativesDept } = await supabase
+  // Fetch creatives members for assignee dropdown
+  const { data: creativesDept } = await admin
     .from("departments")
     .select("id")
     .eq("slug", "creatives")
-    .maybeSingle();
+    .single();
 
-  const members: { id: string; first_name: string; last_name: string }[] = [];
-  if (creativesDept?.id) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, first_name, last_name")
-      .eq("department_id", creativesDept.id)
-      .eq("is_active", true)
-      .order("first_name");
-    if (profiles) members.push(...profiles);
-  }
-
-  const canManage = isManagerOrAbove(currentUser);
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select("id, first_name, last_name")
+    .eq("department_id", creativesDept?.id ?? "")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .order("first_name");
 
   return (
     <div className="max-w-5xl mx-auto">
       <CreativesRequestsView
-        members={members}
+        members={profiles ?? []}
         currentUserId={currentUser.id}
-        canManage={canManage}
+        canManage={isCreativesDept || isOpsUser}
+        isCreativesDept={isCreativesDept}
+        isOps={isOpsUser}
       />
     </div>
   );
