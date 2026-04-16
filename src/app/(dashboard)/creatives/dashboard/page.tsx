@@ -1,15 +1,25 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CreativesDashboard } from "./dashboard-view";
 
 export default async function CreativesDashboardPage() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
   const ops = isOps(currentUser);
   const deptId = currentUser.department_id;
+
+  // Resolve creatives department ID once via admin (bypasses RLS)
+  const { data: creativesDept } = await admin
+    .from("departments")
+    .select("id")
+    .eq("slug", "creatives")
+    .single();
+  const creativesDeptId = creativesDept?.id ?? "";
 
   // Verify access: must be creatives dept or OPS
   if (!ops) {
@@ -58,21 +68,14 @@ export default async function CreativesDashboardPage() {
       .eq("week_start", mondayISO)
       .maybeSingle(),
 
-    // 3. Dept members
-    deptId
-      ? supabase
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .eq("department_id", deptId)
-          .eq("status", "active")
-          .is("deleted_at", null)
-          .order("first_name")
-      : supabase
-          .from("profiles")
-          .select("id, first_name, last_name")
-          .eq("status", "active")
-          .is("deleted_at", null)
-          .order("first_name"),
+    // 3. Dept members — always fetch all creatives via admin (bypasses RLS)
+    admin
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url")
+      .eq("department_id", creativesDeptId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .order("first_name"),
 
     // 4. Pending kanban cards
     supabase
@@ -149,7 +152,7 @@ export default async function CreativesDashboardPage() {
       currentUserId={currentUser.id}
       canManage={isManagerOrAbove(currentUser)}
       members={
-        (members ?? []) as { id: string; first_name: string; last_name: string }[]
+        (members ?? []) as { id: string; first_name: string; last_name: string; avatar_url: string | null }[]
       }
       campaign={campaign ?? null}
       organicCount={organicCount}
