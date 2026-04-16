@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { LiveAdsPanel } from "./live-ads-panel";
+import { CalendarWidget } from "./calendar-widget";
+import { LookAhead, computeAlerts } from "./look-ahead";
+import { RevenueCard } from "./revenue-card";
+import { AttendanceCard } from "./attendance-card";
+import { CeoPlanning } from "./ceo-planning";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -147,6 +152,9 @@ export default async function ExecutiveOverviewPage({
     { data: smmPlatforms },
     { count: tasksCompletedWeek },
     { count: tasksOverdue },
+    { data: calendarEventsRaw },
+    { data: personalBoard },
+    { count: approvedLeavesToday },
   ] = await Promise.all([
     // Sales today
     admin.from("sales_daily_volume")
@@ -225,6 +233,24 @@ export default async function ExecutiveOverviewPage({
       .select("id", { count: "exact", head: true })
       .lt("due_date", today)
       .is("completed_at", null),
+
+    // Calendar events (all, will filter/expand client-side)
+    admin.from("calendar_events").select("*"),
+
+    // Personal kanban board for CEO Planning
+    admin.from("kanban_boards")
+      .select("id")
+      .eq("scope", "personal")
+      .eq("owner_id", user.id)
+      .limit(1)
+      .maybeSingle(),
+
+    // Approved leaves today (for attendance)
+    admin.from("leaves")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "approved")
+      .lte("start_date", today)
+      .gte("end_date", today),
   ]);
 
   // ── Shopify summary (selected date range) ─────────────────────────────────
@@ -270,6 +296,47 @@ export default async function ExecutiveOverviewPage({
     })
     .sort((a, b) => b.pairs - a.pairs)
     .slice(0, 8);
+
+  // Calendar events — expand recurring for current year
+  const calEvents = (calendarEventsRaw ?? []).flatMap((evt: any) => {
+    if (!evt.is_recurring || evt.recurrence_rule !== "yearly") return [evt];
+    const origMonth = new Date(evt.event_date).getMonth();
+    const origDay = new Date(evt.event_date).getDate();
+    const year = new Date().getFullYear();
+    return [{ ...evt, event_date: `${year}-${String(origMonth+1).padStart(2,"0")}-${String(origDay).padStart(2,"0")}` }];
+  });
+  const lookAheadAlerts = computeAlerts(calEvents);
+
+  // Personal kanban columns for CEO Planning
+  let ceoPlanningColumns: any[] = [];
+  if (personalBoard?.id) {
+    const { data: cols } = await admin
+      .from("kanban_columns")
+      .select("id, name, sort_order, kanban_cards(id, title, priority, due_date)")
+      .eq("board_id", personalBoard.id)
+      .order("sort_order");
+    ceoPlanningColumns = (cols ?? []).map((c: any) => ({
+      ...c,
+      cards: (c.kanban_cards ?? []).sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    }));
+  }
+
+  // Revenue by channel
+  const messengerRevenue = (confirmedSalesMonth ?? [])
+    .filter((r: any) => r.platform === "messenger" || !r.platform)
+    .reduce((s: number, r: any) => s + Number(r.net_value), 0);
+  const todayRevenue = {
+    all: shopifyRevenue + messengerRevenue,
+    store: 0,
+    conversion: shopifyRevenue,
+    messenger: messengerRevenue,
+  };
+  const yesterdayRevenue = {
+    all: shopifyRevPrev,
+    store: 0,
+    conversion: shopifyRevPrev,
+    messenger: 0,
+  };
 
   // ── Compute KPI health per department ────────────────────────────────────
   const latestKpiMap: Record<string, number> = {};
@@ -340,81 +407,58 @@ export default async function ExecutiveOverviewPage({
         </Link>
       )}
 
-      {/* ── Quick links + Task velocity ────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link href="/executive/ad-ops"
-          className="flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-[var(--radius-lg)] px-5 py-4 hover:shadow-[var(--shadow-md)] transition-shadow group">
-          <div>
-            <p className="text-sm font-semibold text-violet-900">Ad-Ops KPI Dashboard</p>
-            <p className="text-xs text-violet-500 mt-0.5">Spend, ROAS, CPC, impressions &amp; more</p>
-          </div>
-          <span className="text-sm text-violet-400 group-hover:text-violet-600 transition-colors">View →</span>
-        </Link>
-        <div className="flex items-center justify-between bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Task Velocity</p>
-            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">Kanban board · last 7 days</p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-xl font-bold text-[var(--color-success)]">{tasksCompletedWeek ?? 0}</p>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Completed</p>
-            </div>
-            <div className="text-center">
-              <p className={`text-xl font-bold ${(tasksOverdue ?? 0) > 0 ? "text-[var(--color-error)]" : "text-[var(--color-text-tertiary)]"}`}>
-                {tasksOverdue ?? 0}
+      {/* ── KPI health across departments ────────────────────────────────── */}
+      {deptsWithKpis.length > 0 && (
+        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
+          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">KPI Health · all departments</h2>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+                {kpiTotal} KPIs tracked ·{" "}
+                <span className="text-[var(--color-success)] font-medium">{kpiGreen} on track</span>
+                {kpiAmber > 0 && <span className="text-[var(--color-warning)] font-medium"> · {kpiAmber} monitor</span>}
+                {kpiRed   > 0 && <span className="text-[var(--color-error)]   font-medium"> · {kpiRed} critical</span>}
               </p>
-              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Overdue</p>
             </div>
+            <Link href="/analytics/kpis" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">All KPIs →</Link>
+          </div>
+          <div className="px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+            {deptsWithKpis.map((dept) => {
+              const h = deptKpiHealth[dept.id];
+              return (
+                <KpiBar
+                  key={dept.id}
+                  deptName={dept.name}
+                  green={h.green}
+                  amber={h.amber}
+                  red={h.red}
+                  noData={h.noData}
+                  total={h.total}
+                  href="/analytics/kpis"
+                />
+              );
+            })}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Top metric cards ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* ── Key metrics row ──────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <RevenueCard revenue={todayRevenue} yesterdayRevenue={yesterdayRevenue} />
         <MetricCard
-          label="Pairs sold today"
-          value={totalPairsToday}
-          sub={`vs ${salesYesterday} yesterday · ${totalPairsWeek} this week`}
-          accent={pairsAccent as "green" | "amber" | "red"}
-          href="/executive/sales"
-          badge="Sales"
+          label="Shopify Revenue"
+          value={shopifyRevenue > 0 ? fmtMoney(shopifyRevenue) : "—"}
+          sub={shopifyRevChange !== null ? `${shopifyRevChange >= 0 ? "+" : ""}${shopifyRevChange.toFixed(1)}% vs prev · ${shopifyCount} orders` : `${shopifyCount} orders`}
+          accent={shopifyRevChange !== null ? (shopifyRevChange >= 5 ? "green" : shopifyRevChange < -5 ? "red" : "none") : "none"}
+          badge="Shopify"
         />
         <MetricCard
           label="Revenue this month"
           value={fmtMoney(monthRevenue)}
           sub={`${monthSalesCount} confirmed orders`}
-          href="/executive/sales"
           badge="Sales"
         />
-        <MetricCard
-          label="Social followers"
-          value={fmtK(totalFollowers)}
-          sub={`${totalReach7d > 0 ? fmtK(totalReach7d) + " reach" : "—"} · ${followerGrowth7d >= 0 ? "+" : ""}${followerGrowth7d} growth this week`}
-          accent="blue"
-          href="/executive/marketing"
-          badge="Marketing"
-        />
-        <MetricCard
-          label="Team · pending leaves"
-          value={`${headcount ?? 0} people`}
-          sub={`${pendingLeaves ?? 0} leave ${(pendingLeaves ?? 0) === 1 ? "request" : "requests"} pending`}
-          accent={(pendingLeaves ?? 0) > 3 ? "amber" : "none"}
-          href="/executive/people"
-          badge="People"
-        />
-        <MetricCard
-          label={`Shopify revenue · ${sp.preset === "7d" ? "7 days" : sp.preset === "30d" ? "30 days" : sp.preset === "yesterday" ? "Yesterday" : "Today"}`}
-          value={shopifyRevenue > 0 ? fmtMoney(shopifyRevenue) : "—"}
-          sub={
-            shopifyRevChange !== null
-              ? `${shopifyRevChange >= 0 ? "+" : ""}${shopifyRevChange.toFixed(1)}% vs prev · ${shopifyCount} orders`
-              : `${shopifyCount} orders`
-          }
-          accent={shopifyRevChange !== null ? (shopifyRevChange >= 5 ? "green" : shopifyRevChange < -5 ? "red" : "none") : "none"}
-          href="/sales-ops/shopify"
-          badge="Sales"
-        />
+        <AttendanceCard headcount={headcount ?? 0} onLeaveToday={approvedLeavesToday ?? 0} />
       </div>
 
       {/* ── Two-column: Sales today + Ad ops ─────────────────────────────── */}
@@ -473,40 +517,40 @@ export default async function ExecutiveOverviewPage({
         <LiveAdsPanel />
       </div>
 
-      {/* ── KPI health across departments ────────────────────────────────── */}
-      {deptsWithKpis.length > 0 && (
-        <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
-          <div className="px-5 py-4 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-[var(--color-text-primary)]">KPI Health · all departments</h2>
-              <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
-                {kpiTotal} KPIs tracked ·{" "}
-                <span className="text-[var(--color-success)] font-medium">{kpiGreen} on track</span>
-                {kpiAmber > 0 && <span className="text-[var(--color-warning)] font-medium"> · {kpiAmber} monitor</span>}
-                {kpiRed   > 0 && <span className="text-[var(--color-error)]   font-medium"> · {kpiRed} critical</span>}
-              </p>
-            </div>
-            <Link href="/analytics/kpis" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">All KPIs →</Link>
+      {/* ── Calendar + Look-ahead ────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <CalendarWidget events={calEvents} month={new Date()} />
+        </div>
+        <div className="lg:col-span-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <LookAhead alerts={lookAheadAlerts} />
+        </div>
+      </div>
+
+      {/* ── Task Velocity + CEO Planning ─────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-2 flex items-center justify-between bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Task Velocity</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">Kanban board · last 7 days</p>
           </div>
-          <div className="px-2 py-2 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
-            {deptsWithKpis.map((dept) => {
-              const h = deptKpiHealth[dept.id];
-              return (
-                <KpiBar
-                  key={dept.id}
-                  deptName={dept.name}
-                  green={h.green}
-                  amber={h.amber}
-                  red={h.red}
-                  noData={h.noData}
-                  total={h.total}
-                  href="/analytics/kpis"
-                />
-              );
-            })}
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <p className="text-xl font-bold text-[var(--color-success)]">{tasksCompletedWeek ?? 0}</p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Completed</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-xl font-bold ${(tasksOverdue ?? 0) > 0 ? "text-[var(--color-error)]" : "text-[var(--color-text-tertiary)]"}`}>
+                {tasksOverdue ?? 0}
+              </p>
+              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Overdue</p>
+            </div>
           </div>
         </div>
-      )}
+        <div className="lg:col-span-3 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
+          <CeoPlanning columns={ceoPlanningColumns} />
+        </div>
+      </div>
 
       {/* ── Announcements ────────────────────────────────────────────────── */}
       {(announcements ?? []).length > 0 && (
