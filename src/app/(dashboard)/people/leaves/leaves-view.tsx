@@ -6,6 +6,9 @@ import { FileLeaveTab }    from "./file-leave-tab";
 import { LeaveHistoryTab } from "./leave-history-tab";
 import { TeamLeavesTab }   from "./team-leaves-tab";
 import { ApprovalsTab }    from "./approvals-tab";
+import { RequestForm }    from "./request-form";
+import { MyRequestsTab }  from "./my-requests-tab";
+import { OpsQueueTab }    from "./ops-queue-tab";
 
 type Dept = { id: string; name: string; slug: string };
 
@@ -16,18 +19,21 @@ type Props = {
   departments: Dept[];
 };
 
-type TabId = "file" | "history" | "team" | "approvals";
+type TabId = "my-requests" | "file" | "history" | "leave-queue" | "team" | "approvals";
 
 export function LeavesView({ currentUserId, isOps, isManager, departments }: Props) {
-  const [activeTab, setActiveTab] = useState<TabId>("file");
+  const [activeTab, setActiveTab] = useState<TabId>("my-requests");
   // Used to trigger a history refresh after a new submission
   const [historyKey, setHistoryKey] = useState(0);
+  const [requestFormOpen, setRequestFormOpen] = useState(false);
 
   const canManage = isManager || isOps;
 
   const tabs: { id: TabId; label: string; show: boolean; managerSide?: boolean }[] = [
+    { id: "my-requests", label: "My Requests",  show: true },
     { id: "file",      label: "File a Leave",   show: true },
     { id: "history",   label: "Leave History",  show: true },
+    { id: "leave-queue", label: "Leave Queue",  show: canManage, managerSide: true },
     { id: "team",      label: "Team Leaves",    show: canManage, managerSide: true },
     { id: "approvals", label: "Approvals",      show: canManage, managerSide: true },
   ];
@@ -83,6 +89,10 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
       </div>
 
       {/* Tab content */}
+      {activeTab === "my-requests" && (
+        <MyRequestsTab onNewRequest={() => setRequestFormOpen(true)} />
+      )}
+
       {activeTab === "file" && (
         <FileLeaveTab
           onSubmitted={() => {
@@ -101,6 +111,10 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
         />
       )}
 
+      {activeTab === "leave-queue" && canManage && (
+        <OpsQueueTab />
+      )}
+
       {activeTab === "team" && canManage && (
         <TeamLeavesTab
           isOps={isOps}
@@ -114,6 +128,15 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
           isManager={isManager}
         />
       )}
+
+      <RequestForm
+        open={requestFormOpen}
+        onClose={() => setRequestFormOpen(false)}
+        onSuccess={() => {
+          setRequestFormOpen(false);
+          setActiveTab("my-requests");
+        }}
+      />
     </div>
   );
 }
