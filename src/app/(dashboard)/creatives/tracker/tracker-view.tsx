@@ -4,13 +4,20 @@ import { useState, useMemo, useCallback } from "react";
 import { format, parseISO, startOfWeek, endOfWeek, subWeeks, isWithinInterval } from "date-fns";
 import { useToast, Toast } from "@/components/ui/toast";
 import { CREATIVE_GROUPS } from "@/lib/creatives/constants";
+import { PeoplePicker } from "@/components/ui/people-picker";
 
 // ── Types ─────────────────────────────────────────────────────
 type Profile = {
   id: string;
   first_name: string;
   last_name: string;
+  avatar_url?: string | null;
   department_id?: string | null;
+};
+
+type Assignee = {
+  user_id: string;
+  profile: { id: string; first_name: string; last_name: string; avatar_url: string | null } | null;
 };
 
 type ContentItem = {
@@ -37,6 +44,7 @@ type ContentItem = {
   created_by: string;
   created_at: string;
   updated_at: string;
+  assignees?: Assignee[];
   assigned_profile: { id: string; first_name: string; last_name: string } | null;
   creator_profile: { id: string; first_name: string; last_name: string } | null;
 };
@@ -170,6 +178,7 @@ export default function TrackerView({
   platforms,
   currentUserId,
   isManager,
+  currentDeptId,
 }: Props) {
   const { toast, setToast } = useToast();
   const [items, setItems] = useState<ContentItem[]>(initialItems);
@@ -561,8 +570,28 @@ export default function TrackerView({
                             <td className="px-4 py-3 text-[var(--color-text-secondary)] max-w-[140px] truncate">
                               {item.campaign_label ?? "-"}
                             </td>
-                            <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                              {profileName(item.assigned_profile)}
+                            <td className="px-4 py-3">
+                              <div className="flex -space-x-1.5">
+                                {(item.assignees ?? []).slice(0, 3).map((a) => (
+                                  <span key={a.user_id} title={a.profile ? `${a.profile.first_name} ${a.profile.last_name}` : ""} className="w-6 h-6 rounded-full border-2 border-[var(--color-bg-primary)] overflow-hidden inline-flex items-center justify-center flex-shrink-0">
+                                    {a.profile?.avatar_url ? (
+                                      <img src={a.profile.avatar_url} className="w-full h-full object-cover" alt="" />
+                                    ) : (
+                                      <span className="w-full h-full bg-[var(--color-accent)] text-white flex items-center justify-center text-[9px] font-bold">
+                                        {a.profile?.first_name?.[0]}{a.profile?.last_name?.[0]}
+                                      </span>
+                                    )}
+                                  </span>
+                                ))}
+                                {(item.assignees?.length ?? 0) > 3 && (
+                                  <span className="w-6 h-6 rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] text-[9px] font-medium flex items-center justify-center border-2 border-[var(--color-bg-primary)]">
+                                    +{(item.assignees?.length ?? 0) - 3}
+                                  </span>
+                                )}
+                                {(!item.assignees || item.assignees.length === 0) && (
+                                  <span className="text-xs text-[var(--color-text-tertiary)]">—</span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
                               {fmtDate(item.planned_week_start)}
@@ -634,7 +663,27 @@ export default function TrackerView({
                           )}
                         </div>
                         <div className="flex items-center justify-between text-xs text-[var(--color-text-tertiary)]">
-                          <span>{profileName(item.assigned_profile)}</span>
+                          <div className="flex -space-x-1.5">
+                            {(item.assignees ?? []).slice(0, 3).map((a) => (
+                              <span key={a.user_id} title={a.profile ? `${a.profile.first_name} ${a.profile.last_name}` : ""} className="w-5 h-5 rounded-full border-2 border-[var(--color-bg-primary)] overflow-hidden inline-flex items-center justify-center flex-shrink-0">
+                                {a.profile?.avatar_url ? (
+                                  <img src={a.profile.avatar_url} className="w-full h-full object-cover" alt="" />
+                                ) : (
+                                  <span className="w-full h-full bg-[var(--color-accent)] text-white flex items-center justify-center text-[8px] font-bold">
+                                    {a.profile?.first_name?.[0]}{a.profile?.last_name?.[0]}
+                                  </span>
+                                )}
+                              </span>
+                            ))}
+                            {(item.assignees?.length ?? 0) > 3 && (
+                              <span className="w-5 h-5 rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] text-[8px] font-medium flex items-center justify-center border-2 border-[var(--color-bg-primary)]">
+                                +{(item.assignees?.length ?? 0) - 3}
+                              </span>
+                            )}
+                            {(!item.assignees || item.assignees.length === 0) && (
+                              <span>—</span>
+                            )}
+                          </div>
                           <span>{fmtDate(item.planned_week_start)}</span>
                         </div>
                         {tab === "published" && (
@@ -678,6 +727,7 @@ export default function TrackerView({
       {showCreate && (
         <ItemModal
           profiles={profiles}
+          currentDeptId={currentDeptId}
           onSave={(data) => handleSave(data, false)}
           onClose={() => setShowCreate(false)}
           saving={saving}
@@ -688,6 +738,7 @@ export default function TrackerView({
       {editItem && (
         <ItemModal
           profiles={profiles}
+          currentDeptId={currentDeptId}
           initial={editItem}
           onSave={(data) => handleSave({ ...data, id: editItem.id }, true)}
           onClose={() => setEditItem(null)}
@@ -841,12 +892,14 @@ function StatusDropdown({
 // ── Item Modal (Create / Edit) ────────────────────────────────
 function ItemModal({
   profiles,
+  currentDeptId,
   initial,
   onSave,
   onClose,
   saving,
 }: {
   profiles: Profile[];
+  currentDeptId: string | null;
   initial?: ContentItem;
   onSave: (data: Record<string, unknown>) => void;
   onClose: () => void;
@@ -863,7 +916,9 @@ function ItemModal({
   const [transferLink, setTransferLink] = useState(initial?.transfer_link ?? "");
   const [plannedWeek, setPlannedWeek] = useState(initial?.planned_week_start ?? "");
   const [dateSubmitted, setDateSubmitted] = useState(initial?.date_submitted ?? "");
-  const [assignedTo, setAssignedTo] = useState(initial?.assigned_to ?? "");
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    initial?.assignees?.map((a) => a.user_id) ?? (initial?.assigned_to ? [initial.assigned_to] : [])
+  );
   const [status, setStatus] = useState(initial?.status ?? "idea");
   const [groupLabel, setGroupLabel] = useState(initial?.group_label ?? "local");
 
@@ -884,7 +939,7 @@ function ItemModal({
       transfer_link: transferLink || null,
       planned_week_start: plannedWeek || null,
       date_submitted: dateSubmitted || null,
-      assigned_to: assignedTo || null,
+      assignee_ids: assigneeIds,
       status,
       group_label: groupLabel,
     });
@@ -1035,20 +1090,17 @@ function ItemModal({
             />
           </Field>
 
-          <Field label="Assigned To">
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            >
-              <option value="">Unassigned</option>
-              {profiles.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name}
-                </option>
-              ))}
-            </select>
-          </Field>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-[var(--color-text-primary)]">Assignees</label>
+          <PeoplePicker
+            value={assigneeIds}
+            onChange={setAssigneeIds}
+            allUsers={profiles}
+            currentDeptId={currentDeptId}
+            placeholder="Search and assign people..."
+          />
         </div>
 
         <Field label="Creative Angle / Hook">
