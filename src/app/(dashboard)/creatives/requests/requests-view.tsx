@@ -11,7 +11,7 @@ type Request = {
   target_date: string | null;
   notes: string | null;
   created_at: string;
-  requester: { first_name: string; last_name: string } | null;
+  requester: { id: string; first_name: string; last_name: string } | null;
   assignee: { id: string; first_name: string; last_name: string } | null;
 };
 
@@ -46,13 +46,22 @@ const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; sty
 };
 
 export function CreativesRequestsView({ members, currentUserId, canManage, isCreativesDept = false, isOps = false }: Props) {
+  const isFulfillmentView = isCreativesDept || isOps;
+
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("submitted");
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [assigning, setAssigning] = useState<string | null>(null); // request id being reassigned
+  const [assigning, setAssigning] = useState<string | null>(null);
 
-  // Load requests assigned to the creatives team member IDs
+  // Submit form state (non-creatives only)
+  const [formTitle, setFormTitle] = useState("");
+  const [formBrief, setFormBrief] = useState("");
+  const [formTargetDate, setFormTargetDate] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ limit: "200" });
@@ -60,16 +69,21 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     const res = await fetch(`/api/ad-ops/requests?${params}`);
     if (res.ok) {
       const all: Request[] = await res.json();
-      // Client-side filter: only show requests assigned to a creatives member
-      const memberIds = new Set(members.map((m) => m.id));
-      // OPS / manager: show all; otherwise: show own
-      const filtered = canManage
-        ? all.filter((r) => !r.assignee || memberIds.has(r.assignee.id))
-        : all.filter((r) => r.assignee?.id === currentUserId);
-      setRequests(filtered);
+
+      if (isFulfillmentView) {
+        // Creatives/OPS: show requests assigned to a creatives member
+        const memberIds = new Set(members.map((m) => m.id));
+        const filtered = canManage
+          ? all.filter((r) => !r.assignee || memberIds.has(r.assignee.id))
+          : all.filter((r) => r.assignee?.id === currentUserId);
+        setRequests(filtered);
+      } else {
+        // Non-creatives: show only their own requests
+        setRequests(all.filter((r) => r.requester?.id === currentUserId));
+      }
     }
     setLoading(false);
-  }, [statusFilter, members, canManage, currentUserId]);
+  }, [statusFilter, members, canManage, currentUserId, isFulfillmentView]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
 
@@ -92,6 +106,37 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     await fetchRequests();
   }
 
+  async function handleSubmitRequest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!formTitle.trim()) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
+    const res = await fetch("/api/ad-ops/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: formTitle.trim(),
+        brief: formBrief.trim() || null,
+        target_date: formTargetDate || null,
+      }),
+    });
+
+    if (res.ok) {
+      setFormTitle("");
+      setFormBrief("");
+      setFormTargetDate("");
+      setSubmitSuccess(true);
+      setTimeout(() => setSubmitSuccess(false), 3000);
+      await fetchRequests();
+    } else {
+      const json = await res.json().catch(() => ({}));
+      setSubmitError(json.error ?? "Failed to submit request.");
+    }
+    setSubmitting(false);
+  }
+
   const STATUS_FILTERS = [
     { value: "submitted",   label: "Submitted" },
     { value: "in_progress", label: "In Progress" },
@@ -102,12 +147,95 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
 
   return (
     <div>
+      {/* Page heading */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Requests</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-          Fulfillment queue — creative requests assigned to your team
-        </p>
+        {isFulfillmentView ? (
+          <>
+            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Submitted Creative Requests</h1>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+              Fulfillment queue — creative requests assigned to your team
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Request for Creatives</h1>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+              Submit a request to the creatives team and track its progress
+            </p>
+          </>
+        )}
       </div>
+
+      {/* Submit form — non-creatives only */}
+      {!isFulfillmentView && (
+        <form
+          onSubmit={handleSubmitRequest}
+          className="mb-8 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-5 space-y-4"
+        >
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">New Request</p>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+              Title <span className="text-[var(--color-error)]">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
+              placeholder="e.g. Banner ads for Q3 campaign"
+              className="w-full text-sm px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+              Brief / Description
+            </label>
+            <textarea
+              rows={3}
+              value={formBrief}
+              onChange={(e) => setFormBrief(e.target.value)}
+              placeholder="Describe what you need, formats, dimensions, any references…"
+              className="w-full text-sm px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+              Target Date
+            </label>
+            <input
+              type="date"
+              value={formTargetDate}
+              onChange={(e) => setFormTargetDate(e.target.value)}
+              className="text-sm px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+
+          {submitError && (
+            <p className="text-xs text-[var(--color-error)]">{submitError}</p>
+          )}
+          {submitSuccess && (
+            <p className="text-xs text-[var(--color-success)]">Request submitted successfully.</p>
+          )}
+
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              disabled={submitting || !formTitle.trim()}
+              className="text-sm px-4 py-2 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              {submitting ? "Submitting…" : "Submit Request"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Section label for non-creatives list */}
+      {!isFulfillmentView && (
+        <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Your Requests</p>
+      )}
 
       {/* Status filter tabs */}
       <div className="flex items-center gap-1 mb-5 flex-wrap">
@@ -138,7 +266,9 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
           <p className="text-sm text-[var(--color-text-tertiary)]">
             {statusFilter
               ? `No ${statusFilter.replace("_", " ")} requests.`
-              : "No requests assigned to the Creatives team."}
+              : isFulfillmentView
+                ? "No requests assigned to the Creatives team."
+                : "You haven't submitted any requests yet."}
           </p>
         </div>
       ) : (
@@ -156,11 +286,15 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[var(--color-text-primary)]">{r.title}</p>
                   <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
-                    From: {r.requester ? `${r.requester.first_name} ${r.requester.last_name}` : "Unknown"}
-                    {r.assignee
-                      ? ` · Assigned to ${r.assignee.first_name} ${r.assignee.last_name}`
-                      : " · Unassigned"}
-                    {r.target_date ? ` · due ${format(parseISO(r.target_date), "d MMM")}` : ""}
+                    {isFulfillmentView && (
+                      <>
+                        From: {r.requester ? `${r.requester.first_name} ${r.requester.last_name}` : "Unknown"}
+                        {r.assignee
+                          ? ` · Assigned to ${r.assignee.first_name} ${r.assignee.last_name}`
+                          : " · Unassigned"}
+                      </>
+                    )}
+                    {r.target_date ? `${isFulfillmentView ? " · " : ""}due ${format(parseISO(r.target_date), "d MMM")}` : ""}
                   </p>
                 </div>
                 <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
@@ -184,45 +318,47 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                     </div>
                   )}
 
-                  <div className="flex items-center gap-2 flex-wrap pt-1">
-                    {/* Fulfillment actions */}
-                    {(FULFILLMENT_TRANSITIONS[r.status] ?? []).map((t) => (
-                      <button
-                        key={t.next}
-                        onClick={() => updateStatus(r.id, t.next)}
-                        className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${t.style}`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-
-                    {/* Assign / reassign — managers only */}
-                    {canManage && (
-                      assigning === r.id ? (
-                        <select
-                          autoFocus
-                          defaultValue={r.assignee?.id ?? ""}
-                          onChange={(e) => reassign(r.id, e.target.value)}
-                          onBlur={() => setAssigning(null)}
-                          className="text-xs border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                        >
-                          <option value="">Unassigned</option>
-                          {members.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              {m.first_name} {m.last_name}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
+                  {/* Fulfillment actions — creatives/OPS only */}
+                  {isFulfillmentView && (
+                    <div className="flex items-center gap-2 flex-wrap pt-1">
+                      {(FULFILLMENT_TRANSITIONS[r.status] ?? []).map((t) => (
                         <button
-                          onClick={(e) => { e.stopPropagation(); setAssigning(r.id); }}
-                          className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
+                          key={t.next}
+                          onClick={() => updateStatus(r.id, t.next)}
+                          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${t.style}`}
                         >
-                          {r.assignee ? "Reassign" : "Assign"}
+                          {t.label}
                         </button>
-                      )
-                    )}
-                  </div>
+                      ))}
+
+                      {/* Assign / reassign — managers only */}
+                      {canManage && (
+                        assigning === r.id ? (
+                          <select
+                            autoFocus
+                            defaultValue={r.assignee?.id ?? ""}
+                            onChange={(e) => reassign(r.id, e.target.value)}
+                            onBlur={() => setAssigning(null)}
+                            className="text-xs border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                          >
+                            <option value="">Unassigned</option>
+                            {members.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.first_name} {m.last_name}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setAssigning(r.id); }}
+                            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
+                          >
+                            {r.assignee ? "Reassign" : "Assign"}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

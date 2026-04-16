@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status");
   const limit = parseInt(searchParams.get("limit") ?? "100");
 
-  let query = supabase
+  const admin = createAdminClient();
+  let query = admin
     .from("ad_requests")
     .select(`
       *,
@@ -44,14 +45,15 @@ export async function POST(req: NextRequest) {
   const { data: body, error: validationError } = validateBody(adRequestPostSchema, raw);
   if (validationError) return validationError;
 
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("ad_requests")
     .insert({
       title: body.title,
       brief: body.brief ?? null,
       requester_id: currentUser.id,
       assignee_id: body.assignee_id ?? null,
-      status: "draft",
+      status: "submitted",
       target_date: body.target_date ?? null,
       notes: body.notes ?? null,
     })
