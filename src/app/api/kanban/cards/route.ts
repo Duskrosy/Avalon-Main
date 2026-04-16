@@ -73,6 +73,66 @@ export async function PATCH(req: NextRequest) {
   const { error } = await supabase.from("kanban_cards").update(patch).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // Sync completion + linked records when card moves columns
+  if (updates.column_id !== undefined) {
+    const { data: destCol } = await supabase
+      .from("kanban_columns")
+      .select("name, is_default")
+      .eq("id", updates.column_id)
+      .single();
+
+    const colName = destCol?.name?.toLowerCase().trim() ?? "";
+    const isGenericDone = destCol?.is_default && colName === "done";
+
+    const CREATIVES_STATUSES = ["idea", "in_production", "submitted", "approved", "scheduled", "published", "archived"];
+    const isCreativesColumn = destCol?.is_default && CREATIVES_STATUSES.includes(colName.replace(/ /g, "_"));
+
+    // Set completed_at for terminal columns
+    const isCompletionColumn = isGenericDone || colName === "published" || colName === "archived";
+    const completedAt = isCompletionColumn ? new Date().toISOString() : null;
+    await supabase
+      .from("kanban_cards")
+      .update({ completed_at: completedAt })
+      .eq("id", id);
+
+    // Sync creative_content_items
+    if (isCreativesColumn) {
+      const contentStatus = colName.replace(/ /g, "_");
+      await supabase
+        .from("creative_content_items")
+        .update({ status: contentStatus })
+        .eq("linked_card_id", id);
+    } else if (isGenericDone) {
+      await supabase
+        .from("creative_content_items")
+        .update({ status: "approved" })
+        .eq("linked_card_id", id);
+    } else {
+      await supabase
+        .from("creative_content_items")
+        .update({ status: "in_production" })
+        .eq("linked_card_id", id);
+    }
+
+    // Sync ad_requests
+    if (isGenericDone || colName === "approved") {
+      await supabase
+        .from("ad_requests")
+        .update({ status: "approved" })
+        .eq("linked_card_id", id);
+    } else if (colName === "review" || colName === "submitted") {
+      await supabase
+        .from("ad_requests")
+        .update({ status: "review" })
+        .eq("linked_card_id", id);
+    } else {
+      await supabase
+        .from("ad_requests")
+        .update({ status: "in_progress" })
+        .eq("linked_card_id", id);
+    }
+  }
+
   // Notify new assignee
   if (updates.assigned_to && updates.assigned_to !== currentUser.id) {
     const admin = createAdminClient();
