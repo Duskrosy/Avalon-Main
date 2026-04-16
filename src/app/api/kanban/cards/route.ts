@@ -5,6 +5,8 @@ import { getCurrentUser } from "@/lib/permissions";
 import { validateBody } from "@/lib/api/validate";
 import { kanbanCardPostSchema, kanbanCardPatchSchema } from "@/lib/api/schemas";
 
+const CREATIVES_STATUSES = ["idea", "in_production", "submitted", "approved", "scheduled", "published", "archived"];
+
 // POST /api/kanban/cards — create card
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -81,11 +83,14 @@ export async function PATCH(req: NextRequest) {
       .eq("id", updates.column_id)
       .single();
 
-    const colName = destCol?.name?.toLowerCase().trim() ?? "";
-    const isGenericDone = destCol?.is_default && colName === "done";
+    if (!destCol) {
+      return NextResponse.json({ error: "Column not found" }, { status: 404 });
+    }
 
-    const CREATIVES_STATUSES = ["idea", "in_production", "submitted", "approved", "scheduled", "published", "archived"];
-    const isCreativesColumn = destCol?.is_default && CREATIVES_STATUSES.includes(colName.replace(/ /g, "_"));
+    const colName = destCol.name.toLowerCase().trim();
+    const isGenericDone = destCol.is_default && colName === "done";
+
+    const isCreativesColumn = destCol.is_default && CREATIVES_STATUSES.includes(colName.replace(/ /g, "_"));
 
     // Set completed_at for terminal columns
     const isCompletionColumn = isGenericDone || colName === "published" || colName === "archived";
