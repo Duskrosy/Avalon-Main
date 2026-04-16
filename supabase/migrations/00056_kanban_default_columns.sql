@@ -90,6 +90,6 @@ creatives_missing AS (
       AND e.lname = lower(cd.name)
   )
 )
-INSERT INTO kanban_columns (board_id, name, sort_order, true)
+INSERT INTO kanban_columns (board_id, name, sort_order, is_default)
 SELECT board_id, name, sort_order, true
 FROM creatives_missing;
