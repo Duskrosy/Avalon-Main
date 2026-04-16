@@ -83,7 +83,12 @@ CREATE POLICY lr_update_ops ON public.leave_requests
 
 DROP POLICY IF EXISTS lr_update_own ON public.leave_requests;
 CREATE POLICY lr_update_own ON public.leave_requests
-  FOR UPDATE USING (requester_id = auth.uid());
+  FOR UPDATE
+  USING (requester_id = auth.uid() AND status = 'pending')
+  WITH CHECK (requester_id = auth.uid() AND status = 'pending');
+
+-- No DELETE policy intentionally omitted — leave_requests are immutable for audit trail.
+-- OPS can reject/void but not delete records.
 
 
 -- ── 3. leave_attachments ─────────────────────────────────────
@@ -93,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.leave_attachments (
   leave_request_id  uuid        NOT NULL REFERENCES public.leave_requests(id) ON DELETE CASCADE,
   file_url          text        NOT NULL,
   file_name         text        NOT NULL,
-  uploaded_by       uuid        NOT NULL REFERENCES public.profiles(id) ON DELETE SET NULL,
+  uploaded_by       uuid        NOT NULL REFERENCES public.profiles(id) ON DELETE RESTRICT,
   created_at        timestamptz NOT NULL DEFAULT now()
 );
 
@@ -125,3 +130,8 @@ CREATE POLICY la_insert ON public.leave_attachments
       )
     )
   );
+
+-- OPS can hard-delete attachments if needed
+DROP POLICY IF EXISTS la_delete ON public.leave_attachments;
+CREATE POLICY la_delete ON public.leave_attachments
+  FOR DELETE USING (public.is_ops());
