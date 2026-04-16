@@ -35,6 +35,18 @@ function extractItems(xml: string): RssItem[] {
   });
 }
 
+function extractAtomEntries(xml: string): RssItem[] {
+  const entries = xml.match(/<entry[\s\S]*?<\/entry>/gi) ?? [];
+  return entries.map((entry) => ({
+    title: extractBetween(entry, "title"),
+    link: entry.match(/<link[^>]+href="([^"]+)"/)?.[1] ?? "",
+    description: (extractBetween(entry, "content") || extractBetween(entry, "summary"))
+      .replace(/<[^>]+>/g, "").slice(0, 500),
+    pubDate: extractBetween(entry, "updated") || extractBetween(entry, "published"),
+    imageUrl: entry.match(/href="([^"]+\.(?:jpg|jpeg|png|gif|webp))"/i)?.[1] ?? null,
+  }));
+}
+
 // ─── Auth guard ────────────────────────────────────────────────────────────────
 
 async function isAuthorized(req: NextRequest): Promise<boolean> {
@@ -96,9 +108,15 @@ export async function POST(req: NextRequest) {
 
       let xml: string;
       try {
+        const isReddit = source.url.includes("reddit.com");
+        const headers: Record<string, string> = {
+          "User-Agent": isReddit
+            ? "Mozilla/5.0 (compatible; Avalon/1.0; +https://finncotton.com)"
+            : "AvalonRSSBot/1.0",
+        };
         const res = await fetch(source.url, {
           signal: controller.signal,
-          headers: { "User-Agent": "AvalonRSSBot/1.0" },
+          headers,
         });
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -108,7 +126,8 @@ export async function POST(req: NextRequest) {
         throw fetchErr;
       }
 
-      const items = extractItems(xml);
+      let items = extractItems(xml);
+      if (items.length === 0) items = extractAtomEntries(xml);
       if (items.length === 0) continue;
 
       totalFetched += items.length;

@@ -125,6 +125,10 @@ export function NewsView({ canManage }: Props) {
     setSavingSource(false);
     setShowAddSource(false);
     setAddSourceForm(EMPTY_SOURCE_FORM);
+    // Auto-fetch items from all sources (including the new one)
+    await fetch("/api/smm/news/fetch", { method: "POST" });
+    setPage(1);
+    fetchItems(category, 1, false);
   }
 
   return (
@@ -246,6 +250,9 @@ export function NewsView({ canManage }: Props) {
                   className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
                   required
                 />
+                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+                  Be sure to add the RSS feed link (e.g. site.com/feed or site.com/rss), not just the site URL
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Category</label>
