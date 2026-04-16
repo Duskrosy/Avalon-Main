@@ -76,11 +76,11 @@ export function KanbanMultiBoard({
   });
   const { toast, setToast } = useToast();
 
-  // Track which sections are expanded
+  // Track which sections are expanded — team open by default, others collapsed
   const [expanded, setExpanded] = useState<Record<BoardScope, boolean>>({
     team: true,
-    personal: true,
-    global: true,
+    personal: false,
+    global: false,
   });
 
   const handleBoardCreated = (scope: BoardScope, board: BoardData) => {

@@ -70,6 +70,7 @@ export async function POST(req: NextRequest) {
       .from("kanban_boards")
       .select("id, kanban_columns(id, name, sort_order)")
       .eq("department_id", user.department_id)
+      .eq("scope", "team")
       .order("created_at", { ascending: true })
       .limit(1)
       .single();

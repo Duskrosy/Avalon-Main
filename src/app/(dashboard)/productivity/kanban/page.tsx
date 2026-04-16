@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { KanbanMultiBoard } from "./kanban-multi-board";
 
 export default async function KanbanPage() {
   const supabase = await createClient();
+  const admin = createAdminClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
@@ -22,19 +24,19 @@ export default async function KanbanPage() {
 
   const allUsers = allUsersData ?? [];
 
-  // Fetch all boards the user can see:
+  // Fetch all boards (using admin to bypass RLS so team/global boards are visible)
   // 1. Team board (scope='team', their department)
   // 2. Personal board (scope='personal', they own)
   // 3. Global board (scope='global')
-  const { data: boards } = await supabase
+  const { data: boards } = await admin
     .from("kanban_boards")
     .select("id, name, scope, owner_id, department_id")
     .or(`scope.eq.global,and(scope.eq.team,department_id.eq.${departmentId ?? ""}),and(scope.eq.personal,owner_id.eq.${currentUser.id})`);
 
-  // Helper to fetch board data
+  // Helper to fetch board data (using admin to bypass RLS so all cards are visible)
   async function fetchBoardData(boardId: string) {
     const [columnsRes, fieldsRes] = await Promise.all([
-      supabase
+      admin
         .from("kanban_columns")
         .select(`
           id, name, sort_order, color,
@@ -52,7 +54,7 @@ export default async function KanbanPage() {
         `)
         .eq("board_id", boardId)
         .order("sort_order"),
-      supabase
+      admin
         .from("kanban_field_definitions")
         .select("*")
         .eq("board_id", boardId)
