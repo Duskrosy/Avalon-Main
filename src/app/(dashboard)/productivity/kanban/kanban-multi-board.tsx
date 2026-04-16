@@ -17,6 +17,7 @@ type BoardData = {
     name: string;
     sort_order: number;
     color: string | null;
+    is_default: boolean;
     kanban_cards: Array<unknown>;
   }>;
   fieldDefinitions: Array<unknown>;
