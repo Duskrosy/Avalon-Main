@@ -136,7 +136,7 @@ export function MobileNav({ navigation, deptSlug, unreadCount }: MobileNavProps)
   const pathname = usePathname();
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const deptRoute = deptSlug ? `/${deptSlug}` : "/";
+  const deptRoute = deptSlug ? `/dashboard/${deptSlug}` : "/";
 
   const tabs = [
     { label: "Home", icon: LayoutDashboard, href: "/", match: (p: string) => p === "/" || p.startsWith("/executive") },
