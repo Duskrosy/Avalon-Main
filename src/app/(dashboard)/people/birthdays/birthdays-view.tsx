@@ -144,7 +144,10 @@ function BirthdayCardModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [deletingAll, setDeletingAll] = useState(false);
+  const [reactionPopover, setReactionPopover] = useState<{ messageId: string; emoji: string } | null>(null);
+  const [userMap, setUserMap] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isCelebrant = person.id === currentUserId;
 
   const loadCard = useCallback(async () => {
@@ -158,6 +161,40 @@ function BirthdayCardModal({
   }, [person.id]);
 
   useEffect(() => { loadCard(); }, [loadCard]);
+
+  // Build a userId→displayName map from message authors; fetch any missing reactor profiles
+  useEffect(() => {
+    if (messages.length === 0) return;
+    const map: Record<string, string> = {};
+    for (const m of messages) {
+      if (m.author) map[m.author.id] = `${m.author.first_name} ${m.author.last_name}`;
+    }
+    // Collect all reactor IDs not already in the map
+    const missing = new Set<string>();
+    for (const m of messages) {
+      const reactions: Record<string, string[]> = m.reactions ?? {};
+      for (const users of Object.values(reactions)) {
+        for (const uid of users) {
+          if (!map[uid]) missing.add(uid);
+        }
+      }
+    }
+    if (missing.size > 0) {
+      const supabase = createClient();
+      supabase
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", Array.from(missing))
+        .then(({ data }) => {
+          if (data) {
+            for (const p of data) map[p.id] = `${p.first_name} ${p.last_name}`;
+          }
+          setUserMap({ ...map });
+        });
+    } else {
+      setUserMap({ ...map });
+    }
+  }, [messages]);
 
   const myMessage   = messages.find((m) => m.author_id === currentUserId);
   const showSignTab = canSign && !isCelebrant;
@@ -339,19 +376,52 @@ function BirthdayCardModal({
                         {REACTION_EMOJIS.map((emoji) => {
                           const users = reactions[emoji] ?? [];
                           const hasReacted = users.includes(currentUserId);
+                          const isPopoverOpen = reactionPopover?.messageId === m.id && reactionPopover?.emoji === emoji;
+                          const reactorNames = users.map((uid) => userMap[uid] ?? uid);
                           return (
-                            <button
-                              key={emoji}
-                              onClick={() => handleReaction(m.id, emoji)}
-                              className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all border ${
-                                hasReacted
-                                  ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
-                                  : "bg-[var(--color-bg-primary)]/5 border-white/10 text-white/50 hover:bg-[var(--color-bg-primary)]/10 hover:border-white/20 hover:text-white/80"
-                              }`}
-                            >
-                              <span>{emoji}</span>
-                              {users.length > 0 && <span className={hasReacted ? "text-amber-300" : "text-white/40"}>{users.length}</span>}
-                            </button>
+                            <div key={emoji} className="relative">
+                              <button
+                                onClick={() => handleReaction(m.id, emoji)}
+                                onMouseDown={() => {
+                                  if (users.length === 0) return;
+                                  longPressTimer.current = setTimeout(() => {
+                                    setReactionPopover({ messageId: m.id, emoji });
+                                  }, 400);
+                                }}
+                                onMouseUp={() => {
+                                  if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                                }}
+                                onMouseLeave={() => {
+                                  if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                                  if (isPopoverOpen) setReactionPopover(null);
+                                }}
+                                onTouchStart={() => {
+                                  if (users.length === 0) return;
+                                  longPressTimer.current = setTimeout(() => {
+                                    setReactionPopover({ messageId: m.id, emoji });
+                                  }, 400);
+                                }}
+                                onTouchEnd={() => {
+                                  if (longPressTimer.current) clearTimeout(longPressTimer.current);
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs transition-all border ${
+                                  hasReacted
+                                    ? "bg-amber-500/20 border-amber-400/50 text-amber-300"
+                                    : "bg-[var(--color-bg-primary)]/5 border-white/10 text-white/50 hover:bg-[var(--color-bg-primary)]/10 hover:border-white/20 hover:text-white/80"
+                                }`}
+                              >
+                                <span>{emoji}</span>
+                                {users.length > 0 && <span className={hasReacted ? "text-amber-300" : "text-white/40"}>{users.length}</span>}
+                              </button>
+                              {isPopoverOpen && reactorNames.length > 0 && (
+                                <div className="absolute bottom-full left-0 mb-1 p-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-md)] shadow-[var(--shadow-md)] z-50 min-w-[140px] max-h-[200px] overflow-y-auto">
+                                  <p className="text-xs font-medium text-[var(--color-text-primary)] mb-1">{emoji}</p>
+                                  {reactorNames.map((name, i) => (
+                                    <div key={i} className="text-xs text-[var(--color-text-secondary)] py-0.5">{name}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
