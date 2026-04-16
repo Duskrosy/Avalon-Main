@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInCalendarDays, subDays } from "date-fns";
 import { useToast, Toast } from "@/components/ui/toast";
+import { DeltaBadge } from "@/components/ui/delta-badge";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,10 @@ type ColDef = {
   label: string;
   render: (ad: AdRow, currency: string) => string;
   className?: (ad: AdRow) => string;
+  /** Extract a raw numeric value for DeltaBadge comparison (built-in columns only). */
+  deltaValue?: (ad: AdRow) => number | null;
+  /** Set true for cost metrics where a decrease is good (e.g. CPM). */
+  invertColor?: boolean;
 };
 
 type AdColumnConfig = {
@@ -269,21 +274,31 @@ function formatMetricValue(value: number | null, format: MetricCard["format"], c
 
 const AD_COL_DEFS: ColDef[] = [
   { id: "spend",             label: "Spend",
-    render: (ad, cur) => fmtMoney(ad.spend, cur) },
+    render: (ad, cur) => fmtMoney(ad.spend, cur),
+    deltaValue: (ad) => ad.spend,
+    invertColor: false },
   { id: "roas",              label: "ROAS",
     render: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null ? `${fmt(r)}x` : "—"; },
-    className: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null && r >= 2 ? "text-[var(--color-success)] font-medium" : r != null && r < 1 ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-primary)] font-medium"; } },
+    className: (ad) => { const r = ad.spend > 0 ? ad.conversion_value / ad.spend : null; return r != null && r >= 2 ? "text-[var(--color-success)] font-medium" : r != null && r < 1 ? "text-[var(--color-error)] font-medium" : "text-[var(--color-text-primary)] font-medium"; },
+    deltaValue: (ad) => ad.spend > 0 ? ad.conversion_value / ad.spend : null,
+    invertColor: false },
   { id: "hook_rate",         label: "Hook Rate",
     render: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null ? `${fmt(h, 1)}%` : "—"; },
-    className: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null && h >= 4 ? "text-[var(--color-success)]" : "text-[var(--color-text-secondary)]"; } },
+    className: (ad) => { const h = ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null; return h != null && h >= 4 ? "text-[var(--color-success)]" : "text-[var(--color-text-secondary)]"; },
+    deltaValue: (ad) => ad.impressions > 0 ? (ad.video_plays_25pct / ad.impressions) * 100 : null,
+    invertColor: false },
   { id: "ctr",               label: "CTR",
-    render: (ad) => { const c = ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : null; return c != null ? `${fmt(c, 2)}%` : "—"; } },
+    render: (ad) => { const c = ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : null; return c != null ? `${fmt(c, 2)}%` : "—"; },
+    deltaValue: (ad) => ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : null,
+    invertColor: false },
   { id: "impressions",       label: "Impressions",
     render: (ad) => fmtK(ad.impressions) },
   { id: "clicks",            label: "Clicks",
     render: (ad) => fmtK(ad.clicks) },
   { id: "conversions",       label: "Conv.",
-    render: (ad) => ad.conversions.toString() },
+    render: (ad) => ad.conversions.toString(),
+    deltaValue: (ad) => ad.conversions,
+    invertColor: false },
   { id: "conversion_value",  label: "Conv. Value",
     render: (ad, cur) => fmtMoney(ad.conversion_value, cur) },
   { id: "reach",             label: "Reach",
@@ -293,7 +308,9 @@ const AD_COL_DEFS: ColDef[] = [
   { id: "video_plays_25pct", label: "Video 25%",
     render: (ad) => fmtK(ad.video_plays_25pct) },
   { id: "cpm",               label: "CPM",
-    render: (ad, cur) => { const v = ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+    render: (ad, cur) => { const v = ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : null; return v != null ? fmtMoney(v, cur) : "—"; },
+    deltaValue: (ad) => ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : null,
+    invertColor: true },
   { id: "cpp",               label: "CPP",
     render: (ad, cur) => { const v = ad.conversions > 0 ? ad.spend / ad.conversions : null; return v != null ? fmtMoney(v, cur) : "—"; } },
   { id: "msg_convs",         label: "Results",
@@ -703,6 +720,59 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       }
     }
   }, [datePreset, customStart, customEnd]);
+
+  // Compute previous period: same number of days ending the day before startDate
+  const prevByAdId = useMemo<Map<string, AdRow>>(() => {
+    // No previous period for 30-day preset (outside the 30-day DB window) or live today
+    if (datePreset === "30" || datePreset === "today") return new Map();
+
+    const start = parseISO(startDate);
+    const end   = parseISO(endDate);
+    const dayCount = differenceInCalendarDays(end, start) + 1;
+    const prevEnd   = subDays(start, 1);
+    const prevStart = subDays(prevEnd, dayCount - 1);
+    const prevStartStr = prevStart.toISOString().split("T")[0];
+    const prevEndStr   = prevEnd.toISOString().split("T")[0];
+
+    // Always use DB stats for previous period (never live)
+    const prevRows = stats.filter(
+      (s) => s.metric_date >= prevStartStr && s.metric_date <= prevEndStr
+    );
+
+    // Aggregate raw counters by ad_id — rates computed on access, not stored
+    const map = new Map<string, AdRow>();
+    for (const row of prevRows) {
+      const existing = map.get(row.ad_id);
+      if (!existing) {
+        map.set(row.ad_id, {
+          ad_id: row.ad_id,
+          ad_name: row.ad_name,
+          adset_name: row.adset_name,
+          spend:                   row.spend,
+          impressions:             row.impressions,
+          clicks:                  row.clicks,
+          reach:                   row.reach ?? 0,
+          conversions:             row.conversions,
+          conversion_value:        row.conversion_value,
+          messaging_conversations: row.messaging_conversations ?? 0,
+          video_plays:             row.video_plays,
+          video_plays_25pct:       row.video_plays_25pct,
+          adCount:                 1,
+        });
+      } else {
+        existing.spend                   += row.spend;
+        existing.impressions             += row.impressions;
+        existing.clicks                  += row.clicks;
+        existing.reach                   += (row.reach ?? 0);
+        existing.conversions             += row.conversions;
+        existing.conversion_value        += row.conversion_value;
+        existing.messaging_conversations += (row.messaging_conversations ?? 0);
+        existing.video_plays             += row.video_plays;
+        existing.video_plays_25pct       += row.video_plays_25pct;
+      }
+    }
+    return map;
+  }, [stats, datePreset, startDate, endDate]);
 
   const filteredStats = useMemo(() => {
     // For "Today" use the live Meta fetch; for all other presets use the DB snapshot
@@ -1421,14 +1491,28 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                                       <p className="text-[var(--color-text-primary)] font-medium truncate max-w-[220px]">{ad.ad_name ?? ad.ad_id}</p>
                                       {ad.adset_name && <p className="text-[var(--color-text-tertiary)] truncate max-w-[220px]">{ad.adset_name}</p>}
                                     </td>
-                                    {activeAdCols.map((col) => (
-                                      <td
-                                        key={col.id}
-                                        className={`px-4 py-2.5 text-right ${col.className ? col.className(ad) : "text-[var(--color-text-secondary)]"}`}
-                                      >
-                                        {col.render(ad, account?.currency ?? "USD")}
-                                      </td>
-                                    ))}
+                                    {activeAdCols.map((col) => {
+                                      const prevRow = prevByAdId.get(ad.ad_id) ?? null;
+                                      return (
+                                        <td
+                                          key={col.id}
+                                          className={`px-4 py-2.5 text-right ${col.className ? col.className(ad) : "text-[var(--color-text-secondary)]"}`}
+                                        >
+                                          {col.deltaValue ? (
+                                            <div className="flex flex-col items-end gap-0.5">
+                                              <span>{col.render(ad, account?.currency ?? "USD")}</span>
+                                              <DeltaBadge
+                                                current={col.deltaValue(ad)}
+                                                previous={prevRow ? col.deltaValue(prevRow) : null}
+                                                invertColor={col.invertColor}
+                                              />
+                                            </div>
+                                          ) : (
+                                            col.render(ad, account?.currency ?? "USD")
+                                          )}
+                                        </td>
+                                      );
+                                    })}
                                   </tr>
                                 ))}
                               </tbody>
