@@ -116,6 +116,12 @@ export const kanbanColumnPostSchema = z.object({
   sort_order: z.number().int().min(0).optional().default(99),
 });
 
+export const kanbanColumnPatchSchema = z.object({
+  name: nonEmptyStr.optional(),
+  sort_order: z.number().int().min(0).optional(),
+  color: z.string().max(50).optional().nullable(),
+});
+
 // ─── Memos ───────────────────────────────────────────────────────────────────
 export const memoPostSchema = z.object({
   title: nonEmptyStr,

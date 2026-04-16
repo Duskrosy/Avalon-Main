@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { validateBody } from "@/lib/api/validate";
+import { kanbanColumnPatchSchema } from "@/lib/api/schemas";
 
 // PATCH /api/kanban/columns/[id] — rename column
 export async function PATCH(
@@ -13,15 +15,18 @@ export async function PATCH(
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body = await req.json();
+  const raw = await req.json();
+  const { data: body, error: validationError } = validateBody(kanbanColumnPatchSchema, raw);
+  if (validationError) return validationError;
 
   if (body.name !== undefined) {
-    const { data: col } = await supabase
+    const { data: col, error: fetchErr } = await supabase
       .from("kanban_columns")
       .select("is_default")
       .eq("id", id)
       .single();
-    if (col?.is_default) {
+    if (fetchErr || !col) return NextResponse.json({ error: "Column not found" }, { status: 404 });
+    if (col.is_default) {
       return NextResponse.json({ error: "Default columns cannot be renamed" }, { status: 403 });
     }
   }
