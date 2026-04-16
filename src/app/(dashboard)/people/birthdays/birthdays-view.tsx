@@ -570,12 +570,27 @@ export function BirthdaysView({
   myRecentBirthdayPerson: BirthdayPerson | null;
 }) {
   const [myCardOpen, setMyCardOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const q = search.toLowerCase();
+  const filterPeople = (arr: BirthdayPerson[]) =>
+    q ? arr.filter(p => `${p.first_name} ${p.last_name}`.toLowerCase().includes(q)) : arr;
 
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Birthday Tracker</h1>
         <p className="text-sm text-[var(--color-text-secondary)] mt-1">Upcoming birthdays across the team · click any card to leave a message</p>
+      </div>
+
+      {/* Search bar */}
+      <div className="mb-6">
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name…"
+          className="w-full max-w-sm rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] outline-none focus:border-[var(--color-border-focus)] focus:ring-1 focus:ring-[var(--color-border-focus)]"
+        />
       </div>
 
       {/* Own birthday today */}
@@ -604,13 +619,13 @@ export function BirthdaysView({
       )}
 
       <div className="space-y-8">
-        <Section title="🎂 Today" people={todayPeople} variant="hero"    emptyMsg="No birthdays today"           currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
-        <Section title="This week" people={thisWeek}  variant="large"   emptyMsg="No birthdays this week"        currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
-        <Section title="This month" people={thisMonth} variant="medium"  emptyMsg="No more birthdays this month"  currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
-        {pastPeople.length > 0 && (
-          <Section title="Past 7 days" people={pastPeople} variant="small" emptyMsg="" currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        <Section title="🎂 Today" people={filterPeople(todayPeople)} variant="hero"    emptyMsg="No birthdays today"           currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        <Section title="This week" people={filterPeople(thisWeek)}  variant="large"   emptyMsg="No birthdays this week"        currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        <Section title="This month" people={filterPeople(thisMonth)} variant="medium"  emptyMsg="No more birthdays this month"  currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        {filterPeople(pastPeople).length > 0 && (
+          <Section title="Past 7 days" people={filterPeople(pastPeople)} variant="small" emptyMsg="" currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
         )}
-        <Section title="Upcoming" people={upcoming}   variant="compact" emptyMsg="Nothing further ahead"         currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
+        <Section title="Upcoming" people={filterPeople(upcoming)}   variant="compact" emptyMsg="Nothing further ahead"         currentUserId={currentUserId} currentUserIsOps={currentUserIsOps} />
       </div>
     </div>
   );

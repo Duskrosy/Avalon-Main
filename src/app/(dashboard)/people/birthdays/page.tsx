@@ -95,6 +95,18 @@ export default async function BirthdaysPage() {
     })
     .sort((a, b) => a.daysUntil - b.daysUntil);
 
+  // ── Own-department-first sort ─────────────────────────────────────────────
+  const myDeptName = currentUser.department?.name ?? null;
+
+  function deptFirst(arr: BirthdayPerson[]) {
+    return [...arr].sort((a, b) => {
+      const aMatch = a.department?.name === myDeptName ? 0 : 1;
+      const bMatch = b.department?.name === myDeptName ? 0 : 1;
+      if (aMatch !== bMatch) return aMatch - bMatch;
+      return 0; // keep existing sort order within group
+    });
+  }
+
   // ── Current user's birthday status ────────────────────────────────────────
   const currentUserBirthday = currentUser.birthday
     ? (() => {
@@ -116,11 +128,11 @@ export default async function BirthdaysPage() {
 
   return (
     <BirthdaysView
-      todayPeople={todayPeople}
-      thisWeek={thisWeek}
-      thisMonth={thisMonth}
-      pastPeople={pastPeople}
-      upcoming={upcoming}
+      todayPeople={deptFirst(todayPeople)}
+      thisWeek={deptFirst(thisWeek)}
+      thisMonth={deptFirst(thisMonth)}
+      pastPeople={deptFirst(pastPeople)}
+      upcoming={deptFirst(upcoming)}
       currentUserId={currentUser.id}
       currentUserIsOps={isOps(currentUser)}
       currentUserHasBirthday={currentUserBirthday}
