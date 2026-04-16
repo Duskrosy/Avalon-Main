@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
   const { data: columns, error } = await supabase
     .from("kanban_columns")
     .select(`
-      id, name, sort_order, color,
+      id, name, sort_order, color, is_default,
       kanban_cards(
         id, title, description, priority, due_date, start_date, sort_order, created_at, completed_at, color,
         created_by_profile:profiles!created_by(first_name, last_name),

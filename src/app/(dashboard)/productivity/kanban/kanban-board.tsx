@@ -2,8 +2,10 @@
 
 import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { format } from "date-fns";
+import { Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast, Toast } from "@/components/ui/toast";
+import { KanbanCard } from "./kanban-card";
 
 const PRIORITY_COLORS = {
   low: "border-l-gray-300",
@@ -81,6 +83,7 @@ type Column = {
   name: string;
   sort_order: number;
   color: string | null;
+  is_default: boolean;
   kanban_cards: Card[];
 };
 
@@ -1190,23 +1193,28 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
       )}
 
       {/* ── BOARD VIEW ──────────────────────────────────────────── */}
-      {view === "board" && <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start min-h-[400px]">
+      {view === "board" && <div className="flex gap-3 overflow-x-auto pb-4 flex-1 items-start min-h-[400px]">
         {columns.map((col) => (
           <div
             key={col.id}
-            className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3 w-80 shrink-0 flex flex-col gap-2"
+            className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-3 w-[280px] flex-shrink-0 flex flex-col gap-2"
             onDragOver={(e) => e.preventDefault()}
             onDrop={() => handleDrop(col.id)}
           >
             {/* Column header */}
             <div className="flex items-center justify-between mb-1">
-              <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                {col.name}
-                <span className="ml-1.5 text-xs font-normal text-[var(--color-text-tertiary)]">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+                  {col.name}
+                </h3>
+                {col.is_default && (
+                  <Lock className="w-3 h-3 text-zinc-400" />
+                )}
+                <span className="text-xs font-normal text-[var(--color-text-tertiary)]">
                   {col.kanban_cards.length}
                 </span>
-              </h3>
-              {canManage && (
+              </div>
+              {canManage && !col.is_default && (
                 <button
                   onClick={() => handleDeleteColumn(col.id, col.name)}
                   className="text-[var(--color-text-tertiary)] hover:text-red-400 text-xs"
@@ -1218,36 +1226,12 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
 
             {/* Cards */}
             {col.kanban_cards.map((card) => (
-              <div
+              <KanbanCard
                 key={card.id}
-                draggable
+                card={card}
                 onDragStart={() => handleDragStart(card.id, col.id)}
                 onClick={() => setModal({ ...card, column_id: col.id })}
-                className={`bg-[var(--color-bg-primary)] border border-l-4 border-[var(--color-border-primary)] ${
-                  PRIORITY_COLORS[card.priority]
-                } rounded-lg p-3 cursor-pointer hover:shadow-[var(--shadow-sm)] transition-shadow`}
-              >
-                <p className="text-sm text-[var(--color-text-primary)] font-medium leading-snug mb-1">{card.title}</p>
-                {card.description && (
-                  <p className="text-xs text-[var(--color-text-tertiary)] mb-2 line-clamp-2">{card.description}</p>
-                )}
-                <div className="flex items-center justify-between gap-1 flex-wrap">
-                  {card.assignees && card.assignees.length > 0 && (
-                    <AssigneeChips assignees={card.assignees} maxShow={2} />
-                  )}
-                  {card.due_date && (
-                    <span
-                      className={`text-xs ${
-                        isOverdue(card.due_date)
-                          ? "text-[var(--color-error)] font-medium"
-                          : "text-[var(--color-text-tertiary)]"
-                      }`}
-                    >
-                      {format(new Date(card.due_date), "d MMM")}
-                    </span>
-                  )}
-                </div>
-              </div>
+              />
             ))}
 
             {/* Add card */}
