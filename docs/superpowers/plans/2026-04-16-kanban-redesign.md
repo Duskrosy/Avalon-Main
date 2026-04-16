@@ -76,12 +76,72 @@ missing AS (
 INSERT INTO kanban_columns (board_id, name, sort_order, is_default)
 SELECT board_id, name, sort_order, true
 FROM missing;
+
+-- 4. Creatives department gets DIFFERENT default columns matching tracker statuses
+-- First, remove generic defaults from creatives team boards (if just inserted)
+DELETE FROM kanban_columns
+WHERE is_default = true
+  AND board_id IN (
+    SELECT b.id FROM kanban_boards b
+    JOIN departments d ON d.id = b.department_id
+    WHERE d.slug = 'creatives' AND b.scope = 'team'
+  )
+  AND lower(trim(name)) IN ('to do', 'in progress', 'review', 'done');
+
+-- Then mark existing creatives columns that match tracker statuses
+UPDATE kanban_columns
+SET is_default = true
+WHERE board_id IN (
+  SELECT b.id FROM kanban_boards b
+  JOIN departments d ON d.id = b.department_id
+  WHERE d.slug = 'creatives' AND b.scope = 'team'
+)
+AND lower(trim(name)) IN ('idea', 'in production', 'submitted', 'approved', 'scheduled', 'published', 'archived');
+
+-- Insert missing creatives-specific defaults
+WITH creatives_defaults(name, sort_order) AS (
+  VALUES
+    ('Idea',          10),
+    ('In Production', 20),
+    ('Submitted',     30),
+    ('Approved',      40),
+    ('Scheduled',     50),
+    ('Published',     60),
+    ('Archived',      70)
+),
+creatives_boards AS (
+  SELECT b.id AS board_id FROM kanban_boards b
+  JOIN departments d ON d.id = b.department_id
+  WHERE d.slug = 'creatives' AND b.scope = 'team'
+),
+creatives_existing AS (
+  SELECT board_id, lower(trim(name)) AS lname
+  FROM kanban_columns
+  WHERE is_default = true
+    AND board_id IN (SELECT board_id FROM creatives_boards)
+),
+creatives_missing AS (
+  SELECT b.board_id, cd.name, cd.sort_order
+  FROM creatives_boards b
+  CROSS JOIN creatives_defaults cd
+  WHERE NOT EXISTS (
+    SELECT 1 FROM creatives_existing e
+    WHERE e.board_id = b.board_id
+      AND e.lname = lower(cd.name)
+  )
+)
+INSERT INTO kanban_columns (board_id, name, sort_order, is_default)
+SELECT board_id, name, sort_order, true
+FROM creatives_missing;
 ```
+
+**Creatives department note:** The creatives team board uses tracker-aligned columns (Idea → In Production → Submitted → Approved → Scheduled → Published → Archived) instead of the generic defaults (To Do → In Progress → Review → Done). This ensures the kanban status syncs perfectly with `creative_content_items.status`. When a card moves between these columns, the linked content item's status updates to match the column name (lowercased, spaces→underscores).
 
 ### Checklist
 - [ ] Write migration file
 - [ ] Run `supabase db push` locally and verify columns appear in Studio
-- [ ] Confirm all four defaults exist on every existing board
+- [ ] Confirm all four generic defaults exist on non-creatives boards
+- [ ] Confirm all seven creatives defaults exist on creatives team board
 - [ ] Verify `is_default = false` on all pre-existing custom columns
 
 ---
@@ -276,34 +336,54 @@ const { data: destCol } = await supabase
   .eq("id", body.column_id)
   .single();
 
-const movingToDone =
-  destCol?.is_default && destCol.name.toLowerCase() === "done";
+// For generic boards: "Done" column triggers completion
+// For creatives boards: column name maps directly to content item status
+const colName = destCol?.name?.toLowerCase().trim() ?? "";
+const isGenericDone = destCol?.is_default && colName === "done";
 
-// 1. Update completed_at
-const completedAt = movingToDone ? new Date().toISOString() : null;
+// Creatives tracker statuses that map to kanban columns
+const CREATIVES_STATUSES = ["idea", "in_production", "submitted", "approved", "scheduled", "published", "archived"];
+const isCreativesColumn = destCol?.is_default && CREATIVES_STATUSES.includes(colName.replace(/ /g, "_"));
+
+// 1. Update completed_at — set on "Done", "Published", or "Archived" columns
+const isCompletionColumn = isGenericDone || colName === "published" || colName === "archived";
+const completedAt = isCompletionColumn ? new Date().toISOString() : null;
 await supabase
   .from("kanban_cards")
   .update({ completed_at: completedAt })
   .eq("id", params.id);
 
 // 2. Sync linked creative_content_items
-if (movingToDone) {
+// For creatives boards: column name → content status (e.g., "In Production" → "in_production")
+if (isCreativesColumn) {
+  const contentStatus = colName.replace(/ /g, "_"); // "in production" → "in_production"
   await supabase
     .from("creative_content_items")
-    .update({ status: "published" })   // or "approved" — confirm with schema
+    .update({ status: contentStatus })
+    .eq("linked_card_id", params.id);
+} else if (isGenericDone) {
+  await supabase
+    .from("creative_content_items")
+    .update({ status: "approved" })
     .eq("linked_card_id", params.id);
 } else {
+  // Moving out of completion columns — revert to in_production
   await supabase
     .from("creative_content_items")
-    .update({ status: "in_progress" })
+    .update({ status: "in_production" })
     .eq("linked_card_id", params.id);
 }
 
 // 3. Sync linked ad_requests
-if (movingToDone) {
+if (isGenericDone || colName === "approved") {
   await supabase
     .from("ad_requests")
     .update({ status: "approved" })
+    .eq("linked_card_id", params.id);
+} else if (colName === "review" || colName === "submitted") {
+  await supabase
+    .from("ad_requests")
+    .update({ status: "review" })
     .eq("linked_card_id", params.id);
 } else {
   await supabase
@@ -313,11 +393,13 @@ if (movingToDone) {
 }
 ```
 
-> **Note on content status value:** Verify the exact `status` enum on `creative_content_items` before using `"published"` — it may be `"completed"` or `"approved"`. Check `00048_creative_content_items.sql` or `00054_creatives_overhaul.sql`.
+> **Creatives sync mapping:** The creatives team board columns match `creative_content_items.status` values exactly (lowercased, spaces→underscores): idea, in_production, submitted, approved, scheduled, published, archived. Moving a card between these columns updates the content item status bidirectionally. "Published" and "Archived" columns also set `completed_at` for KPI tracking.
 
 ### Checklist
-- [ ] Confirm `creative_content_items.status` valid values in migration 00048 / 00054
-- [ ] Confirm `ad_requests.status` valid values in migration 00054
+- [ ] Confirm creatives column names match tracker STATUS_OPTIONS: idea, in_production, submitted, approved, scheduled, published, archived
+- [ ] Confirm `ad_requests.status` enum includes: in_progress, review, approved
+- [ ] Test: moving a creatives card to "Submitted" updates linked content item status to "submitted"
+- [ ] Test: moving a card to "Published" sets completed_at AND status
 - [ ] Add destination-column lookup in PATCH card handler
 - [ ] Write `completed_at` update (set / null) after column move
 - [ ] Write `creative_content_items` status sync
