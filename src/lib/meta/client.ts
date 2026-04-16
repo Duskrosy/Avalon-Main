@@ -412,3 +412,41 @@ export async function fetchCampaignSpend(
   }
   return map;
 }
+
+// ─── Demographics (gender breakdown) ─────────────────────────────────────────
+
+/**
+ * Fetch gender-breakdown insights for a single campaign on a specific date.
+ * Returns one row per gender segment with spend, impressions, conversions, and messages.
+ */
+export async function fetchAdDemographics(
+  accountId: string,
+  campaignId: string,
+  date: string,
+  token: string
+): Promise<{ gender: string; spend: number; impressions: number; conversions: number; messages: number }[]> {
+  const params = new URLSearchParams({
+    fields: "spend,impressions,actions",
+    breakdowns: "gender",
+    time_range: JSON.stringify({ since: date, until: date }),
+    level: "campaign",
+    access_token: token,
+  });
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/${campaignId}/insights?${params}`
+  );
+  if (!res.ok) return [];
+  const json = await res.json();
+  return (json.data ?? []).map((row: Record<string, unknown>) => {
+    const actions = (row.actions as { action_type: string; value: string }[]) ?? [];
+    const getAction = (type: string) =>
+      Number(actions.find((a) => a.action_type === type)?.value ?? 0);
+    return {
+      gender: String(row.gender ?? "unknown"),
+      spend: Number(row.spend ?? 0),
+      impressions: Number(row.impressions ?? 0),
+      conversions: getAction("offsite_conversion.fb_pixel_purchase"),
+      messages: getAction("onsite_conversion.messaging_conversation_started_7d"),
+    };
+  });
+}
