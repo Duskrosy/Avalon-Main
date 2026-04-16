@@ -10,6 +10,7 @@ const TABS = [
   { label: "Creatives",     href: "/executive/creatives",  icon: "🎨" },
   { label: "Marketing",     href: "/executive/marketing",  icon: "📊" },
   { label: "People",        href: "/executive/people",     icon: "👥" },
+  { label: "Development",   href: "/executive/development", icon: "🛠" },
 ];
 
 export function TabNav() {
