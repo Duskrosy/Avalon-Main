@@ -51,7 +51,7 @@ function buildCsp(supabaseHost: string): string {
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
     `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.giphy.com https://us.i.posthog.com`,
-    `frame-src 'self' https://${supabaseHost} https://docs.google.com`,
+    `frame-src 'self' https://${supabaseHost} https://*.supabase.co https://*.supabase.in https://docs.google.com`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

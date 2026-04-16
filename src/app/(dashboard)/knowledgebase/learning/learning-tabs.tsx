@@ -11,9 +11,10 @@ type Props = {
   departments: Dept[];
   canManage: boolean;
   isOps: boolean;
+  userDeptId: string | null;
 };
 
-export function LearningPageTabs({ materials, departments, canManage, isOps }: Props) {
+export function LearningPageTabs({ materials, departments, canManage, isOps, userDeptId }: Props) {
   const [tab, setTab] = useState<"materials" | "progress">("materials");
 
   return (
@@ -45,7 +46,7 @@ export function LearningPageTabs({ materials, departments, canManage, isOps }: P
       )}
 
       {tab === "materials" && (
-        <LearningView materials={materials} departments={departments} canManage={canManage} />
+        <LearningView materials={materials} departments={departments} canManage={canManage} isOps={isOps} userDeptId={userDeptId} />
       )}
 
       {tab === "progress" && canManage && (

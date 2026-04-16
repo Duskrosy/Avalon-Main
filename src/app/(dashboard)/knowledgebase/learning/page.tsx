@@ -10,6 +10,8 @@ export default async function LearningPage() {
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
 
+  const admin = createAdminClient();
+
   const [{ data: materials }, { data: departments }, { data: completions }, { data: views }] = await Promise.all([
     supabase
       .from("learning_materials")
@@ -21,17 +23,15 @@ export default async function LearningPage() {
       .order("sort_order")
       .order("created_at"),
     supabase.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
-    supabase
+    admin
       .from("learning_completions")
       .select("material_id")
       .eq("user_id", currentUser.id),
-    supabase
+    admin
       .from("learning_views")
       .select("material_id, viewed_at, duration_s")
       .eq("user_id", currentUser.id),
   ]);
-
-  const admin = createAdminClient();
   const completedIds = new Set((completions ?? []).map((c) => c.material_id));
   const viewMap = new Map(
     (views ?? []).map((v) => [v.material_id, { viewed_at: v.viewed_at, duration_s: v.duration_s }])
@@ -59,6 +59,7 @@ export default async function LearningPage() {
   );
 
   const canManage = isManagerOrAbove(currentUser);
+  const isOpsUser = isOps(currentUser);
 
   return (
     <LearningPageTabs
@@ -66,7 +67,8 @@ export default async function LearningPage() {
       materials={materialsWithUrls as any}
       departments={departments ?? []}
       canManage={canManage}
-      isOps={isOps(currentUser)}
+      isOps={isOpsUser}
+      userDeptId={isOpsUser ? null : (currentUser.department_id ?? null)}
     />
   );
 }

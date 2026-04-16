@@ -25,6 +25,8 @@ type Props = {
   materials: Material[];
   departments: Dept[];
   canManage: boolean;
+  isOps?: boolean;
+  userDeptId?: string | null;
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -190,10 +192,11 @@ function MaterialViewer({
 }
 
 // ─── Main View ───────────────────────────────────────────────────────────────
-export function LearningView({ materials: initial, departments, canManage }: Props) {
+export function LearningView({ materials: initial, departments, canManage, isOps = true, userDeptId = null }: Props) {
   const [materials, setMaterials] = useState<Material[]>(initial);
   const [search, setSearch] = useState("");
-  const [deptFilter, setDeptFilter] = useState("all");
+  // Non-OPS users are locked to their department (or "all" if no dept set)
+  const [deptFilter, setDeptFilter] = useState(userDeptId ?? "all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<Material | null>(null);
@@ -226,6 +229,9 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
 
   // Reset page when filters change
   useEffect(() => { setPage(1); }, [search, deptFilter, typeFilter, statusFilter]);
+
+  // Keep deptFilter in sync if userDeptId changes (shouldn't happen but guards against it)
+  useEffect(() => { setDeptFilter(userDeptId ?? "all"); }, [userDeptId]);
 
   const handleViewed = useCallback((materialId: string) => {
     setMaterials((ms) => ms.map((m) =>
@@ -293,7 +299,8 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
   const completedCount = materials.filter((m) => m.completed).length;
   const viewedCount = materials.filter((m) => m.viewed).length;
   const progress = materials.length > 0 ? Math.round((completedCount / materials.length) * 100) : 0;
-  const hasFilters = search || deptFilter !== "all" || typeFilter !== "all" || statusFilter !== "all";
+  const defaultDept = userDeptId ?? "all";
+  const hasFilters = search || deptFilter !== defaultDept || typeFilter !== "all" || statusFilter !== "all";
 
   return (
     <div>
@@ -368,18 +375,20 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
             <option key={v} value={v}>{l}</option>
           ))}
         </select>
-        <select
-          value={deptFilter}
-          aria-label="Filter by department"
-          onChange={(e) => setDeptFilter(e.target.value)}
-          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-        >
-          <option value="all">All departments</option>
-          <option value="global">Global</option>
-          {departments.map((d) => (
-            <option key={d.id} value={d.id}>{d.name}</option>
-          ))}
-        </select>
+        {isOps && (
+          <select
+            value={deptFilter}
+            aria-label="Filter by department"
+            onChange={(e) => setDeptFilter(e.target.value)}
+            className="border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          >
+            <option value="all">All departments</option>
+            <option value="global">Global</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Error toast */}
@@ -395,7 +404,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
         <div className="flex items-center gap-2 mb-4">
           <p className="text-xs text-[var(--color-text-tertiary)]">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
           <button
-            onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all"); }}
+            onClick={() => { setSearch(""); setDeptFilter(defaultDept); setTypeFilter("all"); setStatusFilter("all"); }}
             className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-2 py-0.5 rounded"
           >
             Clear
@@ -409,7 +418,7 @@ export function LearningView({ materials: initial, departments, canManage }: Pro
             <>
               <p className="text-sm text-[var(--color-text-secondary)] mb-2">No materials match your filters.</p>
               <button
-                onClick={() => { setSearch(""); setDeptFilter("all"); setTypeFilter("all"); setStatusFilter("all"); }}
+                onClick={() => { setSearch(""); setDeptFilter(defaultDept); setTypeFilter("all"); setStatusFilter("all"); }}
                 className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
               >
                 Clear filters
