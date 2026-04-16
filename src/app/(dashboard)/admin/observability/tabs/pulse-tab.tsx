@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Fragment } from "react";
 import { format, parseISO } from "date-fns";
+import { toCSV, toMarkdown, downloadFile } from "@/lib/export/format";
 
 type FeedbackItem = {
   id: string;
@@ -58,6 +59,10 @@ export function PulseTab() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [showExport, setShowExport] = useState(false);
+  const [exportStatus, setExportStatus] = useState<string>("unresolved");
+  const [exportFrom, setExportFrom] = useState<string>("");
+  const [exportTo, setExportTo] = useState<string>("");
 
   useEffect(() => { fetchFeedback(); }, [statusFilter, categoryFilter]);
 
@@ -96,6 +101,58 @@ export function PulseTab() {
     }
   }
 
+  function exportData(fmt: "csv" | "md") {
+    const columns = [
+      { key: "from", label: "From" },
+      { key: "email", label: "Email" },
+      { key: "department", label: "Department" },
+      { key: "category", label: "Category" },
+      { key: "body", label: "Feedback" },
+      { key: "page_url", label: "Page" },
+      { key: "status", label: "Status" },
+      { key: "date", label: "Date" },
+    ];
+
+    let filtered = feedback;
+
+    if (exportStatus === "unresolved") {
+      filtered = filtered.filter((f) => f.status === "open" || f.status === "acknowledged");
+    } else if (exportStatus !== "all") {
+      filtered = filtered.filter((f) => f.status === exportStatus);
+    }
+
+    if (exportFrom) {
+      const fromDate = new Date(exportFrom);
+      filtered = filtered.filter((f) => new Date(f.created_at) >= fromDate);
+    }
+    if (exportTo) {
+      const toDate = new Date(exportTo + "T23:59:59");
+      filtered = filtered.filter((f) => new Date(f.created_at) <= toDate);
+    }
+
+    const rows = filtered.map((f) => ({
+      from: f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Unknown",
+      email: f.profiles?.email ?? "",
+      department: f.department?.name ?? "",
+      category: CATEGORY_LABELS[f.category] ?? f.category,
+      body: f.body,
+      page_url: f.page_url ?? "",
+      status: f.status,
+      date: f.created_at ? format(parseISO(f.created_at), "yyyy-MM-dd HH:mm") : "",
+    }));
+
+    if (rows.length === 0) return;
+
+    const timestamp = format(new Date(), "yyyy-MM-dd");
+    if (fmt === "csv") {
+      downloadFile(toCSV(rows, columns), `feedback-${timestamp}.csv`, "text/csv;charset=utf-8;");
+    } else {
+      const md = `# Feedback Export — ${timestamp}\n\n${toMarkdown(rows, columns)}`;
+      downloadFile(md, `feedback-${timestamp}.md`, "text/markdown;charset=utf-8;");
+    }
+    setShowExport(false);
+  }
+
   const openCount = feedback.filter((f) => f.status === "open").length;
 
   return (
@@ -125,7 +182,7 @@ export function PulseTab() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
@@ -155,7 +212,68 @@ export function PulseTab() {
         >
           Refresh
         </button>
+        <button
+          onClick={() => setShowExport(!showExport)}
+          disabled={feedback.length === 0}
+          className="ml-auto text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] disabled:opacity-50 transition-colors"
+        >
+          Export
+        </button>
       </div>
+
+      {/* Export panel */}
+      {showExport && (
+        <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 space-y-3">
+          <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">Export Options</p>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div>
+              <label className="block text-[10px] text-[var(--color-text-tertiary)] mb-1">Status</label>
+              <select
+                value={exportStatus}
+                onChange={(e) => setExportStatus(e.target.value)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+              >
+                <option value="unresolved">Unresolved (open + acknowledged)</option>
+                <option value="all">All statuses</option>
+                <option value="open">Open only</option>
+                <option value="acknowledged">Acknowledged only</option>
+                <option value="resolved">Resolved only</option>
+                <option value="wontfix">Won&apos;t fix only</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--color-text-tertiary)] mb-1">From</label>
+              <input
+                type="date"
+                value={exportFrom}
+                onChange={(e) => setExportFrom(e.target.value)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-[var(--color-text-tertiary)] mb-1">To</label>
+              <input
+                type="date"
+                value={exportTo}
+                onChange={(e) => setExportTo(e.target.value)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+              />
+            </div>
+            <button
+              onClick={() => exportData("csv")}
+              className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors"
+            >
+              Download CSV
+            </button>
+            <button
+              onClick={() => exportData("md")}
+              className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)] transition-colors"
+            >
+              Download MD
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Feedback table */}
       <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
