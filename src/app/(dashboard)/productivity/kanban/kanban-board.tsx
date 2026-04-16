@@ -803,6 +803,39 @@ export function KanbanBoard({ board, initialColumns, members, allUsers, departme
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: cardId, column_id: targetColId, sort_order: 0 }),
     });
+
+    // Sync linked request status when card moves columns
+    try {
+      const supabase = createClient();
+      const { data: req } = await supabase
+        .from("ad_requests")
+        .select("id, status")
+        .eq("linked_card_id", cardId)
+        .maybeSingle();
+
+      if (req) {
+        // Determine status based on column position
+        // Use current columns state at the time of drop
+        setColumns((cols) => {
+          const colIndex = cols.findIndex((c) => c.id === targetColId);
+          const lastIdx = cols.length - 1;
+          let newStatus = "in_progress";
+          if (colIndex === lastIdx) newStatus = "approved";
+          else if (colIndex === lastIdx - 1) newStatus = "review";
+
+          if (newStatus !== req.status) {
+            fetch(`/api/ad-ops/requests?id=${req.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: newStatus }),
+            }).catch(() => {});
+          }
+          return cols;
+        });
+      }
+    } catch {
+      // Status sync is best-effort
+    }
   }, []);
 
   const handleSaveCard = useCallback(async (data: Record<string, unknown>, fieldValues: Record<string, Partial<FieldValue>>, assigneeIds: string[]) => {

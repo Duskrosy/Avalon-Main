@@ -91,6 +91,47 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Auto-create kanban card when request is accepted
+  if (data && body.status === "in_progress" && !data.linked_card_id) {
+    try {
+      const admin = createAdminClient();
+      const { data: creativesDept } = await admin
+        .from("departments").select("id").eq("slug", "creatives").single();
+
+      if (creativesDept) {
+        const { data: board } = await admin
+          .from("kanban_boards")
+          .select("id, kanban_columns(id, sort_order)")
+          .eq("department_id", creativesDept.id)
+          .eq("scope", "team")
+          .limit(1)
+          .single();
+
+        if (board?.kanban_columns?.length) {
+          const firstCol = [...(board.kanban_columns as any[])].sort((a, b) => a.sort_order - b.sort_order)[0];
+          const { data: card } = await admin
+            .from("kanban_cards")
+            .insert({
+              column_id: firstCol.id,
+              title: `[Request] ${data.title}`,
+              created_by: currentUser.id,
+            })
+            .select("id")
+            .single();
+
+          if (card) {
+            await admin.from("ad_requests")
+              .update({ linked_card_id: card.id })
+              .eq("id", id);
+          }
+        }
+      }
+    } catch {
+      // Kanban linking is best-effort
+    }
+  }
+
   return NextResponse.json(data);
 }
 
