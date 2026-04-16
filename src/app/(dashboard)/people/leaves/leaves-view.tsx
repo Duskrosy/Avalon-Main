@@ -8,7 +8,7 @@ import { TeamLeavesTab }   from "./team-leaves-tab";
 import { ApprovalsTab }    from "./approvals-tab";
 import { RequestForm }    from "./request-form";
 import { MyRequestsTab }  from "./my-requests-tab";
-import { OpsQueueTab }    from "./ops-queue-tab";
+import OpsQueueTab        from "./ops-queue-tab";
 
 type Dept = { id: string; name: string; slug: string };
 
