@@ -378,6 +378,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   // Expand state
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Demographics state
+  const [demographics, setDemographics] = useState<Record<string, { gender: string; spend: number; impressions: number; conversions: number; messages: number }[]>>({});
+  const [demographicsLoading, setDemographicsLoading] = useState<Set<string>>(new Set());
+
   // Settings modal
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountCurrencies, setAccountCurrencies] = useState<Record<string, string>>(
@@ -467,6 +471,31 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       .catch(() => setLiveStats([]))
       .finally(() => setLiveFetching(false));
   }, [datePreset]);
+
+  // Fetch gender demographics when a campaign expands
+  useEffect(() => {
+    if (!expandedId) return;
+    const campaign = tabCampaigns.find((c) => c.id === expandedId);
+    if (!campaign) return;
+    const accountForCampaign = accountMap[campaign.meta_account_id];
+    if (!accountForCampaign?.id) return;
+    const cacheKey = campaign.campaign_id;
+    if (demographics[cacheKey]) return; // already cached
+
+    setDemographicsLoading((prev) => new Set([...prev, cacheKey]));
+    const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+    fetch(`/api/ad-ops/demographics?campaign_id=${encodeURIComponent(campaign.campaign_id)}&meta_account_id=${encodeURIComponent(accountForCampaign.id)}&date=${yesterday}`)
+      .then((r) => r.json())
+      .then((json) => {
+        setDemographics((prev) => ({ ...prev, [cacheKey]: json.data ?? [] }));
+      })
+      .catch(() => {
+        setDemographics((prev) => ({ ...prev, [cacheKey]: [] }));
+      })
+      .finally(() => {
+        setDemographicsLoading((prev) => { const s = new Set(prev); s.delete(cacheKey); return s; });
+      });
+  }, [expandedId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Account map (uses live currency from local state so UI is instant)
   const accountMap = useMemo(
@@ -972,6 +1001,64 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         adMap.set(s.ad_id, t);
       });
     return Array.from(adMap.values()).sort((a, b) => b.spend - a.spend);
+  }
+
+  // ── Gender demographics inline renderer ──────────────────────────────────
+  function renderDemographics(campaignId: string, curr: string) {
+    const data = demographics[campaignId];
+    const loading = demographicsLoading.has(campaignId);
+
+    if (loading) {
+      return (
+        <div className="px-5 py-3 border-t border-[var(--color-border-secondary)]">
+          <div className="h-4 w-32 bg-[var(--color-bg-tertiary)] rounded animate-pulse" />
+        </div>
+      );
+    }
+    if (!data || data.length === 0) return null;
+
+    const total = data.reduce((s, r) => s + r.spend, 0);
+    if (total === 0) return null;
+
+    const GENDER_COLORS: Record<string, string> = {
+      male:    "bg-[var(--color-accent)]",
+      female:  "bg-[var(--color-info)]",
+      unknown: "bg-[var(--color-border-primary)]",
+    };
+
+    const fmtGenderMoney = (n: number) => {
+      const sym = curr === "PHP" ? "₱" : "$";
+      if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}K`;
+      return `${sym}${n.toFixed(0)}`;
+    };
+
+    return (
+      <div className="px-5 py-3 border-t border-[var(--color-border-secondary)]">
+        <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide mb-2">Gender breakdown · yesterday</p>
+        <div className="flex h-3 rounded-full overflow-hidden bg-[var(--color-bg-tertiary)] mb-2">
+          {data.map((row) => {
+            const pct = total > 0 ? (row.spend / total) * 100 : 0;
+            if (pct === 0) return null;
+            return (
+              <div
+                key={row.gender}
+                className={`${GENDER_COLORS[row.gender] ?? "bg-[var(--color-border-primary)]"} h-full transition-all`}
+                style={{ width: `${pct}%` }}
+              />
+            );
+          })}
+        </div>
+        <div className="flex gap-4">
+          {data.filter((r) => r.spend > 0).map((row) => (
+            <div key={row.gender} className="flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full shrink-0 ${GENDER_COLORS[row.gender] ?? "bg-[var(--color-border-primary)]"}`} />
+              <span className="text-[10px] text-[var(--color-text-secondary)] capitalize">{row.gender}</span>
+              <span className="text-[10px] font-semibold text-[var(--color-text-primary)]">{fmtGenderMoney(row.spend)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -1518,6 +1605,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                               </tbody>
                             </table>
                           </div>
+                          {renderDemographics(campaign.campaign_id, account?.currency ?? "USD")}
                         </div>
                       );
                     })()}
