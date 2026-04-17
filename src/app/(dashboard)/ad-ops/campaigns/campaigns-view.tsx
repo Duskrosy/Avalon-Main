@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { format, parseISO, differenceInCalendarDays, subDays } from "date-fns";
 import { useToast, Toast } from "@/components/ui/toast";
 import { DeltaBadge } from "@/components/ui/delta-badge";
+import { DemographicBar, GENDER_COLORS, AGE_COLORS, type BarSegment } from "@/components/ui/demographic-bar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -316,7 +317,9 @@ const AD_COL_DEFS: ColDef[] = [
   { id: "msg_convs",         label: "Results",
     render: (ad) => (ad.messaging_conversations ?? 0).toLocaleString() },
   { id: "cost_per_result",   label: "Cost/Result",
-    render: (ad, cur) => { const v = (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+    render: (ad, cur) => { const v = (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null; return v != null ? fmtMoney(v, cur) : "—"; },
+    deltaValue: (ad) => (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null,
+    invertColor: true },
 ];
 
 // Default columns for Messenger-objective campaigns
@@ -379,8 +382,25 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Demographics state
-  const [demographics, setDemographics] = useState<Record<string, { gender: string; spend: number; impressions: number; conversions: number; messages: number }[]>>({});
+  type DemoRow = {
+    gender:        string | null;
+    age_group:     string | null;
+    adset_id:      string | null;
+    adset_name:    string | null;
+    ad_id:         string | null;
+    ad_name:       string | null;
+    campaign_name: string | null;
+    spend:       number;
+    impressions: number;
+    conversions: number;
+    messages:    number;
+  };
+  // Cache key: `${campaign_id}:${breakdown}`
+  const [demographics,        setDemographics]        = useState<Record<string, DemoRow[] | null>>({});
   const [demographicsLoading, setDemographicsLoading] = useState<Set<string>>(new Set());
+  const [demoBreakdown,       setDemoBreakdown]       = useState<"gender" | "age">("gender");
+  // expandedAdsets: campaignId → Set of expanded adset_ids
+  const [expandedAdsets, setExpandedAdsets] = useState<Record<string, Set<string>>>({});
 
   // Settings modal
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -472,30 +492,44 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       .finally(() => setLiveFetching(false));
   }, [datePreset]);
 
-  // Fetch gender demographics when a campaign expands
+  // Fetch demographics when a campaign expands
   useEffect(() => {
     if (!expandedId) return;
     const campaign = tabCampaigns.find((c) => c.id === expandedId);
     if (!campaign) return;
     const accountForCampaign = accountMap[campaign.meta_account_id];
     if (!accountForCampaign?.id) return;
-    const cacheKey = campaign.campaign_id;
-    if (demographics[cacheKey]) return; // already cached
 
-    setDemographicsLoading((prev) => new Set([...prev, cacheKey]));
-    const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
-    fetch(`/api/ad-ops/demographics?campaign_id=${encodeURIComponent(campaign.campaign_id)}&meta_account_id=${encodeURIComponent(accountForCampaign.id)}&date=${yesterday}`)
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then((json) => {
-        setDemographics((prev) => ({ ...prev, [cacheKey]: json.data ?? [] }));
-      })
-      .catch(() => {
-        setDemographics((prev) => ({ ...prev, [cacheKey]: [] }));
-      })
-      .finally(() => {
-        setDemographicsLoading((prev) => { const s = new Set(prev); s.delete(cacheKey); return s; });
-      });
-  }, [expandedId]); // eslint-disable-line react-hooks/exhaustive-deps
+    const fetchBreakdown = (breakdown: "gender" | "age") => {
+      const cacheKey = `${campaign.campaign_id}:${breakdown}`;
+      if (demographics[cacheKey] !== undefined) return;
+      setDemographicsLoading((prev) => new Set([...prev, cacheKey]));
+      const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+      fetch(
+        `/api/ad-ops/demographics?campaign_id=${encodeURIComponent(campaign.campaign_id)}&meta_account_id=${encodeURIComponent(accountForCampaign.id)}&date=${yesterday}&breakdown=${breakdown}`
+      )
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((json) =>
+          setDemographics((prev) => ({ ...prev, [cacheKey]: json.data ?? [] }))
+        )
+        .catch(() =>
+          setDemographics((prev) => ({ ...prev, [cacheKey]: null }))
+        )
+        .finally(() =>
+          setDemographicsLoading((prev) => {
+            const s = new Set(prev);
+            s.delete(cacheKey);
+            return s;
+          })
+        );
+    };
+
+    fetchBreakdown("gender");
+    fetchBreakdown("age");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // tabCampaigns and accountMap are intentionally read stale — only re-fetch when
+    // expandedId changes; the composite cache key prevents duplicate fetches.
+  }, [expandedId]);
 
   // Account map (uses live currency from local state so UI is instant)
   const accountMap = useMemo(
@@ -1003,10 +1037,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     return Array.from(adMap.values()).sort((a, b) => b.spend - a.spend);
   }
 
-  // ── Gender demographics inline renderer ──────────────────────────────────
-  function renderDemographics(campaignId: string, curr: string) {
-    const data = demographics[campaignId];
-    const loading = demographicsLoading.has(campaignId);
+  // ── Hierarchical demographic renderer ────────────────────────────────────
+  function renderDemographics(campaignId: string, _curr: string) {
+    const cacheKey = `${campaignId}:${demoBreakdown}`;
+    const data     = demographics[cacheKey];
+    const loading  = demographicsLoading.has(cacheKey);
 
     if (loading) {
       return (
@@ -1017,46 +1052,157 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     }
     if (!data || data.length === 0) return null;
 
-    const total = data.reduce((s, r) => s + r.spend, 0);
-    if (total === 0) return null;
-
-    const GENDER_COLORS: Record<string, string> = {
-      male:    "bg-[var(--color-accent)]",
-      female:  "bg-[var(--color-info)]",
-      unknown: "bg-[var(--color-border-primary)]",
+    const segKey   = demoBreakdown === "gender" ? "gender" : "age_group";
+    const colorMap = demoBreakdown === "gender" ? GENDER_COLORS : AGE_COLORS;
+    const fmtMny   = (n: number) =>
+      n >= 1000 ? `₱${(n / 1000).toFixed(1)}K` : `₱${n.toFixed(0)}`;
+    const cprLabel = (spend: number, conv: number, msg: number) => {
+      const v = conv > 0 ? spend / conv : msg > 0 ? spend / msg : null;
+      return v ? `CPR ₱${v.toFixed(0)}` : null;
     };
 
-    const fmtGenderMoney = (n: number) => {
-      const sym = curr === "PHP" ? "₱" : "$";
-      if (n >= 1000) return `${sym}${(n / 1000).toFixed(1)}K`;
-      return `${sym}${n.toFixed(0)}`;
-    };
+    // ── Campaign total segments ──────────────────────────────────────────────
+    const totalBySegment = new Map<string, { spend: number; conv: number; msg: number }>();
+    for (const row of data) {
+      const seg = ((row as Record<string, unknown>)[segKey] as string) ?? "unknown";
+      const ex = totalBySegment.get(seg) ?? { spend: 0, conv: 0, msg: 0 };
+      totalBySegment.set(seg, {
+        spend: ex.spend + row.spend,
+        conv:  ex.conv  + row.conversions,
+        msg:   ex.msg   + row.messages,
+      });
+    }
+    const campaignSegments: BarSegment[] = [...totalBySegment.entries()]
+      .sort((a, b) => b[1].spend - a[1].spend)
+      .map(([seg, t]) => ({
+        key: seg, label: seg, spend: t.spend,
+        color: colorMap[seg] ?? "var(--color-border-primary)",
+      }));
+
+    // ── Group by adset ───────────────────────────────────────────────────────
+    const adsetMap = new Map<string, { name: string; rows: DemoRow[] }>();
+    for (const row of data) {
+      if (!row.adset_id) continue;
+      if (!adsetMap.has(row.adset_id))
+        adsetMap.set(row.adset_id, { name: row.adset_name ?? row.adset_id, rows: [] });
+      adsetMap.get(row.adset_id)!.rows.push(row);
+    }
+
+    const expandedSet = expandedAdsets[campaignId] ?? new Set<string>();
+    const toggleAdset = (adsetId: string) =>
+      setExpandedAdsets((prev) => {
+        const s = new Set(prev[campaignId] ?? []);
+        if (s.has(adsetId)) s.delete(adsetId); else s.add(adsetId);
+        return { ...prev, [campaignId]: s };
+      });
 
     return (
-      <div className="px-5 py-3 border-t border-[var(--color-border-secondary)]">
-        <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide mb-2">Gender breakdown · yesterday</p>
-        <div className="flex h-3 rounded-full overflow-hidden bg-[var(--color-bg-tertiary)] mb-2">
-          {data.map((row) => {
-            const pct = total > 0 ? (row.spend / total) * 100 : 0;
-            if (pct === 0) return null;
-            return (
-              <div
-                key={row.gender}
-                className={`${GENDER_COLORS[row.gender] ?? "bg-[var(--color-border-primary)]"} h-full transition-all`}
-                style={{ width: `${pct}%` }}
-              />
-            );
-          })}
+      <div className="px-5 py-3 border-t border-[var(--color-border-secondary)] space-y-3">
+        {/* Header + Gender/Age toggle */}
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide">
+            Demographic Spend · yesterday
+          </p>
+          <div className="flex items-center gap-1 bg-[var(--color-bg-secondary)] rounded-md p-0.5">
+            {(["gender", "age"] as const).map((b) => (
+              <button
+                key={b}
+                onClick={() => setDemoBreakdown(b)}
+                className={`text-[10px] px-2 py-0.5 rounded transition-colors capitalize ${
+                  demoBreakdown === b
+                    ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-sm"
+                    : "text-[var(--color-text-tertiary)]"
+                }`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-4">
-          {data.filter((r) => r.spend > 0).map((row) => (
-            <div key={row.gender} className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${GENDER_COLORS[row.gender] ?? "bg-[var(--color-border-primary)]"}`} />
-              <span className="text-[10px] text-[var(--color-text-secondary)] capitalize">{row.gender}</span>
-              <span className="text-[10px] font-semibold text-[var(--color-text-primary)]">{fmtGenderMoney(row.spend)}</span>
+
+        {/* Campaign total bar */}
+        <DemographicBar segments={campaignSegments} showLegend showSpend />
+
+        {/* Adsets */}
+        {[...adsetMap.entries()]
+          .sort(([, a], [, b]) => b.rows.reduce((s, r) => s + r.spend, 0) - a.rows.reduce((s, r) => s + r.spend, 0))
+          .map(([adsetId, adset]) => {
+          const adsetBySegment = new Map<string, number>();
+          for (const row of adset.rows) {
+            const seg = ((row as Record<string, unknown>)[segKey] as string) ?? "unknown";
+            adsetBySegment.set(seg, (adsetBySegment.get(seg) ?? 0) + row.spend);
+          }
+          const adsetSegments: BarSegment[] = [...adsetBySegment.entries()].map(
+            ([seg, spend]) => ({ key: seg, label: seg, spend, color: colorMap[seg] ?? "var(--color-border-primary)" })
+          );
+          const adsetSpend = adset.rows.reduce((s, r) => s + r.spend, 0);
+          const isOpen     = expandedSet.has(adsetId);
+
+          const adMap = new Map<string, { name: string; rows: DemoRow[] }>();
+          for (const row of adset.rows) {
+            if (!row.ad_id) continue;
+            if (!adMap.has(row.ad_id))
+              adMap.set(row.ad_id, { name: row.ad_name ?? row.ad_id, rows: [] });
+            adMap.get(row.ad_id)!.rows.push(row);
+          }
+
+          return (
+            <div key={adsetId} className="space-y-1.5">
+              <button onClick={() => toggleAdset(adsetId)} className="w-full text-left">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[10px] text-[var(--color-text-tertiary)]">
+                    {isOpen ? "▾" : "▸"}
+                  </span>
+                  <span className="text-[10px] text-[var(--color-text-secondary)] truncate flex-1">
+                    {adset.name}
+                  </span>
+                  <span className="text-[10px] text-[var(--color-text-tertiary)] shrink-0">
+                    {fmtMny(adsetSpend)}
+                  </span>
+                </div>
+                <DemographicBar segments={adsetSegments} showLegend={false} />
+              </button>
+
+              {isOpen && (
+                <div className="pl-4 space-y-1.5">
+                  {[...adMap.entries()].map(([adId, ad]) => {
+                    const adBySegment = new Map<string, number>();
+                    for (const row of ad.rows) {
+                      const seg = ((row as Record<string, unknown>)[segKey] as string) ?? "unknown";
+                      adBySegment.set(seg, (adBySegment.get(seg) ?? 0) + row.spend);
+                    }
+                    const adSegments: BarSegment[] = [...adBySegment.entries()].map(
+                      ([seg, spend]) => ({ key: seg, label: seg, spend, color: colorMap[seg] ?? "var(--color-border-primary)" })
+                    );
+                    const adSpend = ad.rows.reduce((s, r) => s + r.spend, 0);
+                    const adConv  = ad.rows.reduce((s, r) => s + r.conversions, 0);
+                    const adMsg   = ad.rows.reduce((s, r) => s + r.messages, 0);
+                    const cpr     = cprLabel(adSpend, adConv, adMsg);
+
+                    return (
+                      <div key={adId}>
+                        <div className="flex items-center gap-1 mb-0.5">
+                          <span className="text-[10px] text-[var(--color-text-secondary)] truncate flex-1 pl-2">
+                            • {ad.name}
+                          </span>
+                          <span className="text-[10px] text-[var(--color-text-tertiary)] shrink-0">
+                            {fmtMny(adSpend)}
+                          </span>
+                          {cpr && (
+                            <span className="text-[10px] text-[var(--color-text-tertiary)] ml-2 shrink-0">
+                              {cpr}
+                            </span>
+                          )}
+                        </div>
+                        <DemographicBar segments={adSegments} showLegend={false} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          );
+        })}
       </div>
     );
   }

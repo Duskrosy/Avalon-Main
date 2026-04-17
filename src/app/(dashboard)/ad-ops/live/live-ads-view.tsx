@@ -88,7 +88,7 @@ function roasColor(r: number) {
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
-export function LiveAdsView() {
+export function LiveAdsView({ canControl }: { canControl: boolean }) {
   const [ads, setAds] = useState<LiveCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -141,6 +141,7 @@ export function LiveAdsView() {
 
   // Cap enforcement on load
   useEffect(() => {
+    if (!canControl) return;
     ads.forEach((ad) => {
       if (ad.status === "active" && ad.spend_cap !== null && ad.live_spend !== null && ad.live_spend >= ad.spend_cap) {
         handleCampaignToggle(ad.id, "active", true);
@@ -512,14 +513,16 @@ export function LiveAdsView() {
                     )}
                   </div>
 
-                  <button onClick={() => handleCampaignToggle(ad.id, ad.status)} disabled={isCampToggling}
-                    className={`shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium border disabled:opacity-50 transition-colors ${
-                      isActive
-                        ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] hover:bg-[var(--color-warning-light)] border-[var(--color-border-primary)]"
-                        : "bg-[var(--color-success-light)] text-[var(--color-success)] hover:bg-[var(--color-success-light)] border-green-200"
-                    }`}>
-                    {isCampToggling ? "…" : isActive ? "⏸ Pause" : "▶ Resume"}
-                  </button>
+                  {canControl && (
+                    <button onClick={() => handleCampaignToggle(ad.id, ad.status)} disabled={isCampToggling}
+                      className={`shrink-0 text-xs px-3 py-1.5 rounded-lg font-medium border disabled:opacity-50 transition-colors ${
+                        isActive
+                          ? "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] hover:bg-[var(--color-warning-light)] border-[var(--color-border-primary)]"
+                          : "bg-[var(--color-success-light)] text-[var(--color-success)] hover:bg-[var(--color-success-light)] border-green-200"
+                      }`}>
+                      {isCampToggling ? "…" : isActive ? "⏸ Pause" : "▶ Resume"}
+                    </button>
+                  )}
 
                   <button onClick={() => setExpandedCampaign(isExpanded ? null : ad.id)} className="shrink-0 p-1">
                     <svg className={`w-4 h-4 text-[var(--color-text-tertiary)] transition-transform ${isExpanded ? "rotate-180" : ""}`}
@@ -565,39 +568,41 @@ export function LiveAdsView() {
                       )}
 
                       {/* Spend cap */}
-                      <div className="flex-1 min-w-[240px]">
-                        <p className="text-xs text-[var(--color-text-secondary)] mb-0.5">Spend Cap</p>
-                        {isEditingThisCap ? (
-                          <div className="flex flex-wrap gap-2 items-center">
-                            <input type="number" min="1" step="1" placeholder="Amount"
-                              value={capAmount} onChange={(e) => setCapAmount(e.target.value)}
-                              className="w-24 text-sm border border-[var(--color-border-primary)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                            />
-                            <select value={capPeriod} onChange={(e) => setCapPeriod(e.target.value as "lifetime" | "monthly" | "daily")}
-                              className="text-sm border border-[var(--color-border-primary)] rounded px-2 py-1 bg-[var(--color-bg-primary)]">
-                              <option value="lifetime">Lifetime</option>
-                              <option value="monthly">Monthly</option>
-                              <option value="daily">Daily</option>
-                            </select>
-                            <button onClick={() => handleSaveCap(ad.id)} disabled={savingCap && editingCapCampaignId === ad.id}
-                              className="text-xs px-3 py-1.5 bg-[#3A5635] text-white rounded font-medium hover:bg-[#2e4429] disabled:opacity-50">
-                              {savingCap ? "…" : "Save"}
-                            </button>
-                            {ad.spend_cap && (
-                              <button onClick={() => handleClearCap(ad.id)}
-                                className="text-xs px-2 py-1.5 border border-[var(--color-border-primary)] rounded text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]">
-                                Clear
+                      {canControl && (
+                        <div className="flex-1 min-w-[240px]">
+                          <p className="text-xs text-[var(--color-text-secondary)] mb-0.5">Spend Cap</p>
+                          {isEditingThisCap ? (
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <input type="number" min="1" step="1" placeholder="Amount"
+                                value={capAmount} onChange={(e) => setCapAmount(e.target.value)}
+                                className="w-24 text-sm border border-[var(--color-border-primary)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                              <select value={capPeriod} onChange={(e) => setCapPeriod(e.target.value as "lifetime" | "monthly" | "daily")}
+                                className="text-sm border border-[var(--color-border-primary)] rounded px-2 py-1 bg-[var(--color-bg-primary)]">
+                                <option value="lifetime">Lifetime</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="daily">Daily</option>
+                              </select>
+                              <button onClick={() => handleSaveCap(ad.id)} disabled={savingCap && editingCapCampaignId === ad.id}
+                                className="text-xs px-3 py-1.5 bg-[#3A5635] text-white rounded font-medium hover:bg-[#2e4429] disabled:opacity-50">
+                                {savingCap ? "…" : "Save"}
                               </button>
-                            )}
-                            <button onClick={() => { setEditingCap(null); setEditingCapCampaignId(null); }}
-                              className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">Cancel</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => openCapEditor(ad)} className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] underline underline-offset-2">
-                            {ad.spend_cap ? `${fmtMoneyDec(ad.spend_cap, currency)} / ${PERIOD_LABELS[ad.spend_cap_period]}` : "+ Set spend cap"}
-                          </button>
-                        )}
-                      </div>
+                              {ad.spend_cap && (
+                                <button onClick={() => handleClearCap(ad.id)}
+                                  className="text-xs px-2 py-1.5 border border-[var(--color-border-primary)] rounded text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-active)]">
+                                  Clear
+                                </button>
+                              )}
+                              <button onClick={() => { setEditingCap(null); setEditingCapCampaignId(null); }}
+                                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">Cancel</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => openCapEditor(ad)} className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] underline underline-offset-2">
+                              {ad.spend_cap ? `${fmtMoneyDec(ad.spend_cap, currency)} / ${PERIOD_LABELS[ad.spend_cap_period]}` : "+ Set spend cap"}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* ── Adset list ── */}
@@ -658,7 +663,7 @@ export function LiveAdsView() {
                                 </div>
 
                                 {/* Spend cap button / editor */}
-                                {adsetId && (
+                                {canControl && adsetId && (
                                   isEditingThisAdsetCap ? (
                                     <div className="flex items-center gap-1.5 shrink-0">
                                       <input type="number" min="1" step="1" placeholder="Cap amount"
@@ -693,7 +698,7 @@ export function LiveAdsView() {
                                 )}
 
                                 {/* Adset pause/resume */}
-                                {adsetId && (
+                                {canControl && adsetId && (
                                   <button onClick={() => handleAdsetToggle(adsetId)} disabled={isTogAdset}
                                     className={`shrink-0 text-xs px-2 py-1 rounded border disabled:opacity-50 transition-colors ${
                                       isPausedAdset
@@ -771,14 +776,16 @@ export function LiveAdsView() {
                                         </div>
 
                                         {/* Ad pause/resume */}
-                                        <button onClick={() => handleAdToggle(adRow.ad_id)} disabled={isTogAd}
-                                          className={`shrink-0 text-xs px-2 py-1 rounded border disabled:opacity-50 transition-colors ${
-                                            isPausedAd
-                                              ? "bg-[var(--color-success-light)] text-[var(--color-success)] border-green-200 hover:bg-[var(--color-success-light)]"
-                                              : "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)] hover:bg-[var(--color-warning-light)]"
-                                          }`}>
-                                          {isTogAd ? "…" : isPausedAd ? "▶" : "⏸"}
-                                        </button>
+                                        {canControl && (
+                                          <button onClick={() => handleAdToggle(adRow.ad_id)} disabled={isTogAd}
+                                            className={`shrink-0 text-xs px-2 py-1 rounded border disabled:opacity-50 transition-colors ${
+                                              isPausedAd
+                                                ? "bg-[var(--color-success-light)] text-[var(--color-success)] border-green-200 hover:bg-[var(--color-success-light)]"
+                                                : "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-border-primary)] hover:bg-[var(--color-warning-light)]"
+                                            }`}>
+                                            {isTogAd ? "…" : isPausedAd ? "▶" : "⏸"}
+                                          </button>
+                                        )}
                                       </div>
                                     );
                                   })}

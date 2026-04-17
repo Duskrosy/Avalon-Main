@@ -13,6 +13,11 @@ export async function GET(req: NextRequest) {
   const campaignId = searchParams.get("campaign_id");
   const accountId  = searchParams.get("meta_account_id");
   const date       = searchParams.get("date") ?? new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+  const breakdown = (searchParams.get("breakdown") ?? "gender") as "gender" | "age";
+
+  if (breakdown !== "gender" && breakdown !== "age") {
+    return NextResponse.json({ error: "Invalid breakdown" }, { status: 400 });
+  }
 
   if (!campaignId || !accountId) {
     return NextResponse.json({ error: "campaign_id and meta_account_id are required" }, { status: 400 });
@@ -20,13 +25,19 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Try cached rows first
-  const { data: cached } = await admin
+  // Try cached rows first (scoped to breakdown type)
+  const cachedQuery = admin
     .from("meta_ad_demographics")
-    .select("gender, spend, impressions, conversions, messages")
+    .select("campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,gender,age_group,spend,impressions,conversions,messages")
     .eq("campaign_id", campaignId)
     .eq("meta_account_id", accountId)
     .eq("date", date);
+  if (breakdown === "age") {
+    cachedQuery.not("age_group", "is", null);
+  } else {
+    cachedQuery.not("gender", "is", null);
+  }
+  const { data: cached } = await cachedQuery;
 
   if (cached && cached.length > 0) {
     return NextResponse.json({ data: cached });
@@ -47,13 +58,33 @@ export async function GET(req: NextRequest) {
   const metaAccountId = accountRow?.account_id ?? accountId;
 
   try {
-    const rows = await fetchAdDemographics(metaAccountId, campaignId, date, token);
+    const rows = await fetchAdDemographics(metaAccountId, campaignId, date, token, breakdown);
 
     if (rows.length > 0) {
-      const { error: upsertError } = await admin.from("meta_ad_demographics").upsert(
-        rows.map((r) => ({ ...r, campaign_id: campaignId, meta_account_id: accountId, date })),
-        { onConflict: "meta_account_id,campaign_id,date,gender" }
-      );
+      const { error: upsertError } = await admin
+        .from("meta_ad_demographics")
+        .upsert(
+          rows.map((r) => ({
+            meta_account_id: accountId,
+            campaign_id:    r.campaign_id,
+            campaign_name:  r.campaign_name,
+            adset_id:       r.adset_id,
+            adset_name:     r.adset_name,
+            ad_id:          r.ad_id,
+            ad_name:        r.ad_name,
+            date,
+            gender:         r.gender,
+            age_group:      r.age_group,
+            spend:          r.spend,
+            impressions:    r.impressions,
+            conversions:    r.conversions,
+            messages:       r.messages,
+          })),
+          {
+            onConflict: "meta_account_id,campaign_id,adset_id,ad_id,date,gender,age_group",
+            ignoreDuplicates: false,
+          }
+        );
       if (upsertError) {
         console.error("[demographics] upsert failed:", upsertError.message);
       }
