@@ -950,34 +950,40 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
   const groupTotals = useMemo(() => {
     const isMessenger = (c: Campaign) => c.campaign_name.toLowerCase().includes("messenger");
-    const sum = (filter: (c: Campaign) => boolean) =>
-      visibleCampaigns.filter(filter).reduce(
-        (acc, c) => {
-          const t = campaignTotals.get(`${c.meta_account_id}__${c.campaign_id}`);
-          if (!t) return acc;
-          return { spend: acc.spend + t.spend, conversion_value: acc.conversion_value + t.conversion_value };
-        },
-        { spend: 0, conversion_value: 0 },
-      );
-    const msg  = sum(isMessenger);
-    const conv = sum((c) => !isMessenger(c));
+    const msg = visibleCampaigns.filter(isMessenger).reduce(
+      (acc, c) => {
+        const t = campaignTotals.get(`${c.meta_account_id}__${c.campaign_id}`);
+        if (!t) return acc;
+        return { spend: acc.spend + t.spend, messaging_conversations: acc.messaging_conversations + (t.messaging_conversations ?? 0) };
+      },
+      { spend: 0, messaging_conversations: 0 },
+    );
+    const conv = visibleCampaigns.filter((c) => !isMessenger(c)).reduce(
+      (acc, c) => {
+        const t = campaignTotals.get(`${c.meta_account_id}__${c.campaign_id}`);
+        if (!t) return acc;
+        return { spend: acc.spend + t.spend, conversion_value: acc.conversion_value + t.conversion_value };
+      },
+      { spend: 0, conversion_value: 0 },
+    );
     return {
-      messenger_roas:  msg.spend  > 0 ? msg.conversion_value  / msg.spend  : 0,
-      conversion_roas: conv.spend > 0 ? conv.conversion_value / conv.spend : 0,
+      messenger_roas:  msg.spend  > 0 ? msg.messaging_conversations / msg.spend  : 0,
+      conversion_roas: conv.spend > 0 ? conv.conversion_value       / conv.spend : 0,
     };
   }, [visibleCampaigns, campaignTotals]);
 
   const formulaVars = useMemo(() => ({
-    spend:             overallTotals.spend,
-    impressions:       overallTotals.impressions,
-    clicks:            overallTotals.clicks,
-    reach:             overallTotals.reach,
-    conversions:       overallTotals.conversions,
-    conversion_value:  overallTotals.conversion_value,
-    video_plays:       overallTotals.video_plays,
-    video_plays_25pct: overallTotals.video_plays_25pct,
-    messenger_roas:    groupTotals.messenger_roas,
-    conversion_roas:   groupTotals.conversion_roas,
+    spend:                   overallTotals.spend,
+    impressions:             overallTotals.impressions,
+    clicks:                  overallTotals.clicks,
+    reach:                   overallTotals.reach,
+    conversions:             overallTotals.conversions,
+    conversion_value:        overallTotals.conversion_value,
+    messaging_conversations: overallTotals.messaging_conversations,
+    video_plays:             overallTotals.video_plays,
+    video_plays_25pct:       overallTotals.video_plays_25pct,
+    messenger_roas:          groupTotals.messenger_roas,
+    conversion_roas:         groupTotals.conversion_roas,
   }), [overallTotals, groupTotals]);
 
   // Derive display currency from visible campaigns (use filtered account's currency,
@@ -1634,7 +1640,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             const totals  = campaignTotals.get(key);
             const account = accountMap[campaign.meta_account_id];
             const isExpanded = expandedId === campaign.id;
-            const roas = totals && totals.spend > 0 ? totals.conversion_value / totals.spend : null;
+            const roas = isMessengerTab
+              ? (totals && totals.spend > 0 ? (totals.messaging_conversations ?? 0) / totals.spend : null)
+              : (totals && totals.spend > 0 ? totals.conversion_value / totals.spend : null);
             const hookRate = totals && totals.impressions > 0
               ? (totals.video_plays_25pct / totals.impressions) * 100 : null;
 
