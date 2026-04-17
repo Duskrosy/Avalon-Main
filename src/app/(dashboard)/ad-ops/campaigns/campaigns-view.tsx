@@ -1166,18 +1166,22 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               {isOpen && (
                 <div className="pl-4 space-y-1.5">
                   {[...adMap.entries()].map(([adId, ad]) => {
-                    const adBySegment = new Map<string, number>();
+                    const adBySegment = new Map<string, { spend: number; conv: number; msg: number }>();
                     for (const row of ad.rows) {
                       const seg = ((row as Record<string, unknown>)[segKey] as string) ?? "unknown";
-                      adBySegment.set(seg, (adBySegment.get(seg) ?? 0) + row.spend);
+                      const ex = adBySegment.get(seg) ?? { spend: 0, conv: 0, msg: 0 };
+                      adBySegment.set(seg, { spend: ex.spend + row.spend, conv: ex.conv + row.conversions, msg: ex.msg + row.messages });
                     }
                     const adSegments: BarSegment[] = [...adBySegment.entries()].map(
-                      ([seg, spend]) => ({ key: seg, label: seg, spend, color: colorMap[seg] ?? "var(--color-border-primary)" })
+                      ([seg, t]) => ({ key: seg, label: seg, spend: t.spend, color: colorMap[seg] ?? "var(--color-border-primary)" })
                     );
                     const adSpend = ad.rows.reduce((s, r) => s + r.spend, 0);
                     const adConv  = ad.rows.reduce((s, r) => s + r.conversions, 0);
                     const adMsg   = ad.rows.reduce((s, r) => s + r.messages, 0);
                     const cpr     = cprLabel(adSpend, adConv, adMsg);
+                    const segCprs = [...adBySegment.entries()]
+                      .map(([seg, t]) => ({ seg, cpr: cprLabel(t.spend, t.conv, t.msg) }))
+                      .filter((x): x is { seg: string; cpr: string } => x.cpr !== null);
 
                     return (
                       <div key={adId}>
@@ -1195,6 +1199,15 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                           )}
                         </div>
                         <DemographicBar segments={adSegments} showLegend={false} />
+                        {segCprs.length > 0 && (
+                          <div className="flex flex-wrap gap-x-3 mt-0.5 pl-2">
+                            {segCprs.map(({ seg, cpr: c }) => (
+                              <span key={seg} className="text-[9px] text-[var(--color-text-tertiary)] capitalize">
+                                {seg}: {c}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
