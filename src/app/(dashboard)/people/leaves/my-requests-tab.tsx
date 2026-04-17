@@ -45,6 +45,7 @@ const TYPE_LABELS: Record<string, string> = {
   sick:      "Sick Leave",
   emergency: "Emergency",
   personal:  "Personal",
+  absent:    "Absent",
 };
 
 function formatDateRange(start: string, end: string): string {

@@ -30,12 +30,12 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
   const canManage = isManager || isOps;
 
   const tabs: { id: TabId; label: string; show: boolean; managerSide?: boolean }[] = [
-    { id: "my-requests", label: "My Requests",  show: true },
-    { id: "file",      label: "File a Leave",   show: true },
-    { id: "history",   label: "Leave History",  show: true },
-    { id: "leave-queue", label: "Leave Queue",  show: canManage, managerSide: true },
-    { id: "team",      label: "Team Leaves",    show: canManage, managerSide: true },
-    { id: "approvals", label: "Approvals",      show: canManage, managerSide: true },
+    { id: "my-requests", label: "My Requests",     show: true },
+    { id: "file",        label: "File a Leave",     show: true },
+    { id: "history",     label: "Leave History",    show: true },
+    { id: "leave-queue", label: "Approvals Queue",  show: canManage, managerSide: true },
+    { id: "team",        label: "Team Leaves",      show: canManage, managerSide: true },
+    { id: "approvals",   label: "Credit Approvals", show: canManage, managerSide: true },
   ];
 
   const visibleTabs = tabs.filter((t) => t.show);
@@ -44,9 +44,18 @@ export function LeavesView({ currentUserId, isOps, isManager, departments }: Pro
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Leaves & Absences</h1>
-        <p className="text-sm text-[var(--color-text-secondary)] mt-1">Manage leave requests, balances, and approvals.</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Leaves & Absences</h1>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Manage leave requests, balances, and approvals.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setRequestFormOpen(true)}
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] hover:opacity-90 transition-opacity"
+        >
+          + Request Leave
+        </button>
       </div>
 
       {/* Tab bar — employee tabs left, manager tabs right */}
