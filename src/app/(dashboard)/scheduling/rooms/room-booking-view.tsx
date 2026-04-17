@@ -763,18 +763,16 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                   <p className="text-sm text-[var(--color-text-tertiary)]">
                     {selectedRoom ? "Select a time slot above to get started" : "Pick a room from the sidebar"}
                   </p>
-                  {selectedRoom && (
-                    <button
-                      onClick={() => setMultiSelect(!multiSelect)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                        multiSelect
-                          ? "bg-[var(--color-warning-light)] border-[var(--color-border-primary)] text-[var(--color-warning-text)] font-medium"
-                          : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                      }`}
-                    >
-                      {multiSelect ? "Multi-select on" : "Select multiple slots"}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setMultiSelect(!multiSelect)}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                      multiSelect
+                        ? "bg-[var(--color-warning-light)] border-[var(--color-border-primary)] text-[var(--color-warning-text)] font-medium"
+                        : "border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                    }`}
+                  >
+                    {multiSelect ? "Multi-select on" : "Multi-select"}
+                  </button>
                 </div>
               )}
             </div>
