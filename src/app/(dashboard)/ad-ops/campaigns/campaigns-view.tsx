@@ -900,7 +900,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           const hB = tB && tB.impressions > 0 ? tB.video_plays_25pct / tB.impressions : 0;
           return hB - hA;
         }
-        case "conversions": return (tB?.conversions ?? 0) - (tA?.conversions ?? 0);
+        case "conversions": return isMessengerTab
+          ? (tB?.messaging_conversations ?? 0) - (tA?.messaging_conversations ?? 0)
+          : (tB?.conversions ?? 0) - (tA?.conversions ?? 0);
         case "impressions": return (tB?.impressions ?? 0) - (tA?.impressions ?? 0);
         case "name":        return a.campaign_name.localeCompare(b.campaign_name);
         default:            return 0;
@@ -908,7 +910,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     });
 
     return list;
-  }, [campaigns, filterAccount, filterStatus, sortBy, campaignTotals]);
+  }, [campaigns, filterAccount, filterStatus, sortBy, campaignTotals, isMessengerTab]);
 
   // ── Overall totals (respects account + status filter) ────────────────────
   const overallTotals = useMemo(() => {
