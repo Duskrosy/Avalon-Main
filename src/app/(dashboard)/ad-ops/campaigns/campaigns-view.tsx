@@ -131,11 +131,12 @@ const CURRENCIES = [
 ];
 
 const DEFAULT_METRIC_CARDS: MetricCard[] = [
-  { id: "spend",       label: "Total Spend",  formula: "spend",                        format: "currency"   },
-  { id: "conv_value",  label: "Conv. Value",  formula: "conversion_value",             format: "currency"   },
-  { id: "roas",        label: "ROAS",         formula: "conversion_value / spend",     format: "multiplier" },
-  { id: "impressions", label: "Impressions",  formula: "impressions",                  format: "compact"    },
-  { id: "conversions", label: "Conversions",  formula: "conversions",                  format: "number"     },
+  { id: "spend",           label: "Total Spend",      formula: "spend",                    format: "currency"   },
+  { id: "conv_value",      label: "Conv. Value",      formula: "conversion_value",         format: "currency"   },
+  { id: "conversion_roas", label: "Conversion ROAS",  formula: "conversion_roas",          format: "multiplier" },
+  { id: "messenger_roas",  label: "Messenger ROAS",   formula: "messenger_roas",           format: "multiplier" },
+  { id: "impressions",     label: "Impressions",      formula: "impressions",              format: "compact"    },
+  { id: "conversions",     label: "Conversions",      formula: "conversions",              format: "number"     },
 ];
 
 const PRESET_FORMULAS: Array<{ label: string; formula: string; format: MetricCard["format"] }> = [
@@ -947,6 +948,25 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const overallROAS = overallTotals.spend > 0
     ? overallTotals.conversion_value / overallTotals.spend : null;
 
+  const groupTotals = useMemo(() => {
+    const isMessenger = (c: Campaign) => c.campaign_name.toLowerCase().includes("messenger");
+    const sum = (filter: (c: Campaign) => boolean) =>
+      visibleCampaigns.filter(filter).reduce(
+        (acc, c) => {
+          const t = campaignTotals.get(`${c.meta_account_id}__${c.campaign_id}`);
+          if (!t) return acc;
+          return { spend: acc.spend + t.spend, conversion_value: acc.conversion_value + t.conversion_value };
+        },
+        { spend: 0, conversion_value: 0 },
+      );
+    const msg  = sum(isMessenger);
+    const conv = sum((c) => !isMessenger(c));
+    return {
+      messenger_roas:  msg.spend  > 0 ? msg.conversion_value  / msg.spend  : 0,
+      conversion_roas: conv.spend > 0 ? conv.conversion_value / conv.spend : 0,
+    };
+  }, [visibleCampaigns, campaignTotals]);
+
   const formulaVars = useMemo(() => ({
     spend:             overallTotals.spend,
     impressions:       overallTotals.impressions,
@@ -956,7 +976,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     conversion_value:  overallTotals.conversion_value,
     video_plays:       overallTotals.video_plays,
     video_plays_25pct: overallTotals.video_plays_25pct,
-  }), [overallTotals]);
+    messenger_roas:    groupTotals.messenger_roas,
+    conversion_roas:   groupTotals.conversion_roas,
+  }), [overallTotals, groupTotals]);
 
   // Derive display currency from visible campaigns (use filtered account's currency,
   // or the currency that appears most often across visible campaigns)
@@ -1612,8 +1634,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             const totals  = campaignTotals.get(key);
             const account = accountMap[campaign.meta_account_id];
             const isExpanded = expandedId === campaign.id;
-            const roas           = totals && totals.spend > 0 ? totals.conversion_value / totals.spend : null;
-            const messengerRoas  = totals && totals.spend > 0 ? totals.roas_weighted_sum / totals.spend : null;
+            const roas = totals && totals.spend > 0 ? totals.conversion_value / totals.spend : null;
             const hookRate = totals && totals.impressions > 0
               ? (totals.video_plays_25pct / totals.impressions) * 100 : null;
 
@@ -1647,8 +1668,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                           // Messenger-specific metrics
                           <>
                             <span className="text-[var(--color-text-secondary)]">
-                              <span className={`font-semibold ${messengerRoas != null && messengerRoas >= 2 ? "text-[var(--color-success)]" : messengerRoas != null && messengerRoas < 1 ? "text-[var(--color-error)]" : "text-[var(--color-text-primary)]"}`}>
-                                {messengerRoas != null && messengerRoas > 0 ? `${fmt(messengerRoas)}x` : "—"}
+                              <span className={`font-semibold ${roas != null && roas >= 2 ? "text-[var(--color-success)]" : roas != null && roas < 1 ? "text-[var(--color-error)]" : "text-[var(--color-text-primary)]"}`}>
+                                {roas != null ? `${fmt(roas)}x` : "—"}
                               </span> ROAS
                             </span>
                             <span className="text-[var(--color-text-secondary)]">
