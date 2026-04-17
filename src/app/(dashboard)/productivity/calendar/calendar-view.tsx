@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { format, getDaysInMonth, startOfMonth, getDay } from "date-fns";
 
 type CalendarEvent = {
@@ -80,26 +80,53 @@ export function CalendarView({
   const [settingsForm, setSettingsForm] = useState<CalendarSettings>(settings);
   const [saving, setSaving] = useState(false);
 
+  const monthRef = useRef(month);
+  monthRef.current = month;
+  const abortRef = useRef<AbortController | null>(null);
+
   const [year, mon] = month.split("-").map(Number);
   const firstDay = new Date(year, mon - 1, 1);
   const daysInMonth = getDaysInMonth(firstDay);
   const startDow = getDay(startOfMonth(firstDay)); // 0=Sun
 
   const navigate = useCallback(async (delta: number) => {
-    const d = new Date(year, mon - 1 + delta, 1);
-    const m = d.toISOString().slice(0, 7);
-    setMonth(m);
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const [y, m] = monthRef.current.split("-").map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    const newMonth = d.toISOString().slice(0, 7);
+    setMonth(newMonth);
     setSelected(null);
     setLoading(true);
-    const res = await fetch(`/api/calendar?month=${m}`);
-    if (res.ok) setEvents(await res.json());
+    try {
+      const res = await fetch(`/api/calendar?month=${newMonth}`, {
+        signal: abortRef.current.signal,
+      });
+      if (res.ok) setEvents(await res.json());
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") throw e;
+    }
     setLoading(false);
-  }, [year, mon]);
+  }, []);
 
-  const goToday = () => {
+  const goToday = useCallback(async () => {
     const today = new Date().toISOString().slice(0, 7);
-    if (today !== month) navigate(0);
-  };
+    if (today === monthRef.current) return;
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    setMonth(today);
+    setSelected(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/calendar?month=${today}`, {
+        signal: abortRef.current.signal,
+      });
+      if (res.ok) setEvents(await res.json());
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") throw e;
+    }
+    setLoading(false);
+  }, []);
 
   async function saveSettings() {
     setSaving(true);
