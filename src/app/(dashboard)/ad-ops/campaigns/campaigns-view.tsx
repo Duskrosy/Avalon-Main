@@ -485,7 +485,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     setDemographicsLoading((prev) => new Set([...prev, cacheKey]));
     const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     fetch(`/api/ad-ops/demographics?campaign_id=${encodeURIComponent(campaign.campaign_id)}&meta_account_id=${encodeURIComponent(accountForCampaign.id)}&date=${yesterday}`)
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((json) => {
         setDemographics((prev) => ({ ...prev, [cacheKey]: json.data ?? [] }));
       })
