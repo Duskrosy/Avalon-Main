@@ -184,7 +184,8 @@ export async function GET(req: NextRequest) {
   // --- CALENDAR EVENTS (holidays, sale events) ---
   const { data: calEvents } = await supabase
     .from("calendar_events")
-    .select("id, title, event_date, end_date, event_type, is_recurring, recurrence_rule");
+    .select("id, title, event_date, end_date, event_type, is_recurring, recurrence_rule")
+    .in("event_type", ["holiday", "sale_event"]);
 
   for (const ce of calEvents ?? []) {
     const parts = (ce.event_date as string).split("-");

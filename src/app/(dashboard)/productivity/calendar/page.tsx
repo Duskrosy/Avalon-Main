@@ -160,18 +160,39 @@ export default async function CalendarPage() {
   // Look-ahead: upcoming holidays and sales in the next 14 days
   const { data: upcomingCalEvents } = await supabase
     .from("calendar_events")
-    .select("id, title, event_date, event_type, is_recurring, recurrence_rule");
+    .select("id, title, event_date, event_type, is_recurring, recurrence_rule")
+    .in("event_type", ["holiday", "sale_event"]);
 
   const thisYear = new Date().getFullYear();
+  const todayStr = new Date().toISOString().split("T")[0];
   const expandedForLookAhead = (upcomingCalEvents ?? []).map((e) => {
     if (e.is_recurring && e.recurrence_rule === "yearly") {
       const [, mm, dd] = (e.event_date as string).split("-");
-      return { ...e, event_date: `${thisYear}-${mm}-${dd}` };
+      const projected = `${thisYear}-${mm}-${dd}`;
+      return { ...e, event_date: projected < todayStr ? `${thisYear + 1}-${mm}-${dd}` : projected };
     }
     return e;
   });
 
   const lookAheadAlerts = computeAlerts(expandedForLookAhead);
+
+  // Include holidays and sale events in initial calendar events
+  for (const ce of upcomingCalEvents ?? []) {
+    if (!["holiday", "sale_event"].includes(ce.event_type as string)) continue;
+    const parts = (ce.event_date as string).split("-");
+    const eventDate =
+      ce.is_recurring && ce.recurrence_rule === "yearly"
+        ? `${year}-${parts[1]}-${parts[2]}`
+        : (ce.event_date as string);
+    if (eventDate < firstStr || eventDate > lastStr) continue;
+    events.push({
+      id: `cal-${ce.id}`,
+      title: ce.title as string,
+      date: eventDate,
+      type: ce.event_type as string,
+      color: ce.event_type === "sale_event" ? "#f97316" : "#ef4444",
+    });
+  }
 
   return (
     <div>
