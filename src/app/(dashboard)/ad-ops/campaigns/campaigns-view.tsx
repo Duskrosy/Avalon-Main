@@ -1495,9 +1495,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
           >
             {SORT_OPTIONS.map((o) => {
-              const label = isMessengerTab && o.value === "conversions"
-                ? "Incoming Messages (High→Low)"
-                : o.label;
+              let label = o.label;
+              if (isMessengerTab && o.value === "conversions") label = "Incoming Messages (High→Low)";
+              if (isMessengerTab && o.value === "roas") label = "Messenger ROAS (High→Low)";
               return <option key={o.value} value={o.value}>Sort: {label}</option>;
             })}
           </select>
@@ -1636,6 +1636,11 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                         {isMessengerTab ? (
                           // Messenger-specific metrics
                           <>
+                            <span className="text-[var(--color-text-secondary)]">
+                              <span className={`font-semibold ${roas != null && roas >= 2 ? "text-[var(--color-success)]" : roas != null && roas < 1 ? "text-[var(--color-error)]" : "text-[var(--color-text-primary)]"}`}>
+                                {roas != null ? `${fmt(roas)}x` : "—"}
+                              </span> ROAS
+                            </span>
                             <span className="text-[var(--color-text-secondary)]">
                               <span className="font-semibold text-[var(--color-text-primary)]">{(totals.messaging_conversations ?? 0).toLocaleString()}</span> results
                             </span>
