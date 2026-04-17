@@ -99,20 +99,20 @@ export async function PATCH(
     }
   }
 
-  // Email + password — OPS only, not self-service
-  if (isOps(currentUser) && !isSelf) {
-    if (email !== undefined && typeof email === "string" && email.trim()) {
-      const { error: emailError } = await admin.auth.admin.updateUserById(id, { email });
-      if (emailError) {
-        return NextResponse.json({ error: `Email update failed: ${emailError.message}` }, { status: 400 });
-      }
-      updates.email = email;
+  // Email — OPS only, not for own account
+  if (isOps(currentUser) && !isSelf && email !== undefined && typeof email === "string" && email.trim()) {
+    const { error: emailError } = await admin.auth.admin.updateUserById(id, { email });
+    if (emailError) {
+      return NextResponse.json({ error: `Email update failed: ${emailError.message}` }, { status: 400 });
     }
-    if (password !== undefined && typeof password === "string" && password.length >= 8) {
-      const { error: pwError } = await admin.auth.admin.updateUserById(id, { password });
-      if (pwError) {
-        return NextResponse.json({ error: `Password update failed: ${pwError.message}` }, { status: 400 });
-      }
+    updates.email = email;
+  }
+
+  // Password — OPS can change anyone's password including their own
+  if (isOps(currentUser) && password !== undefined && typeof password === "string" && password.length >= 8) {
+    const { error: pwError } = await admin.auth.admin.updateUserById(id, { password });
+    if (pwError) {
+      return NextResponse.json({ error: `Password update failed: ${pwError.message}` }, { status: 400 });
     }
   }
 
