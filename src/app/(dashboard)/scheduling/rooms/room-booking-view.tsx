@@ -644,10 +644,11 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                           {/* Slot */}
                           <div
                             onClick={isPast ? undefined : () => handleSlotClick(slot.index)}
+                            style={isPast ? { backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 5px, rgba(0,0,0,0.055) 5px, rgba(0,0,0,0.055) 10px)" } : undefined}
                             className={`
                               flex-1 py-2.5 px-4 rounded-[var(--radius-lg)] transition-all relative min-h-[44px] flex items-center
                               ${isPast
-                                ? "opacity-40 cursor-not-allowed border-2 border-transparent"
+                                ? "cursor-not-allowed border-2 border-transparent bg-[var(--color-bg-secondary)]"
                                 : isBooked
                                   ? `cursor-pointer ${color.light} hover:opacity-90`
                                   : isSelected
@@ -684,9 +685,9 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
                               </span>
                             )}
                             {!isBooked && !isSelected && (
-                              <span className="text-xs text-[var(--color-text-tertiary)] opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className={`text-xs text-[var(--color-text-tertiary)] transition-opacity ${isPast ? "opacity-50" : "opacity-0 group-hover:opacity-100"}`}>
                                 {minutesToLabel(slot.startMin)} – {minutesToLabel(slot.endMin)}
-                                {!isPast && " · Available"}
+                                {isPast ? " · Past" : " · Available"}
                               </span>
                             )}
                           </div>
@@ -707,7 +708,7 @@ export function RoomBookingView({ rooms: initialRooms, initialBookings, allUsers
           </div>
 
           {/* Sticky action bar — always visible at bottom */}
-          <div className="sticky bottom-0 z-[60] mt-3 w-full">
+          <div className="sticky bottom-16 lg:bottom-0 z-[60] mt-3 w-full">
             <div className="bg-[var(--color-bg-primary)] rounded-2xl border border-[var(--color-border-primary)] p-4 shadow-[0_-4px_24px_rgba(0,0,0,0.12)]">
               {selectedSlots.size > 0 && selectedRange ? (
                 <div className="flex items-center justify-between flex-wrap gap-3">
