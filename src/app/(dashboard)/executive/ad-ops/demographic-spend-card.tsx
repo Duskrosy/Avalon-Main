@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import {
-  DemographicBar,
   GENDER_COLORS,
   AGE_COLORS,
-  type BarSegment,
 } from "@/components/ui/demographic-bar";
 
 export type DemoDataRow = {
@@ -131,8 +129,8 @@ export function DemographicSpendCard({ data }: { data: DemoDataRow[] }) {
               msg:   ex.msg   + r.messages,
             });
           }
-          const campaigns = [...campaignMap.values()]
-            .sort((a, b) => b.spend - a.spend)
+          const campaigns = [...campaignMap.entries()]
+            .sort(([, a], [, b]) => b.spend - a.spend)
             .slice(0, 5);
 
           return (
@@ -172,10 +170,10 @@ export function DemographicSpendCard({ data }: { data: DemoDataRow[] }) {
 
               {isOpen && campaigns.length > 0 && (
                 <div className="mt-2 pl-4 space-y-1.5 border-l-2 border-[var(--color-border-secondary)]">
-                  {campaigns.map((c) => {
+                  {campaigns.map(([campaignId, c]) => {
                     const cl = cprLabel(c.spend, c.conv, c.msg);
                     return (
-                      <div key={c.name} className="flex items-center gap-2">
+                      <div key={campaignId} className="flex items-center gap-2">
                         <span className="text-xs text-[var(--color-text-secondary)] truncate flex-1">
                           {c.name}
                         </span>
