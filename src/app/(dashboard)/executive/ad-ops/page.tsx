@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import KpiTabView from "./kpi-tab-view";
 import { RagStatus, rag, RAG_STYLES, fmtKpi, KpiDef, KpiWithValue } from "./kpi-utils";
+import { DemographicSpendCard, type DemoDataRow } from "./demographic-spend-card";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -77,6 +78,16 @@ export default async function ExecutiveAdOpsKpiPage() {
     const lower = kpi.name.toLowerCase();
     return !lower.includes("cplv") && !lower.includes("roas") && !lower.includes("cpm");
   });
+
+  const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
+
+  const { data: demoRows } = await admin
+    .from("meta_ad_demographics")
+    .select(
+      "gender, age_group, campaign_id, campaign_name, adset_id, adset_name, ad_id, ad_name, spend, conversions, messages"
+    )
+    .eq("date", yesterday)
+    .not("adset_id", "is", null); // ad-level rows only — skip legacy campaign-level rows
 
   // Overall health summary (counts all KPIs including priority 3)
   const summary = { green: 0, amber: 0, red: 0, noData: 0 };
@@ -173,6 +184,11 @@ export default async function ExecutiveAdOpsKpiPage() {
 
       {/* ── Conversion / Messenger Tab View ────────────────────────────── */}
       <KpiTabView kpis={remainingKpis} />
+
+      {/* ── Demographic Spend ───────────────────────────────────────────── */}
+      {demoRows && demoRows.length > 0 && (
+        <DemographicSpendCard data={demoRows as DemoDataRow[]} />
+      )}
 
     </div>
   );
