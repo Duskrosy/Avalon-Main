@@ -1148,7 +1148,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
           return (
             <div key={adsetId} className="space-y-1.5">
-              <button onClick={() => toggleAdset(adsetId)} className="w-full text-left">
+              <button onClick={() => toggleAdset(adsetId)} className="w-full text-left cursor-pointer hover:opacity-80 transition-opacity">
                 <div className="flex items-center gap-1 mb-1">
                   <span className="text-[10px] text-[var(--color-text-tertiary)]">
                     {isOpen ? "▾" : "▸"}
@@ -1492,9 +1492,12 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             onChange={(e) => setSortBy(e.target.value)}
             className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
           >
-            {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>Sort: {o.label}</option>
-            ))}
+            {SORT_OPTIONS.map((o) => {
+              const label = isMessengerTab && o.value === "conversions"
+                ? "Incoming Messages (High→Low)"
+                : o.label;
+              return <option key={o.value} value={o.value}>Sort: {label}</option>;
+            })}
           </select>
 
           {/* Result count */}
@@ -1559,7 +1562,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                   activeTab === tab ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
-                {tab === "main" ? `Campaigns (${count})` : `Messenger (${count})`}
+                {tab === "main" ? `Conversion (${count})` : `Messenger (${count})`}
               </button>
             );
           })}
