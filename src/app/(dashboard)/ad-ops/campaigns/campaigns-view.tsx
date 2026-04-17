@@ -324,6 +324,10 @@ const AD_COL_DEFS: ColDef[] = [
     invertColor: true },
 ];
 
+const INVERT_COLOR_METRICS = new Set(
+  AD_COL_DEFS.filter((c) => c.invertColor).map((c) => c.id)
+);
+
 // Default columns for Messenger-objective campaigns
 const DEFAULT_AD_COLUMNS_MESSENGER: AdColumnConfig[] = [
   { id: "spend",            visible: true  },
@@ -841,6 +845,27 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     return map;
   }, [stats, datePreset, startDate, endDate]);
 
+  const overallTotalsPrev = useMemo(() => {
+    if (prevByAdId.size === 0) return null;
+    const acc = {
+      spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
+      conversion_value: 0, messaging_conversations: 0,
+      video_plays: 0, video_plays_25pct: 0,
+    };
+    for (const row of prevByAdId.values()) {
+      acc.spend                   += row.spend;
+      acc.impressions             += row.impressions;
+      acc.clicks                  += row.clicks;
+      acc.reach                   += row.reach ?? 0;
+      acc.conversions             += row.conversions;
+      acc.conversion_value        += row.conversion_value;
+      acc.messaging_conversations += row.messaging_conversations ?? 0;
+      acc.video_plays             += row.video_plays;
+      acc.video_plays_25pct       += row.video_plays_25pct;
+    }
+    return acc;
+  }, [prevByAdId]);
+
   const filteredStats = useMemo(() => {
     // For "Today" use the live Meta fetch; for all other presets use the DB snapshot
     const source = datePreset === "today" && liveStats != null ? liveStats : stats;
@@ -985,6 +1010,24 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     messenger_roas:          groupTotals.messenger_roas,
     conversion_roas:         groupTotals.conversion_roas,
   }), [overallTotals, groupTotals]);
+
+  const formulaVarsPrev = useMemo(() => {
+    if (!overallTotalsPrev) return null;
+    const t = overallTotalsPrev;
+    return {
+      spend:                   t.spend,
+      impressions:             t.impressions,
+      clicks:                  t.clicks,
+      reach:                   t.reach,
+      conversions:             t.conversions,
+      conversion_value:        t.conversion_value,
+      messaging_conversations: t.messaging_conversations,
+      video_plays:             t.video_plays,
+      video_plays_25pct:       t.video_plays_25pct,
+      messenger_roas:          NaN,
+      conversion_roas:         NaN,
+    };
+  }, [overallTotalsPrev]);
 
   // Derive display currency from visible campaigns (use filtered account's currency,
   // or the currency that appears most often across visible campaigns)
@@ -1561,13 +1604,24 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         <div className="mb-5">
           <div className={`grid gap-3 mb-1.5`} style={{ gridTemplateColumns: `repeat(${metricCards.length}, minmax(0, 1fr))` }}>
             {metricCards.map((card) => {
-              const value = evaluateFormula(card.formula, formulaVars);
+              const value    = evaluateFormula(card.formula, formulaVars);
+              const prevValue = formulaVarsPrev ? evaluateFormula(card.formula, formulaVarsPrev) : null;
+              const showDelta = !liveFetching && prevValue !== null && Number.isFinite(prevValue) && Number.isFinite(value);
               return (
                 <div key={card.id} className={`bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 min-w-0 transition-opacity ${liveFetching ? "opacity-40" : ""}`}>
                   <p className="text-xs text-[var(--color-text-secondary)] mb-1 truncate">{card.label}</p>
                   <p className="text-xl font-bold text-[var(--color-text-primary)] truncate">
                     {liveFetching ? <span className="inline-block w-16 h-5 bg-[var(--color-border-primary)] rounded animate-pulse" /> : formatMetricValue(value, card.format, overallCurrency)}
                   </p>
+                  {showDelta && (
+                    <div className="mt-1">
+                      <DeltaBadge
+                        current={value}
+                        previous={prevValue!}
+                        invertColor={INVERT_COLOR_METRICS.has(card.id)}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}
