@@ -141,6 +141,7 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
 
   // Cap enforcement on load
   useEffect(() => {
+    if (!canControl) return;
     ads.forEach((ad) => {
       if (ad.status === "active" && ad.spend_cap !== null && ad.live_spend !== null && ad.live_spend >= ad.spend_cap) {
         handleCampaignToggle(ad.id, "active", true);

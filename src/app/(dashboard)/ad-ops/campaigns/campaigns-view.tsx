@@ -526,7 +526,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
     fetchBreakdown("gender");
     fetchBreakdown("age");
-  }, [expandedId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // tabCampaigns and accountMap are intentionally read stale — only re-fetch when
+    // expandedId changes; the composite cache key prevents duplicate fetches.
+  }, [expandedId]);
 
   // Account map (uses live currency from local state so UI is instant)
   const accountMap = useMemo(
