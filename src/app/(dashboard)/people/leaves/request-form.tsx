@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type LeaveType = "vacation" | "sick" | "emergency" | "personal";
+type LeaveType = "vacation" | "sick" | "emergency" | "personal" | "absent";
 
 type Props = {
   open: boolean;
@@ -27,7 +27,7 @@ function todayStr(): string {
 
 /** Returns min date for start field based on leave type. */
 function getStartMin(type: LeaveType): string | undefined {
-  if (type === "emergency" || type === "sick") return undefined;
+  if (type === "emergency" || type === "sick" || type === "absent") return undefined;
   return todayStr();
 }
 
@@ -172,6 +172,7 @@ export function RequestForm({ open, onClose, onSuccess }: Props) {
                 { value: "sick",      label: "Sick Leave" },
                 { value: "emergency", label: "Emergency" },
                 { value: "personal",  label: "Personal" },
+                { value: "absent",    label: "Absent" },
               ] as { value: LeaveType; label: string }[]).map(({ value, label }) => (
                 <button
                   key={value}
