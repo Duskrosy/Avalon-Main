@@ -822,6 +822,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           video_plays:             row.video_plays,
           video_plays_25pct:       row.video_plays_25pct,
           adCount:                 1,
+          roas_weighted_sum:       (row.roas ?? 0) * row.spend,
         });
       } else {
         existing.spend                   += row.spend;
@@ -833,6 +834,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         existing.messaging_conversations += (row.messaging_conversations ?? 0);
         existing.video_plays             += row.video_plays;
         existing.video_plays_25pct       += row.video_plays_25pct;
+        existing.roas_weighted_sum       += (row.roas ?? 0) * row.spend;
       }
     }
     return map;
@@ -1030,7 +1032,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           ad_id: s.ad_id, ad_name: s.ad_name, adset_name: s.adset_name,
           spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
           conversion_value: 0, messaging_conversations: 0,
-          video_plays: 0, video_plays_25pct: 0, adCount: 1,
+          video_plays: 0, video_plays_25pct: 0, adCount: 1, roas_weighted_sum: 0,
         };
         t.spend                   += s.spend;
         t.impressions             += s.impressions;
@@ -1040,6 +1042,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         t.messaging_conversations += (s.messaging_conversations ?? 0);
         t.video_plays             += s.video_plays;
         t.video_plays_25pct       += s.video_plays_25pct;
+        t.roas_weighted_sum       += (s.roas ?? 0) * s.spend;
         adMap.set(s.ad_id, t);
       });
     return Array.from(adMap.values()).sort((a, b) => b.spend - a.spend);
