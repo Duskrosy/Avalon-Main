@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CalendarView } from "./calendar-view";
+import { LookAhead, computeAlerts } from "@/app/(dashboard)/executive/look-ahead";
 
 const PLATFORM_COLORS: Record<string, string> = {
   facebook: "#1877F2",
@@ -156,13 +157,36 @@ export default async function CalendarPage() {
     }
   }
 
+  // Look-ahead: upcoming holidays and sales in the next 14 days
+  const { data: upcomingCalEvents } = await supabase
+    .from("calendar_events")
+    .select("id, title, event_date, event_type, is_recurring, recurrence_rule");
+
+  const thisYear = new Date().getFullYear();
+  const expandedForLookAhead = (upcomingCalEvents ?? []).map((e) => {
+    if (e.is_recurring && e.recurrence_rule === "yearly") {
+      const [, mm, dd] = (e.event_date as string).split("-");
+      return { ...e, event_date: `${thisYear}-${mm}-${dd}` };
+    }
+    return e;
+  });
+
+  const lookAheadAlerts = computeAlerts(expandedForLookAhead);
+
   return (
-    <CalendarView
-      initialMonth={month}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      initialEvents={events as any}
-      showSmmPosts={showSmmPosts}
-      settings={calSettings}
-    />
+    <div>
+      {lookAheadAlerts.length > 0 && (
+        <div className="mb-4 p-4 rounded-xl border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)]">
+          <LookAhead alerts={lookAheadAlerts} />
+        </div>
+      )}
+      <CalendarView
+        initialMonth={month}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        initialEvents={events as any}
+        showSmmPosts={showSmmPosts}
+        settings={calSettings}
+      />
+    </div>
   );
 }

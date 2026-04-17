@@ -8,12 +8,12 @@ type CalendarEvent = {
   title: string;
   date: string;       // YYYY-MM-DD
   end_date?: string;
-  type: "leave" | "booking" | "birthday" | "task" | "post";
+  type: "leave" | "booking" | "birthday" | "task" | "post" | "holiday" | "sale_event";
   color: string;
   meta?: string;
 };
 
-type Filter = { leave: boolean; booking: boolean; birthday: boolean; task: boolean; post: boolean };
+type Filter = { leave: boolean; booking: boolean; birthday: boolean; task: boolean; post: boolean; holiday: boolean; sale_event: boolean };
 
 type CalendarSettings = {
   show_tasks: boolean;
@@ -24,19 +24,23 @@ type CalendarSettings = {
 };
 
 const TYPE_LABELS = {
-  leave: "Leaves",
-  booking: "Room bookings",
-  birthday: "Birthdays",
-  task: "Tasks",
-  post: "SMM Posts",
+  leave:      "Leaves",
+  booking:    "Room bookings",
+  birthday:   "Birthdays",
+  task:       "Tasks",
+  post:       "SMM Posts",
+  holiday:    "Holidays",
+  sale_event: "Sale Events",
 };
 
 const TYPE_COLORS = {
-  leave: "bg-amber-400",
-  booking: "bg-[var(--color-accent)]",
-  birthday: "bg-pink-400",
-  task: "bg-purple-500",
-  post: "bg-gray-700",
+  leave:      "bg-amber-400",
+  booking:    "bg-[var(--color-accent)]",
+  birthday:   "bg-pink-400",
+  task:       "bg-purple-500",
+  post:       "bg-gray-700",
+  holiday:    "bg-red-500",
+  sale_event: "bg-orange-500",
 };
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -70,11 +74,13 @@ export function CalendarView({
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filter>({
-    leave:    settings.show_leaves,
-    booking:  settings.show_rooms,
-    birthday: settings.show_birthdays,
-    task:     settings.show_tasks,
-    post:     settings.show_posts,
+    leave:      settings.show_leaves,
+    booking:    settings.show_rooms,
+    birthday:   settings.show_birthdays,
+    task:       settings.show_tasks,
+    post:       settings.show_posts,
+    holiday:    true,
+    sale_event: true,
   });
   const [showSettingsPanel, setShowSettingsPanel] = useState(false);
   const [settingsForm, setSettingsForm] = useState<CalendarSettings>(settings);
@@ -137,11 +143,13 @@ export function CalendarView({
     });
     // Also update the active filters immediately
     setFilters({
-      leave:    settingsForm.show_leaves,
-      booking:  settingsForm.show_rooms,
-      birthday: settingsForm.show_birthdays,
-      task:     settingsForm.show_tasks,
-      post:     settingsForm.show_posts,
+      leave:      settingsForm.show_leaves,
+      booking:    settingsForm.show_rooms,
+      birthday:   settingsForm.show_birthdays,
+      task:       settingsForm.show_tasks,
+      post:       settingsForm.show_posts,
+      holiday:    true,
+      sale_event: true,
     });
     setSaving(false);
     setShowSettingsPanel(false);
