@@ -69,6 +69,7 @@ type CampaignTotals = {
   video_plays: number;
   video_plays_25pct: number;
   adCount: number;
+  roas_weighted_sum: number;
 };
 
 type MetricCard = {
@@ -850,7 +851,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       const t = map.get(key) ?? {
         spend: 0, impressions: 0, clicks: 0, reach: 0, conversions: 0,
         conversion_value: 0, messaging_conversations: 0,
-        video_plays: 0, video_plays_25pct: 0, adCount: 0,
+        video_plays: 0, video_plays_25pct: 0, adCount: 0, roas_weighted_sum: 0,
       };
       t.spend                  += s.spend;
       t.impressions            += s.impressions;
@@ -861,6 +862,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       t.messaging_conversations += (s.messaging_conversations ?? 0);
       t.video_plays            += s.video_plays;
       t.video_plays_25pct      += s.video_plays_25pct;
+      t.roas_weighted_sum      += (s.roas ?? 0) * s.spend;
       map.set(key, t);
     }
     // count unique ads per campaign
@@ -891,8 +893,12 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       switch (sortBy) {
         case "spend":       return (tB?.spend ?? 0) - (tA?.spend ?? 0);
         case "roas": {
-          const rA = tA && tA.spend > 0 ? tA.conversion_value / tA.spend : 0;
-          const rB = tB && tB.spend > 0 ? tB.conversion_value / tB.spend : 0;
+          const rA = isMessengerTab
+            ? (tA && tA.spend > 0 ? tA.roas_weighted_sum / tA.spend : 0)
+            : (tA && tA.spend > 0 ? tA.conversion_value / tA.spend : 0);
+          const rB = isMessengerTab
+            ? (tB && tB.spend > 0 ? tB.roas_weighted_sum / tB.spend : 0)
+            : (tB && tB.spend > 0 ? tB.conversion_value / tB.spend : 0);
           return rB - rA;
         }
         case "hook": {
@@ -1603,7 +1609,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             const totals  = campaignTotals.get(key);
             const account = accountMap[campaign.meta_account_id];
             const isExpanded = expandedId === campaign.id;
-            const roas     = totals && totals.spend > 0 ? totals.conversion_value / totals.spend : null;
+            const roas           = totals && totals.spend > 0 ? totals.conversion_value / totals.spend : null;
+            const messengerRoas  = totals && totals.spend > 0 ? totals.roas_weighted_sum / totals.spend : null;
             const hookRate = totals && totals.impressions > 0
               ? (totals.video_plays_25pct / totals.impressions) * 100 : null;
 
@@ -1637,8 +1644,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                           // Messenger-specific metrics
                           <>
                             <span className="text-[var(--color-text-secondary)]">
-                              <span className={`font-semibold ${roas != null && roas >= 2 ? "text-[var(--color-success)]" : roas != null && roas < 1 ? "text-[var(--color-error)]" : "text-[var(--color-text-primary)]"}`}>
-                                {roas != null ? `${fmt(roas)}x` : "—"}
+                              <span className={`font-semibold ${messengerRoas != null && messengerRoas >= 2 ? "text-[var(--color-success)]" : messengerRoas != null && messengerRoas < 1 ? "text-[var(--color-error)]" : "text-[var(--color-text-primary)]"}`}>
+                                {messengerRoas != null && messengerRoas > 0 ? `${fmt(messengerRoas)}x` : "—"}
                               </span> ROAS
                             </span>
                             <span className="text-[var(--color-text-secondary)]">
