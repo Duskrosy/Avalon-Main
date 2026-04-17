@@ -396,7 +396,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     messages:    number;
   };
   // Cache key: `${campaign_id}:${breakdown}`
-  const [demographics,        setDemographics]        = useState<Record<string, DemoRow[]>>({});
+  const [demographics,        setDemographics]        = useState<Record<string, DemoRow[] | null>>({});
   const [demographicsLoading, setDemographicsLoading] = useState<Set<string>>(new Set());
   const [demoBreakdown,       setDemoBreakdown]       = useState<"gender" | "age">("gender");
   // expandedAdsets: campaignId → Set of expanded adset_ids
@@ -502,7 +502,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
     const fetchBreakdown = (breakdown: "gender" | "age") => {
       const cacheKey = `${campaign.campaign_id}:${breakdown}`;
-      if (demographics[cacheKey]) return;
+      if (demographics[cacheKey] !== undefined) return;
       setDemographicsLoading((prev) => new Set([...prev, cacheKey]));
       const yesterday = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
       fetch(
@@ -513,7 +513,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           setDemographics((prev) => ({ ...prev, [cacheKey]: json.data ?? [] }))
         )
         .catch(() =>
-          setDemographics((prev) => ({ ...prev, [cacheKey]: [] }))
+          setDemographics((prev) => ({ ...prev, [cacheKey]: null }))
         )
         .finally(() =>
           setDemographicsLoading((prev) => {
@@ -1121,7 +1121,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         <DemographicBar segments={campaignSegments} showLegend showSpend />
 
         {/* Adsets */}
-        {[...adsetMap.entries()].map(([adsetId, adset]) => {
+        {[...adsetMap.entries()]
+          .sort(([, a], [, b]) => b.rows.reduce((s, r) => s + r.spend, 0) - a.rows.reduce((s, r) => s + r.spend, 0))
+          .map(([adsetId, adset]) => {
           const adsetBySegment = new Map<string, number>();
           for (const row of adset.rows) {
             const seg = ((row as Record<string, unknown>)[segKey] as string) ?? "unknown";
