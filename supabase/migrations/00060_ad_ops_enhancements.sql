@@ -1,4 +1,4 @@
--- supabase/migrations/00061_ad_ops_enhancements.sql
+-- supabase/migrations/00060_ad_ops_enhancements.sql
 -- ============================================================
 -- Ad-Ops Enhancements
 -- 1. ad_type column on kpi_definitions (fixes Messenger tab split)
