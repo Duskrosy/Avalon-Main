@@ -63,6 +63,7 @@ export interface KpiDef {
   threshold_amber: number;
   hint: string | null;
   sort_order: number;
+  ad_type: "conversion" | "messenger" | "both";
 }
 
 export interface KpiWithValue extends KpiDef {

@@ -13,8 +13,7 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
   const [activeTab, setActiveTab] = useState<"conversion" | "messenger">("conversion");
 
   const filtered = kpis.filter((kpi) => {
-    const lower = kpi.name.toLowerCase();
-    const isMsg = lower.includes("message") || lower.includes("messenger");
+    const isMsg = kpi.ad_type === "messenger" || kpi.ad_type === "both";
     if (activeTab === "messenger") return isMsg;
     return !isMsg;
   });
