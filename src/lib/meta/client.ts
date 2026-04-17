@@ -415,22 +415,34 @@ export async function fetchCampaignSpend(
 
 // ─── Demographics (gender breakdown) ─────────────────────────────────────────
 
-/**
- * Fetch gender-breakdown insights for a single campaign on a specific date.
- * Returns one row per gender segment with spend, impressions, conversions, and messages.
- */
+export type AdDemographicRow = {
+  campaign_id:   string;
+  campaign_name: string | null;
+  adset_id:      string | null;
+  adset_name:    string | null;
+  ad_id:         string | null;
+  ad_name:       string | null;
+  gender:        string | null;
+  age_group:     string | null;
+  spend:         number;
+  impressions:   number;
+  conversions:   number;
+  messages:      number;
+};
+
 export async function fetchAdDemographics(
   accountId: string,
   campaignId: string,
   date: string,
-  token: string
-): Promise<{ gender: string; spend: number; impressions: number; conversions: number; messages: number }[]> {
+  token: string,
+  breakdown: "gender" | "age" = "gender"
+): Promise<AdDemographicRow[]> {
   const params = new URLSearchParams({
-    fields: "spend,impressions,actions",
-    breakdowns: "gender",
+    fields: "spend,impressions,actions,campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name",
+    breakdowns: breakdown === "age" ? "age" : "gender",
     time_range: JSON.stringify({ since: date, until: date }),
-    level: "campaign",
-    async: "false",
+    level: "ad",
+    async: "false", // REQUIRED — without this Meta returns a job ID instead of data
     access_token: token,
   });
   const res = await fetch(
@@ -442,15 +454,28 @@ export async function fetchAdDemographics(
   }
   const json = await res.json();
   return (json.data ?? []).map((row: Record<string, unknown>) => {
-    const actions = (row.actions as { action_type: string; value: string }[]) ?? [];
-    const getAction = (type: string) =>
-      Number(actions.find((a) => a.action_type === type)?.value ?? 0);
+    const actions = (row.actions ?? []) as { action_type: string; value: string }[];
+    const conversions = Number(
+      actions.find((a) => a.action_type === "purchase")?.value ?? 0
+    );
+    const messages = Number(
+      actions.find((a) =>
+        a.action_type === "onsite_conversion.messaging_conversation_started_7d"
+      )?.value ?? 0
+    );
     return {
-      gender: String(row.gender ?? "unknown"),
-      spend: Number(row.spend ?? 0),
+      campaign_id:   (row.campaign_id   as string) ?? campaignId,
+      campaign_name: (row.campaign_name as string) ?? null,
+      adset_id:      (row.adset_id      as string) ?? null,
+      adset_name:    (row.adset_name    as string) ?? null,
+      ad_id:         (row.ad_id         as string) ?? null,
+      ad_name:       (row.ad_name       as string) ?? null,
+      gender:    breakdown === "gender" ? ((row.gender as string) ?? "unknown") : null,
+      age_group: breakdown === "age"    ? ((row.age    as string) ?? null)      : null,
+      spend:       Number(row.spend       ?? 0),
       impressions: Number(row.impressions ?? 0),
-      conversions: getAction("offsite_conversion.fb_pixel_purchase"),
-      messages: getAction("onsite_conversion.messaging_conversation_started_7d"),
+      conversions,
+      messages,
     };
   });
 }
