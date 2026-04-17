@@ -15,6 +15,10 @@ export async function GET(req: NextRequest) {
   const date       = searchParams.get("date") ?? new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   const breakdown = (searchParams.get("breakdown") ?? "gender") as "gender" | "age";
 
+  if (breakdown !== "gender" && breakdown !== "age") {
+    return NextResponse.json({ error: "Invalid breakdown" }, { status: 400 });
+  }
+
   if (!campaignId || !accountId) {
     return NextResponse.json({ error: "campaign_id and meta_account_id are required" }, { status: 400 });
   }

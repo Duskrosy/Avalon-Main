@@ -413,7 +413,7 @@ export async function fetchCampaignSpend(
   return map;
 }
 
-// ─── Demographics (gender breakdown) ─────────────────────────────────────────
+// ─── Demographics (gender/age breakdown) ─────────────────────────────────────────
 
 export type AdDemographicRow = {
   campaign_id:   string;
@@ -456,6 +456,7 @@ export async function fetchAdDemographics(
   return (json.data ?? []).map((row: Record<string, unknown>) => {
     const actions = (row.actions ?? []) as { action_type: string; value: string }[];
     const conversions = Number(
+      // "purchase" is Meta's normalized action type covering both on-site and off-site purchases
       actions.find((a) => a.action_type === "purchase")?.value ?? 0
     );
     const messages = Number(
