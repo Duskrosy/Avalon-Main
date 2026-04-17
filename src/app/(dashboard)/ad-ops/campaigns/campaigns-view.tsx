@@ -316,7 +316,9 @@ const AD_COL_DEFS: ColDef[] = [
   { id: "msg_convs",         label: "Results",
     render: (ad) => (ad.messaging_conversations ?? 0).toLocaleString() },
   { id: "cost_per_result",   label: "Cost/Result",
-    render: (ad, cur) => { const v = (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null; return v != null ? fmtMoney(v, cur) : "—"; } },
+    render: (ad, cur) => { const v = (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null; return v != null ? fmtMoney(v, cur) : "—"; },
+    deltaValue: (ad) => (ad.messaging_conversations ?? 0) > 0 ? ad.spend / ad.messaging_conversations : null,
+    invertColor: true },
 ];
 
 // Default columns for Messenger-objective campaigns
