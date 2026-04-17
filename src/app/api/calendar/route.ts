@@ -7,7 +7,7 @@ export type CalendarEvent = {
   title: string;
   date: string;       // YYYY-MM-DD
   end_date?: string;
-  type: "leave" | "booking" | "birthday" | "task" | "post";
+  type: "leave" | "booking" | "birthday" | "task" | "post" | "holiday" | "sale_event";
   color: string;
   meta?: string;      // extra context (platform, room name, etc.)
 };
@@ -179,6 +179,39 @@ export async function GET(req: NextRequest) {
         });
       }
     }
+  }
+
+  // --- CALENDAR EVENTS (holidays, sale events) ---
+  const { data: calEvents } = await supabase
+    .from("calendar_events")
+    .select("id, title, event_date, end_date, event_type, is_recurring, recurrence_rule");
+
+  for (const ce of calEvents ?? []) {
+    const parts = (ce.event_date as string).split("-");
+    const eventDate =
+      ce.is_recurring && ce.recurrence_rule === "yearly"
+        ? `${year}-${parts[1]}-${parts[2]}`
+        : (ce.event_date as string);
+
+    if (eventDate < firstStr || eventDate > lastStr) continue;
+
+    const endDate = ce.end_date
+      ? ce.is_recurring && ce.recurrence_rule === "yearly"
+        ? (() => {
+            const ep = (ce.end_date as string).split("-");
+            return `${year}-${ep[1]}-${ep[2]}`;
+          })()
+        : (ce.end_date as string)
+      : undefined;
+
+    events.push({
+      id: `cal-${ce.id}`,
+      title: ce.title as string,
+      date: eventDate,
+      ...(endDate ? { end_date: endDate } : {}),
+      type: ce.event_type as "holiday" | "sale_event",
+      color: ce.event_type === "sale_event" ? "#f97316" : "#ef4444",
+    });
   }
 
   return NextResponse.json(events);
