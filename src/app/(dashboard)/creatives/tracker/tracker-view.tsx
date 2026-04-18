@@ -25,6 +25,7 @@ type ContentItem = {
   title: string;
   content_type: string;
   channel_type: string;
+  creative_type: string | null;
   funnel_stage: string | null;
   creative_angle: string | null;
   product_or_collection: string | null;
@@ -101,14 +102,9 @@ const STATUS_OPTIONS = [
   "archived",
 ] as const;
 
-const CONTENT_TYPES = [
-  "video",
-  "still",
-  "ad_creative",
-  "organic",
-  "offline",
-  "other",
-] as const;
+const CONTENT_TYPES = ["organic", "ads", "offline_other"] as const;
+
+const CREATIVE_TYPES = ["video", "stills", "asset"] as const;
 
 const CHANNEL_TYPES = ["conversion", "messenger", "organic", "other"] as const;
 
@@ -522,8 +518,8 @@ export default function TrackerView({
                         <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                           <th className="px-4 py-3">Title</th>
                           <th className="px-4 py-3">Group</th>
-                          <th className="px-4 py-3">Type</th>
-                          <th className="px-4 py-3">Channel</th>
+                          <th className="px-4 py-3">Content</th>
+                          <th className="px-4 py-3">Format</th>
                           <th className="px-4 py-3">Funnel</th>
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3">Campaign</th>
@@ -554,7 +550,7 @@ export default function TrackerView({
                               {fmtLabel(item.content_type)}
                             </td>
                             <td className="px-4 py-3 text-[var(--color-text-secondary)]">
-                              {fmtLabel(item.channel_type)}
+                              {item.creative_type ? fmtLabel(item.creative_type) : "-"}
                             </td>
                             <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                               {item.funnel_stage ?? "-"}
@@ -651,7 +647,7 @@ export default function TrackerView({
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--color-text-secondary)]">
                           <span>{fmtLabel(item.content_type)}</span>
-                          <span>{fmtLabel(item.channel_type)}</span>
+                          <span>{item.creative_type ? fmtLabel(item.creative_type) : "-"}</span>
                           {item.funnel_stage && <span>{item.funnel_stage}</span>}
                           {item.campaign_label && (
                             <span className="text-indigo-600">{item.campaign_label}</span>
@@ -906,14 +902,14 @@ function ItemModal({
   saving: boolean;
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [contentType, setContentType] = useState(initial?.content_type ?? "video");
+  const [contentType, setContentType] = useState(initial?.content_type ?? "ads");
+  const [creativeType, setCreativeType] = useState(initial?.creative_type ?? "video");
   const [channelType, setChannelType] = useState(initial?.channel_type ?? "conversion");
   const [funnelStage, setFunnelStage] = useState(initial?.funnel_stage ?? "");
   const [creativeAngle, setCreativeAngle] = useState(initial?.creative_angle ?? "");
   const [product, setProduct] = useState(initial?.product_or_collection ?? "");
   const [campaign, setCampaign] = useState(initial?.campaign_label ?? "");
   const [promoCode, setPromoCode] = useState(initial?.promo_code ?? "");
-  const [transferLink, setTransferLink] = useState(initial?.transfer_link ?? "");
   const [plannedWeek, setPlannedWeek] = useState(initial?.planned_week_start ?? "");
   const [dateSubmitted, setDateSubmitted] = useState(initial?.date_submitted ?? "");
   const [assigneeIds, setAssigneeIds] = useState<string[]>(
@@ -930,13 +926,13 @@ function ItemModal({
     onSave({
       title: title.trim(),
       content_type: contentType,
+      creative_type: creativeType,
       channel_type: channelType,
-      funnel_stage: funnelStage || null,
+      funnel_stage: contentType === "ads" ? funnelStage || null : null,
       creative_angle: creativeAngle || null,
       product_or_collection: product || null,
       campaign_label: campaign || null,
       promo_code: promoCode || null,
-      transfer_link: transferLink || null,
       planned_week_start: plannedWeek || null,
       date_submitted: dateSubmitted || null,
       assignee_ids: assigneeIds,
@@ -978,6 +974,20 @@ function ItemModal({
             </select>
           </Field>
 
+          <Field label="Creative Type">
+            <select
+              value={creativeType}
+              onChange={(e) => setCreativeType(e.target.value)}
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            >
+              {CREATIVE_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {fmtLabel(t)}
+                </option>
+              ))}
+            </select>
+          </Field>
+
           <Field label="Channel Type">
             <select
               value={channelType}
@@ -992,20 +1002,22 @@ function ItemModal({
             </select>
           </Field>
 
-          <Field label="Funnel Stage">
-            <select
-              value={funnelStage}
-              onChange={(e) => setFunnelStage(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            >
-              <option value="">-</option>
-              {FUNNEL_STAGES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
+          {contentType === "ads" && (
+            <Field label="Funnel Stage">
+              <select
+                value={funnelStage}
+                onChange={(e) => setFunnelStage(e.target.value)}
+                className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              >
+                <option value="">-</option>
+                {FUNNEL_STAGES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
 
           <Field label="Status">
             <select
@@ -1062,15 +1074,6 @@ function ItemModal({
             />
           </Field>
 
-          <Field label="Transfer Link">
-            <input
-              type="text"
-              value={transferLink}
-              onChange={(e) => setTransferLink(e.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-              placeholder="https://..."
-            />
-          </Field>
 
           <Field label="Planned Week Start">
             <input

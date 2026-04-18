@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     .insert({
       title: body.title,
       content_type: body.content_type ?? null,
+      creative_type: body.creative_type ?? null,
       channel_type: body.channel_type ?? null,
       funnel_stage: body.funnel_stage ?? null,
       creative_angle: body.creative_angle ?? null,
