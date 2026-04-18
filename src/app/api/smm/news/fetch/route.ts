@@ -109,12 +109,15 @@ export async function POST(req: NextRequest) {
       let xml: string;
       try {
         const isReddit = source.url.includes("reddit.com");
+        const fetchUrl = isReddit
+          ? source.url.replace(/(?:www\.)?reddit\.com/, "old.reddit.com")
+          : source.url;
         const headers: Record<string, string> = {
           "User-Agent": isReddit
             ? "Mozilla/5.0 (compatible; Avalon/1.0; +https://finncotton.com)"
             : "AvalonRSSBot/1.0",
         };
-        const res = await fetch(source.url, {
+        const res = await fetch(fetchUrl, {
           signal: controller.signal,
           headers,
         });
