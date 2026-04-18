@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { format, parseISO } from "date-fns";
+import { PeoplePicker } from "@/components/ui/people-picker";
 
 type Request = {
   id: string;
@@ -15,7 +16,7 @@ type Request = {
   assignee: { id: string; first_name: string; last_name: string } | null;
 };
 
-type Member = { id: string; first_name: string; last_name: string };
+type Member = { id: string; first_name: string; last_name: string; avatar_url?: string | null };
 
 type Props = {
   members: Member[];         // creatives dept members for assignee dropdown
@@ -334,20 +335,21 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                       {/* Assign / reassign — managers only */}
                       {canManage && (
                         assigning === r.id ? (
-                          <select
-                            autoFocus
-                            defaultValue={r.assignee?.id ?? ""}
-                            onChange={(e) => reassign(r.id, e.target.value)}
-                            onBlur={() => setAssigning(null)}
-                            className="text-xs border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                          >
-                            <option value="">Unassigned</option>
-                            {members.map((m) => (
-                              <option key={m.id} value={m.id}>
-                                {m.first_name} {m.last_name}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex items-center gap-2">
+                            <PeoplePicker
+                              value={r.assignee ? [r.assignee.id] : []}
+                              onChange={(ids) => { reassign(r.id, ids[0] ?? ""); }}
+                              allUsers={members}
+                              single
+                              placeholder="Select assignee…"
+                            />
+                            <button
+                              onClick={() => setAssigning(null)}
+                              className="text-xs text-[var(--color-text-tertiary)] px-2 hover:text-[var(--color-text-primary)]"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         ) : (
                           <button
                             onClick={(e) => { e.stopPropagation(); setAssigning(r.id); }}

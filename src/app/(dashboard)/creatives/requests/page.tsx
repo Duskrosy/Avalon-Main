@@ -32,7 +32,7 @@ export default async function CreativesRequestsPage() {
 
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name")
+    .select("id, first_name, last_name, avatar_url")
     .eq("department_id", creativesDept?.id ?? "")
     .eq("status", "active")
     .is("deleted_at", null)
