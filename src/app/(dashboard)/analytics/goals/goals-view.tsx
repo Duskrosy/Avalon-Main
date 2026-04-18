@@ -121,6 +121,84 @@ const DATE_RANGES = [
   { label: "All", days: 0 },
 ] as const;
 
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+function KpiCard({
+  kpi,
+  latest,
+  canManage,
+  onAddGoal,
+}: {
+  kpi: KpiDefOption;
+  latest: { value: number; date: string } | undefined;
+  canManage: boolean;
+  onAddGoal: (kpi: KpiDefOption) => void;
+}) {
+  let ragDot = "bg-[var(--color-border-primary)]";
+  if (latest != null) {
+    const v = latest.value;
+    const isGood =
+      kpi.direction === "higher_better"
+        ? v >= kpi.threshold_green
+        : v <= kpi.threshold_green;
+    const isOk =
+      kpi.direction === "higher_better"
+        ? v >= kpi.threshold_amber
+        : v <= kpi.threshold_amber;
+    ragDot = isGood
+      ? "bg-[var(--color-success)]"
+      : isOk
+      ? "bg-amber-400"
+      : "bg-[var(--color-error)]";
+  }
+
+  return (
+    <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full shrink-0 ${ragDot}`} />
+            <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">{kpi.name}</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className="text-[10px] text-[var(--color-text-tertiary)]">{kpi.category}</span>
+            {kpi.data_source_status !== "standalone" && (
+              <>
+                <span className="text-[10px] text-[var(--color-text-tertiary)]">·</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                    kpi.data_source_status === "wired"
+                      ? "bg-green-50 text-green-600"
+                      : "bg-amber-50 text-amber-600"
+                  }`}
+                >
+                  {kpi.data_source_status === "wired" ? "Wired" : "To Wire"}
+                </span>
+              </>
+            )}
+            {latest && (
+              <span className="text-[10px] text-[var(--color-text-tertiary)]">· {latest.date}</span>
+            )}
+          </div>
+        </div>
+        {latest != null && (
+          <span className="text-sm font-bold text-[var(--color-text-primary)] shrink-0 tabular-nums">
+            {fmtValue(latest.value, kpi.unit)}
+          </span>
+        )}
+      </div>
+      {canManage && (
+        <button
+          type="button"
+          onClick={() => onAddGoal(kpi)}
+          className="mt-1 w-full text-xs border border-[var(--color-border-primary)] rounded-md py-1.5 text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
+        >
+          + Add Goal
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Goal Card ────────────────────────────────────────────────────────────────
 function GoalCard({
   goal,
@@ -510,6 +588,70 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, latestV
 
       {/* Summary cards */}
       <SummaryCards goals={filtered} />
+
+      {/* ── KPI Overview ──────────────────────────────────────────────── */}
+      {kpiDefinitions.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">KPI Overview</h2>
+
+          {activeLinked.length > 0 && (
+            <div className="mb-6">
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">
+                With Integration
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {activeLinked.map((kpi) => (
+                  <KpiCard
+                    key={kpi.id}
+                    kpi={kpi}
+                    latest={latestValueByKpiId[kpi.id]}
+                    canManage={canManage}
+                    onAddGoal={handleAddGoalFromKpi}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeStandalone.length > 0 && (
+            <div className="mb-6">
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">
+                Manual Entry
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {activeStandalone.map((kpi) => (
+                  <KpiCard
+                    key={kpi.id}
+                    kpi={kpi}
+                    latest={latestValueByKpiId[kpi.id]}
+                    canManage={canManage}
+                    onAddGoal={handleAddGoalFromKpi}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {inactiveKpis.length > 0 && (
+            <details className="opacity-60">
+              <summary className="text-xs font-medium text-[var(--color-text-tertiary)] uppercase tracking-wide cursor-pointer select-none mb-3">
+                Inactive KPIs ({inactiveKpis.length})
+              </summary>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3">
+                {inactiveKpis.map((kpi) => (
+                  <KpiCard
+                    key={kpi.id}
+                    kpi={kpi}
+                    latest={latestValueByKpiId[kpi.id]}
+                    canManage={canManage}
+                    onAddGoal={handleAddGoalFromKpi}
+                  />
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Active goals */}
       {active.length === 0 ? (
