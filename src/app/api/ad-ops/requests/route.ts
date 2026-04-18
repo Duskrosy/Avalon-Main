@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
     .select(`
       *,
       requester:profiles!requester_id(id, first_name, last_name),
-      assignee:profiles!assignee_id(id, first_name, last_name)
+      assignee:profiles!assignee_id(id, first_name, last_name),
+      kanban_card:kanban_cards!linked_card_id(id, col:kanban_columns!column_id(name))
     `)
     .order("created_at", { ascending: false })
     .limit(limit);

@@ -14,6 +14,7 @@ type Request = {
   created_at: string;
   requester: { id: string; first_name: string; last_name: string } | null;
   assignee: { id: string; first_name: string; last_name: string } | null;
+  kanban_card?: { id: string; col: { name: string } | null } | null;
 };
 
 type Member = { id: string; first_name: string; last_name: string; avatar_url?: string | null };
@@ -297,6 +298,11 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                     )}
                     {r.target_date ? `${isFulfillmentView ? " · " : ""}due ${format(parseISO(r.target_date), "d MMM")}` : ""}
                   </p>
+                  {!isFulfillmentView && r.kanban_card?.col?.name && (
+                    <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                      Stage: {r.kanban_card.col.name}
+                    </span>
+                  )}
                 </div>
                 <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
                   {format(parseISO(r.created_at), "d MMM")}
