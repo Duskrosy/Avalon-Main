@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       try {
         const isReddit = source.url.includes("reddit.com");
         const fetchUrl = isReddit
-          ? source.url.replace(/(?:www\.)?reddit\.com/, "old.reddit.com")
+          ? source.url.replace(/\/\/(?:www\.)?reddit\.com/, "//old.reddit.com")
           : source.url;
         const headers: Record<string, string> = {
           "User-Agent": isReddit
