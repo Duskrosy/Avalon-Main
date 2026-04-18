@@ -926,7 +926,7 @@ function ItemModal({
     onSave({
       title: title.trim(),
       content_type: contentType,
-      creative_type: creativeType,
+      creative_type: creativeType || null,
       channel_type: channelType,
       funnel_stage: contentType === "ads" ? funnelStage || null : null,
       creative_angle: creativeAngle || null,
