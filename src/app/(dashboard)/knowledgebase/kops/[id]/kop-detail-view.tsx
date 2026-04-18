@@ -216,14 +216,6 @@ function FileViewer({ version }: { version: Version }) {
     );
   }
 
-  if (["mp4", "mov", "webm"].includes(ext)) {
-    return (
-      <video controls className="w-full rounded-lg border border-[var(--color-border-primary)] max-h-[70vh]">
-        <source src={url} />
-      </video>
-    );
-  }
-
   return (
     <div className="flex flex-col items-center gap-4 py-12">
       <p className="text-sm text-[var(--color-text-secondary)]">Preview not available for this file type.</p>
