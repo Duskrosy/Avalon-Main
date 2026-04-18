@@ -12,7 +12,7 @@ export default async function GoalsPage() {
   const admin = createAdminClient();
   const deptId = currentUser.department_id;
 
-  const [{ data: goals }, { data: departments }, { data: kpiDefs }] = await Promise.all([
+  const [{ data: goals }, { data: departments }, { data: kpiDefs }, { data: kpiEntries }] = await Promise.all([
     admin
       .from("goals")
       .select(`
@@ -27,10 +27,22 @@ export default async function GoalsPage() {
     admin.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
     admin
       .from("kpi_definitions")
-      .select("id, name, department_id, unit, category, data_source_status")
-      .eq("is_active", true)
+      .select("id, name, department_id, unit, category, data_source_status, is_active, threshold_green, threshold_amber, direction, sort_order")
+      .order("sort_order")
       .order("name"),
+    admin
+      .from("kpi_entries")
+      .select("kpi_definition_id, value_numeric, period_date")
+      .is("profile_id", null)
+      .order("period_date", { ascending: false }),
   ]);
+
+  const latestValueByKpiId: Record<string, { value: number; date: string }> = {};
+  for (const e of kpiEntries ?? []) {
+    if (!latestValueByKpiId[e.kpi_definition_id]) {
+      latestValueByKpiId[e.kpi_definition_id] = { value: e.value_numeric, date: e.period_date };
+    }
+  }
 
   return (
     <GoalsView
@@ -38,6 +50,7 @@ export default async function GoalsPage() {
       goals={(goals ?? []) as any}
       departments={departments ?? []}
       kpiDefinitions={(kpiDefs ?? []) as any}
+      latestValueByKpiId={latestValueByKpiId}
       currentDeptId={deptId}
       canManage={isManagerOrAbove(currentUser)}
       isOps={isOps(currentUser)}
