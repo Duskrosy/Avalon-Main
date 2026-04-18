@@ -16,7 +16,7 @@ export default async function AnnouncementsPage() {
         id, title, content, flair_text, flair_color,
         attachment_url, attachment_name, expires_at, created_at,
         department:departments(id, name, slug),
-        created_by_profile:profiles!created_by(id, first_name, last_name)
+        created_by_profile:profiles!created_by(id, first_name, last_name, avatar_url)
       `)
       .order("created_at", { ascending: false })
       .limit(100),

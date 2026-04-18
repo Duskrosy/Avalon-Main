@@ -17,7 +17,7 @@ type Announcement = {
   expires_at: string | null;
   created_at: string;
   department: Dept | null;
-  created_by_profile: { id: string; first_name: string; last_name: string } | null;
+  created_by_profile: { id: string; first_name: string; last_name: string; avatar_url?: string | null } | null;
 };
 
 type Props = {
@@ -221,12 +221,19 @@ export function AnnouncementsView({
                 {/* Thread Header */}
                 <div className="p-4 cursor-pointer" onClick={() => toggle(a.id)}>
                   <div className="flex items-start gap-3">
-                    {/* Author Avatar */}
-                    <div className="w-9 h-9 rounded-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
-                      {a.created_by_profile
-                        ? getInitials(a.created_by_profile.first_name, a.created_by_profile.last_name)
-                        : "?"}
-                    </div>
+                    {a.created_by_profile?.avatar_url ? (
+                      <img
+                        src={a.created_by_profile.avatar_url}
+                        alt={`${a.created_by_profile.first_name} ${a.created_by_profile.last_name}`}
+                        className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-full bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
+                        {a.created_by_profile
+                          ? getInitials(a.created_by_profile.first_name, a.created_by_profile.last_name)
+                          : "?"}
+                      </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
                       {/* Author + Meta */}
