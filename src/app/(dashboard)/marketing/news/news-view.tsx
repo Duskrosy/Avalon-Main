@@ -58,6 +58,7 @@ export function NewsView({ canManage }: Props) {
   const [showAddSource, setShowAddSource] = useState(false);
   const [addSourceForm, setAddSourceForm] = useState<AddSourceForm>(EMPTY_SOURCE_FORM);
   const [savingSource, setSavingSource] = useState(false);
+  const [sourceError, setSourceError]   = useState<string | null>(null);
   const [refreshResult, setRefreshResult] = useState<string | null>(null);
   const [lastFetched, setLastFetched]   = useState<string | null>(null);
 
@@ -117,14 +118,21 @@ export function NewsView({ canManage }: Props) {
     e.preventDefault();
     if (!addSourceForm.name.trim() || !addSourceForm.url.trim()) return;
     setSavingSource(true);
-    await fetch("/api/smm/news/sources", {
+    setSourceError(null);
+    const res = await fetch("/api/smm/news/sources", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(addSourceForm),
     });
     setSavingSource(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setSourceError((data as { error?: string }).error ?? "Failed to save source. Check your permissions.");
+      return;
+    }
     setShowAddSource(false);
     setAddSourceForm(EMPTY_SOURCE_FORM);
+    setSourceError(null);
     // Auto-fetch items from all sources (including the new one)
     await fetch("/api/smm/news/fetch", { method: "POST" });
     setPage(1);
@@ -221,7 +229,7 @@ export function NewsView({ canManage }: Props) {
       {/* Add Source modal */}
       {showAddSource && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setShowAddSource(false)} />
+          <div className="absolute inset-0 bg-black/30" onClick={() => { setShowAddSource(false); setSourceError(null); }} />
           <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
             <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Add RSS Source</h2>
             <form onSubmit={handleAddSource} className="space-y-4">
@@ -266,10 +274,13 @@ export function NewsView({ canManage }: Props) {
                   ))}
                 </select>
               </div>
+              {sourceError && (
+                <p className="text-sm text-[var(--color-error)]">{sourceError}</p>
+              )}
               <div className="flex items-center justify-end gap-2 pt-1">
                 <button
                   type="button"
-                  onClick={() => { setShowAddSource(false); setAddSourceForm(EMPTY_SOURCE_FORM); }}
+                  onClick={() => { setShowAddSource(false); setAddSourceForm(EMPTY_SOURCE_FORM); setSourceError(null); }}
                   className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
                 >
                   Cancel
