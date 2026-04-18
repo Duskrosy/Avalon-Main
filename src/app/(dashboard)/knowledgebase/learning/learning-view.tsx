@@ -89,6 +89,23 @@ function TypeIcon({ type, className = "w-5 h-5" }: { type: string; className?: s
 
 const PAGE_SIZE = 20;
 
+// ─── YouTube URL conversion helper ───────────────────────────────────────────
+function toEmbedUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    if (u.hostname === "youtu.be") {
+      return `https://www.youtube.com/embed${u.pathname}`;
+    }
+    if (u.hostname === "www.youtube.com" || u.hostname === "youtube.com") {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+    }
+  } catch {
+    // not a valid URL — return as-is
+  }
+  return url;
+}
+
 // ─── Material Viewer with view tracking ──────────────────────────────────────
 function MaterialViewer({
   material,
@@ -176,7 +193,7 @@ function MaterialViewer({
             </video>
           </div>
         ) : material.material_type === "link" ? (
-          <iframe src={url} className="w-full h-full border-0" title={material.title} />
+          <iframe src={toEmbedUrl(url)} className="w-full h-full border-0" title={material.title} />
         ) : ["presentation", "document"].includes(material.material_type) ? (
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
