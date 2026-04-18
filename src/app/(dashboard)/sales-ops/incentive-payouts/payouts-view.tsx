@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { IncentivePayout } from "@/lib/sales/types";
+import { WeeklyReportView } from "../weekly-agent-report/weekly-report-view";
 
 type Agent = { id: string; first_name: string; last_name: string; email: string };
 type Props = { agents: Agent[]; canManage: boolean };
@@ -34,6 +35,7 @@ function bracketColor(bracket: string | null) {
 }
 
 export function PayoutsView({ agents, canManage }: Props) {
+  const [activeTab, setActiveTab] = useState<"payouts" | "weekly">("payouts");
   const [month, setMonth] = useState(CURRENT_MONTH);
   const [payouts, setPayouts] = useState<IncentivePayout[]>([]);
   const [loading, setLoading] = useState(false);
@@ -97,6 +99,25 @@ export function PayoutsView({ agents, canManage }: Props) {
 
   return (
     <div>
+      {/* Tab navigation */}
+      <div className="flex gap-1 border-b border-[var(--color-border-primary)] mb-6">
+        {(["payouts", "weekly"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab
+                ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+            }`}
+          >
+            {tab === "payouts" ? "Monthly Payouts" : "Weekly Report"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "payouts" && (
+      <div>
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Incentive Payouts</h1>
@@ -341,6 +362,12 @@ export function PayoutsView({ agents, canManage }: Props) {
             </form>
           </div>
         </div>
+      )}
+      </div>
+      )}
+
+      {activeTab === "weekly" && (
+        <WeeklyReportView agents={agents} />
       )}
     </div>
   );
