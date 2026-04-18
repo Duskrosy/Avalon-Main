@@ -629,22 +629,30 @@ export function LearningView({ materials: initial, departments, canManage, isOps
                   />
                 ) : (
                   <>
-                    <input
-                      type="file"
-                      aria-label="Upload file"
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.webm"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        if (f && f.size > 100 * 1024 * 1024) {
-                          setError("File must be under 100MB.");
-                          e.target.value = "";
-                          return;
-                        }
-                        setFile(f);
-                      }}
-                      className="w-full text-sm text-[var(--color-text-secondary)]"
-                    />
-                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">Max 100MB</p>
+                    <label className="flex items-center gap-3 cursor-pointer border border-dashed border-[var(--color-border-primary)] rounded-lg px-4 py-3 hover:border-[var(--color-accent)] hover:bg-[var(--color-surface-hover)] transition-colors">
+                      <svg className="w-5 h-5 text-[var(--color-text-tertiary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      <span className="text-sm text-[var(--color-text-secondary)]">
+                        {file ? file.name : "Choose file to upload"}
+                      </span>
+                      <input
+                        type="file"
+                        aria-label="Upload file"
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.webm"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0] ?? null;
+                          if (f && f.size > 100 * 1024 * 1024) {
+                            setError("File must be under 100MB.");
+                            e.target.value = "";
+                            return;
+                          }
+                          setFile(f);
+                        }}
+                      />
+                    </label>
+                    <p className="text-[10px] text-[var(--color-text-tertiary)] mt-1">Max 100MB · PDF, DOC, PPT, Video</p>
                   </>
                 )}
               </div>
