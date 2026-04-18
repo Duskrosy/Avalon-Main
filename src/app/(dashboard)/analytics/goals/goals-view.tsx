@@ -14,7 +14,18 @@ type KpiDefRef = {
   direction: string;
   data_source_status?: string;
 };
-type KpiDefOption = { id: string; name: string; department_id: string; unit: string; category: string; data_source_status: string };
+type KpiDefOption = {
+  id: string;
+  name: string;
+  department_id: string;
+  unit: string;
+  category: string;
+  data_source_status: string;
+  is_active: boolean;
+  threshold_green: number;
+  threshold_amber: number;
+  direction: string;
+};
 
 type Goal = {
   id: string;
@@ -37,6 +48,7 @@ type Props = {
   goals: Goal[];
   departments: Dept[];
   kpiDefinitions: KpiDefOption[];
+  latestValueByKpiId: Record<string, { value: number; date: string }>;
   currentDeptId: string | null;
   canManage: boolean;
   isOps: boolean;
@@ -87,6 +99,20 @@ const RAG_BORDER = {
   amber: "border-[var(--color-border-primary)]",
   red: "border-red-200",
 };
+
+function fmtValue(v: number, unit: string): string {
+  if (unit === "percent") return `${v.toLocaleString(undefined, { maximumFractionDigits: 1 })}%`;
+  if (unit === "currency_php") {
+    if (v >= 1_000_000) return `₱${(v / 1_000_000).toFixed(1)}M`;
+    if (v >= 1_000) return `₱${(v / 1_000).toFixed(0)}K`;
+    return `₱${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  }
+  if (unit === "number") {
+    if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+    return v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  }
+  return `${v.toFixed(2)}x`;
+}
 
 const DATE_RANGES = [
   { label: "7d", days: 7 },
@@ -285,7 +311,7 @@ function SummaryCards({ goals }: { goals: Goal[] }) {
 }
 
 // ─── Main View ────────────────────────────────────────────────────────────────
-export function GoalsView({ goals: initial, departments, kpiDefinitions, currentDeptId, canManage, isOps }: Props) {
+export function GoalsView({ goals: initial, departments, kpiDefinitions, latestValueByKpiId, currentDeptId, canManage, isOps }: Props) {
   const [goals, setGoals] = useState<Goal[]>(initial);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -304,6 +330,30 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, current
     deadline_amber_days: "7",
     data_source_status: "standalone",
   });
+
+  const activeLinked = useMemo(
+    () => kpiDefinitions.filter((k) => k.is_active && k.data_source_status !== "standalone"),
+    [kpiDefinitions]
+  );
+  const activeStandalone = useMemo(
+    () => kpiDefinitions.filter((k) => k.is_active && k.data_source_status === "standalone"),
+    [kpiDefinitions]
+  );
+  const inactiveKpis = useMemo(
+    () => kpiDefinitions.filter((k) => !k.is_active),
+    [kpiDefinitions]
+  );
+
+  const handleAddGoalFromKpi = useCallback((kpi: KpiDefOption) => {
+    setForm((f) => ({
+      ...f,
+      kpi_definition_id: kpi.id,
+      unit: kpi.unit === "percent" ? "%" : kpi.unit === "currency_php" ? "PHP" : kpi.unit,
+      target_value: String(kpi.threshold_green),
+      department_id: kpi.department_id,
+    }));
+    setShowCreate(true);
+  }, []);
 
   // Filter KPI definitions by selected department in the create form
   const filteredKpiDefs = useMemo(() => {
