@@ -903,7 +903,7 @@ function ItemModal({
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [contentType, setContentType] = useState(initial?.content_type ?? "ads");
-  const [creativeType, setCreativeType] = useState(initial?.creative_type ?? "video");
+  const [creativeType, setCreativeType] = useState(initial?.creative_type ?? (initial ? "" : "video"));
   const [channelType, setChannelType] = useState(initial?.channel_type ?? "conversion");
   const [funnelStage, setFunnelStage] = useState(initial?.funnel_stage ?? "");
   const [creativeAngle, setCreativeAngle] = useState(initial?.creative_angle ?? "");
@@ -963,7 +963,10 @@ function ItemModal({
           <Field label="Content Type">
             <select
               value={contentType}
-              onChange={(e) => setContentType(e.target.value)}
+              onChange={(e) => {
+                setContentType(e.target.value);
+                if (e.target.value !== "ads") setFunnelStage("");
+              }}
               className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
               {CONTENT_TYPES.map((t) => (
@@ -980,6 +983,7 @@ function ItemModal({
               onChange={(e) => setCreativeType(e.target.value)}
               className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             >
+              <option value="">Select…</option>
               {CREATIVE_TYPES.map((t) => (
                 <option key={t} value={t}>
                   {fmtLabel(t)}
