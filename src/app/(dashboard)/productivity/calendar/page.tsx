@@ -1,3 +1,4 @@
+import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
@@ -31,10 +32,10 @@ export default async function CalendarPage() {
   }
   const showSmmPosts = ops || ["creatives", "marketing", "ad-ops"].includes(deptSlug ?? "");
 
-  const month = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const month = format(new Date(), "yyyy-MM");
   const [year, mon] = month.split("-").map(Number);
   const firstStr = `${month}-01`;
-  const lastStr  = new Date(year, mon, 0).toISOString().split("T")[0];
+  const lastStr  = format(new Date(year, mon, 0), "yyyy-MM-dd");
 
   // Leaves (approved + pre_approved)
   let leavesQ = supabase
@@ -120,7 +121,7 @@ export default async function CalendarPage() {
   }
 
   for (const b of bookingsRes.data ?? []) {
-    const date = new Date(b.start_time).toISOString().split("T")[0];
+    const date = format(new Date(b.start_time), "yyyy-MM-dd");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const room = b.room as any;
     events.push({ id: b.id, title: `${b.title}${room ? ` · ${room.name}` : ""}`, date, type: "booking", color: "#3b82f6" });
@@ -143,7 +144,7 @@ export default async function CalendarPage() {
     for (const p of posts ?? []) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const group = p.group as any;
-      const dateStr = new Date(p.scheduled_at!).toISOString().split("T")[0];
+      const dateStr = format(new Date(p.scheduled_at!), "yyyy-MM-dd");
       const platformLabel = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
       const captionPreview = p.caption ? ` — ${p.caption.slice(0, 40)}${p.caption.length > 40 ? "…" : ""}` : "";
       events.push({
@@ -164,7 +165,7 @@ export default async function CalendarPage() {
     .in("event_type", ["holiday", "sale_event"]);
 
   const thisYear = new Date().getFullYear();
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = format(new Date(), "yyyy-MM-dd");
   const expandedForLookAhead = (upcomingCalEvents ?? []).map((e) => {
     if (e.is_recurring && e.recurrence_rule === "yearly") {
       const [, mm, dd] = (e.event_date as string).split("-");

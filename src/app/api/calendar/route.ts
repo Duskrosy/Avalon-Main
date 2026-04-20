@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { format } from "date-fns";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 
@@ -22,13 +23,13 @@ const PLATFORM_COLORS: Record<string, string> = {
 // GET /api/calendar?month=YYYY-MM
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const month = searchParams.get("month") ?? new Date().toISOString().slice(0, 7);
+  const month = searchParams.get("month") ?? format(new Date(), "yyyy-MM");
 
   const [year, mon] = month.split("-").map(Number);
   const firstDay = new Date(year, mon - 1, 1);
   const lastDay  = new Date(year, mon, 0, 23, 59, 59);
-  const firstStr = firstDay.toISOString().split("T")[0];
-  const lastStr  = lastDay.toISOString().split("T")[0];
+  const firstStr = format(firstDay, "yyyy-MM-dd");
+  const lastStr  = format(lastDay, "yyyy-MM-dd");
 
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
     .lte("start_time", `${lastStr}T23:59:59Z`);
 
   for (const b of bookings ?? []) {
-    const date = new Date(b.start_time).toISOString().split("T")[0];
+    const date = format(new Date(b.start_time), "yyyy-MM-dd");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const room = b.room as any;
     events.push({
@@ -165,7 +166,7 @@ export async function GET(req: NextRequest) {
       for (const p of posts ?? []) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const group = p.group as any;
-        const dateStr = new Date(p.scheduled_at!).toISOString().split("T")[0];
+        const dateStr = format(new Date(p.scheduled_at!), "yyyy-MM-dd");
         const platformLabel = p.platform.charAt(0).toUpperCase() + p.platform.slice(1);
         const captionPreview = p.caption ? ` — ${p.caption.slice(0, 40)}${p.caption.length > 40 ? "…" : ""}` : "";
         events.push({
