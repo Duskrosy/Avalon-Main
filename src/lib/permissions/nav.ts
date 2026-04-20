@@ -158,6 +158,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Request for Creatives", slug: "creatives-requests", route: "/creatives/requests" },
     ],
   },
+  {
+    name: "Pulse",
+    slug: "pulse",
+    departments: [],
+    items: [
+      { name: "Tickets", slug: "pulse-tickets", route: "/pulse/tickets" },
+    ],
+  },
 ];
 
 /**

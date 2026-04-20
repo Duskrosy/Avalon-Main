@@ -14,8 +14,18 @@ const feedbackCreateSchema = z.object({
 
 const feedbackPatchSchema = z.object({
   id: z.string().uuid(),
-  status: z.enum(["open", "acknowledged", "resolved", "wontfix"]),
-});
+  status: z.enum(["open", "acknowledged", "resolved", "wontfix"]).optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  notes: z.string().max(5000).nullable().optional(),
+  merged_into_id: z.string().uuid().nullable().optional(),
+}).refine(
+  (v) =>
+    v.status !== undefined ||
+    v.priority !== undefined ||
+    v.notes !== undefined ||
+    v.merged_into_id !== undefined,
+  { message: "At least one field (status/priority/notes/merged_into_id) is required" },
+);
 
 // POST /api/feedback — create feedback
 export async function POST(request: Request) {
@@ -78,7 +88,9 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("feedback")
-    .select("*, profiles:user_id(first_name, last_name, email), department:department_id(name)")
+    .select(
+      "*, profiles:user_id(first_name, last_name, email), department:department_id(name), merged_into:merged_into_id(id, body, status)",
+    )
     .order("created_at", { ascending: false })
     .limit(limit);
 
@@ -125,9 +137,15 @@ export async function PATCH(request: Request) {
   );
   if (validationError) return validationError;
 
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (body.status !== undefined) patch.status = body.status;
+  if (body.priority !== undefined) patch.priority = body.priority;
+  if (body.notes !== undefined) patch.notes = body.notes;
+  if (body.merged_into_id !== undefined) patch.merged_into_id = body.merged_into_id;
+
   const { data, error } = await supabase
     .from("feedback")
-    .update({ status: body.status })
+    .update(patch)
     .eq("id", body.id)
     .select()
     .single();
@@ -136,9 +154,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  trackEventServer(supabase, currentUser.id, "feedback.status_updated", {
+  trackEventServer(supabase, currentUser.id, "feedback.patched", {
     module: "feedback",
-    properties: { feedback_id: body.id, new_status: body.status },
+    properties: {
+      feedback_id: body.id,
+      ...(body.status !== undefined && { status: body.status }),
+      ...(body.priority !== undefined && { priority: body.priority }),
+      ...(body.merged_into_id !== undefined && { merged_into_id: body.merged_into_id }),
+    },
   });
 
   return NextResponse.json({ feedback: data });
