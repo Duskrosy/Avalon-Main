@@ -21,7 +21,7 @@ const TABS = [
 
 type TabId = typeof TABS[number]["id"];
 
-export function ObsDashboard() {
+export function ObsDashboard({ currentDeptId }: { currentDeptId: string | null }) {
   const [activeTab, setActiveTab] = useState<TabId>("pulse");
 
   return (
@@ -53,7 +53,7 @@ export function ObsDashboard() {
       {activeTab === "usage"  && <UsageTab />}
       {activeTab === "errors" && <ErrorsTab />}
       {activeTab === "audit"  && <AuditTab />}
-      {activeTab === "activity" && <ActivityTab />}
+      {activeTab === "activity" && <ActivityTab currentDeptId={currentDeptId} />}
       {activeTab === "alerts" && <AlertsTab />}
       {activeTab === "jobs"   && <JobsTab />}
     </div>

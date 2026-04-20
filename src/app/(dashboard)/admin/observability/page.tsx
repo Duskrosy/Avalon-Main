@@ -9,5 +9,5 @@ export default async function ObservabilityPage() {
   if (!currentUser) redirect("/login");
   if (!isOps(currentUser)) redirect("/");
 
-  return <ObsDashboard />;
+  return <ObsDashboard currentDeptId={currentUser.department_id ?? null} />;
 }

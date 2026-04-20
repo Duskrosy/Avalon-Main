@@ -145,6 +145,7 @@ export const NAV_GROUPS: NavGroup[] = [
     minTier: 1, // OPS only
     items: [
       { name: "Observability", slug: "observability", route: "/admin/observability", minTier: 1 },
+      { name: "Calendar Events", slug: "admin-calendar-events", route: "/admin/calendar-events", minTier: 1 },
       { name: "Development", slug: "admin-development", route: "/admin/development", minTier: 1 },
     ],
   },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
+import { PeoplePicker } from "@/components/ui/people-picker";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ type UserProfile = {
   first_name: string;
   last_name: string;
   email: string;
+  avatar_url: string | null;
   department_id: string | null;
   departments: { name: string } | null;
 };
@@ -63,7 +65,7 @@ const ACTION_DOT: Record<string, string> = {
   DELETE: "bg-[var(--color-error)]",
 };
 
-const DAYS_OPTIONS = [7, 14, 30] as const;
+const DAYS_OPTIONS = [1, 7, 14, 30] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -130,10 +132,10 @@ function getChangeSummary(item: TimelineItem): string {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function ActivityTab() {
+export function ActivityTab({ currentDeptId }: { currentDeptId: string | null }) {
   const [data, setData] = useState<ActivityData>({ events: [], audit: [], users: [] });
   const [loading, setLoading] = useState(true);
-  const [days, setDays] = useState<number>(30);
+  const [days, setDays] = useState<number>(1);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [moduleFilter, setModuleFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -261,18 +263,27 @@ export function ActivityTab() {
     <div>
       {/* User selector */}
       <div className="flex items-center gap-3 mb-4 flex-wrap">
-        <select
-          value={selectedUser}
-          onChange={(e) => setSelectedUser(e.target.value)}
-          className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] min-w-[180px]"
-        >
-          <option value="">All users</option>
-          {data.users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.first_name} {u.last_name}
-            </option>
-          ))}
-        </select>
+        <div className="min-w-[220px] flex items-center gap-2">
+          <div className="flex-1">
+            <PeoplePicker
+              value={selectedUser ? [selectedUser] : []}
+              onChange={(ids) => setSelectedUser(ids[0] ?? "")}
+              allUsers={data.users}
+              currentDeptId={currentDeptId}
+              placeholder="Filter by person…"
+              single
+            />
+          </div>
+          {selectedUser && (
+            <button
+              onClick={() => setSelectedUser("")}
+              className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-2 py-1 rounded"
+              title="Clear person filter"
+            >
+              Clear
+            </button>
+          )}
+        </div>
 
         {/* Days toggle */}
         <div className="flex rounded-lg border border-[var(--color-border-primary)] overflow-hidden">

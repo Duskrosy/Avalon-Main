@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
   // 3. User profiles for display
   let usersQuery = admin
     .from("profiles")
-    .select("id, first_name, last_name, email, department_id, departments(name)")
+    .select("id, first_name, last_name, email, avatar_url, department_id, departments(name)")
     .eq("status", "active")
     .is("deleted_at", null)
     .order("first_name");

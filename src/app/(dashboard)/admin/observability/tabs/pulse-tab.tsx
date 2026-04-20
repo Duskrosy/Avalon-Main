@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { toCSV, toMarkdown, downloadFile } from "@/lib/export/format";
+
+type Priority = "low" | "medium" | "high" | "urgent";
 
 type FeedbackItem = {
   id: string;
@@ -11,10 +13,30 @@ type FeedbackItem = {
   page_url: string | null;
   user_agent: string | null;
   status: string;
+  priority: Priority;
+  notes: string | null;
+  merged_into_id: string | null;
+  merged_into: { id: string; body: string; status: string } | null;
   created_at: string;
+  updated_at: string | null;
   department_id: string | null;
   department: { name: string } | null;
   profiles: { first_name: string; last_name: string; email: string } | null;
+};
+
+type FeedbackComment = {
+  id: string;
+  body: string;
+  created_at: string;
+  author: { id: string; first_name: string; last_name: string; avatar_url: string | null } | null;
+};
+
+const PRIORITY_RANK: Record<Priority, number> = { urgent: 3, high: 2, medium: 1, low: 0 };
+const PRIORITY_COLORS: Record<Priority, string> = {
+  low: "bg-gray-100 text-gray-700",
+  medium: "bg-blue-100 text-blue-700",
+  high: "bg-amber-100 text-amber-800",
+  urgent: "bg-red-100 text-red-700",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -57,6 +79,12 @@ export function PulseTab() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [showMerged, setShowMerged] = useState(false);
+  const [comments, setComments] = useState<Record<string, FeedbackComment[]>>({});
+  const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const [mergeSearch, setMergeSearch] = useState<Record<string, string>>({});
+  const notesTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
@@ -119,21 +147,70 @@ export function PulseTab() {
     } catch { /* non-critical */ }
   }
 
-  async function updateStatus(id: string, newStatus: string) {
+  async function patchFeedback(id: string, patch: Record<string, unknown>) {
     setUpdating(id);
     try {
       const res = await fetch("/api/feedback", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, status: newStatus }),
+        body: JSON.stringify({ id, ...patch }),
       });
-      if (!res.ok) throw new Error("Failed to update status");
-      setFeedback((prev) => prev.map((f) => (f.id === id ? { ...f, status: newStatus } : f)));
+      if (!res.ok) throw new Error("Failed to update");
+      setFeedback((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch } as FeedbackItem : f)));
     } catch {
       fetchFeedback();
     } finally {
       setUpdating(null);
     }
+  }
+
+  function updateStatus(id: string, newStatus: string) {
+    return patchFeedback(id, { status: newStatus });
+  }
+
+  function setPriority(id: string, newPriority: Priority) {
+    return patchFeedback(id, { priority: newPriority });
+  }
+
+  function saveNotesDebounced(id: string, value: string) {
+    setFeedback((prev) => prev.map((f) => (f.id === id ? { ...f, notes: value } : f)));
+    if (notesTimers.current[id]) clearTimeout(notesTimers.current[id]);
+    notesTimers.current[id] = setTimeout(() => {
+      patchFeedback(id, { notes: value || null });
+    }, 500);
+  }
+
+  async function mergeInto(id: string, targetId: string | null) {
+    await patchFeedback(id, { merged_into_id: targetId });
+    if (targetId) {
+      setMergeSearch((m) => ({ ...m, [id]: "" }));
+    }
+  }
+
+  async function loadComments(feedbackId: string) {
+    try {
+      const res = await fetch(`/api/feedback/${feedbackId}/comments`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setComments((prev) => ({ ...prev, [feedbackId]: data.comments ?? [] }));
+    } catch { /* non-critical */ }
+  }
+
+  async function postComment(feedbackId: string) {
+    const body = (commentDraft[feedbackId] ?? "").trim();
+    if (!body) return;
+    const res = await fetch(`/api/feedback/${feedbackId}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setComments((prev) => ({
+      ...prev,
+      [feedbackId]: [...(prev[feedbackId] ?? []), data.comment],
+    }));
+    setCommentDraft((d) => ({ ...d, [feedbackId]: "" }));
   }
 
   async function handleLink(feedbackId: string) {
@@ -214,6 +291,15 @@ export function PulseTab() {
     setShowExport(false);
   }
 
+  const visibleFeedback = (showMerged ? feedback : feedback.filter((f) => !f.merged_into_id))
+    .filter((f) => priorityFilter === "all" || f.priority === priorityFilter)
+    .slice()
+    .sort((a, b) => {
+      const p = (PRIORITY_RANK[b.priority] ?? 0) - (PRIORITY_RANK[a.priority] ?? 0);
+      if (p !== 0) return p;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
   const openCount = feedback.filter((f) => f.status === "open").length;
 
   return (
@@ -267,6 +353,25 @@ export function PulseTab() {
           <option value="slow">Slow</option>
           <option value="other">Other</option>
         </select>
+        <select
+          value={priorityFilter}
+          onChange={(e) => setPriorityFilter(e.target.value)}
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
+        >
+          <option value="all">All priorities</option>
+          <option value="urgent">Urgent</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <label className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showMerged}
+            onChange={(e) => setShowMerged(e.target.checked)}
+          />
+          Show merged
+        </label>
         <button
           onClick={fetchFeedback}
           className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
@@ -346,15 +451,16 @@ export function PulseTab() {
           <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
         ) : error ? (
           <div className="text-center py-16 text-[var(--color-error)] text-sm">{error}</div>
-        ) : feedback.length === 0 ? (
+        ) : visibleFeedback.length === 0 ? (
           <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">
-            No feedback yet.
+            No feedback matches the filters.
           </div>
         ) : (
           <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
             <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">From</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Priority</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Category</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Feedback</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Page</th>
@@ -363,16 +469,28 @@ export function PulseTab() {
               </tr>
             </thead>
             <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
-              {feedback.map((f) => (
+              {visibleFeedback.map((f) => (
                 <Fragment key={f.id}>
                   <tr
                     className="hover:bg-[var(--color-surface-hover)] cursor-pointer"
-                    onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                    onClick={() => {
+                      const next = expandedId === f.id ? null : f.id;
+                      setExpandedId(next);
+                      if (next && !comments[next]) loadComments(next);
+                    }}
                   >
                     <td className="px-4 py-2.5 text-[var(--color-text-primary)] whitespace-nowrap">
                       <span className="flex items-center gap-1.5">
                         <span className={`text-[var(--color-text-tertiary)] text-[10px] transition-transform ${expandedId === f.id ? "rotate-90" : ""}`}>&#9654;</span>
                         {f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Unknown"}
+                        {f.merged_into_id && (
+                          <span className="text-[10px] text-[var(--color-text-tertiary)] italic" title="Merged duplicate">merged</span>
+                        )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PRIORITY_COLORS[f.priority] ?? PRIORITY_COLORS.medium}`}>
+                        {f.priority}
                       </span>
                     </td>
                     <td className="px-4 py-2.5">
@@ -405,13 +523,140 @@ export function PulseTab() {
 
                   {expandedId === f.id && (
                     <tr className="bg-[var(--color-bg-secondary)]/80">
-                      <td colSpan={6} className="px-4 py-4">
+                      <td colSpan={7} className="px-4 py-4">
                         <div className="space-y-4">
+
+                          {/* Merged banner */}
+                          {f.merged_into_id && (
+                            <div className="bg-[var(--color-bg-tertiary)] border border-[var(--color-border-primary)] rounded px-3 py-2 flex items-center justify-between gap-3">
+                              <span className="text-xs text-[var(--color-text-secondary)]">
+                                Merged into ticket <span className="font-mono">{f.merged_into_id.slice(0, 8)}…</span>
+                                {f.merged_into?.body && <span className="ml-1">— &ldquo;{f.merged_into.body.slice(0, 60)}&rdquo;</span>}
+                              </span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); mergeInto(f.id, null); }}
+                                className="text-xs text-[var(--color-accent)] hover:underline"
+                              >
+                                Unlink
+                              </button>
+                            </div>
+                          )}
 
                           {/* Full feedback body */}
                           <div>
                             <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Full Feedback</p>
                             <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">{f.body}</p>
+                          </div>
+
+                          {/* Priority selector */}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Priority</p>
+                            <div className="flex gap-1">
+                              {(["low", "medium", "high", "urgent"] as Priority[]).map((p) => (
+                                <button
+                                  key={p}
+                                  onClick={() => setPriority(f.id, p)}
+                                  disabled={updating === f.id}
+                                  className={`text-xs px-2.5 py-1 rounded-full font-medium capitalize transition-colors ${
+                                    f.priority === p
+                                      ? PRIORITY_COLORS[p]
+                                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+                                  }`}
+                                >
+                                  {p}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Internal notes */}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Internal notes (OPS only)</p>
+                            <textarea
+                              value={f.notes ?? ""}
+                              onChange={(e) => saveNotesDebounced(f.id, e.target.value)}
+                              placeholder="Private triage notes — visible only to OPS"
+                              rows={2}
+                              className="w-full rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                            />
+                          </div>
+
+                          {/* Merge into duplicate */}
+                          {!f.merged_into_id && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">Mark as duplicate of…</p>
+                              <div className="flex gap-1.5">
+                                <input
+                                  value={mergeSearch[f.id] ?? ""}
+                                  onChange={(e) => setMergeSearch((m) => ({ ...m, [f.id]: e.target.value }))}
+                                  placeholder="Search other tickets by text…"
+                                  className="flex-1 rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-2 py-1 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                                />
+                              </div>
+                              {(mergeSearch[f.id] ?? "").length >= 2 && (
+                                <div className="mt-1 max-h-40 overflow-y-auto border border-[var(--color-border-primary)] rounded bg-[var(--color-bg-primary)]">
+                                  {feedback
+                                    .filter((o) =>
+                                      o.id !== f.id &&
+                                      !o.merged_into_id &&
+                                      o.body.toLowerCase().includes((mergeSearch[f.id] ?? "").toLowerCase()),
+                                    )
+                                    .slice(0, 8)
+                                    .map((o) => (
+                                      <button
+                                        key={o.id}
+                                        onClick={() => mergeInto(f.id, o.id)}
+                                        className="block w-full text-left px-2 py-1.5 text-xs hover:bg-[var(--color-surface-hover)] truncate"
+                                      >
+                                        <span className="font-mono text-[var(--color-text-tertiary)]">{o.id.slice(0, 6)}</span>
+                                        {" — "}
+                                        {o.body.slice(0, 80)}
+                                      </button>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Comment thread */}
+                          <div onClick={(e) => e.stopPropagation()} className="pt-3 border-t border-[var(--color-border-primary)]">
+                            <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-2">
+                              Replies <span className="ml-1 normal-case">(visible to the reporter)</span>
+                            </p>
+                            <div className="space-y-2 mb-2">
+                              {(comments[f.id] ?? []).length === 0 && (
+                                <p className="text-xs text-[var(--color-text-tertiary)] italic">No replies yet.</p>
+                              )}
+                              {(comments[f.id] ?? []).map((c) => (
+                                <div key={c.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded px-2.5 py-1.5">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-medium text-[var(--color-text-primary)]">
+                                      {c.author ? `${c.author.first_name} ${c.author.last_name}` : "Unknown"}
+                                    </span>
+                                    <span className="text-[10px] text-[var(--color-text-tertiary)]">
+                                      {format(parseISO(c.created_at), "d MMM HH:mm")}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-[var(--color-text-primary)] whitespace-pre-wrap mt-0.5">{c.body}</p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex gap-1.5">
+                              <textarea
+                                value={commentDraft[f.id] ?? ""}
+                                onChange={(e) => setCommentDraft((d) => ({ ...d, [f.id]: e.target.value }))}
+                                placeholder="Reply to the reporter…"
+                                rows={2}
+                                className="flex-1 rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                              />
+                              <button
+                                onClick={() => postComment(f.id)}
+                                disabled={!(commentDraft[f.id] ?? "").trim()}
+                                className="px-2.5 py-1 text-xs font-medium rounded bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] disabled:opacity-50 hover:opacity-90"
+                              >
+                                Reply
+                              </button>
+                            </div>
                           </div>
 
                           {/* Metadata grid — 2 rows of details */}
