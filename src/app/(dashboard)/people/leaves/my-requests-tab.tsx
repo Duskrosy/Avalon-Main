@@ -243,7 +243,7 @@ export function MyRequestsTab({ onNewRequest }: Props) {
       if (!res.ok) {
         setError(data.error ?? "Failed to load leave requests.");
       } else {
-        setRequests(data.requests ?? data ?? []);
+        setRequests(data.leave_requests ?? []);
       }
     } catch {
       setError("Network error — please try again.");
