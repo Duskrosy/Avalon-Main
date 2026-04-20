@@ -112,8 +112,8 @@ export default async function CalendarPage() {
   }
 
   for (const p of birthdaysRes.data ?? []) {
-    const bday = new Date(p.birthday!);
-    const bdayStr = new Date(year, bday.getMonth(), bday.getDate()).toISOString().split("T")[0];
+    const [, bmm, bdd] = (p.birthday as string).split("-");
+    const bdayStr = `${year}-${bmm}-${bdd}`;
     if (bdayStr >= firstStr && bdayStr <= lastStr) {
       events.push({ id: `bday-${p.id}`, title: `${p.first_name} ${p.last_name}'s birthday`, date: bdayStr, type: "birthday", color: "#ec4899" });
     }

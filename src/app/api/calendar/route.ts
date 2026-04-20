@@ -88,9 +88,8 @@ export async function GET(req: NextRequest) {
   const { data: birthdays } = await birthdaysQuery;
 
   for (const p of birthdays ?? []) {
-    const bday = new Date(p.birthday!);
-    const bdayThisYear = new Date(year, bday.getMonth(), bday.getDate());
-    const bdayStr = bdayThisYear.toISOString().split("T")[0];
+    const [, bmm, bdd] = (p.birthday as string).split("-");
+    const bdayStr = `${year}-${bmm}-${bdd}`;
     if (bdayStr >= firstStr && bdayStr <= lastStr) {
       events.push({
         id: `bday-${p.id}`,
