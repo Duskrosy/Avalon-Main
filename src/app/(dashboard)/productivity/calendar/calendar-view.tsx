@@ -100,7 +100,7 @@ export function CalendarView({
     abortRef.current = new AbortController();
     const [y, m] = monthRef.current.split("-").map(Number);
     const d = new Date(y, m - 1 + delta, 1);
-    const newMonth = d.toISOString().slice(0, 7);
+    const newMonth = format(d, "yyyy-MM");
     setMonth(newMonth);
     setSelected(null);
     setLoading(true);
@@ -116,7 +116,7 @@ export function CalendarView({
   }, []);
 
   const goToday = useCallback(async () => {
-    const today = new Date().toISOString().slice(0, 7);
+    const today = format(new Date(), "yyyy-MM");
     if (today === monthRef.current) return;
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -174,7 +174,8 @@ export function CalendarView({
     return acc;
   }, {});
 
-  const todayStr = new Date().toISOString().split("T")[0];
+  const todayStr = format(new Date(), "yyyy-MM-dd");
+  const onCurrentMonth = month === format(new Date(), "yyyy-MM");
   const selectedEvents = selected ? (byDate[selected] ?? []) : [];
 
   return (
@@ -187,7 +188,12 @@ export function CalendarView({
         <div className="flex items-center gap-2">
           <button
             onClick={goToday}
-            className="text-sm border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
+            aria-pressed={onCurrentMonth}
+            className={`text-sm border px-3 py-1.5 rounded-lg transition-colors ${
+              onCurrentMonth
+                ? "border-transparent bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] cursor-default"
+                : "border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)]"
+            }`}
           >
             Today
           </button>
@@ -266,9 +272,9 @@ export function CalendarView({
                     <div
                       key={day}
                       onClick={() => setSelected(isSelected ? null : dateStr)}
-                      className={`h-24 border-b border-r border-[var(--color-border-secondary)] p-1.5 cursor-pointer transition-colors ${
+                      className={`h-24 border-b border-r border-[var(--color-border-secondary)] p-1.5 cursor-pointer transition-colors relative ${
                         isSelected ? "bg-[var(--color-bg-secondary)]" : "hover:bg-[var(--color-surface-hover)]/50"
-                      }`}
+                      } ${isToday ? "ring-2 ring-inset ring-[var(--color-accent)]" : ""}`}
                     >
                       <div
                         className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full mb-1 ${
