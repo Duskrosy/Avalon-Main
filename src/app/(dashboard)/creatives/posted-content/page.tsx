@@ -4,7 +4,15 @@ import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { PostedContentView, type PostedRow } from "./posted-content-view";
 
-export default async function PostedContentPage() {
+type PageWindow = "recent" | "historical";
+
+export default async function PostedContentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ window?: string }>;
+}) {
+  const sp = await searchParams;
+  const windowSel: PageWindow = sp?.window === "historical" ? "historical" : "recent";
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
@@ -22,35 +30,49 @@ export default async function PostedContentPage() {
   const admin = createAdminClient();
 
   const now = new Date();
-  const fromISO = new Date(now.getTime() - 30 * 86400_000).toISOString().slice(0, 10);
-  const fromTs = new Date(now.getTime() - 30 * 86400_000).toISOString();
+  // Recent: 0–30 days ago. Historical: 30–180 days ago.
+  const recentDays = 30;
+  const historicalMaxDays = 180;
+  const fromDays = windowSel === "historical" ? historicalMaxDays : recentDays;
+  const toDays = windowSel === "historical" ? recentDays : 0;
+  const fromISO = new Date(now.getTime() - fromDays * 86400_000).toISOString().slice(0, 10);
+  const fromTs = new Date(now.getTime() - fromDays * 86400_000).toISOString();
+  const toISO = windowSel === "historical"
+    ? new Date(now.getTime() - toDays * 86400_000).toISOString().slice(0, 10)
+    : null;
+  const toTs = windowSel === "historical"
+    ? new Date(now.getTime() - toDays * 86400_000).toISOString()
+    : null;
 
   // ── Organic: smm_top_posts → join to platform → group for label ───────────
-  const { data: topPosts } = await admin
+  let topPostsQuery = admin
     .from("smm_top_posts")
     .select(`
       id, post_external_id, post_url, thumbnail_url, caption_preview,
       post_type, published_at, impressions, reach, engagements,
-      video_plays, metric_date,
+      video_plays, avg_play_time_secs, metric_date,
       smm_group_platforms!inner (
         id, platform, page_name,
         smm_groups ( id, name )
       )
     `)
-    .gte("metric_date", fromISO)
+    .gte("metric_date", fromISO);
+  if (toISO) topPostsQuery = topPostsQuery.lt("metric_date", toISO);
+  const { data: topPosts } = await topPostsQuery
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(200);
 
   // ── Ads: ad_deployments + ad_assets + aggregated meta_ad_demographics ─────
-  const { data: deployments } = await admin
+  let deploymentsQuery = admin
     .from("ad_deployments")
     .select(`
       id, meta_ad_id, meta_campaign_id, campaign_name, launched_at, status,
       ad_assets ( id, title, thumbnail_url, content_type, creator_id )
     `)
     .not("meta_ad_id", "is", null)
-    .gte("launched_at", fromTs)
-    .order("launched_at", { ascending: false });
+    .gte("launched_at", fromTs);
+  if (toTs) deploymentsQuery = deploymentsQuery.lt("launched_at", toTs);
+  const { data: deployments } = await deploymentsQuery.order("launched_at", { ascending: false });
 
   const adIds = (deployments ?? [])
     .map((d) => d.meta_ad_id)
@@ -100,6 +122,10 @@ export default async function PostedContentPage() {
       conversions: null,
       messages: null,
       url: p.post_url ?? null,
+      video_plays: p.video_plays ?? null,
+      avg_play_time_secs: p.avg_play_time_secs ?? null,
+      caption_preview: p.caption_preview ?? null,
+      post_type: p.post_type ?? null,
     };
   });
 
@@ -121,6 +147,10 @@ export default async function PostedContentPage() {
       conversions: totals.conversions || null,
       messages: totals.messages || null,
       url: null,
+      video_plays: null,
+      avg_play_time_secs: null,
+      caption_preview: null,
+      post_type: (asset as { content_type?: string } | null)?.content_type ?? null,
     };
   });
 
@@ -132,7 +162,7 @@ export default async function PostedContentPage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <PostedContentView rows={rows} />
+      <PostedContentView rows={rows} windowSel={windowSel} />
     </div>
   );
 }

@@ -101,6 +101,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Tracker",        slug: "creatives-tracker",        route: "/creatives/tracker" },
       { name: "Posted Content", slug: "creatives-posted-content", route: "/creatives/posted-content" },
       { name: "Analytics",      slug: "creatives-analytics",      route: "/creatives/analytics" },
+      { name: "Performance",    slug: "creatives-performance",    route: "/creatives/performance" },
+      { name: "Settings",       slug: "creatives-settings",       route: "/creatives/settings" },
     ],
   },
   {

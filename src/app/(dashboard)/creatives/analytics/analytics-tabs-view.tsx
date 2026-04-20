@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnalyticsView, type SmmGroup } from "./analytics-view";
 
 export interface LivePost {
   id: string;
@@ -37,7 +36,7 @@ export interface RecentPost {
   platform: string;
 }
 
-type Tab = "live" | "recent" | "historical";
+type Tab = "live" | "recent";
 
 function fmtNum(n: number | null): string {
   if (n == null) return "—";
@@ -68,33 +67,30 @@ function fmtDate(iso: string | null): string {
 }
 
 interface Props {
-  groups: SmmGroup[];
   livePublished: LivePost[];
   liveScheduled: LivePost[];
   liveAds: LiveAd[];
   recentPosts: RecentPost[];
 }
 
-export function AnalyticsTabsView({ groups, livePublished, liveScheduled, liveAds, recentPosts }: Props) {
+export function AnalyticsLiveRecentView({ livePublished, liveScheduled, liveAds, recentPosts }: Props) {
   const [tab, setTab] = useState<Tab>("live");
 
   const totalLive = livePublished.length + liveScheduled.length + liveAds.length;
 
   return (
     <div className="space-y-4">
-      {/* Tab switcher */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Analytics</h1>
           <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">
-            Real-time content performance across platforms.
+            Real-time content performance — what's live now and what just went out.
           </p>
         </div>
         <div className="flex gap-1 p-1 rounded-lg bg-[var(--color-bg-secondary)] text-xs">
           {([
-            { key: "live",       label: `Live ${totalLive ? `· ${totalLive}` : ""}` },
-            { key: "recent",     label: `Recent ${recentPosts.length ? `· ${recentPosts.length}` : ""}` },
-            { key: "historical", label: "Historical" },
+            { key: "live",   label: `Live ${totalLive ? `· ${totalLive}` : ""}` },
+            { key: "recent", label: `Recent ${recentPosts.length ? `· ${recentPosts.length}` : ""}` },
           ] as const).map((t) => (
             <button
               key={t.key}
@@ -115,7 +111,6 @@ export function AnalyticsTabsView({ groups, livePublished, liveScheduled, liveAd
         <LivePanel published={livePublished} scheduled={liveScheduled} ads={liveAds} />
       )}
       {tab === "recent" && <RecentPanel posts={recentPosts} />}
-      {tab === "historical" && <AnalyticsView groups={groups} />}
     </div>
   );
 }

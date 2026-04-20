@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { AnalyticsTabsView, type LivePost, type LiveAd, type RecentPost } from "./analytics-tabs-view";
+import { AnalyticsLiveRecentView, type LivePost, type LiveAd, type RecentPost } from "./analytics-tabs-view";
 
 export default async function CreativesAnalyticsPage() {
   const supabase = await createClient();
@@ -20,16 +20,6 @@ export default async function CreativesAnalyticsPage() {
   }
 
   const admin = createAdminClient();
-
-  // ── Groups (for Historical tab) ────────────────────────────────────────────
-  const groupsPromise = admin
-    .from("smm_groups")
-    .select(`
-      id, name,
-      smm_group_platforms ( id, platform, page_name, is_active )
-    `)
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
 
   const now = new Date();
   const todayISO = now.toISOString().slice(0, 10);
@@ -77,13 +67,11 @@ export default async function CreativesAnalyticsPage() {
     .limit(50);
 
   const [
-    { data: groups },
     { data: publishedRecent },
     { data: scheduledSoon },
     { data: demoToday },
     { data: recentTop },
   ] = await Promise.all([
-    groupsPromise,
     publishedRecentlyPromise,
     scheduledSoonPromise,
     demoTodayPromise,
@@ -153,8 +141,7 @@ export default async function CreativesAnalyticsPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <AnalyticsTabsView
-        groups={groups ?? []}
+      <AnalyticsLiveRecentView
         livePublished={(publishedRecent ?? []).map(toLivePost)}
         liveScheduled={(scheduledSoon ?? []).map(toLivePost)}
         liveAds={liveAds}
