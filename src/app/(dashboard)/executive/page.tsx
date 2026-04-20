@@ -5,11 +5,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { LiveAdsPanel } from "./live-ads-panel";
-import { CalendarWidget } from "./calendar-widget";
-import { LookAhead, computeAlerts } from "./look-ahead";
 import { RevenueCard } from "./revenue-card";
 import { AttendanceCard } from "./attendance-card";
-import { CeoPlanning } from "./ceo-planning";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -152,8 +149,6 @@ export default async function ExecutiveOverviewPage({
     { data: smmPlatforms },
     { count: tasksCompletedWeek },
     { count: tasksOverdue },
-    { data: calendarEventsRaw },
-    { data: personalBoard },
     { count: approvedLeavesToday },
   ] = await Promise.all([
     // Sales today
@@ -234,17 +229,6 @@ export default async function ExecutiveOverviewPage({
       .lt("due_date", today)
       .is("completed_at", null),
 
-    // Calendar events (all, will filter/expand client-side)
-    admin.from("calendar_events").select("*"),
-
-    // Personal kanban board for CEO Planning
-    admin.from("kanban_boards")
-      .select("id")
-      .eq("scope", "personal")
-      .eq("owner_id", user.id)
-      .limit(1)
-      .maybeSingle(),
-
     // Approved leaves today (for attendance)
     admin.from("leaves")
       .select("*", { count: "exact", head: true })
@@ -296,30 +280,6 @@ export default async function ExecutiveOverviewPage({
     })
     .sort((a, b) => b.pairs - a.pairs)
     .slice(0, 8);
-
-  // Calendar events — expand recurring for current year
-  const calEvents = (calendarEventsRaw ?? []).flatMap((evt: any) => {
-    if (!evt.is_recurring || evt.recurrence_rule !== "yearly") return [evt];
-    const origMonth = new Date(evt.event_date).getMonth();
-    const origDay = new Date(evt.event_date).getDate();
-    const year = new Date().getFullYear();
-    return [{ ...evt, event_date: `${year}-${String(origMonth+1).padStart(2,"0")}-${String(origDay).padStart(2,"0")}` }];
-  });
-  const lookAheadAlerts = computeAlerts(calEvents);
-
-  // Personal kanban columns for CEO Planning
-  let ceoPlanningColumns: any[] = [];
-  if (personalBoard?.id) {
-    const { data: cols } = await admin
-      .from("kanban_columns")
-      .select("id, name, sort_order, kanban_cards(id, title, priority, due_date)")
-      .eq("board_id", personalBoard.id)
-      .order("sort_order");
-    ceoPlanningColumns = (cols ?? []).map((c: any) => ({
-      ...c,
-      cards: (c.kanban_cards ?? []).sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-    }));
-  }
 
   // Revenue by channel
   const messengerRevenue = (confirmedSalesMonth ?? [])
@@ -517,19 +477,12 @@ export default async function ExecutiveOverviewPage({
         <LiveAdsPanel />
       </div>
 
-      {/* ── Calendar + Look-ahead ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-3 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
-          <CalendarWidget events={calEvents} month={new Date()} />
-        </div>
-        <div className="lg:col-span-2 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
-          <LookAhead alerts={lookAheadAlerts} />
-        </div>
-      </div>
-
-      {/* ── Task Velocity + CEO Planning ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        <div className="lg:col-span-2 flex items-center justify-between bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4">
+      {/* ── Task Velocity ────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Link
+          href="/executive/planning"
+          className="flex items-center justify-between bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4 hover:shadow-[var(--shadow-sm)] transition-shadow"
+        >
           <div>
             <p className="text-sm font-semibold text-[var(--color-text-primary)]">Task Velocity</p>
             <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">Kanban board · last 7 days</p>
@@ -546,10 +499,17 @@ export default async function ExecutiveOverviewPage({
               <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide">Overdue</p>
             </div>
           </div>
-        </div>
-        <div className="lg:col-span-3 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
-          <CeoPlanning columns={ceoPlanningColumns} />
-        </div>
+        </Link>
+        <Link
+          href="/executive/planning"
+          className="flex items-center justify-between bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] px-5 py-4 hover:shadow-[var(--shadow-sm)] transition-shadow"
+        >
+          <div>
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Planning & calendar</p>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">Personal kanban · look-ahead · events</p>
+          </div>
+          <span className="text-xs text-[var(--color-text-tertiary)]">Open →</span>
+        </Link>
       </div>
 
       {/* ── Announcements ────────────────────────────────────────────────── */}

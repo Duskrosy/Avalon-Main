@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 const TABS = [
   { label: "Overview",      href: "/executive",            icon: "◈" },
+  { label: "Planning",      href: "/executive/planning",   icon: "🗓" },
   { label: "Sales",         href: "/executive/sales",      icon: "💰" },
   { label: "Ad Operations", href: "/executive/ad-ops",     icon: "🎬" },
   { label: "Creatives",     href: "/executive/creatives",  icon: "🎨" },
