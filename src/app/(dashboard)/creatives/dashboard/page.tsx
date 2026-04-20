@@ -44,6 +44,8 @@ export default async function CreativesDashboardPage() {
   const mondayISO = monday.toISOString().split("T")[0];
   const sundayISO = sunday.toISOString().split("T")[0];
 
+  const todayISO = new Date().toISOString().split("T")[0];
+
   // ── Fetch all data in parallel ─────────────────────────────────────────────
   const [
     { data: weekPosts },
@@ -52,6 +54,7 @@ export default async function CreativesDashboardPage() {
     { count: pendingTasksCount },
     { count: adsApprovedCount },
     { count: requestsInReview },
+    { count: overdueRequestsCount },
     { data: contentItems },
   ] = await Promise.all([
     // 1. This week's smm_posts
@@ -96,10 +99,17 @@ export default async function CreativesDashboardPage() {
       .select("id", { count: "exact", head: true })
       .eq("status", "review"),
 
-    // 7. Content items this week (for per-group and per-status breakdown)
+    // 7. Overdue in-flight ad requests (target_date passed, not yet approved/rejected/cancelled)
+    supabase
+      .from("ad_requests")
+      .select("id", { count: "exact", head: true })
+      .lt("target_date", todayISO)
+      .in("status", ["draft", "submitted", "in_progress", "review"]),
+
+    // 8. Content items this week (for per-status breakdown)
     supabase
       .from("creative_content_items")
-      .select("id, status, group_label")
+      .select("id, status")
       .gte("planned_week_start", mondayISO)
       .lte("planned_week_start", sundayISO),
   ]);
@@ -113,15 +123,8 @@ export default async function CreativesDashboardPage() {
   const weeklyOrganicTarget = campaign?.organic_target ?? 25;
   const weeklyAdsTarget = campaign?.ads_target ?? 10;
 
-  // ── Per-group item counts ──────────────────────────────────────────────────
+  // ── Per-status counts (tracker snapshot funnel) ────────────────────────────
   const allItems = contentItems ?? [];
-  const groupCounts: Record<string, number> = {
-    local: allItems.filter((i) => i.group_label === "local").length,
-    international: allItems.filter((i) => i.group_label === "international").length,
-    pcdlf: allItems.filter((i) => i.group_label === "pcdlf").length,
-  };
-
-  // ── Per-status counts ──────────────────────────────────────────────────────
   const statusCounts: Record<string, number> = {
     idea: allItems.filter((i) => i.status === "idea").length,
     in_production: allItems.filter((i) => i.status === "in_production").length,
@@ -130,22 +133,6 @@ export default async function CreativesDashboardPage() {
     scheduled: allItems.filter((i) => i.status === "scheduled").length,
     published: allItems.filter((i) => i.status === "published").length,
   };
-
-  // ── Weekly posts by day (Mon–Sun) for mini chart ───────────────────────────
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const weeklyPostsByDay = days.map((day, i) => {
-    const date = new Date(monday);
-    date.setDate(date.getDate() + i);
-    const iso = date.toISOString().split("T")[0];
-    const dayPosts = posts.filter((p) =>
-      ((p.scheduled_at ?? p.published_at) ?? "").startsWith(iso)
-    );
-    return {
-      day,
-      organic: dayPosts.filter((p) => p.post_type === "organic").length,
-      ad: dayPosts.filter((p) => p.post_type === "ad").length,
-    };
-  });
 
   return (
     <CreativesDashboard
@@ -161,10 +148,9 @@ export default async function CreativesDashboardPage() {
       weeklyAdsTarget={weeklyAdsTarget}
       pendingTasksCount={pendingTasksCount ?? 0}
       requestsInReview={requestsInReview ?? 0}
+      overdueRequestsCount={overdueRequestsCount ?? 0}
       weekStart={mondayISO}
-      weeklyPostsByDay={weeklyPostsByDay}
       adsApprovedCount={adsApprovedCount ?? 0}
-      groupCounts={groupCounts}
       statusCounts={statusCounts}
     />
   );
