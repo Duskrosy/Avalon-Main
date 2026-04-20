@@ -91,13 +91,13 @@ export default async function ExecutiveCreativesPage() {
   const thisMonthStart = `${new Date().toISOString().slice(0, 7)}-01`;
   const sevenDaysAgo   = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
-  // Fetch department IDs first (needed for KPI queries)
-  const [{ data: creativeDept }, { data: marketingDept }] = await Promise.all([
-    admin.from("departments").select("id").eq("slug", "creatives").single(),
-    admin.from("departments").select("id").eq("slug", "marketing").single(),
-  ]);
+  // Fetch department ID first (needed for KPI query)
+  const { data: creativeDept } = await admin
+    .from("departments")
+    .select("id")
+    .eq("slug", "creatives")
+    .single();
   const creativesDeptId = creativeDept?.id ?? "";
-  const marketingDeptId = marketingDept?.id ?? "";
 
   const [
     { data: posts },
@@ -105,7 +105,6 @@ export default async function ExecutiveCreativesPage() {
     { data: platforms },
     { data: smmAnalytics },
     { data: creativesKpiDefs },
-    { data: mktAdContentDefs },
     { data: kpiEntries },
   ] = await Promise.all([
     // All SMM posts (planned content pipeline)
@@ -129,20 +128,16 @@ export default async function ExecutiveCreativesPage() {
       .gte("metric_date", sevenDaysAgo)
       .order("metric_date", { ascending: false }),
 
-    // Creatives dept KPI definitions (Output, Stills Output, Stills Performance, Organic Performance)
+    // Creatives dept KPI definitions — grouped client-side by canonical group_label
+    // (post-00069 framework; marketing cross-dept query removed — creatives now owns
+    // Ad Content Performance directly, so the prior join caused duplicate rows).
     admin.from("kpi_definitions")
-      .select("id, name, category, unit, direction, threshold_green, threshold_amber, hint, sort_order")
+      .select("id, name, category, group_label, group_sort, unit, direction, threshold_green, threshold_amber, hint, sort_order")
       .eq("is_active", true)
       .eq("department_id", creativesDeptId)
-      .order("sort_order"),
-
-    // Marketing dept Ad Content Performance KPIs (shared — lives in marketing per migration 00034)
-    admin.from("kpi_definitions")
-      .select("id, name, category, unit, direction, threshold_green, threshold_amber, hint, sort_order")
-      .eq("is_active", true)
-      .eq("category", "Ad Content Performance")
-      .eq("department_id", marketingDeptId)
-      .order("sort_order"),
+      .order("group_sort")
+      .order("sort_order")
+      .order("name"),
 
     // Latest KPI entries (profile_id IS NULL = team-level)
     admin.from("kpi_entries")
@@ -196,20 +191,20 @@ export default async function ExecutiveCreativesPage() {
     }
   }
 
-  // All creatives definitions + ad content performance from marketing
-  const allDefs = [...(creativesKpiDefs ?? []), ...(mktAdContentDefs ?? [])];
+  const allDefs = creativesKpiDefs ?? [];
 
-  // Group creatives definitions by category
-  const defsByCategory: Record<string, typeof allDefs> = {};
-  for (const d of creativesKpiDefs ?? []) {
-    if (!defsByCategory[d.category]) defsByCategory[d.category] = [];
-    defsByCategory[d.category].push(d);
+  // Group by canonical group_label (falling back to legacy category for unmigrated rows).
+  const defsByGroup: Record<string, typeof allDefs> = {};
+  for (const d of allDefs) {
+    const key = d.group_label ?? d.category ?? "Other";
+    if (!defsByGroup[key]) defsByGroup[key] = [];
+    defsByGroup[key].push(d);
   }
-  const adContentDefs   = mktAdContentDefs ?? [];
-  const outputDefs      = defsByCategory["Output"] ?? [];
-  const stillsOutDefs   = defsByCategory["Stills Output"] ?? [];
-  const stillsPerfDefs  = defsByCategory["Stills Performance"] ?? [];
-  const organicDefs     = defsByCategory["Organic Performance"] ?? [];
+  const adContentDefs   = defsByGroup["Ad Content Performance"] ?? [];
+  const outputDefs      = defsByGroup["Ad Content Output"]     ?? defsByGroup["Output"] ?? [];
+  const stillsOutDefs   = defsByGroup["Stills Output"]          ?? [];
+  const stillsPerfDefs  = defsByGroup["Stills Performance"]     ?? [];
+  const organicDefs     = defsByGroup["Organic Content"]        ?? defsByGroup["Organic Performance"] ?? [];
 
   // Overall KPI health counts
   let kpiGreen = 0, kpiAmber = 0, kpiRed = 0, kpiNoData = 0;
@@ -258,10 +253,10 @@ export default async function ExecutiveCreativesPage() {
         </div>
       )}
 
-      {/* ── Ad Content Performance (from marketing dept) ───────────────── */}
+      {/* ── Ad Content Performance ─────────────────────────────────────── */}
       <KpiSection
         title="Ad Content Performance"
-        subtitle="Weekly video ad metrics — sourced from Marketing / Meta Ads"
+        subtitle="Weekly video ad metrics"
         defs={adContentDefs}
         latestMap={latestMap}
       />

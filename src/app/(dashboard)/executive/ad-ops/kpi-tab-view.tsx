@@ -18,11 +18,23 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
     return activeTab === "messenger" ? showMessenger : showConversion;
   });
 
-  // Group filtered KPIs by category
-  const grouped: Record<string, KpiWithValue[]> = {};
+  // Group filtered KPIs by canonical group_label (falling back to legacy category),
+  // carrying group_sort so the safety-net renders in framework order.
+  const wiredRank: Record<string, number> = { wired: 0, to_be_wired: 1, standalone: 2 };
+  const grouped: Record<string, { items: KpiWithValue[]; sort: number }> = {};
   for (const kpi of filtered) {
-    if (!grouped[kpi.category]) grouped[kpi.category] = [];
-    grouped[kpi.category].push(kpi);
+    const key = kpi.group_label ?? kpi.category ?? "Other";
+    if (!grouped[key]) grouped[key] = { items: [], sort: kpi.group_sort ?? 9999 };
+    grouped[key].items.push(kpi);
+  }
+  for (const g of Object.values(grouped)) {
+    g.items.sort((a, b) => {
+      const ra = wiredRank[a.data_source_status ?? "standalone"] ?? 2;
+      const rb = wiredRank[b.data_source_status ?? "standalone"] ?? 2;
+      if (ra !== rb) return ra - rb;
+      if ((a.sort_order ?? 0) !== (b.sort_order ?? 0)) return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+      return a.name.localeCompare(b.name);
+    });
   }
 
   return (
@@ -45,13 +57,13 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
       </div>
 
       {/* ── North Star (Hero Section) ──────────────────────────────────── */}
-      {(grouped["North Star"]?.length ?? 0) > 0 && (
+      {(grouped["North Star"]?.items.length ?? 0) > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["North Star"]}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {grouped["North Star"].map((kpi) => {
+            {grouped["North Star"].items.map((kpi) => {
               const styles = RAG_STYLES[kpi.status];
               return (
                 <div
@@ -82,13 +94,13 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
       )}
 
       {/* ── Supporting (Medium Cards) ──────────────────────────────────── */}
-      {(grouped["Supporting"]?.length ?? 0) > 0 && (
+      {(grouped["Supporting"]?.items.length ?? 0) > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["Supporting"]}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {grouped["Supporting"].map((kpi) => {
+            {grouped["Supporting"].items.map((kpi) => {
               const styles = RAG_STYLES[kpi.status];
               return (
                 <div
@@ -118,13 +130,13 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
       )}
 
       {/* ── Efficiency (Compact Grid) ──────────────────────────────────── */}
-      {(grouped["Efficiency"]?.length ?? 0) > 0 && (
+      {(grouped["Efficiency"]?.items.length ?? 0) > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["Efficiency"]}
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {grouped["Efficiency"].map((kpi) => {
+            {grouped["Efficiency"].items.map((kpi) => {
               const styles = RAG_STYLES[kpi.status];
               return (
                 <div
@@ -151,13 +163,13 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
       )}
 
       {/* ── Budget (Progress-Style) ────────────────────────────────────── */}
-      {(grouped["Budget"]?.length ?? 0) > 0 && (
+      {(grouped["Budget"]?.items.length ?? 0) > 0 && (
         <div>
           <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
             {TIER_LABELS["Budget"]}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {grouped["Budget"].map((kpi) => {
+            {grouped["Budget"].items.map((kpi) => {
               const styles = RAG_STYLES[kpi.status];
               let progressPct = 0;
               if (kpi.value != null) {
@@ -211,13 +223,14 @@ export default function KpiTabView({ kpis }: KpiTabViewProps) {
       {/* ── Remaining tiers (safety net for unknown categories) ─────────── */}
       {Object.entries(grouped)
         .filter(([cat]) => !TIER_ORDER.includes(cat))
-        .map(([cat, items]) => items.length > 0 && (
+        .sort(([, a], [, b]) => a.sort - b.sort)
+        .map(([cat, bucket]) => bucket.items.length > 0 && (
           <div key={cat}>
             <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide mb-3">
               {cat}
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {items.map((kpi) => {
+              {bucket.items.map((kpi) => {
                 const styles = RAG_STYLES[kpi.status];
                 return (
                   <div key={kpi.id} className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] p-4">

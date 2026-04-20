@@ -18,11 +18,11 @@ export async function GET(req: NextRequest) {
   // KPI definitions for this dept
   const { data: definitions, error } = await supabase
     .from("kpi_definitions")
-    .select("id, name, category, unit, direction, frequency, threshold_green, threshold_amber, hint, is_platform_tracked, sort_order")
+    .select("id, name, category, unit, direction, frequency, threshold_green, threshold_amber, hint, is_platform_tracked, sort_order, group_label, group_sort, data_source_status, is_active, shared_with_dept_ids")
     .eq("department_id", deptId)
-    .eq("is_active", true)
-    .order("category")
-    .order("sort_order");
+    .order("group_sort")
+    .order("sort_order")
+    .order("name");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

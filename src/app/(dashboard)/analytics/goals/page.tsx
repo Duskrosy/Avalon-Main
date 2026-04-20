@@ -25,9 +25,14 @@ export default async function GoalsPage() {
       .neq("status", "cancelled")
       .order("deadline"),
     admin.from("departments").select("id, name, slug").eq("is_active", true).order("name"),
+    // kpi_definitions: include group_label/group_sort/shared_with_dept_ids
+    // so the client KPI Library can render canonical groups.
     admin
       .from("kpi_definitions")
-      .select("id, name, department_id, unit, category, data_source_status, is_active, threshold_green, threshold_amber, direction, sort_order")
+      .select(
+        "id, name, department_id, unit, category, group_label, group_sort, shared_with_dept_ids, data_source_status, is_active, threshold_green, threshold_amber, direction, sort_order"
+      )
+      .order("group_sort")
       .order("sort_order")
       .order("name"),
     admin

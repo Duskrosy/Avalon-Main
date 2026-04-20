@@ -30,11 +30,14 @@ const CATEGORY_ICONS: Record<string, string> = {
   "Activity":               "⚡",
   "AI Performance":         "🤖",
   "Leadership":             "👥",
+  "Source Stats":           "📡",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Unit = "percent" | "number" | "currency_php" | "days" | "weeks" | "seconds";
 type Direction = "higher_better" | "lower_better";
+
+type DataSourceStatus = "wired" | "to_be_wired" | "standalone";
 
 type KpiDef = {
   id: string;
@@ -48,6 +51,11 @@ type KpiDef = {
   hint: string | null;
   is_platform_tracked: boolean;
   sort_order: number;
+  group_label: string | null;
+  group_sort: number;
+  data_source_status: DataSourceStatus;
+  is_active: boolean;
+  shared_with_dept_ids: string[] | null;
 };
 
 type KpiEntry = {
@@ -702,10 +710,13 @@ export function KpiDashboard({
     });
   }, [deptId]);
 
-  // RAG summary
+  // RAG summary (active only)
   const summary = useMemo(() => {
     let green = 0, amber = 0, red = 0, noData = 0;
+    let total = 0;
     for (const def of definitions) {
+      if (!def.is_active) continue;
+      total++;
       const defEntries = filteredEntries[def.id] ?? [];
       const latest = defEntries[defEntries.length - 1];
       if (!latest) { noData++; continue; }
@@ -714,18 +725,43 @@ export function KpiDashboard({
       else if (r === "amber") amber++;
       else red++;
     }
-    return { green, amber, red, noData, total: definitions.length };
+    return { green, amber, red, noData, total };
   }, [definitions, filteredEntries]);
 
-  // Group by category
-  const byCategory = useMemo(() => {
-    const groups: Record<string, KpiDef[]> = {};
+  // Wired-first ordering within a group: wired → to_be_wired → standalone, then sort_order, then name
+  const wiredRank = (s: DataSourceStatus) =>
+    s === "wired" ? 0 : s === "to_be_wired" ? 1 : 2;
+  const sortWithinGroup = useCallback((a: KpiDef, b: KpiDef) => {
+    const w = wiredRank(a.data_source_status) - wiredRank(b.data_source_status);
+    if (w !== 0) return w;
+    const s = (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    if (s !== 0) return s;
+    return a.name.localeCompare(b.name);
+  }, []);
+
+  // Group active KPIs by group_label, preserving group_sort order
+  const activeGroups = useMemo(() => {
+    const byKey = new Map<string, { label: string; sort: number; defs: KpiDef[] }>();
     for (const def of definitions) {
-      if (!groups[def.category]) groups[def.category] = [];
-      groups[def.category].push(def);
+      if (!def.is_active) continue;
+      const label = def.group_label ?? def.category ?? "Other";
+      const sort = def.group_sort ?? 9999;
+      const key = `${sort.toString().padStart(4, "0")}|${label}`;
+      if (!byKey.has(key)) byKey.set(key, { label, sort, defs: [] });
+      byKey.get(key)!.defs.push(def);
     }
-    return groups;
-  }, [definitions]);
+    const arr = Array.from(byKey.values());
+    arr.sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label));
+    for (const g of arr) g.defs.sort(sortWithinGroup);
+    return arr;
+  }, [definitions, sortWithinGroup]);
+
+  const inactiveKpis = useMemo(
+    () => definitions.filter((d) => !d.is_active).sort(sortWithinGroup),
+    [definitions, sortWithinGroup],
+  );
+
+  const [showInactive, setShowInactive] = useState(false);
 
   const currentDeptName = departments.find((d) => d.id === deptId)?.name;
 
@@ -851,13 +887,13 @@ export function KpiDashboard({
         </div>
       ) : (
         <div className="space-y-8">
-          {Object.entries(byCategory).map(([category, defs]) => (
-            <div key={category}>
+          {activeGroups.map((group) => (
+            <div key={group.label}>
               <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-3">
-                {CATEGORY_ICONS[category] ?? "📋"} {category}
+                {CATEGORY_ICONS[group.label] ?? "📋"} {group.label}
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {defs.map((def) => (
+                {group.defs.map((def) => (
                   <KpiCard
                     key={def.id}
                     def={def}
@@ -871,6 +907,33 @@ export function KpiDashboard({
               </div>
             </div>
           ))}
+
+          {inactiveKpis.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowInactive((v) => !v)}
+                className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] flex items-center gap-1.5"
+              >
+                <span>{showInactive ? "▼" : "▶"}</span>
+                Inactive KPIs ({inactiveKpis.length})
+              </button>
+              {showInactive && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-3 opacity-70">
+                  {inactiveKpis.map((def) => (
+                    <KpiCard
+                      key={def.id}
+                      def={def}
+                      entries={filteredEntries[def.id] ?? []}
+                      onSelect={() => setSelected(def)}
+                      onLog={() => setLogging(def)}
+                      canLog={canLog}
+                      isMarketing={isMarketing}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

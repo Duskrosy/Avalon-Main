@@ -38,7 +38,9 @@ export default async function ExecutiveAdOpsKpiPage() {
       .select("*")
       .eq("department_id", mktDept.id)
       .eq("is_active", true)
-      .order("sort_order"),
+      .order("group_sort")
+      .order("sort_order")
+      .order("name"),
     admin
       .from("kpi_entries")
       .select("kpi_definition_id, value_numeric, period_date")

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO, differenceInDays, isPast, addDays } from "date-fns";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,11 +21,15 @@ type KpiDefOption = {
   department_id: string;
   unit: string;
   category: string;
+  group_label: string | null;
+  group_sort: number;
+  shared_with_dept_ids: string[] | null;
   data_source_status: string;
   is_active: boolean;
   threshold_green: number;
   threshold_amber: number;
   direction: string;
+  sort_order: number;
 };
 
 type Goal = {
@@ -390,11 +395,42 @@ function SummaryCards({ goals }: { goals: Goal[] }) {
 
 // ─── Main View ────────────────────────────────────────────────────────────────
 export function GoalsView({ goals: initial, departments, kpiDefinitions, latestValueByKpiId, currentDeptId, canManage, isOps }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlDeptSlug = searchParams.get("dept");
+
+  // Departments visible to this user: OPS sees all; non-OPS sees only their own.
+  const visibleDepartments = useMemo(() => {
+    if (isOps) return departments;
+    return departments.filter((d) => d.id === currentDeptId);
+  }, [departments, isOps, currentDeptId]);
+
+  const defaultDeptFilter = useMemo(() => {
+    // Resolve ?dept=<slug> first; else fall back to user's own dept; OPS falls back to "all".
+    if (urlDeptSlug) {
+      const match = departments.find((d) => d.slug === urlDeptSlug);
+      if (match) return match.id;
+      if (urlDeptSlug === "all" && isOps) return "all";
+    }
+    if (isOps) return "all";
+    return currentDeptId ?? "all";
+  }, [urlDeptSlug, departments, isOps, currentDeptId]);
+
   const [goals, setGoals] = useState<Goal[]>(initial);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [dateRange, setDateRange] = useState<number>(0); // 0 = all
-  const [deptFilter, setDeptFilter] = useState<string>(isOps ? "all" : (currentDeptId ?? "all"));
+  const [deptFilter, setDeptFilter] = useState<string>(defaultDeptFilter);
+
+  // Keep URL in sync when deptFilter changes (shallow replace, no scroll).
+  useEffect(() => {
+    const currentSlug = deptFilter === "all" ? "all" : (departments.find((d) => d.id === deptFilter)?.slug ?? null);
+    if (!currentSlug) return;
+    if (urlDeptSlug === currentSlug) return;
+    const params = new URLSearchParams(Array.from(searchParams.entries()));
+    params.set("dept", currentSlug);
+    router.replace(`/analytics/goals?${params.toString()}`, { scroll: false });
+  }, [deptFilter, departments, searchParams, urlDeptSlug, router]);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -409,17 +445,45 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, latestV
     data_source_status: "standalone",
   });
 
-  const activeLinked = useMemo(
-    () => kpiDefinitions.filter((k) => k.is_active && k.data_source_status !== "standalone"),
-    [kpiDefinitions]
-  );
-  const activeStandalone = useMemo(
-    () => kpiDefinitions.filter((k) => k.is_active && k.data_source_status === "standalone"),
-    [kpiDefinitions]
-  );
+  // KPIs visible for the current tab — include KPIs shared INTO this dept via shared_with_dept_ids.
+  const kpisForTab = useMemo(() => {
+    if (deptFilter === "all") return kpiDefinitions;
+    return kpiDefinitions.filter(
+      (k) => k.department_id === deptFilter || (k.shared_with_dept_ids ?? []).includes(deptFilter)
+    );
+  }, [kpiDefinitions, deptFilter]);
+
+  // Wired-first sort within a group.
+  const sortWithinGroup = useCallback((a: KpiDefOption, b: KpiDefOption) => {
+    const wiredRank = (k: KpiDefOption) => (k.data_source_status === "wired" ? 0 : k.data_source_status === "to_be_wired" ? 1 : 2);
+    const wa = wiredRank(a);
+    const wb = wiredRank(b);
+    if (wa !== wb) return wa - wb;
+    if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+    if ((a.sort_order ?? 0) !== (b.sort_order ?? 0)) return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    return a.name.localeCompare(b.name);
+  }, []);
+
+  // Group active KPIs by canonical group_label in group_sort order.
+  const activeGroups = useMemo(() => {
+    const buckets = new Map<string, { label: string; sort: number; kpis: KpiDefOption[] }>();
+    for (const k of kpisForTab) {
+      if (!k.is_active) continue;
+      const label = k.group_label ?? k.category ?? "Other";
+      const key = `${k.group_sort}|${label}`;
+      const bucket = buckets.get(key) ?? { label, sort: k.group_sort, kpis: [] };
+      bucket.kpis.push(k);
+      buckets.set(key, bucket);
+    }
+    const groups = Array.from(buckets.values());
+    groups.sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label));
+    for (const g of groups) g.kpis.sort(sortWithinGroup);
+    return groups;
+  }, [kpisForTab, sortWithinGroup]);
+
   const inactiveKpis = useMemo(
-    () => kpiDefinitions.filter((k) => !k.is_active),
-    [kpiDefinitions]
+    () => kpisForTab.filter((k) => !k.is_active).sort(sortWithinGroup),
+    [kpisForTab, sortWithinGroup]
   );
 
   const handleAddGoalFromKpi = useCallback((kpi: KpiDefOption) => {
@@ -433,10 +497,14 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, latestV
     setShowCreate(true);
   }, []);
 
-  // Filter KPI definitions by selected department in the create form
+  // Filter KPI definitions by selected department in the create form — include shared.
   const filteredKpiDefs = useMemo(() => {
     if (!form.department_id) return kpiDefinitions;
-    return kpiDefinitions.filter((k) => k.department_id === form.department_id);
+    return kpiDefinitions.filter(
+      (k) =>
+        k.department_id === form.department_id ||
+        (k.shared_with_dept_ids ?? []).includes(form.department_id)
+    );
   }, [kpiDefinitions, form.department_id]);
 
   const handleUpdate = useCallback(async (id: string, value: number) => {
@@ -561,20 +629,6 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, latestV
             ))}
           </div>
 
-          {/* Department filter */}
-          {isOps && departments.length > 0 && (
-            <select
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              className="border border-[var(--color-border-primary)] rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-            >
-              <option value="all">All departments</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-          )}
-
           {canManage && (
             <button
               onClick={() => setShowCreate(true)}
@@ -586,21 +640,54 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, latestV
         </div>
       </div>
 
+      {/* Department tab strip */}
+      {visibleDepartments.length > 0 && (
+        <div className="mb-5 border-b border-[var(--color-border-primary)] -mx-1 px-1 overflow-x-auto">
+          <div className="flex gap-0 -mb-px whitespace-nowrap">
+            {isOps && (
+              <button
+                onClick={() => setDeptFilter("all")}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  deptFilter === "all"
+                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
+                    : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-primary)]"
+                }`}
+              >
+                All
+              </button>
+            )}
+            {visibleDepartments.map((d) => (
+              <button
+                key={d.id}
+                onClick={() => setDeptFilter(d.id)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                  deptFilter === d.id
+                    ? "border-[var(--color-text-primary)] text-[var(--color-text-primary)]"
+                    : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-primary)]"
+                }`}
+              >
+                {d.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Summary cards */}
       <SummaryCards goals={filtered} />
 
-      {/* ── KPI Overview ──────────────────────────────────────────────── */}
-      {kpiDefinitions.length > 0 && (
+      {/* ── KPI Library ──────────────────────────────────────────────── */}
+      {kpisForTab.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">KPI Overview</h2>
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)] mb-4">KPI Library</h2>
 
-          {activeLinked.length > 0 && (
-            <div className="mb-6">
+          {activeGroups.map((group) => (
+            <div key={`${group.sort}|${group.label}`} className="mb-6">
               <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">
-                With Integration
+                {group.label}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {activeLinked.map((kpi) => (
+                {group.kpis.map((kpi) => (
                   <KpiCard
                     key={kpi.id}
                     kpi={kpi}
@@ -611,26 +698,7 @@ export function GoalsView({ goals: initial, departments, kpiDefinitions, latestV
                 ))}
               </div>
             </div>
-          )}
-
-          {activeStandalone.length > 0 && (
-            <div className="mb-6">
-              <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">
-                Manual Entry
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {activeStandalone.map((kpi) => (
-                  <KpiCard
-                    key={kpi.id}
-                    kpi={kpi}
-                    latest={latestValueByKpiId[kpi.id]}
-                    canManage={canManage}
-                    onAddGoal={handleAddGoalFromKpi}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          ))}
 
           {inactiveKpis.length > 0 && (
             <details className="opacity-60">

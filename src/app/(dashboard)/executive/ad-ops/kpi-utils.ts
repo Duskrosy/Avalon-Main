@@ -52,6 +52,8 @@ export function fmtKpi(value: number | null, unit: string): string {
 
 // ─── KPI Types ────────────────────────────────────────────────────────────────
 
+export type DataSourceStatus = "wired" | "to_be_wired" | "standalone";
+
 export interface KpiDef {
   id: string;
   name: string;
@@ -64,6 +66,10 @@ export interface KpiDef {
   hint: string | null;
   sort_order: number;
   ad_type: "conversion" | "messenger" | "both";
+  group_label: string | null;
+  group_sort: number | null;
+  data_source_status: DataSourceStatus | null;
+  shared_with_dept_ids?: string[] | null;
 }
 
 export interface KpiWithValue extends KpiDef {
