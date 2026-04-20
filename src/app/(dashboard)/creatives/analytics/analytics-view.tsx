@@ -23,6 +23,8 @@ type Group = {
   smm_group_platforms: PlatformInfo[];
 };
 
+export type SmmGroup = Group;
+
 type AnalyticsRow = {
   id: string;
   metric_date: string;
