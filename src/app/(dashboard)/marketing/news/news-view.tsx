@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { SourceManagerModal } from "./source-manager-modal";
 
 type NewsItem = {
   id: string;
@@ -39,9 +40,6 @@ const CATEGORY_TABS = [
 
 const LIMIT = 20;
 
-type AddSourceForm = { name: string; url: string; category: string };
-const EMPTY_SOURCE_FORM: AddSourceForm = { name: "", url: "", category: "general" };
-
 function formatDate(iso: string | null): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -55,10 +53,7 @@ export function NewsView({ canManage }: Props) {
   const [fetching, setFetching]         = useState(false);
   const [page, setPage]                 = useState(1);
   const [hasMore, setHasMore]           = useState(false);
-  const [showAddSource, setShowAddSource] = useState(false);
-  const [addSourceForm, setAddSourceForm] = useState<AddSourceForm>(EMPTY_SOURCE_FORM);
-  const [savingSource, setSavingSource] = useState(false);
-  const [sourceError, setSourceError]   = useState<string | null>(null);
+  const [showManager, setShowManager]   = useState(false);
   const [refreshResult, setRefreshResult] = useState<string | null>(null);
   const [lastFetched, setLastFetched]   = useState<string | null>(null);
 
@@ -113,32 +108,6 @@ export function NewsView({ canManage }: Props) {
     fetchItems(category, 1, false);
   }
 
-  // ── Add source ────────────────────────────────────────────────────
-  async function handleAddSource(e: React.FormEvent) {
-    e.preventDefault();
-    if (!addSourceForm.name.trim() || !addSourceForm.url.trim()) return;
-    setSavingSource(true);
-    setSourceError(null);
-    const res = await fetch("/api/smm/news/sources", {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(addSourceForm),
-    });
-    setSavingSource(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setSourceError((data as { error?: string }).error ?? "Failed to save source. Check your permissions.");
-      return;
-    }
-    setShowAddSource(false);
-    setAddSourceForm(EMPTY_SOURCE_FORM);
-    setSourceError(null);
-    // Auto-fetch items from all sources (including the new one)
-    await fetch("/api/smm/news/fetch", { method: "POST" });
-    setPage(1);
-    fetchItems(category, 1, false);
-  }
-
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -152,14 +121,12 @@ export function NewsView({ canManage }: Props) {
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {canManage && (
-            <button
-              onClick={() => setShowAddSource(true)}
-              className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
-            >
-              + Add Source
-            </button>
-          )}
+          <button
+            onClick={() => setShowManager(true)}
+            className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
+          >
+            Manage Sources
+          </button>
           <button
             onClick={handleRefresh}
             disabled={fetching}
@@ -226,77 +193,12 @@ export function NewsView({ canManage }: Props) {
         </div>
       )}
 
-      {/* Add Source modal */}
-      {showAddSource && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/30" onClick={() => { setShowAddSource(false); setSourceError(null); }} />
-          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Add RSS Source</h2>
-            <form onSubmit={handleAddSource} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-                  Source Name <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={addSourceForm.name}
-                  onChange={(e) => setAddSourceForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Rappler"
-                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-                  RSS URL <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="url"
-                  value={addSourceForm.url}
-                  onChange={(e) => setAddSourceForm((f) => ({ ...f, url: e.target.value }))}
-                  placeholder="https://example.com/feed"
-                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
-                  required
-                />
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
-                  Be sure to add the RSS feed link (e.g. site.com/feed or site.com/rss), not just the site URL
-                </p>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Category</label>
-                <select
-                  value={addSourceForm.category}
-                  onChange={(e) => setAddSourceForm((f) => ({ ...f, category: e.target.value }))}
-                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] bg-[var(--color-bg-primary)]"
-                >
-                  {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>{label}</option>
-                  ))}
-                </select>
-              </div>
-              {sourceError && (
-                <p className="text-sm text-[var(--color-error)]">{sourceError}</p>
-              )}
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setShowAddSource(false); setAddSourceForm(EMPTY_SOURCE_FORM); setSourceError(null); }}
-                  className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingSource || !addSourceForm.name.trim() || !addSourceForm.url.trim()}
-                  className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
-                >
-                  {savingSource ? "Saving…" : "Add Source"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <SourceManagerModal
+        open={showManager}
+        onClose={() => setShowManager(false)}
+        onChanged={() => { setPage(1); fetchItems(category, 1, false); }}
+        canEdit={canManage}
+      />
     </div>
   );
 }
