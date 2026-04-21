@@ -32,6 +32,9 @@ type Props = {
   adsApprovedCount: number;
   weekStart: string;
   statusCounts: Record<string, number>;
+  unassignedOrganic: number;
+  unassignedAds: number;
+  unassignedTotal: number;
 };
 
 // ── Avatar palette ────────────────────────────────────────────────────────────
@@ -243,6 +246,9 @@ export function CreativesDashboard({
   weekStart,
   adsApprovedCount,
   statusCounts,
+  unassignedOrganic,
+  unassignedAds,
+  unassignedTotal,
 }: Props) {
   const [campaign, setCampaign] = useState<Campaign | null>(initialCampaign);
   const [editing, setEditing] = useState(false);
@@ -285,8 +291,8 @@ export function CreativesDashboard({
         </div>
       </div>
 
-      {/* ── Hero: 3 KPI tiles ─────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* ── Hero: 4 KPI tiles ─────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiTile
           label="Published this week"
           value={statusCounts.published ?? 0}
@@ -301,6 +307,12 @@ export function CreativesDashboard({
           label="Overdue requests"
           value={overdueRequestsCount}
           hint="Past target date, still open"
+          tone="warn"
+        />
+        <KpiTile
+          label="Unassigned posts"
+          value={unassignedTotal}
+          hint={`${unassignedOrganic} organic · ${unassignedAds} ads`}
           tone="warn"
         />
       </div>

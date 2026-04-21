@@ -56,6 +56,8 @@ export default async function CreativesDashboardPage() {
     { count: requestsInReview },
     { count: overdueRequestsCount },
     { data: contentItems },
+    { data: unassignedOrganicData },
+    { data: unassignedAdsData },
   ] = await Promise.all([
     // 1. This week's smm_posts
     supabase
@@ -112,7 +114,17 @@ export default async function CreativesDashboardPage() {
       .select("id, status")
       .gte("planned_week_start", mondayISO)
       .lte("planned_week_start", sundayISO),
+
+    // 9. Unassigned organic posts (smm_top_posts with no content-item link)
+    supabase.rpc("count_unassigned_organic_posts"),
+
+    // 10. Unassigned ads (meta_ad_stats ad_ids with no content-item link)
+    supabase.rpc("count_unassigned_ads"),
   ]);
+
+  const unassignedOrganic = Number(unassignedOrganicData ?? 0);
+  const unassignedAds = Number(unassignedAdsData ?? 0);
+  const unassignedTotal = unassignedOrganic + unassignedAds;
 
   // ── Compute post breakdown ─────────────────────────────────────────────────
   const posts = weekPosts ?? [];
@@ -152,6 +164,9 @@ export default async function CreativesDashboardPage() {
       weekStart={mondayISO}
       adsApprovedCount={adsApprovedCount ?? 0}
       statusCounts={statusCounts}
+      unassignedOrganic={unassignedOrganic}
+      unassignedAds={unassignedAds}
+      unassignedTotal={unassignedTotal}
     />
   );
 }
