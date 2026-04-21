@@ -51,31 +51,28 @@ type ContentItem = {
   creator_profile: { id: string; first_name: string; last_name: string } | null;
 };
 
+// Organic post snapshot from smm_top_posts (posted-content parity).
+// Linked on the content item via linked_external_url (post_url).
 type SmmPost = {
   id: string;
   platform: string;
   caption: string | null;
-  status: string;
+  thumbnail_url: string | null;
+  post_url: string | null;
   published_at: string | null;
-  scheduled_at: string | null;
-  created_by: string | null;
+  post_type: string | null;
 };
 
-// Recently-live Meta ad deployment (with ad_asset join).
-// Stored via creative_content_items.linked_ad_asset_id → ad_assets.id.
+// Meta ad aggregated from meta_ad_stats + ad_deployments join.
+// Links via linked_ad_asset_id when an ad_asset is resolvable, else via
+// linked_external_url = "meta_ad://<meta_ad_id>" for attribution-only.
 type LiveAd = {
-  id: string;
-  status: string;
-  launched_at: string | null;
-  meta_ad_id: string | null;
+  id: string; // meta_ad_id
+  asset_id: string | null; // ad_assets.id — null if ad_deployment not resolved
+  title: string;
+  thumbnail_url: string | null;
   campaign_name: string | null;
-  asset: {
-    id: string;
-    title: string;
-    thumbnail_url: string | null;
-    content_type: string | null;
-    creator_id: string | null;
-  } | null;
+  launched_at: string | null;
 };
 
 type PlatformConnection = {
@@ -345,22 +342,24 @@ export default function TrackerView({
   );
 
   // ── Assign post or ad ─────────────────────────────────────
-  // Unified Gather picker: organic smm_posts route to linked_post_id,
-  // Meta ads route to linked_ad_asset_id (FK to ad_assets.id).
+  // Unified Gather picker (posted-content parity):
+  //   organic post → linked_external_url = post_url
+  //   Meta ad      → linked_ad_asset_id  = ad_assets.id
   const handleAssignPost = useCallback(
-    async (selection: { kind: "post"; id: string } | { kind: "ad"; assetId: string }) => {
+    async (selection: { kind: "post"; url: string } | { kind: "ad"; assetId: string }) => {
       if (!linkingItemId) return;
       const now = new Date().toISOString();
       const patch =
         selection.kind === "post"
-          ? { id: linkingItemId, linked_post_id: selection.id, linked_ad_asset_id: null, transfer_link: null }
-          : { id: linkingItemId, linked_ad_asset_id: selection.assetId, linked_post_id: null, transfer_link: null };
+          ? { id: linkingItemId, linked_external_url: selection.url, linked_post_id: null, linked_ad_asset_id: null, transfer_link: null }
+          : { id: linkingItemId, linked_ad_asset_id: selection.assetId, linked_post_id: null, linked_external_url: null, transfer_link: null };
       setItems((prev) =>
         prev.map((i) =>
           i.id === linkingItemId
             ? {
                 ...i,
-                linked_post_id: selection.kind === "post" ? selection.id : null,
+                linked_post_id: null,
+                linked_external_url: selection.kind === "post" ? selection.url : null,
                 linked_ad_asset_id: selection.kind === "ad" ? selection.assetId : null,
                 linked_post_gathered_at: now,
                 transfer_link: null,
@@ -738,7 +737,6 @@ export default function TrackerView({
         <AssignPostModal
           posts={posts}
           ads={ads}
-          currentUserId={currentUserId}
           onSelect={handleAssignPost}
           onClose={() => setLinkingItemId(null)}
         />
@@ -755,64 +753,59 @@ type GatherRow =
   | {
       kind: "post";
       id: string;
-      assetId: null;
+      url: string;
       platform: string;
       title: string;
       thumbnail: string | null;
       timestamp: string | null;
-      createdBy: string | null;
     }
   | {
       kind: "ad";
-      id: string;
-      assetId: string;
+      id: string; // meta_ad_id (dedup key)
+      assetId: string | null; // null → fall back to meta_ad:// external url
       platform: string;
       title: string;
       thumbnail: string | null;
       timestamp: string | null;
-      createdBy: string | null;
     };
 
 function AssignPostModal({
   posts,
   ads,
-  currentUserId,
   onSelect,
   onClose,
 }: {
   posts: SmmPost[];
   ads: LiveAd[];
-  currentUserId: string;
-  onSelect: (selection: { kind: "post"; id: string } | { kind: "ad"; assetId: string }) => void;
+  onSelect: (selection: { kind: "post"; url: string } | { kind: "ad"; assetId: string }) => void;
   onClose: () => void;
 }) {
   const [source, setSource] = useState<"all" | "organic" | "ads">("all");
   const [search, setSearch] = useState("");
-  const [mineOnly, setMineOnly] = useState(false);
 
   const rows = useMemo<GatherRow[]>(() => {
-    const organicRows: GatherRow[] = posts.map((p) => ({
-      kind: "post",
-      id: p.id,
-      assetId: null,
-      platform: p.platform,
-      title: p.caption ?? "(no caption)",
-      thumbnail: null,
-      timestamp: p.published_at ?? p.scheduled_at,
-      createdBy: p.created_by,
-    }));
-    const adRows: GatherRow[] = ads
-      .filter((a) => a.asset) // need asset.id to link
-      .map((a) => ({
-        kind: "ad",
-        id: a.id,
-        assetId: a.asset!.id,
-        platform: "meta",
-        title: a.asset?.title || a.campaign_name || "(untitled ad)",
-        thumbnail: a.asset?.thumbnail_url ?? null,
-        timestamp: a.launched_at,
-        createdBy: a.asset?.creator_id ?? null,
+    const safePosts = posts ?? [];
+    const safeAds = ads ?? [];
+    const organicRows: GatherRow[] = safePosts
+      .filter((p) => !!p.post_url) // need post_url to link
+      .map((p) => ({
+        kind: "post",
+        id: p.id,
+        url: p.post_url!,
+        platform: p.platform,
+        title: p.caption ?? "(no caption)",
+        thumbnail: p.thumbnail_url ?? null,
+        timestamp: p.published_at,
       }));
+    const adRows: GatherRow[] = safeAds.map((a) => ({
+      kind: "ad",
+      id: a.id,
+      assetId: a.asset_id,
+      platform: "meta",
+      title: a.title,
+      thumbnail: a.thumbnail_url,
+      timestamp: a.launched_at,
+    }));
     const all = [...organicRows, ...adRows];
     all.sort((a, b) => {
       const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
@@ -827,11 +820,10 @@ function AssignPostModal({
       rows.filter((r) => {
         if (source === "organic" && r.kind !== "post") return false;
         if (source === "ads" && r.kind !== "ad") return false;
-        if (mineOnly && r.createdBy !== currentUserId) return false;
         if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
         return true;
       }),
-    [rows, source, search, mineOnly, currentUserId]
+    [rows, source, search]
   );
 
   return (
@@ -850,31 +842,20 @@ function AssignPostModal({
             placeholder="Search posts & ads..."
             className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
           />
-          <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
-            <div className="flex gap-1 flex-wrap">
-              {(["all", "organic", "ads"] as const).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSource(s)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                    source === s
-                      ? "bg-[var(--color-accent)] text-white"
-                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-            <label className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={mineOnly}
-                onChange={(e) => setMineOnly(e.target.checked)}
-                className="h-3.5 w-3.5 accent-indigo-600"
-              />
-              Mine only
-            </label>
+          <div className="flex gap-1 flex-wrap mt-2">
+            {(["all", "organic", "ads"] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setSource(s)}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                  source === s
+                    ? "bg-[var(--color-accent)] text-white"
+                    : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                }`}
+              >
+                {s}
+              </button>
+            ))}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
@@ -884,9 +865,16 @@ function AssignPostModal({
           {filtered.map((r) => (
             <button
               key={`${r.kind}-${r.id}`}
-              onClick={() =>
-                onSelect(r.kind === "post" ? { kind: "post", id: r.id } : { kind: "ad", assetId: r.assetId })
-              }
+              onClick={() => {
+                if (r.kind === "post") {
+                  onSelect({ kind: "post", url: r.url });
+                } else if (r.assetId) {
+                  onSelect({ kind: "ad", assetId: r.assetId });
+                } else {
+                  // Ad has no resolvable ad_asset — attribute via external URL scheme.
+                  onSelect({ kind: "post", url: `meta_ad://${r.id}` });
+                }
+              }}
               className="w-full text-left p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-hover)] flex items-start gap-3 transition-colors"
             >
               {r.thumbnail ? (
