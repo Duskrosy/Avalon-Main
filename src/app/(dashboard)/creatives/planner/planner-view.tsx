@@ -313,17 +313,20 @@ export default function PlannerView({
   // Unified Gather picker (posted-content parity):
   //   organic post → linked_external_url = post_url
   //   Meta ad      → linked_ad_asset_id  = ad_assets.id
-  const handleAssignPost = useCallback(
-    async (selection: GatherSelection) => {
-      if (!linkingItemId) return;
+  //
+  // assignOne applies a single selection to a target content item. Task 9
+  // (multiselect): the Gather picker now returns an array of selections and
+  // we fan out sequentially so a single failure surfaces cleanly.
+  const assignOne = useCallback(
+    async (selection: GatherSelection, itemId: string) => {
       const now = new Date().toISOString();
       const patch =
         selection.kind === "post"
-          ? { id: linkingItemId, linked_external_url: selection.url, linked_post_id: null, linked_ad_asset_id: null, transfer_link: null }
-          : { id: linkingItemId, linked_ad_asset_id: selection.assetId, linked_post_id: null, linked_external_url: null, transfer_link: null };
+          ? { id: itemId, linked_external_url: selection.url, linked_post_id: null, linked_ad_asset_id: null, transfer_link: null }
+          : { id: itemId, linked_ad_asset_id: selection.assetId, linked_post_id: null, linked_external_url: null, transfer_link: null };
       setItems((prev) =>
         prev.map((i) =>
-          i.id === linkingItemId
+          i.id === itemId
             ? {
                 ...i,
                 linked_post_id: null,
@@ -340,13 +343,35 @@ export default function PlannerView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
-      setLinkingItemId(null);
-      setToast({
-        message: selection.kind === "post" ? "Post assigned" : "Ad assigned",
-        type: "success",
-      });
     },
-    [linkingItemId, setToast]
+    []
+  );
+
+  const handleGatherConfirm = useCallback(
+    async (selections: GatherSelection[]) => {
+      if (!linkingItemId || selections.length === 0) return;
+      const targetId = linkingItemId;
+      // Sequential: surfaces the first failure cleanly instead of burying it
+      // in a Promise.all rejection.
+      for (const sel of selections) {
+        await assignOne(sel, targetId);
+      }
+      setLinkingItemId(null);
+      const hasPost = selections.some((s) => s.kind === "post");
+      const hasAd = selections.some((s) => s.kind === "ad");
+      const message =
+        selections.length === 1
+          ? selections[0].kind === "post"
+            ? "Post assigned"
+            : "Ad assigned"
+          : hasPost && hasAd
+            ? `${selections.length} items assigned`
+            : hasAd
+              ? `${selections.length} ads assigned`
+              : `${selections.length} posts assigned`;
+      setToast({ message, type: "success" });
+    },
+    [linkingItemId, assignOne, setToast]
   );
 
   // ── Render ────────────────────────────────────────────────
@@ -696,7 +721,7 @@ export default function PlannerView({
         <AssignPostModal
           posts={posts}
           ads={ads}
-          onSelect={handleAssignPost}
+          onConfirm={handleGatherConfirm}
           onClose={() => setLinkingItemId(null)}
         />
       )}

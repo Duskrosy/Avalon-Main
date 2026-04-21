@@ -65,20 +65,45 @@ type GatherRow =
       timestamp: string | null;
     };
 
+// Stable string key for selection dedupe — faster and clearer than JSON.stringify.
+const selectionKey = (s: GatherSelection) =>
+  s.kind === "post" ? `post:${s.url}` : `ad:${s.assetId}`;
+
+// Resolve the GatherSelection that clicking a row toggles.
+// Ads with no resolvable ad_asset fall back to meta_ad:// external URL.
+function rowToSelection(r: GatherRow): GatherSelection {
+  if (r.kind === "post") return { kind: "post", url: r.url };
+  if (r.assetId) return { kind: "ad", assetId: r.assetId };
+  return { kind: "post", url: `meta_ad://${r.id}` };
+}
+
 export function AssignPostModal({
   posts,
   ads,
-  onSelect,
+  onConfirm,
   onClose,
 }: {
   posts: SmmPost[];
   ads: LiveAd[];
-  onSelect: (selection: GatherSelection) => void;
+  onConfirm: (selections: GatherSelection[]) => void;
   onClose: () => void;
 }) {
   const [source, setSource] = useState<"all" | "organic" | "ads">("all");
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<GatherSelection[]>([]);
+
+  const selectedKeys = useMemo(
+    () => new Set(selected.map(selectionKey)),
+    [selected]
+  );
+  const isSelected = (s: GatherSelection) => selectedKeys.has(selectionKey(s));
+  const toggle = (s: GatherSelection) =>
+    setSelected((prev) =>
+      prev.some((x) => selectionKey(x) === selectionKey(s))
+        ? prev.filter((x) => selectionKey(x) !== selectionKey(s))
+        : [...prev, s]
+    );
 
   const rows = useMemo<GatherRow[]>(() => {
     const safePosts = posts ?? [];
@@ -137,13 +162,19 @@ export function AssignPostModal({
     [rows, source, platformFilter, search]
   );
 
+  const handleConfirm = () => {
+    if (selected.length === 0) return;
+    onConfirm(selected);
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] w-full max-w-lg max-h-[80vh] flex flex-col mx-4">
         <div className="p-4 border-b border-[var(--color-border-secondary)]">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Gather post</h3>
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Gather posts</h3>
             <p className="text-xs text-[var(--color-text-tertiary)]">Last 14 days</p>
           </div>
           <input
@@ -153,11 +184,13 @@ export function AssignPostModal({
             placeholder="Search posts & ads..."
             className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
           />
-          <div className="flex gap-1 flex-wrap mt-2">
+          <div className="flex gap-1 flex-wrap mt-2" role="group" aria-label="Source filter">
             {(["all", "organic", "ads"] as const).map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => setSource(s)}
+                aria-pressed={source === s}
                 className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
                   source === s
                     ? "bg-[var(--color-accent)] text-white"
@@ -171,12 +204,15 @@ export function AssignPostModal({
           {source !== "ads" && (
             <div
               className="flex gap-1 flex-wrap mt-2"
+              role="group"
               aria-label="Filter organic posts by platform"
             >
               {PLATFORM_FILTERS.map((p) => (
                 <button
                   key={p.value}
+                  type="button"
                   onClick={() => setPlatformFilter(p.value)}
+                  aria-pressed={platformFilter === p.value}
                   className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
                     platformFilter === p.value
                       ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)]"
@@ -193,78 +229,103 @@ export function AssignPostModal({
           {filtered.length === 0 && (
             <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">Nothing found</p>
           )}
-          {filtered.map((r) => (
-            <button
-              key={`${r.kind}-${r.id}`}
-              onClick={() => {
-                if (r.kind === "post") {
-                  onSelect({ kind: "post", url: r.url });
-                } else if (r.assetId) {
-                  onSelect({ kind: "ad", assetId: r.assetId });
-                } else {
-                  // Ad has no resolvable ad_asset — attribute via external URL scheme.
-                  onSelect({ kind: "post", url: `meta_ad://${r.id}` });
-                }
-              }}
-              className="w-full text-left p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-hover)] flex items-start gap-3 transition-colors"
-            >
-              {r.thumbnail ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={r.thumbnail}
-                  alt=""
-                  className="h-10 w-10 rounded object-cover flex-shrink-0 bg-[var(--color-bg-tertiary)]"
+          {filtered.map((r) => {
+            const sel = rowToSelection(r);
+            const checked = isSelected(sel);
+            const displayTitle = r.kind === "ad" ? (r.adName ?? r.title) : r.title;
+            return (
+              <label
+                key={`${r.kind}-${r.id}`}
+                className={`w-full text-left p-3 rounded-[var(--radius-md)] flex items-start gap-3 transition-colors cursor-pointer ${
+                  checked
+                    ? "bg-[var(--color-surface-hover)] ring-1 ring-[var(--color-accent)]"
+                    : "hover:bg-[var(--color-surface-hover)]"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(sel)}
+                  aria-label={`Select ${displayTitle}`}
+                  className="mt-1 h-4 w-4 flex-shrink-0 accent-[var(--color-accent)] cursor-pointer"
                 />
-              ) : (
-                <span className="text-xs font-medium capitalize px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex-shrink-0">
-                  {r.platform}
-                </span>
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-                      r.kind === "ad"
-                        ? "bg-indigo-50 text-indigo-700"
-                        : "bg-emerald-50 text-emerald-700"
-                    }`}
-                  >
-                    {r.kind === "ad" ? "Ad" : "Organic"}
-                  </span>
-                  <span className="text-[10px] font-medium capitalize text-[var(--color-text-tertiary)]">
+                {r.thumbnail ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.thumbnail}
+                    alt=""
+                    className="h-10 w-10 rounded object-cover flex-shrink-0 bg-[var(--color-bg-tertiary)]"
+                  />
+                ) : (
+                  <span className="text-xs font-medium capitalize px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex-shrink-0">
                     {r.platform}
                   </span>
-                </div>
-                {r.kind === "ad" ? (
-                  <div className="mt-0.5 min-w-0">
-                    {r.campaignName && (
-                      <p className="text-[11px] text-[var(--color-text-tertiary)] truncate">
-                        {r.campaignName}
-                      </p>
-                    )}
-                    {r.adsetName && (
-                      <p className="text-[11px] text-[var(--color-text-secondary)] truncate">
-                        {r.adsetName}
-                      </p>
-                    )}
-                    <p className="text-sm font-medium text-[var(--color-text-primary)] line-clamp-1">
-                      {r.adName ?? r.title}
-                    </p>
-                  </div>
-                ) : (
-                  <p className="text-sm text-[var(--color-text-primary)] line-clamp-2 mt-0.5">
-                    {r.title}
-                  </p>
                 )}
-                <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
-                  {r.timestamp ? format(parseISO(r.timestamp), "MMM d, yyyy") : "—"}
-                </p>
-              </div>
-            </button>
-          ))}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                        r.kind === "ad"
+                          ? "bg-indigo-50 text-indigo-700"
+                          : "bg-emerald-50 text-emerald-700"
+                      }`}
+                    >
+                      {r.kind === "ad" ? "Ad" : "Organic"}
+                    </span>
+                    <span className="text-[10px] font-medium capitalize text-[var(--color-text-tertiary)]">
+                      {r.platform}
+                    </span>
+                  </div>
+                  {r.kind === "ad" ? (
+                    <div className="mt-0.5 min-w-0">
+                      {r.campaignName && (
+                        <p className="text-[11px] text-[var(--color-text-tertiary)] truncate">
+                          {r.campaignName}
+                        </p>
+                      )}
+                      {r.adsetName && (
+                        <p className="text-[11px] text-[var(--color-text-secondary)] truncate">
+                          {r.adsetName}
+                        </p>
+                      )}
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] line-clamp-1">
+                        {r.adName ?? r.title}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[var(--color-text-primary)] line-clamp-2 mt-0.5">
+                      {r.title}
+                    </p>
+                  )}
+                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+                    {r.timestamp ? format(parseISO(r.timestamp), "MMM d, yyyy") : "—"}
+                  </p>
+                </div>
+              </label>
+            );
+          })}
         </div>
-        <div className="p-3 border-t border-[var(--color-border-secondary)]">
-          <button onClick={onClose} className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
+        <div className="sticky bottom-0 p-3 border-t border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] flex items-center justify-between gap-3 rounded-b-[var(--radius-lg)]">
+          <p className="text-xs text-[var(--color-text-secondary)]">
+            {selected.length} selected
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-3 py-1.5"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={selected.length === 0}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </div>
     </div>
