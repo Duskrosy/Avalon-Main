@@ -60,7 +60,7 @@ export default async function CreativesPlannerPage() {
     // Ads: meta_ad_stats aggregated by ad_id for the unified picker
     admin
       .from("meta_ad_stats")
-      .select("ad_id, ad_name, campaign_name, metric_date")
+      .select("ad_id, ad_name, adset_name, campaign_name, metric_date")
       .gte("metric_date", fromISO),
   ]);
 
@@ -79,11 +79,12 @@ export default async function CreativesPlannerPage() {
   });
 
   // Aggregate ad stats, then resolve ad_assets for thumbnail + assetId
-  const adFirstDate = new Map<string, { ad_name: string | null; campaign_name: string | null; first_date: string | null }>();
+  const adFirstDate = new Map<string, { ad_name: string | null; adset_name: string | null; campaign_name: string | null; first_date: string | null }>();
   for (const r of statsRows ?? []) {
     if (!r.ad_id) continue;
-    const acc = adFirstDate.get(r.ad_id) ?? { ad_name: r.ad_name ?? null, campaign_name: r.campaign_name ?? null, first_date: null };
+    const acc = adFirstDate.get(r.ad_id) ?? { ad_name: r.ad_name ?? null, adset_name: r.adset_name ?? null, campaign_name: r.campaign_name ?? null, first_date: null };
     acc.ad_name = acc.ad_name ?? r.ad_name ?? null;
+    acc.adset_name = acc.adset_name ?? r.adset_name ?? null;
     acc.campaign_name = acc.campaign_name ?? r.campaign_name ?? null;
     if (!acc.first_date || (r.metric_date && r.metric_date < acc.first_date)) acc.first_date = r.metric_date;
     adFirstDate.set(r.ad_id, acc);
@@ -110,8 +111,10 @@ export default async function CreativesPlannerPage() {
       id: ad_id,
       asset_id: asset?.id ?? null,
       title: asset?.title ?? v.ad_name ?? v.campaign_name ?? "(untitled ad)",
-      thumbnail_url: asset?.thumbnail_url ?? null,
+      ad_name: v.ad_name ?? null,
+      adset_name: v.adset_name ?? null,
       campaign_name: v.campaign_name ?? null,
+      thumbnail_url: asset?.thumbnail_url ?? null,
       launched_at: v.first_date ? new Date(`${v.first_date}T00:00:00Z`).toISOString() : null,
     };
   });

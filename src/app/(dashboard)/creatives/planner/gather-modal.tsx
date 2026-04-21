@@ -20,9 +20,11 @@ export type SmmPost = {
 export type LiveAd = {
   id: string; // meta_ad_id
   asset_id: string | null; // ad_assets.id — null if ad_deployment not resolved
-  title: string;
-  thumbnail_url: string | null;
+  title: string; // preferred display fallback (asset.title || ad_name || campaign_name || "(untitled ad)")
+  ad_name: string | null;
+  adset_name: string | null;
   campaign_name: string | null;
+  thumbnail_url: string | null;
   launched_at: string | null;
 };
 
@@ -45,7 +47,10 @@ type GatherRow =
       id: string; // meta_ad_id (dedup key)
       assetId: string | null; // null → fall back to meta_ad:// external url
       platform: string;
-      title: string;
+      title: string; // fallback display string — used when ad_name is null and for search
+      adName: string | null;
+      adsetName: string | null;
+      campaignName: string | null;
       thumbnail: string | null;
       timestamp: string | null;
     };
@@ -84,6 +89,9 @@ export function AssignPostModal({
       assetId: a.asset_id,
       platform: "meta",
       title: a.title,
+      adName: a.ad_name,
+      adsetName: a.adset_name,
+      campaignName: a.campaign_name,
       thumbnail: a.thumbnail_url,
       timestamp: a.launched_at,
     }));
@@ -101,7 +109,14 @@ export function AssignPostModal({
       rows.filter((r) => {
         if (source === "organic" && r.kind !== "post") return false;
         if (source === "ads" && r.kind !== "ad") return false;
-        if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
+        if (search) {
+          const q = search.toLowerCase();
+          const haystack =
+            r.kind === "ad"
+              ? [r.title, r.adName, r.adsetName, r.campaignName].filter(Boolean).join(" ")
+              : r.title;
+          if (!haystack.toLowerCase().includes(q)) return false;
+        }
         return true;
       }),
     [rows, source, search]
@@ -185,7 +200,27 @@ export function AssignPostModal({
                     {r.platform}
                   </span>
                 </div>
-                <p className="text-sm text-[var(--color-text-primary)] line-clamp-2 mt-0.5">{r.title}</p>
+                {r.kind === "ad" ? (
+                  <div className="mt-0.5 min-w-0">
+                    {r.campaignName && (
+                      <p className="text-[11px] text-[var(--color-text-tertiary)] truncate">
+                        {r.campaignName}
+                      </p>
+                    )}
+                    {r.adsetName && (
+                      <p className="text-[11px] text-[var(--color-text-secondary)] truncate">
+                        {r.adsetName}
+                      </p>
+                    )}
+                    <p className="text-sm font-medium text-[var(--color-text-primary)] line-clamp-1">
+                      {r.adName ?? r.title}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-[var(--color-text-primary)] line-clamp-2 mt-0.5">
+                    {r.title}
+                  </p>
+                )}
                 <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
                   {r.timestamp ? format(parseISO(r.timestamp), "MMM d, yyyy") : "—"}
                 </p>
