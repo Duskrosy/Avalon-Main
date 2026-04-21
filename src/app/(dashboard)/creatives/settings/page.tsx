@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CreativesSettingsView, type GroupWithPlatforms, type AdMetaAccount } from "./settings-view";
 
@@ -10,7 +10,7 @@ export default async function CreativesSettingsPage() {
   if (!currentUser) redirect("/login");
 
   const ops = isOps(currentUser);
-  const canManage = ops || isManagerOrAbove(currentUser);
+  const canManage = ops;
 
   if (!ops) {
     const { data: dept } = await supabase
@@ -37,6 +37,14 @@ export default async function CreativesSettingsPage() {
       .order("created_at", { ascending: false }),
   ]);
 
+  const safeGroups: GroupWithPlatforms[] = ((groups ?? []) as GroupWithPlatforms[]).map((g) => ({
+    ...g,
+    smm_group_platforms: g.smm_group_platforms.map((p) => ({
+      ...p,
+      access_token: canManage ? p.access_token : (p.access_token ? "__set__" : null),
+    })),
+  }));
+
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
@@ -46,7 +54,7 @@ export default async function CreativesSettingsPage() {
         </p>
       </div>
       <CreativesSettingsView
-        groups={(groups ?? []) as GroupWithPlatforms[]}
+        groups={safeGroups}
         adAccounts={(adAccounts ?? []) as AdMetaAccount[]}
         canManage={canManage}
       />

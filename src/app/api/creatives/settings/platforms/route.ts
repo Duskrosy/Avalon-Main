@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser, isOps } from "@/lib/permissions";
 
 // PATCH /api/creatives/settings/platforms
 // Updates a single smm_group_platforms row.
@@ -11,7 +11,7 @@ export async function PATCH(req: Request) {
   const user = await getCurrentUser(supabase);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!isOps(user) && !isManagerOrAbove(user)) {
+  if (!isOps(user)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

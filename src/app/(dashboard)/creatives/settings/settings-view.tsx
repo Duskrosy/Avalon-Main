@@ -40,7 +40,7 @@ export function CreativesSettingsView({ groups, adAccounts, canManage }: Props) 
     <div className="space-y-8">
       {!canManage && (
         <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded px-3 py-2">
-          You can view but not modify settings. Ask a manager or OPS to make changes.
+          You can view but not modify settings. Only Super Ops can change page credentials, tokens, and account keys.
         </div>
       )}
 
@@ -145,6 +145,7 @@ function PlatformEditor({ platform, canManage }: { platform: PlatformRow; canMan
   const [pageName, setPageName] = useState(platform.page_name ?? "");
   const [handle, setHandle] = useState(platform.handle ?? "");
   const [tokenEdit, setTokenEdit] = useState("");
+  const [revealed, setRevealed] = useState(false);
   const [saving, startTransition] = useTransition();
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [errMsg, setErrMsg] = useState("");
@@ -191,8 +192,17 @@ function PlatformEditor({ platform, canManage }: { platform: PlatformRow; canMan
         }`}>
           {platform.is_active ? "active" : "inactive"}
         </span>
-        <span className="ml-auto text-[11px] text-[var(--color-text-tertiary)]">
-          Token: {hasToken ? "●●●● set" : "not set"}
+        <span className="ml-auto text-[11px] text-[var(--color-text-tertiary)] flex items-center gap-2">
+          <span>Token: {hasToken ? (revealed && platform.access_token ? platform.access_token : "●●●● set") : "not set"}</span>
+          {hasToken && canManage && (
+            <button
+              type="button"
+              onClick={() => setRevealed((v) => !v)}
+              className="text-[10px] uppercase tracking-wide text-[var(--color-accent)] hover:underline"
+            >
+              {revealed ? "Hide" : "Reveal"}
+            </button>
+          )}
         </span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -207,7 +217,7 @@ function PlatformEditor({ platform, canManage }: { platform: PlatformRow; canMan
           onChange={setTokenEdit}
           disabled={!canManage}
           placeholder={hasToken ? "(keep current — leave blank)" : "paste token here"}
-          type="password"
+          type={revealed ? "text" : "password"}
           className="flex-1"
         />
         <button
