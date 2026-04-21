@@ -705,7 +705,7 @@ export default function PlannerView({
   );
 }
 
-// ── Gather-post action (Tracker row button / status pill) ─────
+// ── Gather-post action (Planner row button / status pill) ─────
 // Sprint G Phase 4 Task 9/10: combined "Gather post" trigger + post-status pill.
 // Gated to scheduled/published stages — other stages have no reason to gather.
 function GatherAction({
