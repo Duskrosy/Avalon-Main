@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export type PostedSource = "organic" | "ad";
 
@@ -24,6 +25,9 @@ export interface PostedRow {
   avg_play_time_secs: number | null;
   caption_preview: string | null;
   post_type: string | null;
+  ad_id: string | null;
+  campaign_name: string | null;
+  adset_name: string | null;
 }
 
 type Filter = "all" | "organic" | "ad";
@@ -59,8 +63,82 @@ function platformBadge(platform: string): string {
 }
 
 export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; windowSel: "recent" | "historical" }) {
+  const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
   const [active, setActive] = useState<PostedRow | null>(null);
+  const [fetchedThumbs, setFetchedThumbs] = useState<Record<string, string>>({});
+  const [syncState, setSyncState] = useState<"idle" | "syncing" | "error" | "ok">("idle");
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  // Batch-fetch thumbnails for ads that don't already have one on the row.
+  // Depends only on `rows` so batches don't cancel-and-restart as each batch resolves.
+  const missingAdIdsKey = useMemo(
+    () =>
+      rows
+        .filter((r) => r.source === "ad" && r.ad_id && !r.thumbnail_url)
+        .map((r) => r.ad_id as string)
+        .join(","),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (!missingAdIdsKey) return;
+    const ids = missingAdIdsKey.split(",");
+    let cancelled = false;
+    (async () => {
+      for (let i = 0; i < ids.length; i += 25) {
+        if (cancelled) return;
+        const chunk = ids.slice(i, i + 25);
+        try {
+          const res = await fetch(`/api/ad-ops/live-ads/thumbnails?ad_ids=${chunk.join(",")}`);
+          if (!res.ok) continue;
+          const map = (await res.json()) as Record<string, string>;
+          if (cancelled) return;
+          setFetchedThumbs((prev) => ({ ...prev, ...map }));
+        } catch {
+          // ignore individual batch failures
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [missingAdIdsKey]);
+
+  const resolveThumb = (r: PostedRow): string | null =>
+    r.thumbnail_url ?? (r.ad_id ? fetchedThumbs[r.ad_id] ?? null : null);
+
+  async function handleSync() {
+    setSyncState("syncing");
+    setSyncMsg(null);
+    const results = await Promise.allSettled([
+      fetch("/api/ad-ops/sync", { method: "POST" }),
+      fetch("/api/smm/social-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }),
+    ]);
+    const errs: string[] = [];
+    for (const r of results) {
+      if (r.status === "rejected") {
+        errs.push(String(r.reason));
+      } else if (!r.value.ok) {
+        let msg = `HTTP ${r.value.status}`;
+        try {
+          const body = (await r.value.json()) as { error?: string };
+          if (body?.error) msg = body.error;
+        } catch { /* ignore */ }
+        errs.push(msg);
+      }
+    }
+    if (errs.length > 0) {
+      setSyncState("error");
+      setSyncMsg(errs.join(" · "));
+    } else {
+      setSyncState("ok");
+      setSyncMsg("Synced");
+      router.refresh();
+    }
+  }
 
   const filtered = useMemo(() => {
     if (filter === "all") return rows;
@@ -80,6 +158,20 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            {syncMsg && (
+              <span className={`text-xs ${syncState === "error" ? "text-red-400" : "text-[var(--color-text-tertiary)]"}`}>
+                {syncMsg}
+              </span>
+            )}
+            <button
+              onClick={handleSync}
+              disabled={syncState === "syncing"}
+              className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors font-medium"
+            >
+              {syncState === "syncing" ? "Syncing…" : "↻ Sync"}
+            </button>
+          </div>
           {/* Window tabs */}
           <div className="flex gap-1 p-1 rounded-lg bg-[var(--color-bg-secondary)] text-xs">
             {([
@@ -152,17 +244,20 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        {r.thumbnail_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={r.thumbnail_url}
-                            alt=""
-                            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
-                            className="w-10 h-10 rounded object-cover shrink-0 bg-[var(--color-bg-tertiary)]"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded bg-[var(--color-bg-tertiary)] shrink-0" />
-                        )}
+                        {(() => {
+                          const thumb = resolveThumb(r);
+                          return thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumb}
+                              alt=""
+                              onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
+                              className="w-10 h-10 rounded object-cover shrink-0 bg-[var(--color-bg-tertiary)]"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded bg-[var(--color-bg-tertiary)] shrink-0" />
+                          );
+                        })()}
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-[var(--color-text-primary)] font-medium text-sm">
                             {r.url ? (
@@ -171,9 +266,13 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
                               </a>
                             ) : r.title}
                           </p>
-                          {r.group_name && (
+                          {r.source === "ad" && (r.campaign_name || r.adset_name) ? (
+                            <p className="truncate text-[11px] text-[var(--color-text-tertiary)]">
+                              {[r.campaign_name, r.adset_name].filter(Boolean).join(" · ")}
+                            </p>
+                          ) : r.group_name ? (
                             <p className="truncate text-[11px] text-[var(--color-text-tertiary)]">{r.group_name}</p>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -207,14 +306,28 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
         </div>
       )}
 
-      {active && <PostDetailModal row={active} onClose={() => setActive(null)} />}
+      {active && (
+        <PostDetailModal
+          row={active}
+          resolvedThumbnail={resolveThumb(active)}
+          onClose={() => setActive(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── Detail Modal ────────────────────────────────────────────────────────────
 
-function PostDetailModal({ row, onClose }: { row: PostedRow; onClose: () => void }) {
+function PostDetailModal({
+  row,
+  resolvedThumbnail,
+  onClose,
+}: {
+  row: PostedRow;
+  resolvedThumbnail: string | null;
+  onClose: () => void;
+}) {
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
@@ -225,9 +338,9 @@ function PostDetailModal({ row, onClose }: { row: PostedRow; onClose: () => void
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-5 py-4 border-b border-[var(--color-border-primary)] flex items-start gap-3">
-          {row.thumbnail_url ? (
+          {resolvedThumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={row.thumbnail_url} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="w-20 h-20 rounded object-cover bg-[var(--color-bg-tertiary)] shrink-0" />
+            <img src={resolvedThumbnail} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="w-20 h-20 rounded object-cover bg-[var(--color-bg-tertiary)] shrink-0" />
           ) : (
             <div className="w-20 h-20 rounded bg-[var(--color-bg-tertiary)] shrink-0" />
           )}
@@ -248,9 +361,14 @@ function PostDetailModal({ row, onClose }: { row: PostedRow; onClose: () => void
               )}
             </div>
             <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">{row.title}</h3>
-            {row.group_name && (
+            {row.source === "ad" && (row.campaign_name || row.adset_name) ? (
+              <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">
+                {[row.campaign_name, row.adset_name].filter(Boolean).join(" · ")}
+                {row.group_name ? ` — ${row.group_name}` : ""}
+              </p>
+            ) : row.group_name ? (
               <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">{row.group_name}</p>
-            )}
+            ) : null}
             <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">Published {fmtDate(row.published_at)}</p>
           </div>
           <button

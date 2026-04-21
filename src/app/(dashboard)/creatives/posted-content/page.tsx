@@ -185,6 +185,9 @@ export default async function PostedContentPage({
       avg_play_time_secs: p.avg_play_time_secs ?? null,
       caption_preview: p.caption_preview ?? null,
       post_type: p.post_type ?? null,
+      ad_id: null,
+      campaign_name: null,
+      adset_name: null,
     };
   });
 
@@ -209,6 +212,9 @@ export default async function PostedContentPage({
       avg_play_time_secs: null,
       caption_preview: a.ad_name ?? null,
       post_type: link?.content_type ?? null,
+      ad_id: a.ad_id,
+      campaign_name: a.campaign_name ?? null,
+      adset_name: a.adset_name ?? null,
     };
   });
 
