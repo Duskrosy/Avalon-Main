@@ -34,9 +34,9 @@ export function AnalyticsRecentView({ recentPosts }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Analytics</h1>
+        <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Content Analytics</h1>
         <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">
-          Per-post performance for content published in the last week.
+          Per-post and per-ad performance 2–7 days after publishing. For platform and group trends, see Performance.
         </p>
       </div>
 
@@ -59,7 +59,7 @@ function RecentPanel({ posts }: { posts: RecentPost[] }) {
     <div className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] overflow-hidden">
       <div className="px-4 py-3 border-b border-[var(--color-border-primary)]">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Published 2–7 days ago</h3>
-        <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">Per-post engagement after the initial 24h burst.</p>
+        <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">Individual content performance after the initial 24h burst — the window where durable engagement is visible.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-[var(--color-border-primary)]">
         {posts.map((p) => (
