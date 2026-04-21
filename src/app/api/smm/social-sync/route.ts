@@ -200,9 +200,9 @@ async function syncPosts(
     // and silently returns 0 — so we use it as a best-effort reach fallback only.
     const postsUrl =
       `${META_BASE}/${pageId}/posts` +
-      `?fields=id,message,created_time,full_picture,permalink_url` +
+      `?fields=id,message,created_time,full_picture,permalink_url,status_type,attachments{media_type,type}` +
       `,reactions.summary(true),comments.summary(true),shares` +
-      `&limit=20&access_token=${token}`;
+      `&limit=100&access_token=${token}`;
     const postsRes = await fetch(postsUrl);
     const postsJson = await postsRes.json();
     if (!postsRes.ok || postsJson.error) {
@@ -279,7 +279,7 @@ async function syncPosts(
     const mediaUrl =
       `${META_BASE}/${igUserId}/media` +
       `?fields=id,caption,timestamp,media_type,thumbnail_url,media_url,permalink` +
-      `&limit=20&access_token=${token}`;
+      `&limit=100&access_token=${token}`;
     const mediaRes = await fetch(mediaUrl);
     const mediaJson = await mediaRes.json();
     if (!mediaRes.ok || mediaJson.error) {

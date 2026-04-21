@@ -105,10 +105,13 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
       }),
     ]);
     const errs: string[] = [];
-    for (const r of results) {
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      const isAdOps = i === 0;
       if (r.status === "rejected") {
         errs.push(String(r.reason));
       } else if (!r.value.ok) {
+        if (isAdOps && (r.value.status === 401 || r.value.status === 403)) continue;
         let msg = `HTTP ${r.value.status}`;
         try {
           const body = (await r.value.json()) as { error?: string };
