@@ -37,11 +37,16 @@ export default async function CreativesTrackerPage() {
       admin
         .from("smm_posts")
         .select(
-          "id, platform, caption, status, published_at, scheduled_at"
+          "id, platform, caption, status, published_at, scheduled_at, created_by"
         )
         .eq("status", "published")
+        // 14-day window for tracker "Gather post" modal — recent posts only
+        .gte(
+          "published_at",
+          new Date(Date.now() - 14 * 86400_000).toISOString()
+        )
         .order("published_at", { ascending: false })
-        .limit(100),
+        .limit(200),
       // 4. Platform connections (for sync display)
       admin
         .from("smm_group_platforms")

@@ -137,6 +137,13 @@ export async function PATCH(req: NextRequest) {
   ) {
     updates.linked_at = new Date().toISOString();
   }
+  // Stamp linked_post_gathered_at when a post link is newly assigned
+  // (powers the Tracker "Gathered ✓" pill + "just linked" pulse).
+  if (updates.linked_post_id) {
+    updates.linked_post_gathered_at = new Date().toISOString();
+  } else if (updates.linked_post_id === null) {
+    updates.linked_post_gathered_at = null;
+  }
 
   const admin = createAdminClient();
 

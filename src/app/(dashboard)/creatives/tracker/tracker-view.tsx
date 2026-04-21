@@ -42,6 +42,7 @@ type ContentItem = {
   linked_ad_asset_id: string | null;
   linked_external_url: string | null;
   linked_at: string | null;
+  linked_post_gathered_at: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -57,6 +58,7 @@ type SmmPost = {
   status: string;
   published_at: string | null;
   scheduled_at: string | null;
+  created_by: string | null;
 };
 
 type PlatformConnection = {
@@ -343,7 +345,9 @@ export default function TrackerView({
   const handleAssignPost = useCallback(async (postId: string) => {
     if (!linkingItemId) return;
     setItems((prev) => prev.map((i) =>
-      i.id === linkingItemId ? { ...i, linked_post_id: postId, transfer_link: null } : i
+      i.id === linkingItemId
+        ? { ...i, linked_post_id: postId, linked_post_gathered_at: new Date().toISOString(), transfer_link: null }
+        : i
     ));
     await fetch("/api/creatives/content-items", {
       method: "PATCH",
@@ -612,12 +616,10 @@ export default function TrackerView({
                               </td>
                             )}
                             <td className="px-4 py-3">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setLinkingItemId(item.id); }}
-                                className="text-xs px-2 py-1 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] whitespace-nowrap"
-                              >
-                                {item.linked_post_id ? "Reassign" : "Assign Post"}
-                              </button>
+                              <GatherAction
+                                item={item}
+                                onOpen={() => setLinkingItemId(item.id)}
+                              />
                             </td>
                           </tr>
                         ))}
@@ -702,12 +704,10 @@ export default function TrackerView({
                           </div>
                         )}
                         <div className="pt-1">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setLinkingItemId(item.id); }}
-                            className="text-xs px-2 py-1 rounded-[var(--radius-md)] bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] whitespace-nowrap"
-                          >
-                            {item.linked_post_id ? "Reassign" : "Assign Post"}
-                          </button>
+                          <GatherAction
+                            item={item}
+                            onOpen={() => setLinkingItemId(item.id)}
+                          />
                         </div>
                       </div>
                     ))}
@@ -755,6 +755,7 @@ export default function TrackerView({
       {linkingItemId && (
         <AssignPostModal
           posts={posts}
+          currentUserId={currentUserId}
           onSelect={handleAssignPost}
           onClose={() => setLinkingItemId(null)}
         />
@@ -767,29 +768,36 @@ export default function TrackerView({
 // ── AssignPostModal ───────────────────────────────────────────
 function AssignPostModal({
   posts,
+  currentUserId,
   onSelect,
   onClose,
 }: {
   posts: SmmPost[];
+  currentUserId: string;
   onSelect: (postId: string) => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [mineOnly, setMineOnly] = useState(false);
 
   const platforms = useMemo(() => ["all", ...new Set(posts.map((p) => p.platform))], [posts]);
   const filtered = useMemo(() => posts.filter((p) => {
     if (tab !== "all" && p.platform !== tab) return false;
+    if (mineOnly && p.created_by !== currentUserId) return false;
     if (search && !(p.caption ?? "").toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }), [posts, tab, search]);
+  }), [posts, tab, search, mineOnly, currentUserId]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] w-full max-w-lg max-h-[80vh] flex flex-col mx-4">
         <div className="p-4 border-b border-[var(--color-border-secondary)]">
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Assign to Live Post</h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Gather post</h3>
+            <p className="text-xs text-[var(--color-text-tertiary)]">Last 14 days</p>
+          </div>
           <input
             type="text"
             value={search}
@@ -797,15 +805,26 @@ function AssignPostModal({
             placeholder="Search by caption..."
             className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
           />
-          <div className="flex gap-1 mt-2 flex-wrap">
-            {platforms.map((p) => (
-              <button key={p} onClick={() => setTab(p)}
-                className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                  tab === p ? "bg-[var(--color-accent)] text-white" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                }`}>
-                {p}
-              </button>
-            ))}
+          <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
+            <div className="flex gap-1 flex-wrap">
+              {platforms.map((p) => (
+                <button key={p} onClick={() => setTab(p)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
+                    tab === p ? "bg-[var(--color-accent)] text-white" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                  }`}>
+                  {p}
+                </button>
+              ))}
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={mineOnly}
+                onChange={(e) => setMineOnly(e.target.checked)}
+                className="h-3.5 w-3.5 accent-indigo-600"
+              />
+              Mine only
+            </label>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-2">
@@ -831,6 +850,66 @@ function AssignPostModal({
           <button onClick={onClose} className="text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]">Cancel</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Gather-post action (Tracker row button / status pill) ─────
+// Sprint G Phase 4 Task 9/10: combined "Gather post" trigger + post-status pill.
+// Gated to scheduled/published stages — other stages have no reason to gather.
+function GatherAction({
+  item,
+  onOpen,
+}: {
+  item: ContentItem;
+  onOpen: () => void;
+}) {
+  const gatherable = item.status === "scheduled" || item.status === "published";
+  const linked = !!(item.linked_post_id || item.linked_external_url);
+  if (linked) {
+    const justLinked =
+      !!item.linked_post_gathered_at &&
+      Date.now() - new Date(item.linked_post_gathered_at).getTime() < 10_000;
+    return (
+      <div className="flex items-center gap-1.5">
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+            justLinked
+              ? "bg-emerald-100 text-emerald-800 ring-2 ring-emerald-300 animate-pulse"
+              : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          Gathered ✓
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
+          className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] underline"
+        >
+          Change
+        </button>
+      </div>
+    );
+  }
+  if (!gatherable) {
+    return <span className="text-xs text-[var(--color-text-tertiary)]">—</span>;
+  }
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+        Awaiting
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen();
+        }}
+        className="text-xs px-2 py-1 rounded-[var(--radius-md)] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 whitespace-nowrap"
+      >
+        Gather post
+      </button>
     </div>
   );
 }
