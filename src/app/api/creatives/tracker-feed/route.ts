@@ -50,15 +50,15 @@ export async function GET(req: NextRequest) {
     admin
       .from("smm_top_posts")
       .select(`
-        id, post_url, thumbnail_url, caption_preview, published_at,
+        id, post_url, thumbnail_url, caption_preview, published_at, metric_date,
         impressions, reach, engagements, video_plays,
         smm_group_platforms!inner (
           platform,
           smm_groups ( name )
         )
       `)
-      .gte("published_at", startISO)
-      .lt("published_at", endISO),
+      .gte("metric_date", startDate)
+      .lt("metric_date", endDate),
     admin
       .from("meta_ad_stats")
       .select("ad_id, ad_name, campaign_name, metric_date, spend")
@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
     thumbnail_url: string | null;
     caption_preview: string | null;
     published_at: string | null;
+    metric_date: string | null;
     impressions: number | null;
     reach: number | null;
     engagements: number | null;
@@ -93,7 +94,6 @@ export async function GET(req: NextRequest) {
   };
   const organicRaw = (organicRes.data ?? []) as unknown as OrganicIn[];
   const organicPosts: OrganicPostRow[] = organicRaw
-    .filter((r) => !!r.published_at)
     .map((r) => {
       const platRaw = r.smm_group_platforms;
       const plat = (Array.isArray(platRaw) ? platRaw[0] : platRaw) as
@@ -101,12 +101,18 @@ export async function GET(req: NextRequest) {
         | null;
       const grpRaw = plat?.smm_groups;
       const grp = (Array.isArray(grpRaw) ? grpRaw[0] : grpRaw) as { name?: string | null } | null;
+      const effective = r.published_at
+        ? new Date(r.published_at).toISOString()
+        : r.metric_date
+          ? new Date(`${r.metric_date}T00:00:00Z`).toISOString()
+          : null;
+      if (!effective) return null;
       return {
         id: r.id,
         postUrl: r.post_url ?? null,
         thumbnailUrl: r.thumbnail_url ?? null,
         captionPreview: r.caption_preview ?? null,
-        publishedAt: new Date(r.published_at as string).toISOString(),
+        publishedAt: effective,
         platform: normalizeOrganicPlatform(plat?.platform ?? null),
         group: normalizeGroup(grp?.name ?? null),
         impressions: r.impressions ?? null,
@@ -114,7 +120,8 @@ export async function GET(req: NextRequest) {
         engagements: r.engagements ?? null,
         videoPlays: r.video_plays ?? null,
       } satisfies OrganicPostRow;
-    });
+    })
+    .filter((r): r is OrganicPostRow => r !== null);
 
   // ── Shape ads (aggregate by ad_id) ─────────────────────────────────────────
   type AdStatIn = { ad_id: string | null; ad_name: string | null; campaign_name: string | null; metric_date: string | null; spend: number | string | null };
