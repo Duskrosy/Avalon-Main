@@ -338,11 +338,14 @@ export default function PlannerView({
             : i
         )
       );
-      await fetch("/api/creatives/content-items", {
+      const res = await fetch("/api/creatives/content-items", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       });
+      if (!res.ok) {
+        throw new Error(`assign failed (${res.status})`);
+      }
     },
     []
   );
@@ -351,25 +354,38 @@ export default function PlannerView({
     async (selections: GatherSelection[]) => {
       if (!linkingItemId || selections.length === 0) return;
       const targetId = linkingItemId;
-      // Sequential: surfaces the first failure cleanly instead of burying it
-      // in a Promise.all rejection.
-      for (const sel of selections) {
-        await assignOne(sel, targetId);
+      const total = selections.length;
+      let succeeded = 0;
+      try {
+        for (const sel of selections) {
+          await assignOne(sel, targetId);
+          succeeded += 1;
+        }
+        const hasPost = selections.some((s) => s.kind === "post");
+        const hasAd = selections.some((s) => s.kind === "ad");
+        const message =
+          total === 1
+            ? selections[0].kind === "post"
+              ? "Post assigned"
+              : "Ad assigned"
+            : hasPost && hasAd
+              ? `${total} items assigned`
+              : hasAd
+                ? `${total} ads assigned`
+                : `${total} posts assigned`;
+        setToast({ message, type: "success" });
+      } catch {
+        const failed = total - succeeded;
+        setToast({
+          message:
+            succeeded === 0
+              ? `Assign failed (${failed} of ${total})`
+              : `${succeeded} of ${total} assigned, ${failed} failed`,
+          type: "error",
+        });
+      } finally {
+        setLinkingItemId(null);
       }
-      setLinkingItemId(null);
-      const hasPost = selections.some((s) => s.kind === "post");
-      const hasAd = selections.some((s) => s.kind === "ad");
-      const message =
-        selections.length === 1
-          ? selections[0].kind === "post"
-            ? "Post assigned"
-            : "Ad assigned"
-          : hasPost && hasAd
-            ? `${selections.length} items assigned`
-            : hasAd
-              ? `${selections.length} ads assigned`
-              : `${selections.length} posts assigned`;
-      setToast({ message, type: "success" });
     },
     [linkingItemId, assignOne, setToast]
   );
