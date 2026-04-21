@@ -197,11 +197,15 @@ export async function PATCH(req: NextRequest) {
   ) {
     updates.linked_at = new Date().toISOString();
   }
-  // Stamp linked_post_gathered_at when a post link is newly assigned
+  // Stamp linked_post_gathered_at when any live-content link is newly assigned
   // (powers the Tracker "Gathered ✓" pill + "just linked" pulse).
-  if (updates.linked_post_id) {
+  // Fires for organic posts (linked_post_id) and Meta ads (linked_ad_asset_id).
+  if (updates.linked_post_id || updates.linked_ad_asset_id) {
     updates.linked_post_gathered_at = new Date().toISOString();
-  } else if (updates.linked_post_id === null) {
+  } else if (
+    updates.linked_post_id === null &&
+    updates.linked_ad_asset_id === null
+  ) {
     updates.linked_post_gathered_at = null;
   }
 

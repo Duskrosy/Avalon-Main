@@ -61,6 +61,23 @@ type SmmPost = {
   created_by: string | null;
 };
 
+// Recently-live Meta ad deployment (with ad_asset join).
+// Stored via creative_content_items.linked_ad_asset_id → ad_assets.id.
+type LiveAd = {
+  id: string;
+  status: string;
+  launched_at: string | null;
+  meta_ad_id: string | null;
+  campaign_name: string | null;
+  asset: {
+    id: string;
+    title: string;
+    thumbnail_url: string | null;
+    content_type: string | null;
+    creator_id: string | null;
+  } | null;
+};
+
 type PlatformConnection = {
   id: string;
   group_id: string;
@@ -74,6 +91,7 @@ type Props = {
   items: ContentItem[];
   profiles: Profile[];
   posts: SmmPost[];
+  ads: LiveAd[];
   platforms: PlatformConnection[];
   currentUserId: string;
   isManager: boolean;
@@ -173,6 +191,7 @@ export default function TrackerView({
   items: initialItems,
   profiles,
   posts,
+  ads,
   platforms,
   currentUserId,
   isManager,
@@ -325,22 +344,43 @@ export default function TrackerView({
     [setToast]
   );
 
-  // ── Assign post ───────────────────────────────────────────
-  const handleAssignPost = useCallback(async (postId: string) => {
-    if (!linkingItemId) return;
-    setItems((prev) => prev.map((i) =>
-      i.id === linkingItemId
-        ? { ...i, linked_post_id: postId, linked_post_gathered_at: new Date().toISOString(), transfer_link: null }
-        : i
-    ));
-    await fetch("/api/creatives/content-items", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: linkingItemId, linked_post_id: postId, transfer_link: null }),
-    });
-    setLinkingItemId(null);
-    setToast({ message: "Post assigned", type: "success" });
-  }, [linkingItemId, setToast]);
+  // ── Assign post or ad ─────────────────────────────────────
+  // Unified Gather picker: organic smm_posts route to linked_post_id,
+  // Meta ads route to linked_ad_asset_id (FK to ad_assets.id).
+  const handleAssignPost = useCallback(
+    async (selection: { kind: "post"; id: string } | { kind: "ad"; assetId: string }) => {
+      if (!linkingItemId) return;
+      const now = new Date().toISOString();
+      const patch =
+        selection.kind === "post"
+          ? { id: linkingItemId, linked_post_id: selection.id, linked_ad_asset_id: null, transfer_link: null }
+          : { id: linkingItemId, linked_ad_asset_id: selection.assetId, linked_post_id: null, transfer_link: null };
+      setItems((prev) =>
+        prev.map((i) =>
+          i.id === linkingItemId
+            ? {
+                ...i,
+                linked_post_id: selection.kind === "post" ? selection.id : null,
+                linked_ad_asset_id: selection.kind === "ad" ? selection.assetId : null,
+                linked_post_gathered_at: now,
+                transfer_link: null,
+              }
+            : i
+        )
+      );
+      await fetch("/api/creatives/content-items", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      setLinkingItemId(null);
+      setToast({
+        message: selection.kind === "post" ? "Post assigned" : "Ad assigned",
+        type: "success",
+      });
+    },
+    [linkingItemId, setToast]
+  );
 
   // ── Render ────────────────────────────────────────────────
   return (
@@ -697,6 +737,7 @@ export default function TrackerView({
       {linkingItemId && (
         <AssignPostModal
           posts={posts}
+          ads={ads}
           currentUserId={currentUserId}
           onSelect={handleAssignPost}
           onClose={() => setLinkingItemId(null)}
@@ -708,28 +749,90 @@ export default function TrackerView({
 }
 
 // ── AssignPostModal ───────────────────────────────────────────
+// Unified Gather picker — lists recently-live organic posts + Meta ads.
+// Selecting an organic post sets linked_post_id; an ad sets linked_ad_asset_id.
+type GatherRow =
+  | {
+      kind: "post";
+      id: string;
+      assetId: null;
+      platform: string;
+      title: string;
+      thumbnail: string | null;
+      timestamp: string | null;
+      createdBy: string | null;
+    }
+  | {
+      kind: "ad";
+      id: string;
+      assetId: string;
+      platform: string;
+      title: string;
+      thumbnail: string | null;
+      timestamp: string | null;
+      createdBy: string | null;
+    };
+
 function AssignPostModal({
   posts,
+  ads,
   currentUserId,
   onSelect,
   onClose,
 }: {
   posts: SmmPost[];
+  ads: LiveAd[];
   currentUserId: string;
-  onSelect: (postId: string) => void;
+  onSelect: (selection: { kind: "post"; id: string } | { kind: "ad"; assetId: string }) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<string>("all");
+  const [source, setSource] = useState<"all" | "organic" | "ads">("all");
   const [search, setSearch] = useState("");
   const [mineOnly, setMineOnly] = useState(false);
 
-  const platforms = useMemo(() => ["all", ...new Set(posts.map((p) => p.platform))], [posts]);
-  const filtered = useMemo(() => posts.filter((p) => {
-    if (tab !== "all" && p.platform !== tab) return false;
-    if (mineOnly && p.created_by !== currentUserId) return false;
-    if (search && !(p.caption ?? "").toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  }), [posts, tab, search, mineOnly, currentUserId]);
+  const rows = useMemo<GatherRow[]>(() => {
+    const organicRows: GatherRow[] = posts.map((p) => ({
+      kind: "post",
+      id: p.id,
+      assetId: null,
+      platform: p.platform,
+      title: p.caption ?? "(no caption)",
+      thumbnail: null,
+      timestamp: p.published_at ?? p.scheduled_at,
+      createdBy: p.created_by,
+    }));
+    const adRows: GatherRow[] = ads
+      .filter((a) => a.asset) // need asset.id to link
+      .map((a) => ({
+        kind: "ad",
+        id: a.id,
+        assetId: a.asset!.id,
+        platform: "meta",
+        title: a.asset?.title || a.campaign_name || "(untitled ad)",
+        thumbnail: a.asset?.thumbnail_url ?? null,
+        timestamp: a.launched_at,
+        createdBy: a.asset?.creator_id ?? null,
+      }));
+    const all = [...organicRows, ...adRows];
+    all.sort((a, b) => {
+      const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return tb - ta;
+    });
+    return all;
+  }, [posts, ads]);
+
+  const filtered = useMemo(
+    () =>
+      rows.filter((r) => {
+        if (source === "organic" && r.kind !== "post") return false;
+        if (source === "ads" && r.kind !== "ad") return false;
+        if (mineOnly && r.createdBy !== currentUserId) return false;
+        if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+      }),
+    [rows, source, search, mineOnly, currentUserId]
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -744,17 +847,22 @@ function AssignPostModal({
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by caption..."
+            placeholder="Search posts & ads..."
             className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)]"
           />
           <div className="flex items-center justify-between gap-2 mt-2 flex-wrap">
             <div className="flex gap-1 flex-wrap">
-              {platforms.map((p) => (
-                <button key={p} onClick={() => setTab(p)}
+              {(["all", "organic", "ads"] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSource(s)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize transition-colors ${
-                    tab === p ? "bg-[var(--color-accent)] text-white" : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
-                  }`}>
-                  {p}
+                    source === s
+                      ? "bg-[var(--color-accent)] text-white"
+                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]"
+                  }`}
+                >
+                  {s}
                 </button>
               ))}
             </div>
@@ -771,18 +879,46 @@ function AssignPostModal({
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {filtered.length === 0 && (
-            <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">No posts found</p>
+            <p className="text-sm text-[var(--color-text-tertiary)] text-center py-8">Nothing found</p>
           )}
-          {filtered.map((post) => (
-            <button key={post.id} onClick={() => onSelect(post.id)}
-              className="w-full text-left p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-hover)] flex items-start gap-3 transition-colors">
-              <span className="text-xs font-medium capitalize px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex-shrink-0">
-                {post.platform}
-              </span>
+          {filtered.map((r) => (
+            <button
+              key={`${r.kind}-${r.id}`}
+              onClick={() =>
+                onSelect(r.kind === "post" ? { kind: "post", id: r.id } : { kind: "ad", assetId: r.assetId })
+              }
+              className="w-full text-left p-3 rounded-[var(--radius-md)] hover:bg-[var(--color-surface-hover)] flex items-start gap-3 transition-colors"
+            >
+              {r.thumbnail ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={r.thumbnail}
+                  alt=""
+                  className="h-10 w-10 rounded object-cover flex-shrink-0 bg-[var(--color-bg-tertiary)]"
+                />
+              ) : (
+                <span className="text-xs font-medium capitalize px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] flex-shrink-0">
+                  {r.platform}
+                </span>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-[var(--color-text-primary)] line-clamp-2">{post.caption ?? "(no caption)"}</p>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                      r.kind === "ad"
+                        ? "bg-indigo-50 text-indigo-700"
+                        : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
+                    {r.kind === "ad" ? "Ad" : "Organic"}
+                  </span>
+                  <span className="text-[10px] font-medium capitalize text-[var(--color-text-tertiary)]">
+                    {r.platform}
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--color-text-primary)] line-clamp-2 mt-0.5">{r.title}</p>
                 <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
-                  {post.published_at ? format(parseISO(post.published_at), "MMM d, yyyy") : "Not published"}
+                  {r.timestamp ? format(parseISO(r.timestamp), "MMM d, yyyy") : "—"}
                 </p>
               </div>
             </button>
@@ -807,7 +943,7 @@ function GatherAction({
   onOpen: () => void;
 }) {
   const gatherable = item.status === "scheduled" || item.status === "published";
-  const linked = !!(item.linked_post_id || item.linked_external_url);
+  const linked = !!(item.linked_post_id || item.linked_external_url || item.linked_ad_asset_id);
   if (linked) {
     const justLinked =
       !!item.linked_post_gathered_at &&
