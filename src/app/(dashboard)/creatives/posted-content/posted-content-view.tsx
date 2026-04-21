@@ -76,15 +76,15 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Posted Content</h1>
           <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">
-            Per-post performance across organic posts and ad deployments.
+            Per-post performance across organic posts and ad deployments. Windows group by metric activity, not publish date.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
           {/* Window tabs */}
           <div className="flex gap-1 p-1 rounded-lg bg-[var(--color-bg-secondary)] text-xs">
             {([
-              { key: "recent",     label: "Recent · 30d" },
-              { key: "historical", label: "Historical · 30–180d" },
+              { key: "recent",     label: "Active · last 30d" },
+              { key: "historical", label: "Archive · 30–180d" },
             ] as const).map((t) => (
               <Link
                 key={t.key}
@@ -157,6 +157,7 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
                           <img
                             src={r.thumbnail_url}
                             alt=""
+                            onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                             className="w-10 h-10 rounded object-cover shrink-0 bg-[var(--color-bg-tertiary)]"
                           />
                         ) : (
@@ -226,7 +227,7 @@ function PostDetailModal({ row, onClose }: { row: PostedRow; onClose: () => void
         <div className="px-5 py-4 border-b border-[var(--color-border-primary)] flex items-start gap-3">
           {row.thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={row.thumbnail_url} alt="" className="w-20 h-20 rounded object-cover bg-[var(--color-bg-tertiary)] shrink-0" />
+            <img src={row.thumbnail_url} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="w-20 h-20 rounded object-cover bg-[var(--color-bg-tertiary)] shrink-0" />
           ) : (
             <div className="w-20 h-20 rounded bg-[var(--color-bg-tertiary)] shrink-0" />
           )}

@@ -128,11 +128,12 @@ function dateRange(days: number): { from: string; to: string } {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export function AnalyticsView({ groups }: Props) {
-  const activeGroups = groups.filter((g) =>
+  const activeGroups = groups;
+  const firstGroupWithPlatforms = groups.find((g) =>
     g.smm_group_platforms.some((p) => p.is_active)
   );
 
-  const [groupId, setGroupId]   = useState<string>(activeGroups[0]?.id ?? "");
+  const [groupId, setGroupId]   = useState<string>(firstGroupWithPlatforms?.id ?? groups[0]?.id ?? "");
   const [platId,  setPlatId]    = useState<string>("");
   const [preset,  setPreset]    = useState<number>(30);
 
@@ -349,6 +350,16 @@ export function AnalyticsView({ groups }: Props) {
           </button>
         ))}
       </div>
+
+      {/* ── Empty state when selected group has no platforms ── */}
+      {groupId && activePlatforms.length === 0 && (
+        <div className="bg-[var(--color-bg-secondary)] border border-dashed border-[var(--color-border-primary)] rounded-2xl p-12 text-center mb-5">
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">No platforms configured for {activeGroup?.name ?? "this group"}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] mt-1">
+            Add Facebook, Instagram, TikTok, or YouTube credentials in <a href="/creatives/settings" className="underline">Creatives Settings</a>.
+          </p>
+        </div>
+      )}
 
       {/* ── Platform tabs ── */}
       {activePlatforms.length > 0 && (
@@ -663,7 +674,7 @@ export function AnalyticsView({ groups }: Props) {
                     {/* Thumbnail */}
                     <div className="relative aspect-video bg-[var(--color-bg-tertiary)]">
                       {p.thumbnail_url ? (
-                        <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />
+                        <img src={p.thumbnail_url} alt="" onError={(e) => { e.currentTarget.style.visibility = "hidden"; }} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <span className="text-2xl" style={{ color: platColor }}>
@@ -904,7 +915,7 @@ export function AnalyticsView({ groups }: Props) {
             <button onClick={() => setSelectedPost(null)} className="absolute top-3 right-3 text-lg text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]">&times;</button>
 
             {selectedPost.thumbnail_url && (
-              <img src={selectedPost.thumbnail_url} className="w-full h-48 object-cover rounded-[var(--radius-md)] mb-4" alt="" />
+              <img src={selectedPost.thumbnail_url} onError={(e) => { e.currentTarget.style.display = "none"; }} className="w-full h-48 object-cover rounded-[var(--radius-md)] mb-4 bg-[var(--color-bg-tertiary)]" alt="" />
             )}
 
             <p className="text-sm text-[var(--color-text-primary)] mb-4 line-clamp-3">{selectedPost.caption_preview ?? "(no caption)"}</p>
