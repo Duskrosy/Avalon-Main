@@ -89,21 +89,62 @@ function TypeIcon({ type, className = "w-5 h-5" }: { type: string; className?: s
 
 const PAGE_SIZE = 20;
 
-// ─── YouTube URL conversion helper ───────────────────────────────────────────
-function toEmbedUrl(url: string): string {
+// ─── Smart embed resolver ────────────────────────────────────────────────────
+type Embed = { kind: "iframe" | "video" | "unsupported"; src: string };
+
+function toEmbed(rawUrl: string): Embed {
   try {
-    const u = new URL(url);
+    const u = new URL(rawUrl);
+    // YouTube
     if (u.hostname === "youtu.be") {
-      return `https://www.youtube.com/embed${u.pathname}`;
+      return { kind: "iframe", src: `https://www.youtube.com/embed${u.pathname}` };
     }
     if (u.hostname === "www.youtube.com" || u.hostname === "youtube.com") {
       const v = u.searchParams.get("v");
-      if (v) return `https://www.youtube.com/embed/${v}`;
+      if (v) return { kind: "iframe", src: `https://www.youtube.com/embed/${v}` };
+      if (u.pathname.startsWith("/embed/")) return { kind: "iframe", src: rawUrl };
     }
+    // Vimeo
+    if (u.hostname === "vimeo.com" || u.hostname === "www.vimeo.com") {
+      const id = u.pathname.replace(/^\//, "").split("/")[0];
+      if (id) return { kind: "iframe", src: `https://player.vimeo.com/video/${id}` };
+    }
+    // Loom
+    if (u.hostname === "www.loom.com" || u.hostname === "loom.com") {
+      const id = u.pathname.replace("/share/", "").replace(/^\//, "").split("/")[0];
+      if (id) return { kind: "iframe", src: `https://www.loom.com/embed/${id}` };
+    }
+    // Google Drive
+    if (u.hostname === "drive.google.com") {
+      const match = u.pathname.match(/\/file\/d\/([^/]+)/);
+      if (match) return { kind: "iframe", src: `https://drive.google.com/file/d/${match[1]}/preview` };
+    }
+    // Direct video file
+    if (/\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(u.pathname)) {
+      return { kind: "video", src: rawUrl };
+    }
+    return { kind: "iframe", src: rawUrl };
   } catch {
-    // not a valid URL — return as-is
+    return { kind: "unsupported", src: rawUrl };
   }
-  return url;
+}
+
+function EmbedFallback({ url }: { url: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-6">
+      <p className="text-sm text-[var(--color-text-secondary)]">
+        This content can&apos;t be embedded here.
+      </p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-sm font-medium text-[var(--color-text-primary)] underline underline-offset-2"
+      >
+        Open in new tab →
+      </a>
+    </div>
+  );
 }
 
 // ─── Material Viewer with view tracking ──────────────────────────────────────
@@ -193,7 +234,30 @@ function MaterialViewer({
             </video>
           </div>
         ) : material.material_type === "link" ? (
-          <iframe src={toEmbedUrl(url)} className="w-full h-full border-0" title={material.title} />
+          (() => {
+            const embed = toEmbed(url);
+            if (embed.kind === "video") {
+              return (
+                <div className="flex items-center justify-center h-full p-4">
+                  <video controls className="max-h-full max-w-full rounded-lg" autoPlay>
+                    <source src={embed.src} />
+                  </video>
+                </div>
+              );
+            }
+            if (embed.kind === "iframe") {
+              return (
+                <iframe
+                  src={embed.src}
+                  className="w-full h-full border-0"
+                  title={material.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              );
+            }
+            return <EmbedFallback url={url} />;
+          })()
         ) : ["presentation", "document"].includes(material.material_type) ? (
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}

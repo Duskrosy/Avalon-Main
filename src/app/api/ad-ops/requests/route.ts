@@ -23,6 +23,9 @@ export async function GET(req: NextRequest) {
       *,
       requester:profiles!requester_id(id, first_name, last_name),
       assignee:profiles!assignee_id(id, first_name, last_name),
+      assignees:ad_request_assignees(
+        assignee:profiles!assignee_id(id, first_name, last_name, avatar_url)
+      ),
       kanban_card:kanban_cards!linked_card_id(id, col:kanban_columns!column_id(name))
     `)
     .order("created_at", { ascending: false })
@@ -33,7 +36,16 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json(data ?? []);
+  // Flatten junction rows into assignees: Profile[]
+  type AssigneeJoin = { assignee: { id: string; first_name: string; last_name: string; avatar_url: string | null } | null };
+  const rows = (data ?? []).map((r: Record<string, unknown> & { assignees?: AssigneeJoin[] }) => ({
+    ...r,
+    assignees: (r.assignees ?? [])
+      .map((a) => a.assignee)
+      .filter((p): p is NonNullable<AssigneeJoin["assignee"]> => p != null),
+  }));
+
+  return NextResponse.json(rows);
 }
 
 // POST /api/ad-ops/requests
@@ -47,13 +59,16 @@ export async function POST(req: NextRequest) {
   if (validationError) return validationError;
 
   const admin = createAdminClient();
+  const assigneeIds = body.assignee_ids ?? (body.assignee_id ? [body.assignee_id] : []);
+  const leadAssignee = body.assignee_id ?? assigneeIds[0] ?? null;
+
   const { data, error } = await admin
     .from("ad_requests")
     .insert({
       title: body.title,
       brief: body.brief ?? null,
       requester_id: currentUser.id,
-      assignee_id: body.assignee_id ?? null,
+      assignee_id: leadAssignee,
       status: "submitted",
       target_date: body.target_date ?? null,
       notes: body.notes ?? null,
@@ -62,6 +77,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  if (assigneeIds.length > 0) {
+    await admin.from("ad_request_assignees").insert(
+      assigneeIds.map((assignee_id) => ({ ad_request_id: data.id, assignee_id })),
+    );
+  }
 
   trackEventServer(supabase, currentUser.id, "ad.request.created", {
     module: "ad-ops",
@@ -84,14 +105,33 @@ export async function PATCH(req: NextRequest) {
   const { data: body, error: validationError } = validateBody(adRequestPatchSchema, raw);
   if (validationError) return validationError;
 
+  // Peel assignee_ids off — it doesn't exist on ad_requests; we sync the junction separately.
+  const { assignee_ids, ...patch } = body;
+
+  // Keep ad_requests.assignee_id as a "lead" hint: first id in assignee_ids wins if provided.
+  if (assignee_ids !== undefined) {
+    patch.assignee_id = assignee_ids[0] ?? null;
+  }
+
   const { data, error } = await supabase
     .from("ad_requests")
-    .update(body)
+    .update(patch)
     .eq("id", id)
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Sync junction table if assignee_ids was provided.
+  if (assignee_ids !== undefined) {
+    const admin = createAdminClient();
+    await admin.from("ad_request_assignees").delete().eq("ad_request_id", id);
+    if (assignee_ids.length > 0) {
+      await admin.from("ad_request_assignees").insert(
+        assignee_ids.map((assignee_id) => ({ ad_request_id: id, assignee_id })),
+      );
+    }
+  }
 
   // Auto-create kanban card when request is accepted
   if (data && body.status === "in_progress" && !data.linked_card_id) {

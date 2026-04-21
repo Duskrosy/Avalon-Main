@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { format, parseISO } from "date-fns";
 import { PeoplePicker } from "@/components/ui/people-picker";
 
+type Assignee = { id: string; first_name: string; last_name: string; avatar_url?: string | null };
+
 type Request = {
   id: string;
   title: string;
@@ -13,7 +15,8 @@ type Request = {
   notes: string | null;
   created_at: string;
   requester: { id: string; first_name: string; last_name: string } | null;
-  assignee: { id: string; first_name: string; last_name: string } | null;
+  assignee: Assignee | null;       // lead assignee hint
+  assignees: Assignee[];            // full multi-assignee list from junction table
   kanban_card?: { id: string; col: { name: string } | null } | null;
 };
 
@@ -75,9 +78,10 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
       if (isFulfillmentView) {
         // Creatives/OPS: show requests assigned to a creatives member
         const memberIds = new Set(members.map((m) => m.id));
+        const assigneesOf = (r: Request) => (r.assignees ?? []);
         const filtered = canManage
-          ? all.filter((r) => !r.assignee || memberIds.has(r.assignee.id))
-          : all.filter((r) => r.assignee?.id === currentUserId);
+          ? all.filter((r) => assigneesOf(r).length === 0 || assigneesOf(r).some((a) => memberIds.has(a.id)))
+          : all.filter((r) => assigneesOf(r).some((a) => a.id === currentUserId));
         setRequests(filtered);
       } else {
         // Non-creatives: show only their own requests
@@ -98,13 +102,12 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     await fetchRequests();
   }
 
-  async function reassign(id: string, assigneeId: string) {
+  async function reassign(id: string, assigneeIds: string[]) {
     await fetch(`/api/ad-ops/requests?id=${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignee_id: assigneeId || null }),
+      body: JSON.stringify({ assignee_ids: assigneeIds }),
     });
-    setAssigning(null);
     await fetchRequests();
   }
 
@@ -291,8 +294,8 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                     {isFulfillmentView && (
                       <>
                         From: {r.requester ? `${r.requester.first_name} ${r.requester.last_name}` : "Unknown"}
-                        {r.assignee
-                          ? ` · Assigned to ${r.assignee.first_name} ${r.assignee.last_name}`
+                        {r.assignees && r.assignees.length > 0
+                          ? ` · Assigned to ${r.assignees.map((a) => `${a.first_name} ${a.last_name}`).join(", ")}`
                           : " · Unassigned"}
                       </>
                     )}
@@ -341,19 +344,20 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                       {/* Assign / reassign — managers only */}
                       {canManage && (
                         assigning === r.id ? (
-                          <div className="flex items-center gap-2">
-                            <PeoplePicker
-                              value={r.assignee ? [r.assignee.id] : []}
-                              onChange={(ids) => { reassign(r.id, ids[0] ?? ""); }}
-                              allUsers={members}
-                              single
-                              placeholder="Select assignee…"
-                            />
+                          <div className="flex items-start gap-2 flex-1 min-w-[260px]">
+                            <div className="flex-1">
+                              <PeoplePicker
+                                value={(r.assignees ?? []).map((a) => a.id)}
+                                onChange={(ids) => { reassign(r.id, ids); }}
+                                allUsers={members}
+                                placeholder="Add assignees…"
+                              />
+                            </div>
                             <button
                               onClick={() => setAssigning(null)}
-                              className="text-xs text-[var(--color-text-tertiary)] px-2 hover:text-[var(--color-text-primary)]"
+                              className="text-xs text-[var(--color-text-tertiary)] px-2 py-2 hover:text-[var(--color-text-primary)]"
                             >
-                              Cancel
+                              Done
                             </button>
                           </div>
                         ) : (
@@ -361,7 +365,7 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                             onClick={(e) => { e.stopPropagation(); setAssigning(r.id); }}
                             className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
                           >
-                            {r.assignee ? "Reassign" : "Assign"}
+                            {(r.assignees ?? []).length > 0 ? "Edit assignees" : "Assign"}
                           </button>
                         )
                       )}

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser, isOps } from "@/lib/permissions";
+import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { LiveAdsView } from "./live-ads-view";
 
@@ -9,9 +9,10 @@ export default async function LiveAdsPage() {
   if (!user) redirect("/login");
 
   const canControl =
-    isOps(user) ||
-    user.department?.slug === "ad-ops" ||
-    user.department?.slug === "marketing";
+    isManagerOrAbove(user) &&
+    (isOps(user) ||
+      user.department?.slug === "ad-ops" ||
+      user.department?.slug === "marketing");
 
   return <LiveAdsView canControl={canControl} />;
 }

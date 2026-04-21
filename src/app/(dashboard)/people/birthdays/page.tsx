@@ -21,6 +21,7 @@ export default async function BirthdaysPage() {
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) redirect("/login");
+  console.log("[birthdays] render @", new Date().toISOString(), "— upcoming:chronological");
 
   const { data: profiles } = await supabase
     .from("profiles")
@@ -79,13 +80,17 @@ export default async function BirthdaysPage() {
 
   const todayPeople = people.filter((p) => p.daysUntil === 0);
 
-  const thisWeek = people.filter((p) => p.daysUntil > 0 && p.daysUntil <= 7);
+  const thisWeek = people
+    .filter((p) => p.daysUntil > 0 && p.daysUntil <= 7)
+    .sort((a, b) => a.daysUntil - b.daysUntil);
 
-  const thisMonth = people.filter((p) => {
-    if (p.daysUntil <= 7 || p.daysAgo !== null) return false;
-    const nb = new Date(p.nextBirthday);
-    return nb.getMonth() === today.getMonth() && nb.getFullYear() === today.getFullYear();
-  });
+  const thisMonth = people
+    .filter((p) => {
+      if (p.daysUntil <= 7 || p.daysAgo !== null) return false;
+      const nb = new Date(p.nextBirthday);
+      return nb.getMonth() === today.getMonth() && nb.getFullYear() === today.getFullYear();
+    })
+    .sort((a, b) => a.daysUntil - b.daysUntil);
 
   const upcoming = people
     .filter((p) => {
@@ -132,7 +137,7 @@ export default async function BirthdaysPage() {
       thisWeek={deptFirst(thisWeek)}
       thisMonth={deptFirst(thisMonth)}
       pastPeople={deptFirst(pastPeople)}
-      upcoming={deptFirst(upcoming)}
+      upcoming={upcoming /* chronological, no dept-first */}
       currentUserId={currentUser.id}
       currentUserIsOps={isOps(currentUser)}
       currentUserHasBirthday={currentUserBirthday}

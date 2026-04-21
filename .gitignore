@@ -38,3 +38,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gitnexus
+.gstack/
+
+# playwright + qa artifacts (local debug only)
+.playwright-mcp/
+snap-*.txt
+console-errors.txt
+qa-*.png
+gather-*.png
+
+# supabase local temp
+supabase/.temp/
