@@ -32,6 +32,16 @@ export type GatherSelection =
   | { kind: "post"; url: string }
   | { kind: "ad"; assetId: string };
 
+type PlatformFilter = "all" | "facebook" | "instagram" | "tiktok" | "youtube";
+
+const PLATFORM_FILTERS: ReadonlyArray<{ value: PlatformFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "facebook", label: "Facebook" },
+  { value: "instagram", label: "Instagram" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "youtube", label: "YouTube" },
+];
+
 type GatherRow =
   | {
       kind: "post";
@@ -67,6 +77,7 @@ export function AssignPostModal({
   onClose: () => void;
 }) {
   const [source, setSource] = useState<"all" | "organic" | "ads">("all");
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [search, setSearch] = useState("");
 
   const rows = useMemo<GatherRow[]>(() => {
@@ -109,6 +120,10 @@ export function AssignPostModal({
       rows.filter((r) => {
         if (source === "organic" && r.kind !== "post") return false;
         if (source === "ads" && r.kind !== "ad") return false;
+        // Platform filter applies to organic rows only — ads pass through.
+        if (r.kind === "post" && platformFilter !== "all") {
+          if ((r.platform ?? "").toLowerCase() !== platformFilter) return false;
+        }
         if (search) {
           const q = search.toLowerCase();
           const haystack =
@@ -119,7 +134,7 @@ export function AssignPostModal({
         }
         return true;
       }),
-    [rows, source, search]
+    [rows, source, platformFilter, search]
   );
 
   return (
@@ -153,6 +168,26 @@ export function AssignPostModal({
               </button>
             ))}
           </div>
+          {source !== "ads" && (
+            <div
+              className="flex gap-1 flex-wrap mt-2"
+              aria-label="Filter organic posts by platform"
+            >
+              {PLATFORM_FILTERS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setPlatformFilter(p.value)}
+                  className={`px-2 py-0.5 rounded-full text-xs transition-colors ${
+                    platformFilter === p.value
+                      ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)]"
+                      : "text-[var(--color-text-secondary)] border border-transparent hover:bg-[var(--color-surface-hover)]"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto p-2">
           {filtered.length === 0 && (
