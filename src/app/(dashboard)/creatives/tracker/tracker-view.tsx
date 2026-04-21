@@ -184,6 +184,7 @@ export default function TrackerView({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  const [mineOnly, setMineOnly] = useState(false);
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -224,11 +225,19 @@ export default function TrackerView({
   }, [setToast]);
 
   // ── Filtered items ────────────────────────────────────────
+  // Junction-backed "Mine" filter — an item is mine if I'm in content_item_assignees.
+  const isMine = useCallback(
+    (i: ContentItem) =>
+      !mineOnly || (i.assignees ?? []).some((a) => a.user_id === currentUserId),
+    [mineOnly, currentUserId]
+  );
+
   const planned = useMemo(
     () =>
       items
         .filter((i) => PLANNED_STATUSES.includes(i.status))
         .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+        .filter(isMine)
         .filter(
           (i) =>
             !search ||
@@ -236,7 +245,7 @@ export default function TrackerView({
             (i.campaign_label ?? "").toLowerCase().includes(search.toLowerCase())
         )
         .filter((i) => !statusFilter || i.status === statusFilter),
-    [items, search, statusFilter, groupFilter]
+    [items, search, statusFilter, groupFilter, isMine]
   );
 
   const published = useMemo(
@@ -244,13 +253,14 @@ export default function TrackerView({
       items
         .filter((i) => PUBLISHED_STATUSES.includes(i.status))
         .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+        .filter(isMine)
         .filter(
           (i) =>
             !search ||
             i.title.toLowerCase().includes(search.toLowerCase()) ||
             (i.campaign_label ?? "").toLowerCase().includes(search.toLowerCase())
         ),
-    [items, search, groupFilter]
+    [items, search, groupFilter, isMine]
   );
 
   const active = tab === "planned" ? planned : published;
@@ -261,6 +271,7 @@ export default function TrackerView({
       .filter((i) => tab === "planned" ? PLANNED_STATUSES.includes(i.status) : PUBLISHED_STATUSES.includes(i.status))
       .filter((i) => !statusFilter || i.status === statusFilter)
       .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+      .filter(isMine)
       .filter((i) => {
         if (!q) return true;
         const assigneeName = i.assigned_profile ? `${i.assigned_profile.first_name} ${i.assigned_profile.last_name}` : "";
@@ -272,7 +283,7 @@ export default function TrackerView({
       label: WEEK_LABELS[key],
       items: base.filter((i) => getWeekGroup(i.planned_week_start) === key),
     })).filter((g) => g.items.length > 0);
-  }, [items, tab, statusFilter, groupFilter, search]);
+  }, [items, tab, statusFilter, groupFilter, search, isMine]);
 
   // ── Inline status change ──────────────────────────────────
   const changeStatus = useCallback(
@@ -413,6 +424,15 @@ export default function TrackerView({
             ))}
           </select>
         )}
+        <label className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={mineOnly}
+            onChange={(e) => setMineOnly(e.target.checked)}
+            className="rounded border-[var(--color-border-primary)]"
+          />
+          Mine only
+        </label>
       </div>
 
       {/* Table (desktop) / Cards (mobile) */}
