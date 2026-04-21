@@ -129,6 +129,66 @@ export async function PATCH(req: NextRequest) {
   const { id, ...updates } = body;
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
+  // Task 12 — Auto-gather on publish transition.
+  // When an item transitions to 'published' without a link already being set
+  // in this PATCH (and not yet linked in DB), look for a recent smm_post by
+  // one of its assignees. Only auto-link if there's exactly one candidate —
+  // ambiguity falls through to the manual Gather flow.
+  if (
+    updates.status === "published" &&
+    !updates.linked_post_id &&
+    !updates.linked_external_url &&
+    !updates.linked_ad_asset_id
+  ) {
+    const adminForMatch = createAdminClient();
+    const { data: current } = await adminForMatch
+      .from("creative_content_items")
+      .select("linked_post_id, assigned_to")
+      .eq("id", id)
+      .single();
+
+    if (current && !current.linked_post_id) {
+      const { data: junction } = await adminForMatch
+        .from("content_item_assignees")
+        .select("user_id")
+        .eq("item_id", id);
+      const assigneeIds = new Set<string>(
+        (junction ?? []).map((r: { user_id: string }) => r.user_id)
+      );
+      if (current.assigned_to) assigneeIds.add(current.assigned_to);
+
+      if (assigneeIds.size > 0) {
+        const threeDaysAgo = new Date(Date.now() - 3 * 86400_000).toISOString();
+        // Posts already claimed by any content item — exclude from candidates.
+        const { data: claimed } = await adminForMatch
+          .from("creative_content_items")
+          .select("linked_post_id")
+          .not("linked_post_id", "is", null);
+        const claimedIds = new Set<string>(
+          (claimed ?? [])
+            .map((r: { linked_post_id: string | null }) => r.linked_post_id)
+            .filter((x): x is string => !!x)
+        );
+
+        const { data: candidates } = await adminForMatch
+          .from("smm_posts")
+          .select("id")
+          .eq("status", "published")
+          .gte("published_at", threeDaysAgo)
+          .in("created_by", Array.from(assigneeIds))
+          .order("published_at", { ascending: false })
+          .limit(5);
+
+        const unclaimed = (candidates ?? []).filter(
+          (p: { id: string }) => !claimedIds.has(p.id)
+        );
+        if (unclaimed.length === 1) {
+          updates.linked_post_id = unclaimed[0].id;
+        }
+      }
+    }
+  }
+
   // Auto-set linked_at when linking to published content
   if (
     updates.linked_post_id ||
