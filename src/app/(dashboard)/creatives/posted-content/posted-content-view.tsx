@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { platformBadge, resolveThumb } from "../tracker/ledger-helpers";
 
 export type PostedSource = "organic" | "ad";
 
@@ -51,17 +52,6 @@ function fmtDate(iso: string | null): string {
   return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-function platformBadge(platform: string): string {
-  const styles: Record<string, string> = {
-    facebook:  "bg-blue-500/10 text-blue-400",
-    instagram: "bg-pink-500/10 text-pink-400",
-    tiktok:    "bg-white/10 text-white",
-    youtube:   "bg-red-500/10 text-red-400",
-    meta:      "bg-purple-500/10 text-purple-400",
-  };
-  return styles[platform.toLowerCase()] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]";
-}
-
 export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; windowSel: "recent" | "historical" }) {
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("all");
@@ -102,9 +92,6 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
     })();
     return () => { cancelled = true; };
   }, [missingAdIdsKey]);
-
-  const resolveThumb = (r: PostedRow): string | null =>
-    r.thumbnail_url ?? (r.ad_id ? fetchedThumbs[r.ad_id] ?? null : null);
 
   async function handleSync() {
     setSyncState("syncing");
@@ -245,7 +232,7 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3 min-w-0">
                         {(() => {
-                          const thumb = resolveThumb(r);
+                          const thumb = resolveThumb(r, fetchedThumbs);
                           return thumb ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
@@ -309,7 +296,7 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
       {active && (
         <PostDetailModal
           row={active}
-          resolvedThumbnail={resolveThumb(active)}
+          resolvedThumbnail={resolveThumb(active, fetchedThumbs)}
           onClose={() => setActive(null)}
         />
       )}
