@@ -205,7 +205,9 @@ export function TrackerView({
                     date: i.link.state === "ad" ? (i.link.metricDate ?? i.plannedWeekStart ?? "") : "",
                   }))
                   .filter((r) => !!r.date),
-              ).map((r) => r.item)}
+              )
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((r) => r.item)}
               organicItems={filterByDay(
                 linkedOrganicItems
                   .map((i) => ({
@@ -215,7 +217,9 @@ export function TrackerView({
                       : "",
                   }))
                   .filter((r) => !!r.date),
-              ).map((r) => r.item)}
+              )
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((r) => r.item)}
             />
           )}
           {tab === "organic" && (
@@ -223,13 +227,17 @@ export function TrackerView({
               month={month}
               rows={filterByDay(
                 data.organicPosts.map((p) => ({ post: p, date: ymdUTC(p.publishedAt) })),
-              ).map((r) => r.post)}
+              )
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((r) => r.post)}
             />
           )}
           {tab === "ads" && (
             <AdsPanel
               month={month}
-              rows={filterByDay(data.ads.map((a) => ({ ad: a, date: a.firstDate }))).map((r) => r.ad)}
+              rows={filterByDay(data.ads.map((a) => ({ ad: a, date: a.firstDate })))
+                .sort((a, b) => b.date.localeCompare(a.date))
+                .map((r) => r.ad)}
             />
           )}
           {tab === "unassigned" && (

@@ -107,6 +107,7 @@ export async function GET(req: NextRequest) {
           ? new Date(`${r.metric_date}T00:00:00Z`).toISOString()
           : null;
       if (!effective) return null;
+      if (effective < startISO || effective >= endISO) return null;
       return {
         id: r.id,
         postUrl: r.post_url ?? null,
