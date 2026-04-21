@@ -36,15 +36,14 @@ export default async function PostedContentPage({
   const fromDays = windowSel === "historical" ? historicalMaxDays : recentDays;
   const toDays = windowSel === "historical" ? recentDays : 0;
   const fromISO = new Date(now.getTime() - fromDays * 86400_000).toISOString().slice(0, 10);
-  const fromTs = new Date(now.getTime() - fromDays * 86400_000).toISOString();
   const toISO = windowSel === "historical"
     ? new Date(now.getTime() - toDays * 86400_000).toISOString().slice(0, 10)
     : null;
-  const toTs = windowSel === "historical"
-    ? new Date(now.getTime() - toDays * 86400_000).toISOString()
-    : null;
 
-  // ── Organic: smm_top_posts → join to platform → group for label ───────────
+  // ── Organic: smm_top_posts — curated "top posts" snapshot table ────────────
+  // Filter by metric_date so posts still getting engagement stay visible.
+  // Limit bumped to 500 so newer posts aren't pushed off when many old posts
+  // have fresh snapshots.
   let topPostsQuery = admin
     .from("smm_top_posts")
     .select(`
@@ -60,47 +59,107 @@ export default async function PostedContentPage({
   if (toISO) topPostsQuery = topPostsQuery.lt("metric_date", toISO);
   const { data: topPosts } = await topPostsQuery
     .order("published_at", { ascending: false, nullsFirst: false })
-    .limit(200);
+    .limit(500);
 
-  // ── Ads: ad_deployments + ad_assets + aggregated meta_ad_demographics ─────
+  // ── Ads: meta_ad_stats aggregated by ad_id, joined to meta_campaigns ──────────
+  let statsQuery = admin
+    .from("meta_ad_stats")
+    .select(`
+      ad_id, ad_name, adset_name, campaign_id, campaign_name, meta_account_id,
+      metric_date, impressions, reach, spend, conversions, video_plays, clicks
+    `)
+    .gte("metric_date", fromISO);
+  if (toISO) statsQuery = statsQuery.lt("metric_date", toISO);
+  const { data: statsRows } = await statsQuery;
+
+  // Aggregate per ad_id
+  type AdAgg = {
+    ad_id: string;
+    ad_name: string | null;
+    adset_name: string | null;
+    campaign_id: string | null;
+    campaign_name: string | null;
+    meta_account_id: string | null;
+    first_date: string | null;
+    last_date: string | null;
+    impressions: number;
+    reach: number;
+    spend: number;
+    conversions: number;
+    video_plays: number;
+    clicks: number;
+  };
+  const adAgg = new Map<string, AdAgg>();
+  for (const r of statsRows ?? []) {
+    if (!r.ad_id) continue;
+    const acc = adAgg.get(r.ad_id) ?? {
+      ad_id: r.ad_id,
+      ad_name: r.ad_name ?? null,
+      adset_name: r.adset_name ?? null,
+      campaign_id: r.campaign_id ?? null,
+      campaign_name: r.campaign_name ?? null,
+      meta_account_id: r.meta_account_id ?? null,
+      first_date: null,
+      last_date: null,
+      impressions: 0,
+      reach: 0,
+      spend: 0,
+      conversions: 0,
+      video_plays: 0,
+      clicks: 0,
+    };
+    acc.ad_name       = acc.ad_name ?? r.ad_name ?? null;
+    acc.adset_name    = acc.adset_name ?? r.adset_name ?? null;
+    acc.campaign_name = acc.campaign_name ?? r.campaign_name ?? null;
+    acc.impressions  += Number(r.impressions) || 0;
+    acc.reach        += Number(r.reach) || 0;
+    acc.spend        += Number(r.spend) || 0;
+    acc.conversions  += Number(r.conversions) || 0;
+    acc.video_plays  += Number(r.video_plays) || 0;
+    acc.clicks       += Number(r.clicks) || 0;
+    if (!acc.first_date || (r.metric_date && r.metric_date < acc.first_date)) acc.first_date = r.metric_date;
+    if (!acc.last_date  || (r.metric_date && r.metric_date > acc.last_date))  acc.last_date  = r.metric_date;
+    adAgg.set(r.ad_id, acc);
+  }
+
+  // Resolve account names (for group_name label)
+  const accountIds = Array.from(new Set(
+    Array.from(adAgg.values()).map((a) => a.meta_account_id).filter((x): x is string => !!x)
+  ));
+  const { data: accountRows } = accountIds.length > 0
+    ? await admin
+        .from("ad_meta_accounts")
+        .select("id, name")
+        .in("id", accountIds)
+    : { data: [] as { id: string; name: string | null }[] };
+  const accountName = new Map<string, string>();
+  for (const a of accountRows ?? []) if (a.id) accountName.set(a.id, a.name ?? "");
+
+  // Look up matching ad_deployments/ad_assets for thumbnails + creator attribution
+  const adIds = Array.from(adAgg.keys());
   let deploymentsQuery = admin
     .from("ad_deployments")
     .select(`
-      id, meta_ad_id, meta_campaign_id, campaign_name, launched_at, status,
+      id, meta_ad_id,
       ad_assets ( id, title, thumbnail_url, content_type, creator_id )
     `)
-    .not("meta_ad_id", "is", null)
-    .gte("launched_at", fromTs);
-  if (toTs) deploymentsQuery = deploymentsQuery.lt("launched_at", toTs);
-  const { data: deployments } = await deploymentsQuery.order("launched_at", { ascending: false });
-
-  const adIds = (deployments ?? [])
-    .map((d) => d.meta_ad_id)
-    .filter((x): x is string => !!x);
-
-  const { data: demoRows } = adIds.length > 0
-    ? await admin
-        .from("meta_ad_demographics")
-        .select("ad_id, spend, impressions, conversions, messages")
-        .in("ad_id", adIds)
-        .gte("date", fromISO)
-    : { data: [] as { ad_id: string; spend: number; impressions: number; conversions: number; messages: number }[] };
-
-  // Aggregate ad metrics by ad_id
-  const adTotals = new Map<string, { spend: number; impressions: number; conversions: number; messages: number }>();
-  for (const r of demoRows ?? []) {
-    if (!r.ad_id) continue;
-    const acc = adTotals.get(r.ad_id) ?? { spend: 0, impressions: 0, conversions: 0, messages: 0 };
-    acc.spend       += Number(r.spend) || 0;
-    acc.impressions += Number(r.impressions) || 0;
-    acc.conversions += Number(r.conversions) || 0;
-    acc.messages    += Number(r.messages) || 0;
-    adTotals.set(r.ad_id, acc);
+    .not("meta_ad_id", "is", null);
+  if (adIds.length > 0) deploymentsQuery = deploymentsQuery.in("meta_ad_id", adIds);
+  const { data: deployments } = await deploymentsQuery;
+  const deploymentByAdId = new Map<string, { title?: string | null; thumbnail_url?: string | null; content_type?: string | null }>();
+  for (const d of deployments ?? []) {
+    if (!d.meta_ad_id) continue;
+    const asset = Array.isArray(d.ad_assets) ? d.ad_assets[0] : d.ad_assets;
+    const a = asset as { title?: string | null; thumbnail_url?: string | null; content_type?: string | null } | null;
+    deploymentByAdId.set(d.meta_ad_id, {
+      title: a?.title ?? null,
+      thumbnail_url: a?.thumbnail_url ?? null,
+      content_type: a?.content_type ?? null,
+    });
   }
 
   // ── Assemble unified rows ─────────────────────────────────────────────────
   const organicRows: PostedRow[] = (topPosts ?? []).map((p) => {
-    // Supabase can return joined relations as array or object; normalize via unknown.
     const platRaw = (p as unknown as { smm_group_platforms: unknown }).smm_group_platforms;
     const plat = (Array.isArray(platRaw) ? platRaw[0] : platRaw) as
       | { platform?: string; page_name?: string; smm_groups?: unknown }
@@ -129,28 +188,27 @@ export default async function PostedContentPage({
     };
   });
 
-  const adRows: PostedRow[] = (deployments ?? []).map((d) => {
-    const asset = Array.isArray(d.ad_assets) ? d.ad_assets[0] : d.ad_assets;
-    const totals = adTotals.get(d.meta_ad_id ?? "") ?? { spend: 0, impressions: 0, conversions: 0, messages: 0 };
+  const adRows: PostedRow[] = Array.from(adAgg.values()).map((a) => {
+    const link = deploymentByAdId.get(a.ad_id);
     return {
-      id: `ad-${d.id}`,
+      id: `ad-${a.ad_id}`,
       source: "ad",
-      title: (asset as { title?: string } | null)?.title ?? d.campaign_name ?? "(untitled)",
-      thumbnail_url: (asset as { thumbnail_url?: string } | null)?.thumbnail_url ?? null,
+      title: link?.title ?? a.ad_name ?? a.campaign_name ?? "(untitled ad)",
+      thumbnail_url: link?.thumbnail_url ?? null,
       platform: "meta",
-      group_name: d.campaign_name ?? null,
-      published_at: d.launched_at ?? null,
-      impressions: totals.impressions || null,
-      reach: null,
+      group_name: (a.meta_account_id ? accountName.get(a.meta_account_id) : null) || a.campaign_name || null,
+      published_at: a.first_date ? new Date(`${a.first_date}T00:00:00Z`).toISOString() : null,
+      impressions: a.impressions || null,
+      reach: a.reach || null,
       engagements: null,
-      spend: totals.spend || null,
-      conversions: totals.conversions || null,
-      messages: totals.messages || null,
+      spend: a.spend || null,
+      conversions: a.conversions || null,
+      messages: null,
       url: null,
-      video_plays: null,
+      video_plays: a.video_plays || null,
       avg_play_time_secs: null,
-      caption_preview: null,
-      post_type: (asset as { content_type?: string } | null)?.content_type ?? null,
+      caption_preview: a.ad_name ?? null,
+      post_type: link?.content_type ?? null,
     };
   });
 

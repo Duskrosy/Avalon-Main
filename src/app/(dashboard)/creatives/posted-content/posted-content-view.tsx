@@ -76,7 +76,7 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
         <div>
           <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Posted Content</h1>
           <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">
-            Per-post performance across organic posts and ad deployments. Windows group by metric activity, not publish date.
+            Organic top posts (curated by metric activity) and Meta ads (from the same sync as Ad Ops · Campaigns). Windows group by recent engagement.
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
