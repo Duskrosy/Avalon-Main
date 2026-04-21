@@ -271,7 +271,7 @@ export function CreativesDashboard({
             New request
           </Link>
           <Link
-            href="/creatives/tracker"
+            href="/creatives/planner"
             className="text-sm px-3 py-2 border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] hover:bg-[var(--color-bg-secondary)] transition-colors"
           >
             Open Tracker
@@ -464,7 +464,7 @@ export function CreativesDashboard({
         <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">Tracker</p>
-            <Link href="/creatives/tracker" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
+            <Link href="/creatives/planner" className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
               Open →
             </Link>
           </div>
