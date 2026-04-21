@@ -162,7 +162,7 @@ const WEEK_LABELS: Record<string, string> = {
 const WEEK_ORDER = ["this_week", "last_week", "older", "unscheduled"];
 
 // ── Component ─────────────────────────────────────────────────
-export default function TrackerView({
+export default function PlannerView({
   items: initialItems,
   profiles,
   posts,
@@ -354,7 +354,7 @@ export default function TrackerView({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Creatives Tracker</h1>
+        <h1 className="text-xl font-bold text-[var(--color-text-primary)]">Creatives Planner</h1>
         <button
           onClick={() => setShowCreate(true)}
           className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"

@@ -2,9 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import TrackerView from "./tracker-view";
+import PlannerView from "./planner-view";
 
-export default async function CreativesTrackerPage() {
+export default async function CreativesPlannerPage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
   if (!user) redirect("/login");
@@ -117,7 +117,7 @@ export default async function CreativesTrackerPage() {
   });
 
   return (
-    <TrackerView
+    <PlannerView
       items={items ?? []}
       profiles={profiles ?? []}
       posts={organicPosts}
