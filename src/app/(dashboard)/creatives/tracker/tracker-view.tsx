@@ -186,7 +186,6 @@ export default function TrackerView({
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [linkItem, setLinkItem] = useState<ContentItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [livePosts, setLivePosts] = useState<any[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -308,32 +307,6 @@ export default function TrackerView({
         setShowCreate(false);
         setEditItem(null);
         setToast({ message: isEdit ? "Item updated" : "Item created", type: "success" });
-      } finally {
-        setSaving(false);
-      }
-    },
-    [setToast]
-  );
-
-  // ── Link submit ───────────────────────────────────────────
-  const handleLink = useCallback(
-    async (itemId: string, linkedPostId: string | null, externalUrl: string) => {
-      setSaving(true);
-      try {
-        const body: Record<string, unknown> = { id: itemId };
-        if (linkedPostId) body.linked_post_id = linkedPostId;
-        if (externalUrl.trim()) body.linked_external_url = externalUrl.trim();
-        const res = await fetch("/api/creatives/content-items", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        const saved = await res.json().catch(() => null);
-        if (saved) {
-          setItems((prev) => prev.map((i) => (i.id === saved.id ? { ...i, ...saved } : i)));
-        }
-        setLinkItem(null);
-        setToast({ message: "Link updated", type: "success" });
       } finally {
         setSaving(false);
       }
@@ -529,10 +502,7 @@ export default function TrackerView({
                           <th className="px-4 py-3">Campaign</th>
                           <th className="px-4 py-3">Assigned</th>
                           <th className="px-4 py-3">Planned Week</th>
-                          {tab === "published" && (
-                            <th className="px-4 py-3">Linked</th>
-                          )}
-                          <th className="px-4 py-3"></th>
+                          <th className="px-4 py-3">Post</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -596,25 +566,6 @@ export default function TrackerView({
                             <td className="px-4 py-3 text-[var(--color-text-secondary)] text-xs">
                               {fmtDate(item.planned_week_start)}
                             </td>
-                            {tab === "published" && (
-                              <td className="px-4 py-3">
-                                {item.linked_post_id || item.linked_external_url ? (
-                                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                    Linked
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setLinkItem(item);
-                                    }}
-                                    className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                                  >
-                                    Link
-                                  </button>
-                                )}
-                              </td>
-                            )}
                             <td className="px-4 py-3">
                               <GatherAction
                                 item={item}
@@ -684,25 +635,6 @@ export default function TrackerView({
                           </div>
                           <span>{fmtDate(item.planned_week_start)}</span>
                         </div>
-                        {tab === "published" && (
-                          <div className="pt-1">
-                            {item.linked_post_id || item.linked_external_url ? (
-                              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                Linked
-                              </span>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLinkItem(item);
-                                }}
-                                className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                              >
-                                Link to published content
-                              </button>
-                            )}
-                          </div>
-                        )}
                         <div className="pt-1">
                           <GatherAction
                             item={item}
@@ -742,16 +674,6 @@ export default function TrackerView({
         />
       )}
 
-      {/* Link Modal */}
-      {linkItem && (
-        <LinkModal
-          item={linkItem}
-          posts={posts}
-          onLink={(postId, url) => handleLink(linkItem.id, postId, url)}
-          onClose={() => setLinkItem(null)}
-          saving={saving}
-        />
-      )}
       {linkingItemId && (
         <AssignPostModal
           posts={posts}
@@ -899,7 +821,7 @@ function GatherAction({
   return (
     <div className="flex items-center gap-1.5">
       <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-        Awaiting
+        Unconfirmed
       </span>
       <button
         onClick={(e) => {
@@ -1220,129 +1142,6 @@ function ItemModal({
   );
 }
 
-// ── Link Modal ────────────────────────────────────────────────
-function LinkModal({
-  item,
-  posts,
-  onLink,
-  onClose,
-  saving,
-}: {
-  item: ContentItem;
-  posts: SmmPost[];
-  onLink: (postId: string | null, url: string) => void;
-  onClose: () => void;
-  saving: boolean;
-}) {
-  const [selectedPost, setSelectedPost] = useState<string | null>(null);
-  const [externalUrl, setExternalUrl] = useState(item.linked_external_url ?? "");
-  const [postSearch, setPostSearch] = useState("");
-
-  const filtered = useMemo(
-    () =>
-      posts.filter(
-        (p) =>
-          !postSearch ||
-          (p.caption ?? "").toLowerCase().includes(postSearch.toLowerCase()) ||
-          p.platform.toLowerCase().includes(postSearch.toLowerCase())
-      ),
-    [posts, postSearch]
-  );
-
-  return (
-    <Overlay onClose={onClose}>
-      <div className="space-y-4">
-        <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
-          Link Published Content
-        </h2>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Link <span className="font-medium text-[var(--color-text-primary)]">{item.title}</span>{" "}
-          to a published post or external URL.
-        </p>
-
-        {/* Post picker */}
-        <div className="space-y-2">
-          <label className="block text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
-            Recent Published Posts
-          </label>
-          <input
-            type="text"
-            placeholder="Filter posts..."
-            value={postSearch}
-            onChange={(e) => setPostSearch(e.target.value)}
-            className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          />
-          <div className="max-h-56 overflow-y-auto rounded-lg border border-[var(--color-border-secondary)]">
-            {filtered.length === 0 ? (
-              <p className="p-4 text-sm text-[var(--color-text-tertiary)] text-center">
-                No published posts found.
-              </p>
-            ) : (
-              filtered.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() =>
-                    setSelectedPost((prev) => (prev === p.id ? null : p.id))
-                  }
-                  className={`w-full text-left px-4 py-3 border-b border-[var(--color-border-secondary)] transition-colors ${
-                    selectedPost === p.id
-                      ? "bg-indigo-50 border-indigo-100"
-                      : "hover:bg-[var(--color-surface-hover)]"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                        PLATFORM_STYLES[p.platform] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
-                      }`}
-                    >
-                      {p.platform}
-                    </span>
-                    <span className="text-xs text-[var(--color-text-tertiary)]">
-                      {fmtDate(p.published_at)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-[var(--color-text-primary)] line-clamp-2">
-                    {p.caption ? p.caption.slice(0, 120) : "(no caption)"}
-                  </p>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* External URL */}
-        <Field label="Or External URL">
-          <input
-            type="url"
-            value={externalUrl}
-            onChange={(e) => setExternalUrl(e.target.value)}
-            className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-            placeholder="https://..."
-          />
-        </Field>
-
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={() => onLink(selectedPost, externalUrl)}
-            disabled={saving || (!selectedPost && !externalUrl.trim())}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? "Linking..." : "Link"}
-          </button>
-        </div>
-      </div>
-    </Overlay>
-  );
-}
 
 // ── Shared primitives ─────────────────────────────────────────
 function Overlay({
