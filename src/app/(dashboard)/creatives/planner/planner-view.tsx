@@ -133,13 +133,6 @@ function profileName(p: { first_name: string; last_name: string } | null): strin
   return `${p.first_name} ${p.last_name}`;
 }
 
-function fmtK(n: number | null | undefined): string {
-  if (n == null) return "-";
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString();
-}
-
 function getWeekGroup(plannedWeekStart: string | null): "this_week" | "last_week" | "older" | "unscheduled" {
   if (!plannedWeekStart) return "unscheduled";
   const d = parseISO(plannedWeekStart);
@@ -174,48 +167,14 @@ export default function PlannerView({
 }: Props) {
   const { toast, setToast } = useToast();
   const [items, setItems] = useState<ContentItem[]>(initialItems);
-  const [tab, setTab] = useState<"planned" | "published" | "live">("planned");
+  const [tab, setTab] = useState<"planned" | "published">("planned");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [livePosts, setLivePosts] = useState<any[]>([]);
-  const [syncing, setSyncing] = useState(false);
   const [linkingItemId, setLinkingItemId] = useState<string | null>(null);
-
-  const handleSync = useCallback(async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/smm/social-sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (res.ok) {
-        setToast({ message: "Sync complete", type: "success" });
-        // Refresh live data
-        const topRes = await fetch("/api/smm/top-posts?from=2020-01-01&to=2099-01-01");
-        if (topRes.ok) {
-          const topData = await topRes.json();
-          const allPosts: any[] = [];
-          if (topData && typeof topData === "object") {
-            for (const posts of Object.values(topData)) {
-              if (Array.isArray(posts)) allPosts.push(...posts);
-            }
-          }
-          setLivePosts(allPosts);
-        }
-      } else {
-        setToast({ message: "Sync failed", type: "error" });
-      }
-    } catch {
-      setToast({ message: "Sync failed", type: "error" });
-    } finally {
-      setSyncing(false);
-    }
-  }, [setToast]);
 
   // ── Filtered items ────────────────────────────────────────
 
@@ -302,6 +261,29 @@ export default function PlannerView({
         setShowCreate(false);
         setEditItem(null);
         setToast({ message: isEdit ? "Item updated" : "Item created", type: "success" });
+      } finally {
+        setSaving(false);
+      }
+    },
+    [setToast]
+  );
+
+  // ── Delete item ───────────────────────────────────────────
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!confirm("Delete this item? This cannot be undone.")) return;
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/creatives/content-items?id=${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) {
+          setToast({ message: "Delete failed", type: "error" });
+          return;
+        }
+        setItems((prev) => prev.filter((i) => i.id !== id));
+        setEditItem(null);
+        setToast({ message: "Item deleted", type: "success" });
       } finally {
         setSaving(false);
       }
@@ -422,14 +404,6 @@ export default function PlannerView({
             setStatusFilter("");
           }}
         />
-        <TabPill
-          label="Live Analytics"
-          active={tab === "live"}
-          onClick={() => {
-            setTab("live");
-            setStatusFilter("");
-          }}
-        />
       </div>
 
       {/* Group tabs */}
@@ -475,64 +449,7 @@ export default function PlannerView({
       </div>
 
       {/* Table (desktop) / Cards (mobile) */}
-      {tab === "live" ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              Published content analytics from connected platforms
-            </p>
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-            >
-              {syncing ? "Syncing..." : "Sync"}
-            </button>
-          </div>
-          {livePosts.length === 0 ? (
-            <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
-              No live data yet. Click Sync to pull from connected platforms.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {livePosts.map((p: any, idx: number) => (
-                <div
-                  key={p.id || p.post_external_id || idx}
-                  className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-4 space-y-2"
-                >
-                  {p.thumbnail_url && (
-                    <img src={p.thumbnail_url} alt="" className="w-full h-32 object-cover rounded-lg" />
-                  )}
-                  <p className="text-sm text-[var(--color-text-primary)] line-clamp-2">
-                    {p.caption_preview ?? p.caption ?? "(no caption)"}
-                  </p>
-                  <div className="flex flex-wrap gap-3 text-xs text-[var(--color-text-secondary)]">
-                    {p.impressions != null && <span>Impressions: {fmtK(p.impressions)}</span>}
-                    {p.engagements != null && <span>Engagements: {fmtK(p.engagements)}</span>}
-                    {p.video_plays != null && <span>Plays: {fmtK(p.video_plays)}</span>}
-                  </div>
-                  {p.published_at && (
-                    <p className="text-xs text-[var(--color-text-tertiary)]">
-                      {fmtDate(p.published_at)}
-                    </p>
-                  )}
-                  {p.post_url && (
-                    <a
-                      href={p.post_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-indigo-600 hover:text-indigo-800"
-                    >
-                      View post
-                    </a>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
+      <>
           {grouped.length === 0 ? (
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-secondary)] bg-[var(--color-bg-primary)] p-12 text-center text-sm text-[var(--color-text-tertiary)]">
               No items found.
@@ -708,7 +625,6 @@ export default function PlannerView({
             </div>
           )}
         </>
-      )}
 
       {/* Create Modal */}
       {showCreate && (
@@ -728,6 +644,7 @@ export default function PlannerView({
           currentDeptId={currentDeptId}
           initial={editItem}
           onSave={(data) => handleSave({ ...data, id: editItem.id }, true)}
+          onDelete={() => handleDelete(editItem.id)}
           onClose={() => setEditItem(null)}
           saving={saving}
         />
@@ -862,6 +779,7 @@ function ItemModal({
   currentDeptId,
   initial,
   onSave,
+  onDelete,
   onClose,
   saving,
 }: {
@@ -869,6 +787,7 @@ function ItemModal({
   currentDeptId: string | null;
   initial?: ContentItem;
   onSave: (data: Record<string, unknown>) => void;
+  onDelete?: () => void;
   onClose: () => void;
   saving: boolean;
 }) {
@@ -1091,21 +1010,35 @@ function ItemModal({
           />
         </Field>
 
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={saving || !title.trim()}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-          >
-            {saving ? "Saving..." : isEdit ? "Update" : "Create"}
-          </button>
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div>
+            {isEdit && onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={saving}
+                className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-2 text-sm font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving || !title.trim()}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Saving..." : isEdit ? "Update" : "Create"}
+            </button>
+          </div>
         </div>
       </form>
     </Overlay>
