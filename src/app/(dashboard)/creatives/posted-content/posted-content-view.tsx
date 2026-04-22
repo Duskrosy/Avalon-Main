@@ -108,6 +108,7 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
       const isAdOps = i === 0;
+      const isSocial = i === 1;
       if (r.status === "rejected") {
         errs.push(String(r.reason));
       } else if (!r.value.ok) {
@@ -118,6 +119,16 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
           if (body?.error) msg = body.error;
         } catch { /* ignore */ }
         errs.push(msg);
+      } else if (isSocial) {
+        try {
+          const body = (await r.value.json()) as {
+            results?: Array<{ platform?: string; ok?: boolean; error?: string; post_sync_error?: string | null }>;
+          };
+          for (const p of body.results ?? []) {
+            if (!p.ok && p.error) errs.push(`${p.platform ?? "platform"}: ${p.error}`);
+            else if (p.post_sync_error) errs.push(`${p.platform ?? "platform"}: ${p.post_sync_error}`);
+          }
+        } catch { /* ignore */ }
       }
     }
     if (errs.length > 0) {

@@ -206,8 +206,8 @@ async function syncPosts(
     const postsRes = await fetch(postsUrl);
     const postsJson = await postsRes.json();
     if (!postsRes.ok || postsJson.error) {
-      console.warn("[social-sync] FB posts fetch failed:", postsJson.error?.message ?? postsRes.status);
-      return;
+      const detail = postsJson.error?.message ?? `HTTP ${postsRes.status}`;
+      throw new Error(`FB posts fetch failed: ${detail}`);
     }
 
     const posts: Array<{
@@ -283,8 +283,8 @@ async function syncPosts(
     const mediaRes = await fetch(mediaUrl);
     const mediaJson = await mediaRes.json();
     if (!mediaRes.ok || mediaJson.error) {
-      console.warn("[social-sync] IG media fetch failed:", mediaJson.error?.message ?? mediaRes.status);
-      return;
+      const detail = mediaJson.error?.message ?? `HTTP ${mediaRes.status}`;
+      throw new Error(`IG media fetch failed: ${detail}`);
     }
 
     const mediaItems: Array<{
@@ -690,8 +690,10 @@ export async function POST(req: NextRequest) {
 
     const summary = results.map((r, i) => ({
       platform_id: allPlatforms?.[i]?.id,
+      platform: allPlatforms?.[i]?.platform,
       ok: r.status === "fulfilled" && r.value.ok,
       error: r.status === "rejected" ? String(r.reason) : (r.value as { error?: string }).error,
+      post_sync_error: r.status === "fulfilled" ? (r.value as { post_sync_error?: string | null }).post_sync_error ?? null : null,
     }));
 
     return NextResponse.json({ ok: true, synced_date: syncDate, results: summary });
