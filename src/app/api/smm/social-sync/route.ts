@@ -34,19 +34,22 @@ function dayAfter(date: string): string {
 // Valid surrogate pairs (emoji) are preserved. Pass through null/empty.
 function sanitizeText(v: string | null | undefined, maxLen = 120): string | null {
   if (v == null) return null;
-  const s = String(v)
+  // Slice FIRST, then strip unpaired surrogates — slicing can split a valid
+  // emoji surrogate pair at the boundary and leave a lone half that would
+  // otherwise survive the regex.
+  const sliced = String(v)
     // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-    .replace(/[\uD800-\uDFFF]/g, (ch, idx, str) => {
-      const cp = ch.charCodeAt(0);
-      if (cp >= 0xD800 && cp <= 0xDBFF) {
-        const next = (str as string).charCodeAt(idx + 1);
-        return next >= 0xDC00 && next <= 0xDFFF ? ch : "";
-      }
-      const prev = idx > 0 ? (str as string).charCodeAt(idx - 1) : 0;
-      return prev >= 0xD800 && prev <= 0xDBFF ? ch : "";
-    })
     .slice(0, maxLen);
+  const s = sliced.replace(/[\uD800-\uDFFF]/g, (ch, idx, str) => {
+    const cp = ch.charCodeAt(0);
+    if (cp >= 0xD800 && cp <= 0xDBFF) {
+      const next = (str as string).charCodeAt(idx + 1);
+      return next >= 0xDC00 && next <= 0xDFFF ? ch : "";
+    }
+    const prev = idx > 0 ? (str as string).charCodeAt(idx - 1) : 0;
+    return prev >= 0xD800 && prev <= 0xDBFF ? ch : "";
+  });
   return s || null;
 }
 
@@ -223,7 +226,7 @@ async function syncPosts(
       `${META_BASE}/${pageId}/posts` +
       `?fields=id,message,created_time,full_picture,permalink_url,status_type,attachments{media_type,type}` +
       `,reactions.summary(true),comments.summary(true),shares` +
-      `&limit=100&access_token=${token}`;
+      `&limit=25&access_token=${token}`;
     const postsRes = await fetch(postsUrl);
     const postsJson = await postsRes.json();
     if (!postsRes.ok || postsJson.error) {
@@ -562,31 +565,8 @@ async function syncPosts(
         return isFinite(n) ? n : 0;
       };
 
-      // safeStr: strips control chars AND lone Unicode surrogates that PostgreSQL UTF-8 rejects.
-      // TikTok captions sometimes contain unpaired surrogate halves (e.g. a high surrogate
-      // without the following low surrogate), which are invalid UTF-8 and cause:
-      //   "Unicode low surrogate must follow a high surrogate" (PostgreSQL error 22P02).
-      const safeStr = (v: unknown, maxLen = 120): string | null => {
-        if (v == null) return null;
-        const s = String(v)
-          // Strip ASCII control characters (keep tab \x09, LF \x0A, CR \x0D)
-          // eslint-disable-next-line no-control-regex
-          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-          // Remove lone surrogates — valid surrogate PAIRS (emoji) are preserved
-          .replace(/[\uD800-\uDFFF]/g, (ch, idx, str) => {
-            const cp = ch.charCodeAt(0);
-            if (cp >= 0xD800 && cp <= 0xDBFF) {
-              // High surrogate: valid only if immediately followed by a low surrogate
-              const next = (str as string).charCodeAt(idx + 1);
-              return (next >= 0xDC00 && next <= 0xDFFF) ? ch : "";
-            }
-            // Low surrogate: valid only if immediately preceded by a high surrogate
-            const prev = idx > 0 ? (str as string).charCodeAt(idx - 1) : 0;
-            return (prev >= 0xD800 && prev <= 0xDBFF) ? ch : "";
-          })
-          .slice(0, maxLen);
-        return s || null;
-      };
+      const safeStr = (v: unknown, maxLen = 120): string | null =>
+        sanitizeText(v == null ? null : String(v), maxLen);
 
       const rows = allIds.map((id) => {
         const stub        = stubMap[id];
