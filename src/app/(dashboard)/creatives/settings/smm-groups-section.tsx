@@ -25,7 +25,7 @@ type SmmGroup = {
   smm_group_platforms: SmmGroupPlatform[];
 };
 
-export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
+export function SmmGroupsSection() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -38,9 +38,8 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
   const [creating, setCreating] = useState(false);
   const [editPlatform, setEditPlatform] = useState<{ groupId: string; platform: SmmPlatform } | null>(null);
   const [platformForm, setPlatformForm] = useState({ page_id: "", page_name: "", handle: "" });
-  const [connectingTikTok, setConnectingTikTok] = useState<string | null>(null); // groupId being connected
+  const [connectingTikTok, setConnectingTikTok] = useState<string | null>(null);
 
-  // TikTok OAuth callback status from URL params
   const tiktokStatus = searchParams.get("tiktok");
   const tiktokName   = searchParams.get("name");
   const tiktokReason = searchParams.get("reason");
@@ -56,12 +55,10 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { loadGroups(); }, [loadGroups]);
 
-  // Reload groups after successful TikTok connection so the card shows "Connected"
   useEffect(() => {
     if (tiktokStatus === "connected") loadGroups();
   }, [tiktokStatus, loadGroups]);
 
-  // Clear TikTok status params from URL without navigating away
   function dismissTikTokBanner() {
     const url = new URL(window.location.href);
     url.searchParams.delete("tiktok");
@@ -118,7 +115,6 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
     const existing = group.smm_group_platforms.find((p) => p.platform === platform);
 
     if (platform === "tiktok") {
-      // TikTok uses OAuth — don't use the edit form; use connectTikTok instead
       if (existing) {
         await fetch("/api/smm/platforms", {
           method: "PATCH",
@@ -154,9 +150,6 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // Start TikTok OAuth flow.
-  // If no platform row yet: create a stub row first, then redirect.
-  // If a row exists: redirect immediately with the existing id.
   async function connectTikTok(groupId: string, existingId: string | null) {
     setConnectingTikTok(groupId);
     try {
@@ -222,30 +215,21 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
   }
 
   function isTikTokConnected(p: SmmGroupPlatform): boolean {
-    // Connected = has a token_expires_at set (populated by OAuth callback)
     return !!p.token_expires_at;
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onClose}
-          className="text-sm text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] flex items-center gap-1"
-        >
-          ← Back
-        </button>
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Manage Groups & Platforms</h2>
+    <section className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wide">Social Media Groups & Platforms</h2>
         <button
           onClick={() => setShowNewGroup(true)}
-          className="ml-auto text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)]"
+          className="text-sm px-4 py-2 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded-lg hover:bg-[var(--color-text-secondary)]"
         >
           + New Group
         </button>
       </div>
 
-      {/* TikTok OAuth callback banner */}
       {tiktokStatus === "connected" && (
         <div className="bg-emerald-50 border border-emerald-200 rounded-[var(--radius-lg)] px-4 py-3 flex items-center justify-between">
           <span className="text-sm text-emerald-700">
@@ -267,7 +251,6 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="bg-[var(--color-error-light)] border border-red-200 rounded-[var(--radius-lg)] px-4 py-3 text-sm text-[var(--color-error)]">{error}</div>
       )}
 
-      {/* New group form */}
       {showNewGroup && (
         <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 space-y-3">
           <div className="flex gap-3">
@@ -371,7 +354,6 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
                   </div>
 
                   {isTikTok ? (
-                    // TikTok: OAuth-managed connection
                     <div className="space-y-1.5">
                       {tikTokConnected && existing ? (
                         <p className="text-xs text-emerald-600 font-medium">
@@ -423,7 +405,6 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
       ))}
 
-      {/* Platform edit modal (non-TikTok platforms) */}
       {editPlatform && editPlatform.platform !== "tiktok" && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--color-bg-primary)] rounded-2xl p-6 w-full max-w-sm shadow-xl">
@@ -480,6 +461,6 @@ export function SmmSettingsPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

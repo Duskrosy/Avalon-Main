@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { CreativesSettingsView, type GroupWithPlatforms, type AdMetaAccount } from "./settings-view";
+import { CreativesSettingsView, type AdMetaAccount } from "./settings-view";
 
 export default async function CreativesSettingsPage() {
   const supabase = await createClient();
@@ -23,38 +23,20 @@ export default async function CreativesSettingsPage() {
 
   const admin = createAdminClient();
 
-  const [{ data: groups }, { data: adAccounts }] = await Promise.all([
-    admin
-      .from("smm_groups")
-      .select(`
-        id, name, is_active, sort_order, weekly_target,
-        smm_group_platforms ( id, platform, page_id, page_name, handle, access_token, is_active )
-      `)
-      .order("sort_order", { ascending: true }),
-    admin
-      .from("ad_meta_accounts")
-      .select("id, label, meta_account_id, is_active, created_at")
-      .order("created_at", { ascending: false }),
-  ]);
-
-  const safeGroups: GroupWithPlatforms[] = ((groups ?? []) as GroupWithPlatforms[]).map((g) => ({
-    ...g,
-    smm_group_platforms: g.smm_group_platforms.map((p) => ({
-      ...p,
-      access_token: canManage ? p.access_token : (p.access_token ? "__set__" : null),
-    })),
-  }));
+  const { data: adAccounts } = await admin
+    .from("ad_meta_accounts")
+    .select("id, label, meta_account_id, is_active, created_at")
+    .order("created_at", { ascending: false });
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Creatives Settings</h1>
         <p className="text-sm text-[var(--color-text-tertiary)] mt-0.5">
-          Manage social media page credentials and ad account registration for Local, International, and PCDLF.
+          Manage social media groups, page credentials, and ad account registration.
         </p>
       </div>
       <CreativesSettingsView
-        groups={safeGroups}
         adAccounts={(adAccounts ?? []) as AdMetaAccount[]}
         canManage={canManage}
       />

@@ -570,4 +570,4 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
   );
 }
 
-// ─── (SMM Groups Panel moved to /creatives/content/smm-settings-panel.tsx) ───
+// ─── (SMM Groups Panel lives at /creatives/settings/smm-groups-section.tsx) ───

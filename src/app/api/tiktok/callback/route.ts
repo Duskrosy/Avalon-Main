@@ -9,7 +9,7 @@ import { exchangeCodeForTokens, fetchTikTokUserInfo } from "@/lib/tiktok/client"
 // and updates the smm_group_platforms row (platform_id was passed as `state`).
 
 function contentUrl(appUrl: string, params: Record<string, string>): string {
-  const u = new URL(`${appUrl}/creatives/content`);
+  const u = new URL(`${appUrl}/creatives/settings`);
   for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
   return u.toString();
 }
