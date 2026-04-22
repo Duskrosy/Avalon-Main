@@ -130,6 +130,7 @@ export function PeoplePicker({
       onChange(value.filter((id) => id !== user.id));
     } else {
       onChange([...value, user.id]);
+      setQuery("");
     }
   }
 

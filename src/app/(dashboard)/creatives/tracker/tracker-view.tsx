@@ -490,6 +490,29 @@ function OverallPanel({
   organicItems: ContentItemRow[];
 }) {
   const monthName = formatMonth(month);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [detailItems, setDetailItems] = useState<ContentItemRow[] | null>(null);
+
+  const allItems = useMemo(() => [...adItems, ...organicItems], [adItems, organicItems]);
+
+  function toggle(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function openOne(item: ContentItemRow) {
+    setDetailItems([item]);
+  }
+
+  function openSelected() {
+    const picked = allItems.filter((i) => selectedIds.has(i.id));
+    if (picked.length > 0) setDetailItems(picked);
+  }
+
   return (
     <div className="space-y-4">
       <PanelCard>
@@ -505,24 +528,52 @@ function OverallPanel({
             <table className="w-full text-sm">
               <thead className="bg-[var(--color-bg-secondary)] text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)]">
                 <tr>
+                  <th className="w-8 px-3 py-2.5" />
                   <th className="text-left px-4 py-2.5 font-semibold">Date</th>
                   <th className="text-left px-4 py-2.5 font-semibold">Campaign</th>
                   <th className="text-left px-4 py-2.5 font-semibold">Creative Title</th>
                   <th className="text-left px-4 py-2.5 font-semibold">Product / Collection</th>
-                  <th className="text-left px-4 py-2.5 font-semibold">Promo Code</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">Download Link</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border-primary)]">
                 {adItems.map((i) => {
                   const date = i.link.state === "ad" ? (i.link.metricDate ?? i.plannedWeekStart) : i.plannedWeekStart;
                   const campaign = i.link.state === "ad" ? i.link.campaignName : null;
+                  const checked = selectedIds.has(i.id);
                   return (
-                    <tr key={i.id} className="hover:bg-[var(--color-bg-secondary)]/40">
+                    <tr
+                      key={i.id}
+                      onClick={() => openOne(i)}
+                      className="cursor-pointer hover:bg-[var(--color-bg-secondary)]/40"
+                    >
+                      <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggle(i.id)}
+                          className="cursor-pointer"
+                          aria-label={`Select ${i.title}`}
+                        />
+                      </td>
                       <td className="px-4 py-2.5 text-xs text-[var(--color-text-tertiary)] tabular-nums">{fmtDate(date)}</td>
                       <td className="px-4 py-2.5 text-[var(--color-text-primary)]">{campaign ?? "—"}</td>
                       <td className="px-4 py-2.5 text-[var(--color-text-primary)]">{i.title}</td>
                       <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{i.productOrCollection ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-[var(--color-text-secondary)] font-mono text-xs">{i.promoCode ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-xs" onClick={(e) => e.stopPropagation()}>
+                        {i.downloadLink ? (
+                          <a
+                            href={i.downloadLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-full bg-sky-50 text-sky-700 hover:bg-sky-100 px-2 py-0.5 font-medium transition-colors"
+                          >
+                            Open ↗
+                          </a>
+                        ) : (
+                          <span className="text-[var(--color-text-tertiary)]">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -545,6 +596,7 @@ function OverallPanel({
             <table className="w-full text-sm">
               <thead className="bg-[var(--color-bg-secondary)] text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)]">
                 <tr>
+                  <th className="w-8 px-3 py-2.5" />
                   <th className="text-left px-4 py-2.5 font-semibold">Date</th>
                   <th className="text-left px-4 py-2.5 font-semibold">Creative Title</th>
                   <th className="text-left px-4 py-2.5 font-semibold">Purpose</th>
@@ -559,15 +611,24 @@ function OverallPanel({
                   const impr = i.link.state === "organic" ? i.link.impressions : null;
                   const reach = i.link.state === "organic" ? i.link.reach : null;
                   const eng = i.link.state === "organic" ? i.link.engagements : null;
-                  const url = i.link.state === "organic" ? i.link.postUrl : null;
+                  const checked = selectedIds.has(i.id);
                   return (
-                    <tr key={i.id} className="hover:bg-[var(--color-bg-secondary)]/40">
-                      <td className="px-4 py-2.5 text-xs text-[var(--color-text-tertiary)] tabular-nums">{fmtDate(date)}</td>
-                      <td className="px-4 py-2.5 text-[var(--color-text-primary)]">
-                        {url ? (
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline">{i.title}</a>
-                        ) : i.title}
+                    <tr
+                      key={i.id}
+                      onClick={() => openOne(i)}
+                      className="cursor-pointer hover:bg-[var(--color-bg-secondary)]/40"
+                    >
+                      <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggle(i.id)}
+                          className="cursor-pointer"
+                          aria-label={`Select ${i.title}`}
+                        />
                       </td>
+                      <td className="px-4 py-2.5 text-xs text-[var(--color-text-tertiary)] tabular-nums">{fmtDate(date)}</td>
+                      <td className="px-4 py-2.5 text-[var(--color-text-primary)]">{i.title}</td>
                       <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{i.creativeAngle ?? "—"}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtNum(impr)}</td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-[var(--color-text-secondary)]">{fmtNum(reach)}</td>
@@ -580,8 +641,296 @@ function OverallPanel({
           </div>
         )}
       </PanelCard>
+
+      {/* Multi-select floating footer */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-2 shadow-[var(--shadow-lg)]">
+          <span className="text-xs font-medium text-[var(--color-text-primary)]">
+            {selectedIds.size} selected
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            onClick={openSelected}
+            className="text-xs px-3 py-1.5 rounded-full bg-[var(--color-accent)] text-white hover:opacity-90"
+          >
+            Compare {selectedIds.size} ↗
+          </button>
+        </div>
+      )}
+
+      {detailItems && (
+        <ItemDetailModal
+          items={detailItems}
+          onClose={() => setDetailItems(null)}
+        />
+      )}
     </div>
   );
+}
+
+// ── Item Detail Modal ─────────────────────────────────────────
+// Shows plan info + posted-content info for one or many ContentItemRows.
+// In multi mode: small tab strip to filter by platform when items span
+// multiple platforms (so a mixed selection stays scannable).
+function ItemDetailModal({
+  items,
+  onClose,
+}: {
+  items: ContentItemRow[];
+  onClose: () => void;
+}) {
+  const platforms = useMemo(() => {
+    const s = new Set<string>();
+    for (const i of items) {
+      if (i.link.state === "organic" && i.link.platform) s.add(i.link.platform);
+      else if (i.link.state === "ad") s.add("meta");
+    }
+    return Array.from(s);
+  }, [items]);
+
+  const [platformFilter, setPlatformFilter] = useState<string | null>(null);
+
+  const visible = useMemo(() => {
+    if (!platformFilter) return items;
+    return items.filter((i) => {
+      if (i.link.state === "organic") return i.link.platform === platformFilter;
+      if (i.link.state === "ad") return platformFilter === "meta";
+      return false;
+    });
+  }, [items, platformFilter]);
+
+  const isMulti = items.length > 1;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-[var(--color-border-primary)]">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+              {isMulti ? `Comparing ${items.length} items` : "Item detail"}
+            </h3>
+            <p className="text-[11px] text-[var(--color-text-tertiary)]">
+              Plan + posted content · grouped by organic / ads
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-lg leading-none text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Platform filter tabs (multi + mixed) */}
+        {isMulti && platforms.length > 1 && (
+          <div className="flex items-center gap-1.5 px-5 py-2 border-b border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)]/40">
+            <button
+              type="button"
+              onClick={() => setPlatformFilter(null)}
+              className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${
+                platformFilter === null
+                  ? "bg-[var(--color-accent)] text-white"
+                  : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
+              }`}
+            >
+              All ({items.length})
+            </button>
+            {platforms.map((p) => {
+              const count = items.filter((i) =>
+                i.link.state === "organic" ? i.link.platform === p : i.link.state === "ad" ? p === "meta" : false,
+              ).length;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPlatformFilter(p)}
+                  className={`text-[11px] px-2 py-0.5 rounded-full font-medium capitalize ${
+                    platformFilter === p
+                      ? "bg-[var(--color-accent)] text-white"
+                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
+                  }`}
+                >
+                  {p} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {visible.length === 0 ? (
+            <p className="text-sm text-[var(--color-text-tertiary)] text-center py-6">
+              No items for this platform.
+            </p>
+          ) : (
+            visible.map((i) => <DetailCard key={i.id} item={i} compact={isMulti} />)
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailCard({ item, compact }: { item: ContentItemRow; compact: boolean }) {
+  const isAd = item.link.state === "ad";
+  const isOrganic = item.link.state === "organic";
+
+  const kindBadge = isAd
+    ? <span className="rounded-full bg-violet-100 text-violet-800 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Ad · Meta</span>
+    : isOrganic
+      ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+          item.link.state === "organic" && item.link.platform ? platformBadge(item.link.platform) : "bg-emerald-100 text-emerald-800"
+        }`}>
+          Organic{item.link.state === "organic" && item.link.platform ? ` · ${item.link.platform}` : ""}
+        </span>
+      : <span className="rounded-full bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">Unlinked</span>;
+
+  return (
+    <section className={`rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] ${compact ? "p-3" : "p-4"}`}>
+      {/* Top row: title + kind badge */}
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <h4 className="text-sm font-semibold text-[var(--color-text-primary)] truncate">{item.title}</h4>
+          {item.plannedWeekStart && (
+            <p className="text-[11px] text-[var(--color-text-tertiary)] mt-0.5">
+              Planned week · {fmtDate(item.plannedWeekStart)}
+            </p>
+          )}
+        </div>
+        <div className="shrink-0">{kindBadge}</div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* PLAN */}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1.5">Plan</p>
+          <DL>
+            <DLRow label="Status" value={item.status ? fmtTitle(item.status) : "—"} />
+            <DLRow label="Content Type" value={item.contentType ? fmtTitle(item.contentType) : "—"} />
+            <DLRow label="Creative Type" value={item.creativeType ? fmtTitle(item.creativeType) : "—"} />
+            <DLRow label="Channel" value={item.channelType ? fmtTitle(item.channelType) : "—"} />
+            {item.funnelStage && <DLRow label="Funnel" value={item.funnelStage} />}
+            <DLRow label="Campaign" value={item.campaignLabel ?? "—"} />
+            <DLRow label="Product" value={item.productOrCollection ?? "—"} />
+            <DLRow label="Promo Code" value={item.promoCode ?? "—"} mono />
+            <DLRow
+              label="Download"
+              value={
+                item.downloadLink ? (
+                  <a href={item.downloadLink} target="_blank" rel="noopener noreferrer" className="text-sky-700 hover:underline break-all">
+                    Open ↗
+                  </a>
+                ) : "—"
+              }
+            />
+            {item.creativeAngle && (
+              <DLRow label="Angle" value={<span className="whitespace-pre-wrap">{item.creativeAngle}</span>} />
+            )}
+            {item.assignees.length > 0 && (
+              <DLRow
+                label="Assignees"
+                value={item.assignees.map((a) => `${a.firstName ?? ""} ${a.lastName ?? ""}`.trim()).filter(Boolean).join(", ") || "—"}
+              />
+            )}
+          </DL>
+        </div>
+
+        {/* POSTED CONTENT */}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1.5">Posted Content</p>
+          {isOrganic && item.link.state === "organic" ? (
+            <DL>
+              <DLRow label="Published" value={item.link.publishedAt ? fmtDate(ymdUTC(item.link.publishedAt)) : "—"} />
+              <DLRow label="Platform" value={item.link.platform ?? "—"} />
+              <DLRow label="Impressions" value={fmtNum(item.link.impressions)} mono />
+              <DLRow label="Reach" value={fmtNum(item.link.reach)} mono />
+              <DLRow label="Engagements" value={fmtNum(item.link.engagements)} mono />
+              {item.link.videoPlays !== null && item.link.videoPlays > 0 && (
+                <DLRow label="Video plays" value={fmtNum(item.link.videoPlays)} mono />
+              )}
+              {item.link.postUrl && (
+                <DLRow
+                  label="Post URL"
+                  value={
+                    <a href={item.link.postUrl} target="_blank" rel="noopener noreferrer" className="text-sky-700 hover:underline break-all">
+                      Open post ↗
+                    </a>
+                  }
+                />
+              )}
+            </DL>
+          ) : isAd && item.link.state === "ad" ? (
+            <DL>
+              <DLRow label="Campaign" value={item.link.campaignName ?? "—"} />
+              <DLRow label="Ad" value={item.link.adName ?? "—"} />
+              <DLRow label="Asset" value={item.link.assetTitle ?? "—"} />
+              <DLRow label="First metric" value={item.link.metricDate ? fmtDate(item.link.metricDate) : "—"} />
+              {item.link.spend !== null && (
+                <DLRow label="Spend" value={fmtPHP(item.link.spend)} mono />
+              )}
+              {item.link.impressions !== null && (
+                <DLRow label="Impressions" value={fmtNum(item.link.impressions)} mono />
+              )}
+              {item.link.clicks !== null && (
+                <DLRow label="Clicks" value={fmtNum(item.link.clicks)} mono />
+              )}
+              {item.link.reach !== null && item.link.reach > 0 && (
+                <DLRow label="Reach" value={fmtNum(item.link.reach)} mono />
+              )}
+              {item.link.ctr !== null && (
+                <DLRow label="CTR" value={`${(item.link.ctr * 100).toFixed(2)}%`} mono />
+              )}
+              {item.link.conversions !== null && item.link.conversions > 0 && (
+                <DLRow label="Conversions" value={fmtNum(item.link.conversions)} mono />
+              )}
+              {item.link.conversionValue !== null && item.link.conversionValue > 0 && (
+                <DLRow label="Conv. value" value={fmtPHP(item.link.conversionValue)} mono />
+              )}
+              {item.link.roas !== null && (
+                <DLRow label="ROAS" value={`${item.link.roas.toFixed(2)}×`} mono />
+              )}
+            </DL>
+          ) : (
+            <p className="text-xs text-[var(--color-text-tertiary)] italic">Not yet linked to a published post or ad.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DL({ children }: { children: React.ReactNode }) {
+  return <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">{children}</dl>;
+}
+
+function DLRow({ label, value, mono = false }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <>
+      <dt className="text-[var(--color-text-tertiary)] whitespace-nowrap">{label}</dt>
+      <dd className={`text-[var(--color-text-primary)] min-w-0 break-words ${mono ? "font-mono tabular-nums" : ""}`}>{value}</dd>
+    </>
+  );
+}
+
+function fmtTitle(s: string): string {
+  return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function OrganicPanel({ month, rows }: { month: string; rows: OrganicPostRow[] }) {

@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
       campaign_label: body.campaign_label ?? null,
       promo_code: body.promo_code ?? null,
       transfer_link: body.transfer_link ?? null,
+      download_link: body.download_link ?? null,
       planned_week_start: body.planned_week_start ?? null,
       date_submitted: body.date_submitted ?? null,
       status: body.status ?? "idea",

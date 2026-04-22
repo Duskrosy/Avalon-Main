@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/permissions";
+import { getCurrentUser, isOps } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CalendarWidget } from "../calendar-widget";
@@ -19,11 +19,22 @@ export default async function ExecutivePlanningPage() {
   const admin = createAdminClient();
   const today = new Date().toISOString().slice(0, 10);
 
+  // Read featured-board setting (falls back to current user's board)
+  const { data: setting } = await admin
+    .from("app_settings")
+    .select("value")
+    .eq("key", "executive_featured_user_id")
+    .maybeSingle();
+  const settingUserId =
+    (setting?.value as { user_id?: string } | null)?.user_id ?? null;
+  const featuredUserId = settingUserId ?? user.id;
+
   const [
     { count: headcount },
     { count: approvedLeavesToday },
     { data: calendarEventsRaw },
-    { data: personalBoard },
+    { data: featuredBoard },
+    { data: allProfiles },
   ] = await Promise.all([
     admin.from("profiles").select("*", { count: "exact", head: true }).is("deleted_at", null),
     admin
@@ -35,11 +46,16 @@ export default async function ExecutivePlanningPage() {
     admin.from("calendar_events").select("*"),
     admin
       .from("kanban_boards")
-      .select("id")
+      .select("id, owner_id")
       .eq("scope", "personal")
-      .eq("owner_id", user.id)
+      .eq("owner_id", featuredUserId)
       .limit(1)
       .maybeSingle(),
+    admin
+      .from("profiles")
+      .select("id, first_name, last_name, avatar_url, department_id")
+      .is("deleted_at", null)
+      .order("first_name"),
   ]);
 
   // Expand yearly recurring events to this year's instance
@@ -52,21 +68,30 @@ export default async function ExecutivePlanningPage() {
   });
   const lookAheadAlerts = computeAlerts(calEvents);
 
-  // Personal kanban columns for CEO Planning
+  // Featured kanban columns + owner
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ceoPlanningColumns: any[] = [];
-  if (personalBoard?.id) {
-    const { data: cols } = await admin
-      .from("kanban_columns")
-      .select("id, name, sort_order, kanban_cards(id, title, priority, due_date)")
-      .eq("board_id", personalBoard.id)
-      .order("sort_order");
+  let featuredOwner: { id: string; first_name: string; last_name: string } | null = null;
+  if (featuredBoard?.id) {
+    const [{ data: cols }, { data: ownerProfile }] = await Promise.all([
+      admin
+        .from("kanban_columns")
+        .select("id, name, sort_order, kanban_cards(id, title, priority, due_date, sort_order)")
+        .eq("board_id", featuredBoard.id)
+        .order("sort_order"),
+      admin
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .eq("id", featuredBoard.owner_id)
+        .maybeSingle(),
+    ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ceoPlanningColumns = (cols ?? []).map((c: any) => ({
       ...c,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       cards: (c.kanban_cards ?? []).sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     }));
+    featuredOwner = ownerProfile ?? null;
   }
 
   return (
@@ -88,7 +113,14 @@ export default async function ExecutivePlanningPage() {
 
       {/* CEO Planning — full width */}
       <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
-        <CeoPlanning columns={ceoPlanningColumns} />
+        <CeoPlanning
+          columns={ceoPlanningColumns}
+          allUsers={allProfiles ?? []}
+          featuredUserId={featuredUserId}
+          featuredOwner={featuredOwner}
+          currentUserId={user.id}
+          canManage={isOps(user)}
+        />
       </div>
 
       {/* Calendar + Look Ahead */}

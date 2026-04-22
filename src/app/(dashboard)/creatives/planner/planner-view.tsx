@@ -33,6 +33,7 @@ type ContentItem = {
   campaign_label: string | null;
   promo_code: string | null;
   transfer_link: string | null;
+  download_link: string | null;
   planned_week_start: string | null;
   date_submitted: string | null;
   status: string;
@@ -238,6 +239,23 @@ export default function PlannerView({
         body: JSON.stringify({ id, status }),
       });
       setToast({ message: "Status updated", type: "success" });
+    },
+    [setToast]
+  );
+
+  const saveDownloadLink = useCallback(
+    async (id: string, url: string | null) => {
+      const res = await fetch("/api/creatives/content-items", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, download_link: url }),
+      });
+      if (!res.ok) {
+        setToast({ message: "Failed to save download link", type: "error" });
+        return;
+      }
+      setItems((prev) => prev.map((i) => (i.id === id ? { ...i, download_link: url } : i)));
+      setToast({ message: url ? "Download link saved" : "Download link removed", type: "success" });
     },
     [setToast]
   );
@@ -543,10 +561,16 @@ export default function PlannerView({
                               {fmtDate(item.planned_week_start)}
                             </td>
                             <td className="px-4 py-3">
-                              <GatherAction
-                                item={item}
-                                onOpen={() => setLinkingItemId(item.id)}
-                              />
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <GatherAction
+                                  item={item}
+                                  onOpen={() => setLinkingItemId(item.id)}
+                                />
+                                <DownloadLinkAction
+                                  item={item}
+                                  onSave={(url) => saveDownloadLink(item.id, url)}
+                                />
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -611,10 +635,14 @@ export default function PlannerView({
                           </div>
                           <span>{fmtDate(item.planned_week_start)}</span>
                         </div>
-                        <div className="pt-1">
+                        <div className="pt-1 flex flex-wrap items-center gap-1.5">
                           <GatherAction
                             item={item}
                             onOpen={() => setLinkingItemId(item.id)}
+                          />
+                          <DownloadLinkAction
+                            item={item}
+                            onSave={(url) => saveDownloadLink(item.id, url)}
                           />
                         </div>
                       </div>
@@ -664,8 +692,8 @@ export default function PlannerView({
 }
 
 // ── Gather-post action (Planner row button / status pill) ─────
-// Sprint G Phase 4 Task 9/10: combined "Gather post" trigger + post-status pill.
-// Gated to scheduled/published stages — other stages have no reason to gather.
+// The pill itself IS the button — clicking it opens the Gather modal so it
+// feels unmistakably interactive (no separate "Change" link).
 function GatherAction({
   item,
   onOpen,
@@ -675,50 +703,144 @@ function GatherAction({
 }) {
   const gatherable = item.status === "scheduled" || item.status === "published";
   const linked = !!(item.linked_post_id || item.linked_external_url || item.linked_ad_asset_id);
+
   if (linked) {
     const justLinked =
       !!item.linked_post_gathered_at &&
       Date.now() - new Date(item.linked_post_gathered_at).getTime() < 10_000;
     return (
-      <div className="flex items-center gap-1.5">
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            justLinked
-              ? "bg-emerald-100 text-emerald-800 ring-2 ring-emerald-300 animate-pulse"
-              : "bg-emerald-50 text-emerald-700"
-          }`}
-        >
-          Gathered ✓
-        </span>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen();
-          }}
-          className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] underline"
-        >
-          Change
-        </button>
-      </div>
+      <button
+        type="button"
+        title="Change linked post"
+        onClick={(e) => { e.stopPropagation(); onOpen(); }}
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+          justLinked
+            ? "bg-emerald-100 text-emerald-800 ring-2 ring-emerald-300 animate-pulse hover:bg-emerald-200"
+            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:ring-1 hover:ring-emerald-300"
+        }`}
+      >
+        Gathered ✓
+      </button>
     );
   }
+
   if (!gatherable) {
     return <span className="text-xs text-[var(--color-text-tertiary)]">—</span>;
   }
+
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-        Unconfirmed
-      </span>
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onOpen(); }}
+      className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:ring-1 hover:ring-indigo-300 px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer"
+    >
+      Gather post
+    </button>
+  );
+}
+
+// ── Download-link action (inline popover) ─────────────────────
+// Mirrors the Gather pill pattern — the pill itself is the button.
+// Click to open a tiny popover with a URL input; Enter/Save to commit.
+function DownloadLinkAction({
+  item,
+  onSave,
+}: {
+  item: ContentItem;
+  onSave: (url: string | null) => Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(item.download_link ?? "");
+  const [saving, setSaving] = useState(false);
+  const hasLink = !!item.download_link;
+
+  async function commit() {
+    const trimmed = value.trim();
+    setSaving(true);
+    try {
+      await onSave(trimmed || null);
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative inline-block">
       <button
+        type="button"
+        title={hasLink ? "Edit download link" : "Set download link"}
         onClick={(e) => {
           e.stopPropagation();
-          onOpen();
+          setValue(item.download_link ?? "");
+          setOpen((v) => !v);
         }}
-        className="text-xs px-2 py-1 rounded-[var(--radius-md)] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 whitespace-nowrap"
+        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+          hasLink
+            ? "bg-sky-50 text-sky-700 hover:bg-sky-100 hover:ring-1 hover:ring-sky-300"
+            : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:ring-1 hover:ring-[var(--color-border-primary)]"
+        }`}
       >
-        Gather post
+        {hasLink ? "Download ✓" : "+ Download link"}
       </button>
+
+      {open && (
+        <>
+          {/* Click-outside scrim */}
+          <div
+            className="fixed inset-0 z-30"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          />
+          <div
+            className="absolute z-40 mt-1 right-0 w-72 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] p-3 shadow-[var(--shadow-md)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <label className="text-[10px] font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">
+              Download link
+            </label>
+            <input
+              autoFocus
+              type="url"
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") { e.preventDefault(); commit(); }
+                if (e.key === "Escape") setOpen(false);
+              }}
+              placeholder="https://…"
+              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:border-[var(--color-border-focus)]"
+            />
+            {hasLink && item.download_link && (
+              <a
+                href={item.download_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1.5 block truncate text-[10px] text-[var(--color-text-tertiary)] hover:underline"
+              >
+                Open current ↗
+              </a>
+            )}
+            <div className="flex justify-end gap-1 mt-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-xs px-2 py-1 rounded-[var(--radius-md)] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={commit}
+                disabled={saving}
+                className="text-xs px-2.5 py-1 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -800,6 +922,7 @@ function ItemModal({
   const [product, setProduct] = useState(initial?.product_or_collection ?? "");
   const [campaign, setCampaign] = useState(initial?.campaign_label ?? "");
   const [promoCode, setPromoCode] = useState(initial?.promo_code ?? "");
+  const [downloadLink, setDownloadLink] = useState(initial?.download_link ?? "");
   const [plannedWeek, setPlannedWeek] = useState(initial?.planned_week_start ?? "");
   const [dateSubmitted, setDateSubmitted] = useState(initial?.date_submitted ?? "");
   const [assigneeIds, setAssigneeIds] = useState<string[]>(
@@ -823,6 +946,7 @@ function ItemModal({
       product_or_collection: product || null,
       campaign_label: campaign || null,
       promo_code: promoCode || null,
+      download_link: downloadLink.trim() || null,
       planned_week_start: plannedWeek || null,
       date_submitted: dateSubmitted || null,
       assignee_ids: assigneeIds,
@@ -964,6 +1088,16 @@ function ItemModal({
               type="text"
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
+              className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            />
+          </Field>
+
+          <Field label="Download Link">
+            <input
+              type="url"
+              value={downloadLink}
+              onChange={(e) => setDownloadLink(e.target.value)}
+              placeholder="https://…"
               className="w-full rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
             />
           </Field>

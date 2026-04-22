@@ -63,14 +63,16 @@ export async function GET(req: NextRequest) {
       ),
     admin
       .from("meta_ad_stats")
-      .select("ad_id, ad_name, campaign_name, metric_date, spend")
+      .select("ad_id, ad_name, campaign_name, metric_date, spend, impressions, clicks, reach, conversions, conversion_value")
       .gte("metric_date", startDate)
       .lt("metric_date", endDate),
     admin
       .from("creative_content_items")
       .select(`
         id, title, planned_week_start, group_label,
-        creative_angle, product_or_collection, promo_code,
+        content_type, creative_type, channel_type, funnel_stage,
+        creative_angle, product_or_collection, campaign_label,
+        promo_code, download_link, status,
         linked_post_id, linked_ad_asset_id, linked_external_url, linked_at
       `)
       .gte("planned_week_start", startDate)
@@ -127,12 +129,43 @@ export async function GET(req: NextRequest) {
     .filter((r): r is OrganicPostRow => r !== null);
 
   // ── Shape ads (aggregate by ad_id) ─────────────────────────────────────────
-  type AdStatIn = { ad_id: string | null; ad_name: string | null; campaign_name: string | null; metric_date: string | null; spend: number | string | null };
+  type AdStatIn = {
+    ad_id: string | null;
+    ad_name: string | null;
+    campaign_name: string | null;
+    metric_date: string | null;
+    spend: number | string | null;
+    impressions: number | string | null;
+    clicks: number | string | null;
+    reach: number | string | null;
+    conversions: number | string | null;
+    conversion_value: number | string | null;
+  };
   const adStatsRaw = (adStatsRes.data ?? []) as AdStatIn[];
-  const adAgg = new Map<string, { adName: string | null; campaignName: string | null; firstDate: string; spend: number }>();
+  const adAgg = new Map<
+    string,
+    {
+      adName: string | null;
+      campaignName: string | null;
+      firstDate: string;
+      spend: number;
+      impressions: number;
+      clicks: number;
+      reach: number;
+      conversions: number;
+      conversionValue: number;
+    }
+  >();
+  const num = (v: number | string | null | undefined) =>
+    typeof v === "number" ? v : Number(v ?? 0) || 0;
   for (const r of adStatsRaw) {
     if (!r.ad_id || !r.metric_date) continue;
-    const spend = typeof r.spend === "number" ? r.spend : Number(r.spend ?? 0) || 0;
+    const spend = num(r.spend);
+    const impressions = num(r.impressions);
+    const clicks = num(r.clicks);
+    const reach = num(r.reach);
+    const conversions = num(r.conversions);
+    const conversionValue = num(r.conversion_value);
     const prev = adAgg.get(r.ad_id);
     if (!prev) {
       adAgg.set(r.ad_id, {
@@ -140,12 +173,22 @@ export async function GET(req: NextRequest) {
         campaignName: r.campaign_name ?? null,
         firstDate: r.metric_date,
         spend,
+        impressions,
+        clicks,
+        reach,
+        conversions,
+        conversionValue,
       });
     } else {
       if (!prev.adName && r.ad_name) prev.adName = r.ad_name;
       if (!prev.campaignName && r.campaign_name) prev.campaignName = r.campaign_name;
       if (r.metric_date < prev.firstDate) prev.firstDate = r.metric_date;
       prev.spend += spend;
+      prev.impressions += impressions;
+      prev.clicks += clicks;
+      prev.reach += reach;
+      prev.conversions += conversions;
+      prev.conversionValue += conversionValue;
     }
   }
 
@@ -187,15 +230,48 @@ export async function GET(req: NextRequest) {
     title: string | null;
     planned_week_start: string | null;
     group_label: string | null;
+    content_type: string | null;
+    creative_type: string | null;
+    channel_type: string | null;
+    funnel_stage: string | null;
     creative_angle: string | null;
     product_or_collection: string | null;
+    campaign_label: string | null;
     promo_code: string | null;
+    download_link: string | null;
+    status: string | null;
     linked_post_id: string | null;
     linked_ad_asset_id: string | null;
     linked_external_url: string | null;
     linked_at: string | null;
   };
   const itemsRaw = (itemsRes.data ?? []) as ItemIn[];
+
+  // Fetch assignees for all items in this window.
+  const itemIds = itemsRaw.map((r) => r.id);
+  const assigneesByItem = new Map<string, { userId: string; firstName: string | null; lastName: string | null; avatarUrl: string | null }[]>();
+  if (itemIds.length > 0) {
+    const { data: assigneeRows } = await admin
+      .from("content_item_assignees")
+      .select(`item_id, user_id, profile:profiles!user_id(id, first_name, last_name, avatar_url)`)
+      .in("item_id", itemIds);
+    for (const a of assigneeRows ?? []) {
+      type AssigneeRow = {
+        item_id: string;
+        user_id: string;
+        profile: { first_name: string | null; last_name: string | null; avatar_url: string | null } | { first_name: string | null; last_name: string | null; avatar_url: string | null }[] | null;
+      };
+      const row = a as AssigneeRow;
+      const prof = Array.isArray(row.profile) ? row.profile[0] ?? null : row.profile;
+      if (!assigneesByItem.has(row.item_id)) assigneesByItem.set(row.item_id, []);
+      assigneesByItem.get(row.item_id)!.push({
+        userId: row.user_id,
+        firstName: prof?.first_name ?? null,
+        lastName: prof?.last_name ?? null,
+        avatarUrl: prof?.avatar_url ?? null,
+      });
+    }
+  }
 
   // Build lookup: post_url → organic stats (for linked_external_url match)
   const organicByUrl = new Map<string, OrganicPostRow>();
@@ -276,20 +352,38 @@ export async function GET(req: NextRequest) {
     let link: ContentItemLink = { state: "unlinked" };
 
     // Priority: linked_ad_asset_id > linked_external_url meta_ad:// > linked_external_url URL > linked_post_id
+    const adLinkFromAgg = (
+      adId: string,
+      override?: { campaignName?: string | null; adName?: string | null; metricDate?: string | null; thumbnailUrl?: string | null; assetTitle?: string | null },
+    ): ContentItemLink => {
+      const agg = adAgg.get(adId);
+      const assetInfo = assetByAdId.get(adId);
+      const impressions = agg?.impressions ?? null;
+      const clicks = agg?.clicks ?? null;
+      const spend = agg?.spend ?? null;
+      const conversionValue = agg?.conversionValue ?? null;
+      return {
+        state: "ad",
+        campaignName: override?.campaignName ?? agg?.campaignName ?? null,
+        adName: override?.adName ?? agg?.adName ?? null,
+        metricDate: override?.metricDate ?? agg?.firstDate ?? null,
+        thumbnailUrl: override?.thumbnailUrl ?? assetInfo?.thumbnailUrl ?? null,
+        assetTitle: override?.assetTitle ?? assetInfo?.title ?? null,
+        spend,
+        impressions,
+        clicks,
+        reach: agg?.reach ?? null,
+        conversions: agg?.conversions ?? null,
+        conversionValue,
+        ctr: impressions && impressions > 0 && clicks !== null ? clicks / impressions : null,
+        roas: spend && spend > 0 && conversionValue !== null ? conversionValue / spend : null,
+      };
+    };
+
     if (r.linked_ad_asset_id) {
       const adId = adIdByAssetId.get(r.linked_ad_asset_id);
       if (adId) {
-        // Ad is in the month's aggregated set
-        const agg = adAgg.get(adId)!;
-        const assetInfo = assetByAdId.get(adId);
-        link = {
-          state: "ad",
-          campaignName: agg.campaignName,
-          adName: agg.adName,
-          metricDate: agg.firstDate,
-          thumbnailUrl: assetInfo?.thumbnailUrl ?? null,
-          assetTitle: assetInfo?.title ?? null,
-        };
+        link = adLinkFromAgg(adId);
       } else {
         const extra = extraAssetLink.get(r.linked_ad_asset_id);
         if (extra) {
@@ -300,6 +394,14 @@ export async function GET(req: NextRequest) {
             metricDate: extra.metricDate,
             thumbnailUrl: extra.thumbnailUrl,
             assetTitle: extra.assetTitle,
+            spend: null,
+            impressions: null,
+            clicks: null,
+            reach: null,
+            conversions: null,
+            conversionValue: null,
+            ctr: null,
+            roas: null,
           };
         } else {
           // Asset linked but no deployment/stats resolved — still an ad link
@@ -310,23 +412,21 @@ export async function GET(req: NextRequest) {
             metricDate: null,
             thumbnailUrl: null,
             assetTitle: null,
+            spend: null,
+            impressions: null,
+            clicks: null,
+            reach: null,
+            conversions: null,
+            conversionValue: null,
+            ctr: null,
+            roas: null,
           };
         }
       }
     } else if (r.linked_external_url) {
       const metaMatch = /^meta_ad:\/\/(.+)$/.exec(r.linked_external_url);
       if (metaMatch) {
-        const adId = metaMatch[1];
-        const agg = adAgg.get(adId);
-        const assetInfo = assetByAdId.get(adId);
-        link = {
-          state: "ad",
-          campaignName: agg?.campaignName ?? null,
-          adName: agg?.adName ?? null,
-          metricDate: agg?.firstDate ?? null,
-          thumbnailUrl: assetInfo?.thumbnailUrl ?? null,
-          assetTitle: assetInfo?.title ?? null,
-        };
+        link = adLinkFromAgg(metaMatch[1]);
       } else {
         const org = organicByUrl.get(r.linked_external_url);
         link = {
@@ -334,9 +434,11 @@ export async function GET(req: NextRequest) {
           publishedAt: org?.publishedAt ?? null,
           postUrl: r.linked_external_url,
           thumbnailUrl: org?.thumbnailUrl ?? null,
+          platform: org?.platform ?? null,
           impressions: org?.impressions ?? null,
           reach: org?.reach ?? null,
           engagements: org?.engagements ?? null,
+          videoPlays: org?.videoPlays ?? null,
         };
       }
     } else if (r.linked_post_id) {
@@ -347,9 +449,11 @@ export async function GET(req: NextRequest) {
         publishedAt: org?.publishedAt ?? null,
         postUrl: url ?? null,
         thumbnailUrl: org?.thumbnailUrl ?? null,
+        platform: org?.platform ?? null,
         impressions: org?.impressions ?? null,
         reach: org?.reach ?? null,
         engagements: org?.engagements ?? null,
+        videoPlays: org?.videoPlays ?? null,
       };
     }
 
@@ -358,9 +462,17 @@ export async function GET(req: NextRequest) {
       title: r.title ?? "(untitled)",
       plannedWeekStart: r.planned_week_start,
       group: normalizeGroup(r.group_label),
+      contentType: r.content_type,
+      creativeType: r.creative_type,
+      channelType: r.channel_type,
+      funnelStage: r.funnel_stage,
       creativeAngle: r.creative_angle,
       productOrCollection: r.product_or_collection,
+      campaignLabel: r.campaign_label,
       promoCode: r.promo_code,
+      downloadLink: r.download_link,
+      status: r.status,
+      assignees: assigneesByItem.get(r.id) ?? [],
       link,
     } satisfies ContentItemRow;
   });
