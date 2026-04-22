@@ -18,10 +18,13 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Fetch movements for a specific catalog item
+  // Fetch movements for a specific catalog item (legacy ledger).
+  // The new inventory_movements table has a different schema (see 00076);
+  // this route serves the legacy inventory page only, so it reads the
+  // renamed _deprecated table.
   if (movements === "true" && catalogItemId) {
     const { data, error } = await admin
-      .from("inventory_movements")
+      .from("inventory_movements_deprecated")
       .select("*")
       .eq("catalog_item_id", catalogItemId)
       .order("created_at", { ascending: false })
@@ -33,7 +36,7 @@ export async function GET(req: NextRequest) {
 
   // Fetch inventory records joined with catalog items
   let query = admin
-    .from("inventory_records")
+    .from("inventory_records_deprecated")
     .select("*, catalog:catalog_items(id, sku, product_name, color, size, product_family)");
 
   if (search) {
@@ -50,85 +53,18 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ data: data ?? [] });
 }
 
-// POST /api/operations/inventory — stock adjustment
-export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const user = await getCurrentUser(supabase);
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const body = await req.json();
-  const { catalog_item_id, adjustment_type, quantity, notes } = body;
-
-  if (!catalog_item_id || !adjustment_type || quantity == null) {
-    return NextResponse.json(
-      { error: "Missing required fields: catalog_item_id, adjustment_type, quantity" },
-      { status: 400 }
-    );
-  }
-
-  const admin = createAdminClient();
-
-  // 1. Insert movement record
-  const { error: moveError } = await admin.from("inventory_movements").insert({
-    catalog_item_id,
-    adjustment_type,
-    quantity,
-    notes: notes ?? null,
-    performed_by: user.id,
-  });
-
-  if (moveError) return NextResponse.json({ error: moveError.message }, { status: 500 });
-
-  // 2. Fetch current inventory record
-  const { data: current, error: fetchError } = await admin
-    .from("inventory_records")
-    .select("*")
-    .eq("catalog_item_id", catalog_item_id)
-    .single();
-
-  if (fetchError || !current) {
-    return NextResponse.json({ error: "Inventory record not found" }, { status: 404 });
-  }
-
-  // 3. Calculate new quantities based on adjustment type
-  const updates: Record<string, number> = {};
-
-  switch (adjustment_type) {
-    case "received":
-      updates.available_qty = (current.available_qty ?? 0) + quantity;
-      break;
-    case "dispatched":
-      updates.available_qty = (current.available_qty ?? 0) - quantity;
-      break;
-    case "returned":
-      updates.available_qty = (current.available_qty ?? 0) + quantity;
-      break;
-    case "damaged":
-      updates.available_qty = (current.available_qty ?? 0) - quantity;
-      updates.damaged_qty = (current.damaged_qty ?? 0) + quantity;
-      break;
-    case "correction":
-      updates.available_qty = quantity;
-      break;
-    case "reserved":
-      updates.available_qty = (current.available_qty ?? 0) - quantity;
-      updates.reserved_qty = (current.reserved_qty ?? 0) + quantity;
-      break;
-    case "released":
-      updates.reserved_qty = (current.reserved_qty ?? 0) - quantity;
-      updates.available_qty = (current.available_qty ?? 0) + quantity;
-      break;
-    default:
-      return NextResponse.json({ error: `Unknown adjustment_type: ${adjustment_type}` }, { status: 400 });
-  }
-
-  // 4. Update inventory record
-  const { error: updateError } = await admin
-    .from("inventory_records")
-    .update(updates)
-    .eq("catalog_item_id", catalog_item_id);
-
-  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
-
-  return NextResponse.json({ success: true });
+// POST /api/operations/inventory — DEPRECATED by migration 00076.
+// The legacy stock-adjustment flow is replaced by the new Operations
+// workflow pages under /operations/stock-actions/*, which POST to
+// /api/inventory/movements and call the create_inventory_movement RPC.
+// This endpoint is kept only so legacy client code returns a clear
+// message instead of silently writing into the new schema.
+export async function POST() {
+  return NextResponse.json(
+    {
+      error:
+        "This endpoint is deprecated. Use the new Operations stock-action workflows under /operations/stock-actions/.",
+    },
+    { status: 410 }
+  );
 }

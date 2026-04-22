@@ -39,18 +39,20 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: auditErr.message }, { status: 500 });
   }
 
-  // 2. If this is an inventory item, also fetch movements
+  // 2. If this is a legacy inventory row, fetch movements from the
+  // pre-v1 ledger (both tables renamed _deprecated by migration 00076).
+  // New inventory timeline lives in inventory_movements (new schema).
   let movements: any[] = [];
-  if (tableName === "inventory_records") {
+  if (tableName === "inventory_records" || tableName === "inventory_records_deprecated") {
     const { data: invRecord } = await admin
-      .from("inventory_records")
+      .from("inventory_records_deprecated")
       .select("catalog_item_id")
       .eq("id", recordId)
       .maybeSingle();
 
     if (invRecord?.catalog_item_id) {
       const { data: movData } = await admin
-        .from("inventory_movements")
+        .from("inventory_movements_deprecated")
         .select("id, catalog_item_id, adjustment_type, quantity, notes, performed_by, created_at")
         .eq("catalog_item_id", invRecord.catalog_item_id)
         .order("created_at", { ascending: false })

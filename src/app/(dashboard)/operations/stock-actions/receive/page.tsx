@@ -2,20 +2,19 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import InventoryView from "./inventory-view";
+import { ReceiveClient } from "./receive-client";
 
-export default async function InventoryPage() {
+export default async function ReceivePage() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
   if (!user) redirect("/login");
 
   const admin = createAdminClient();
-
   const { data: locations } = await admin
     .from("inventory_locations")
     .select("id, location_code, location_name, location_type, is_source, sort_order")
     .eq("is_active", true)
     .order("sort_order");
 
-  return <InventoryView locations={locations ?? []} />;
+  return <ReceiveClient locations={locations ?? []} />;
 }

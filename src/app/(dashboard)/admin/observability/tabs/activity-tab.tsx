@@ -99,7 +99,12 @@ function getPage(item: TimelineItem): string {
     kops: "KOP Library", learning_materials: "Learning", memos: "Memos",
     smm_posts: "Content", smm_groups: "Content", creative_content_items: "Tracker",
     ad_assets: "Ad Ops", ad_requests: "Ad Ops", meta_campaigns: "Ad Ops",
-    feedback: "Pulse", inventory_records: "Inventory", inventory_movements: "Inventory",
+    feedback: "Pulse",
+    inventory_records: "Inventory", inventory_movements: "Inventory",
+    inventory_records_deprecated: "Inventory (legacy)", inventory_movements_deprecated: "Inventory (legacy)",
+    inventory_balances: "Inventory", inventory_return_verifications: "Inventory",
+    inventory_locations: "Inventory",
+    products: "Catalog", product_colors: "Catalog", product_variants: "Catalog",
     catalog_items: "Catalog", ops_orders: "Orders", dispatch_queue: "Dispatch",
     confirmed_sales: "Sales", daily_volumes: "Sales", room_bookings: "Rooms",
   };
