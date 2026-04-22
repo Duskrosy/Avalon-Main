@@ -33,7 +33,7 @@ export default async function ExecutivePlanningPage() {
     { count: headcount },
     { count: approvedLeavesToday },
     { data: calendarEventsRaw },
-    { data: featuredBoard },
+    { data: featuredBoardInitial },
     { data: allProfiles },
   ] = await Promise.all([
     admin.from("profiles").select("*", { count: "exact", head: true }).is("deleted_at", null),
@@ -57,6 +57,34 @@ export default async function ExecutivePlanningPage() {
       .is("deleted_at", null)
       .order("first_name"),
   ]);
+
+  // Auto-create a personal board for the featured user if one doesn't exist yet.
+  // Otherwise switching the featured picker to a user who's never opened their
+  // own kanban page would render an empty view with no columns.
+  let featuredBoard = featuredBoardInitial;
+  if (!featuredBoard) {
+    const { data: newBoard } = await admin
+      .from("kanban_boards")
+      .insert({
+        name: "Personal Board",
+        scope: "personal",
+        owner_id: featuredUserId,
+        created_by: user.id,
+      })
+      .select("id, owner_id")
+      .single();
+    if (newBoard) {
+      const defaultColumns = ["To Do", "In Progress", "Review", "Done"];
+      await admin.from("kanban_columns").insert(
+        defaultColumns.map((name, i) => ({
+          board_id: newBoard.id,
+          name,
+          sort_order: i,
+        })),
+      );
+      featuredBoard = newBoard;
+    }
+  }
 
   // Expand yearly recurring events to this year's instance
   const calEvents = ((calendarEventsRaw ?? []) as CalEvent[]).flatMap((evt: CalEvent) => {
