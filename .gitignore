@@ -40,6 +40,13 @@ next-env.d.ts
 .gitnexus
 .gstack/
 
+# AI tooling — local configs, generated skills, and plan docs
+.claude/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+docs/superpowers/
+
 # playwright + qa artifacts (local debug only)
 .playwright-mcp/
 snap-*.txt
