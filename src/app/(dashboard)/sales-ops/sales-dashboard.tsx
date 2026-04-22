@@ -34,7 +34,7 @@ function agentName(a: Agent) {
 
 const MODULES = [
   { href: "/sales-ops/daily-volume", label: "Daily Volume", desc: "Log follow-ups, confirmed, abandoned" },
-  { href: "/sales-ops/confirmed-sales", label: "Confirmed Sales", desc: "Individual sale records" },
+  { href: "/sales-agent/confirmed-sales", label: "Confirmed Sales", desc: "Individual sale records" },
   { href: "/sales-ops/qa-log", label: "QA Log", desc: "Message quality assessments" },
   { href: "/sales-ops/fps-daily", label: "FPS Daily Score", desc: "Computed performance score per day" },
   { href: "/sales-ops/downtime-log", label: "Downtime Log", desc: "System, internet, tool interruptions" },
