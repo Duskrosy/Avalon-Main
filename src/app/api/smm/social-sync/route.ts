@@ -29,6 +29,27 @@ function dayAfter(date: string): string {
   return d.toISOString().split("T")[0];
 }
 
+// Strips ASCII control chars and unpaired Unicode surrogates that Postgres's
+// JSON parser rejects with error 22P02 ("invalid input syntax for type json").
+// Valid surrogate pairs (emoji) are preserved. Pass through null/empty.
+function sanitizeText(v: string | null | undefined, maxLen = 120): string | null {
+  if (v == null) return null;
+  const s = String(v)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/[\uD800-\uDFFF]/g, (ch, idx, str) => {
+      const cp = ch.charCodeAt(0);
+      if (cp >= 0xD800 && cp <= 0xDBFF) {
+        const next = (str as string).charCodeAt(idx + 1);
+        return next >= 0xDC00 && next <= 0xDFFF ? ch : "";
+      }
+      const prev = idx > 0 ? (str as string).charCodeAt(idx - 1) : 0;
+      return prev >= 0xD800 && prev <= 0xDBFF ? ch : "";
+    })
+    .slice(0, maxLen);
+  return s || null;
+}
+
 // ─── Facebook Page Insights ────────────────────────────────────────────────────
 // Note: page_impressions + page_fans deprecated for New Pages Experience accounts.
 // Using page_impressions_unique (unique reach) for both impressions and reach,
@@ -251,7 +272,7 @@ async function syncPosts(
           post_external_id:   post.id,
           post_url:           post.permalink_url ?? null,
           thumbnail_url:      post.full_picture  ?? null,
-          caption_preview:    post.message ? post.message.slice(0, 120) : null,
+          caption_preview:    sanitizeText(post.message ?? null),
           post_type:          post.full_picture ? "image" : "video",
           published_at:       post.created_time  ?? null,
           impressions:        reach,
@@ -341,7 +362,7 @@ async function syncPosts(
           thumbnail_url:      isVideo
                                 ? (item.thumbnail_url ?? item.media_url ?? null)
                                 : (item.media_url     ?? null),
-          caption_preview:    item.caption ? item.caption.slice(0, 120) : null,
+          caption_preview:    sanitizeText(item.caption ?? null),
           post_type:          postType,
           published_at:       item.timestamp          ?? null,
           impressions:        views,
@@ -436,7 +457,7 @@ async function syncPosts(
             post_external_id:   videoId,
             post_url:           `https://www.youtube.com/watch?v=${videoId}`,
             thumbnail_url:      item.snippet.thumbnails?.medium?.url ?? null,
-            caption_preview:    item.snippet.title ? item.snippet.title.slice(0, 120) : null,
+            caption_preview:    sanitizeText(item.snippet.title ?? null),
             post_type:          "video" as const,
             published_at:       item.snippet.publishedAt ?? null,
             impressions:        0,   // requires YouTube Analytics API (OAuth) — not available via Data API
