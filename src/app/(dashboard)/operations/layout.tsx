@@ -4,14 +4,15 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 const NAV_ITEMS = [
-  { href: "/operations/catalog",    label: "Catalog" },
-  { href: "/operations/inventory",  label: "Inventory" },
-  { href: "/operations/orders",     label: "Orders" },
-  { href: "/operations/dispatch",   label: "Dispatch" },
-  { href: "/operations/issues",     label: "Issues / Recovery" },
-  { href: "/operations/distressed", label: "Distressed Parcels" },
-  { href: "/operations/courier",    label: "Courier Tracking" },
-  { href: "/operations/remittance", label: "Remittance" },
+  { href: "/operations/catalog",              label: "Catalog" },
+  { href: "/operations/inventory",            label: "Inventory" },
+  { href: "/operations/stock-actions/receive", label: "Stock: Receive" },
+  { href: "/operations/orders",               label: "Orders" },
+  { href: "/operations/dispatch",             label: "Dispatch" },
+  { href: "/operations/issues",               label: "Issues / Recovery" },
+  { href: "/operations/distressed",           label: "Distressed Parcels" },
+  { href: "/operations/courier",              label: "Courier Tracking" },
+  { href: "/operations/remittance",           label: "Remittance" },
 ];
 
 const ALLOWED_SLUGS = ["fulfillment", "inventory", "customer-service", "sales"];

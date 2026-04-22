@@ -76,12 +76,20 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    name: "Sales Agent",
+    slug: "sales-agent",
+    departments: ["sales"],
+    items: [
+      { name: "Chat Sales", slug: "confirmed-sales", route: "/sales-agent/confirmed-sales" },
+    ],
+  },
+  {
     name: "Sales Ops",
     slug: "sales-ops",
     departments: ["sales"],
+    minTier: 2,
     items: [
       { name: "Chat Volume", slug: "daily-volume", route: "/sales-ops/daily-volume" },
-      { name: "Chat Sales", slug: "confirmed-sales", route: "/sales-ops/confirmed-sales" },
       { name: "Chat QA", slug: "qa-log", route: "/sales-ops/qa-log" },
       { name: "Chat FPS", slug: "fps-daily", route: "/sales-ops/fps-daily" },
       { name: "Agent Consistency", slug: "consistency", route: "/sales-ops/consistency" },
