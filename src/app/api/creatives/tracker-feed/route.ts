@@ -57,8 +57,10 @@ export async function GET(req: NextRequest) {
           smm_groups ( name )
         )
       `)
-      .gte("metric_date", startDate)
-      .lt("metric_date", endDate),
+      .or(
+        `and(published_at.gte.${startISO},published_at.lt.${endISO}),` +
+        `and(published_at.is.null,metric_date.gte.${startDate},metric_date.lt.${endDate})`,
+      ),
     admin
       .from("meta_ad_stats")
       .select("ad_id, ad_name, campaign_name, metric_date, spend")
