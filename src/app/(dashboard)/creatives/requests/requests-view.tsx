@@ -59,6 +59,12 @@ const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; sty
   ],
 };
 
+// Fulfillment can deny while the request is still open.
+const DENIABLE_STATUSES = new Set(["submitted", "in_progress", "review"]);
+
+// Requester can edit/delete only before fulfillment starts.
+const REQUESTER_EDITABLE = new Set(["draft", "submitted", "cancelled", "rejected"]);
+
 function nextTransition(status: string) {
   const list = FULFILLMENT_TRANSITIONS[status] ?? [];
   return list[0] ?? null;
@@ -73,6 +79,8 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
   const [detailId, setDetailId] = useState<string | null>(null);
   const [assigningInModal, setAssigningInModal] = useState(false);
   const [attachmentsByRequest, setAttachmentsByRequest] = useState<Record<string, RemoteAttachment[]>>({});
+  const [editing, setEditing] = useState<Request | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Submit form state (non-creatives only)
   const [formTitle, setFormTitle] = useState("");
@@ -147,6 +155,44 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assignee_ids: assigneeIds }),
     });
+    await fetchRequests();
+  }
+
+  async function denyRequest(id: string) {
+    if (!confirm("Deny this request? The requester will see it as rejected.")) return;
+    setActionLoading(id);
+    await updateStatus(id, "rejected");
+    setActionLoading(null);
+    setDetailId(null);
+  }
+
+  async function deleteRequest(id: string) {
+    if (!confirm("Delete this request permanently? This cannot be undone.")) return;
+    setActionLoading(id);
+    const res = await fetch(`/api/ad-ops/requests?id=${id}`, { method: "DELETE" });
+    setActionLoading(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(typeof data.error === "string" ? data.error : "Failed to delete request.");
+      return;
+    }
+    setDetailId(null);
+    setEditing(null);
+    await fetchRequests();
+  }
+
+  async function saveEdit(id: string, patch: { title: string; brief: string | null; target_date: string | null }) {
+    const res = await fetch(`/api/ad-ops/requests?id=${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(typeof data.error === "string" ? data.error : "Failed to save edit.");
+      return;
+    }
+    setEditing(null);
     await fetchRequests();
   }
 
@@ -388,6 +434,15 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                           Move Next
                         </button>
                       )}
+                      {DENIABLE_STATUSES.has(r.status) && canManage && (
+                        <button
+                          onClick={() => denyRequest(r.id)}
+                          disabled={actionLoading === r.id}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors disabled:opacity-50"
+                        >
+                          Deny
+                        </button>
+                      )}
                       {canManage && (
                         <button
                           onClick={() => openDetail(r.id)}
@@ -396,6 +451,25 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
                           {(r.assignees ?? []).length > 0 ? "Reassign" : "Assign"}
                         </button>
                       )}
+                    </div>
+                  )}
+
+                  {/* Edge actions — requester view */}
+                  {!isFulfillmentView && REQUESTER_EDITABLE.has(r.status) && (
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => setEditing(r)}
+                        className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteRequest(r.id)}
+                        disabled={actionLoading === r.id}
+                        className="text-xs border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] px-3 py-1.5 rounded-lg disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
                     </div>
                   )}
 
@@ -421,8 +495,19 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
           onStartAssign={() => setAssigningInModal(true)}
           onStopAssign={() => setAssigningInModal(false)}
           onUpdateStatus={(status) => updateStatus(detailRequest.id, status)}
+          onDeny={() => denyRequest(detailRequest.id)}
           onReassign={(ids) => reassign(detailRequest.id, ids)}
           onClose={closeDetail}
+        />
+      )}
+
+      {/* Edit modal — requester view */}
+      {editing && (
+        <EditRequestModal
+          request={editing}
+          onSave={(patch) => saveEdit(editing.id, patch)}
+          onDelete={() => deleteRequest(editing.id)}
+          onClose={() => setEditing(null)}
         />
       )}
     </div>
@@ -439,6 +524,7 @@ function RequestDetailModal({
   onStartAssign,
   onStopAssign,
   onUpdateStatus,
+  onDeny,
   onReassign,
   onClose,
 }: {
@@ -451,6 +537,7 @@ function RequestDetailModal({
   onStartAssign: () => void;
   onStopAssign: () => void;
   onUpdateStatus: (status: string) => void;
+  onDeny: () => void;
   onReassign: (ids: string[]) => void;
   onClose: () => void;
 }) {
@@ -566,7 +653,15 @@ function RequestDetailModal({
                     {t === moveNext ? `Move Next — ${t.label}` : t.label}
                   </button>
                 ))}
-                {transitions.length === 0 && (
+                {DENIABLE_STATUSES.has(r.status) && (
+                  <button
+                    onClick={onDeny}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors"
+                  >
+                    Deny
+                  </button>
+                )}
+                {transitions.length === 0 && !DENIABLE_STATUSES.has(r.status) && (
                   <p className="text-xs text-[var(--color-text-tertiary)] italic">No transitions available from this status.</p>
                 )}
               </div>
@@ -610,6 +705,99 @@ function RequestDetailModal({
               )}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditRequestModal({
+  request: r,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  request: Request;
+  onSave: (patch: { title: string; brief: string | null; target_date: string | null }) => Promise<void> | void;
+  onDelete: () => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState(r.title);
+  const [brief, setBrief] = useState(r.brief ?? "");
+  const [targetDate, setTargetDate] = useState(r.target_date ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!title.trim()) return;
+    setSaving(true);
+    await onSave({
+      title: title.trim(),
+      brief: brief.trim() || null,
+      target_date: targetDate || null,
+    });
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Edit Request</h2>
+
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+            Title <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Brief</label>
+          <textarea
+            value={brief}
+            onChange={(e) => setBrief(e.target.value)}
+            rows={4}
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Target Date</label>
+          <input
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-1">
+          <button
+            onClick={onDelete}
+            className="text-sm px-4 py-2 rounded-lg border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors"
+          >
+            Delete
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="text-sm px-4 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={saving || !title.trim()}
+              onClick={handleSave}
+              className="text-sm px-4 py-2 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

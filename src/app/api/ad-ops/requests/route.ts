@@ -176,18 +176,35 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
-// DELETE /api/ad-ops/requests?id=... — manager+ only
+// DELETE /api/ad-ops/requests?id=...
+// Allowed: manager+ always; requester on their own request when status is
+// not yet in fulfillment (draft, submitted, cancelled, rejected).
+const REQUESTER_DELETABLE_STATUSES = new Set(["draft", "submitted", "cancelled", "rejected"]);
+
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
-  if (!currentUser || !isManagerOrAbove(currentUser)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const id = new URL(req.url).searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   const admin = createAdminClient();
+
+  if (!isManagerOrAbove(currentUser)) {
+    const { data: existing } = await admin
+      .from("ad_requests")
+      .select("requester_id, status")
+      .eq("id", id)
+      .maybeSingle();
+    if (!existing || existing.requester_id !== currentUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!REQUESTER_DELETABLE_STATUSES.has(existing.status)) {
+      return NextResponse.json({ error: "Cannot delete a request that is already in progress" }, { status: 403 });
+    }
+  }
+
   const { error } = await admin.from("ad_requests").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

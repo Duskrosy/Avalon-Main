@@ -74,6 +74,9 @@ const STATUS_FILTERS = [
   { value: "approved",    label: "Approved" },
 ];
 
+// Requester can edit/delete only before fulfillment starts.
+const REQUESTER_EDITABLE = new Set(["draft", "submitted", "cancelled", "rejected"]);
+
 export function MarketingRequestsView({ currentUserId }: Props) {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
@@ -322,15 +325,16 @@ export function MarketingRequestsView({ currentUserId }: Props) {
     await fetchRequests();
   }
 
-  async function cancelRequest(id: string) {
-    if (!confirm("Cancel this request?")) return;
+  async function deleteRequest(id: string) {
+    if (!confirm("Delete this request permanently? This cannot be undone.")) return;
     setActionLoading(id);
-    await fetch(`/api/ad-ops/requests?id=${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "cancelled" }),
-    });
+    const res = await fetch(`/api/ad-ops/requests?id=${id}`, { method: "DELETE" });
     setActionLoading(null);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(typeof data.error === "string" ? data.error : "Failed to delete request.");
+      return;
+    }
     await fetchRequests();
   }
 
@@ -449,28 +453,34 @@ export function MarketingRequestsView({ currentUserId }: Props) {
                       </div>
                     )}
 
-                    {isDraft && (
+                    {(isDraft || REQUESTER_EDITABLE.has(r.status)) && (
                       <div className="flex items-center gap-2 flex-wrap pt-1">
-                        <button
-                          disabled={actionLoading === r.id}
-                          onClick={(e) => { e.stopPropagation(); submitRequest(r.id); }}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
-                        >
-                          Submit
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEdit(r); }}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          disabled={actionLoading === r.id}
-                          onClick={(e) => { e.stopPropagation(); cancelRequest(r.id); }}
-                          className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
+                        {isDraft && (
+                          <button
+                            disabled={actionLoading === r.id}
+                            onClick={(e) => { e.stopPropagation(); submitRequest(r.id); }}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+                          >
+                            Submit
+                          </button>
+                        )}
+                        {REQUESTER_EDITABLE.has(r.status) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEdit(r); }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)] transition-colors"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {REQUESTER_EDITABLE.has(r.status) && (
+                          <button
+                            disabled={actionLoading === r.id}
+                            onClick={(e) => { e.stopPropagation(); deleteRequest(r.id); }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-[var(--color-error)] hover:bg-[var(--color-error-light)] transition-colors disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
