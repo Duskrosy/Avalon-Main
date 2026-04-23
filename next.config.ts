@@ -38,6 +38,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/marketing/requests",
+        destination: "/creatives/requests",
+        permanent: true,
+      },
+      {
+        source: "/marketing/requests/:path*",
+        destination: "/creatives/requests/:path*",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
