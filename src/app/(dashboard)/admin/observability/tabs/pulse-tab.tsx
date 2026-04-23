@@ -31,6 +31,15 @@ type FeedbackComment = {
   author: { id: string; first_name: string; last_name: string; avatar_url: string | null } | null;
 };
 
+type FeedbackAttachment = {
+  id: string;
+  path: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  created_at: string;
+  url: string | null;
+};
+
 const PRIORITY_RANK: Record<Priority, number> = { urgent: 3, high: 2, medium: 1, low: 0 };
 const PRIORITY_COLORS: Record<Priority, string> = {
   low: "bg-gray-100 text-gray-700",
@@ -77,18 +86,22 @@ export function PulseTab() {
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [showMerged, setShowMerged] = useState(false);
+  const [search, setSearch] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"active" | "resolved" | "all">("active");
+  type SortKey = "date" | "priority" | "category" | "page" | "requestor";
+  const [sortBy, setSortBy] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [comments, setComments] = useState<Record<string, FeedbackComment[]>>({});
   const [commentDraft, setCommentDraft] = useState<Record<string, string>>({});
+  const [attachments, setAttachments] = useState<Record<string, FeedbackAttachment[]>>({});
   const [mergeSearch, setMergeSearch] = useState<Record<string, string>>({});
   const notesTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showExport, setShowExport] = useState(false);
-  const [exportStatus, setExportStatus] = useState<string>("unresolved");
   const [exportFrom, setExportFrom] = useState<string>("");
   const [exportTo, setExportTo] = useState<string>("");
   const [goals, setGoals]           = useState<{ id: string; title: string }[]>([]);
@@ -97,13 +110,12 @@ export function PulseTab() {
   const [linking, setLinking]       = useState(false);
   const [linkedMap, setLinkedMap]   = useState<Record<string, string[]>>({}); // feedbackId -> goalIds[]
 
-  useEffect(() => { fetchFeedback(); fetchGoals(); }, [statusFilter, categoryFilter]);
+  useEffect(() => { fetchFeedback(); fetchGoals(); }, [categoryFilter]);
 
   async function fetchFeedback() {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams();
-    if (statusFilter !== "all") params.set("status", statusFilter);
     if (categoryFilter !== "all") params.set("category", categoryFilter);
     try {
       const res = await fetch(`/api/feedback?${params}`);
@@ -196,6 +208,15 @@ export function PulseTab() {
     } catch { /* non-critical */ }
   }
 
+  async function loadAttachments(feedbackId: string) {
+    try {
+      const res = await fetch(`/api/feedback/${feedbackId}/attachments`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setAttachments((prev) => ({ ...prev, [feedbackId]: data.attachments ?? [] }));
+    } catch { /* non-critical */ }
+  }
+
   async function postComment(feedbackId: string) {
     const body = (commentDraft[feedbackId] ?? "").trim();
     if (!body) return;
@@ -241,9 +262,11 @@ export function PulseTab() {
 
   function exportData(fmt: "csv" | "md") {
     const columns = [
+      { key: "id", label: "Ticket ID" },
       { key: "from", label: "From" },
       { key: "email", label: "Email" },
       { key: "department", label: "Department" },
+      { key: "priority", label: "Priority" },
       { key: "category", label: "Category" },
       { key: "body", label: "Feedback" },
       { key: "page_url", label: "Page" },
@@ -251,13 +274,9 @@ export function PulseTab() {
       { key: "date", label: "Date" },
     ];
 
-    let filtered = feedback;
-
-    if (exportStatus === "unresolved") {
-      filtered = filtered.filter((f) => f.status === "open" || f.status === "acknowledged");
-    } else if (exportStatus !== "all") {
-      filtered = filtered.filter((f) => f.status === exportStatus);
-    }
+    // Export reflects the currently visible set (tab + search + filters + sort),
+    // with an optional date range overlay from the export panel.
+    let filtered = visibleFeedback;
 
     if (exportFrom) {
       const fromDate = new Date(exportFrom);
@@ -269,9 +288,11 @@ export function PulseTab() {
     }
 
     const rows = filtered.map((f) => ({
+      id: f.id,
       from: f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}` : "Unknown",
       email: f.profiles?.email ?? "",
       department: f.department?.name ?? "",
+      priority: f.priority,
       category: CATEGORY_LABELS[f.category] ?? f.category,
       body: f.body,
       page_url: f.page_url ?? "",
@@ -291,19 +312,90 @@ export function PulseTab() {
     setShowExport(false);
   }
 
+  const matchesTab = (f: FeedbackItem) => {
+    if (activeTab === "active") return f.status === "open" || f.status === "acknowledged";
+    if (activeTab === "resolved") return f.status === "resolved" || f.status === "wontfix";
+    return true;
+  };
+  const matchesSearch = (f: FeedbackItem) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const name = f.profiles ? `${f.profiles.first_name} ${f.profiles.last_name}`.toLowerCase() : "";
+    const email = f.profiles?.email?.toLowerCase() ?? "";
+    return (
+      f.id.toLowerCase().includes(q) ||
+      f.body.toLowerCase().includes(q) ||
+      name.includes(q) ||
+      email.includes(q)
+    );
+  };
+
   const visibleFeedback = (showMerged ? feedback : feedback.filter((f) => !f.merged_into_id))
     .filter((f) => priorityFilter === "all" || f.priority === priorityFilter)
+    .filter(matchesTab)
+    .filter(matchesSearch)
     .slice()
     .sort((a, b) => {
-      const p = (PRIORITY_RANK[b.priority] ?? 0) - (PRIORITY_RANK[a.priority] ?? 0);
-      if (p !== 0) return p;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      const dir = sortDir === "asc" ? 1 : -1;
+      switch (sortBy) {
+        case "priority":
+          return ((PRIORITY_RANK[a.priority] ?? 0) - (PRIORITY_RANK[b.priority] ?? 0)) * dir;
+        case "category":
+          return (a.category || "").localeCompare(b.category || "") * dir;
+        case "page":
+          return (a.page_url || "").localeCompare(b.page_url || "") * dir;
+        case "requestor": {
+          const an = a.profiles ? `${a.profiles.first_name} ${a.profiles.last_name}` : "";
+          const bn = b.profiles ? `${b.profiles.first_name} ${b.profiles.last_name}` : "";
+          return an.localeCompare(bn) * dir;
+        }
+        case "date":
+        default:
+          return (new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) * dir;
+      }
     });
+
+  function toggleSort(key: SortKey) {
+    if (sortBy === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortDir(key === "date" || key === "priority" ? "desc" : "asc");
+    }
+  }
 
   const openCount = feedback.filter((f) => f.status === "open").length;
 
   return (
     <div className="space-y-6">
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-[var(--color-border-primary)]">
+        {([
+          { k: "active", label: "Active" },
+          { k: "resolved", label: "Resolved" },
+          { k: "all", label: "All" },
+        ] as const).map((t) => (
+          <button
+            key={t.k}
+            onClick={() => setActiveTab(t.k)}
+            className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === t.k
+                ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+                : "border-transparent text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+            }`}
+          >
+            {t.label}
+            <span className="ml-1.5 text-[10px] text-[var(--color-text-tertiary)]">
+              {t.k === "active"
+                ? feedback.filter((f) => (f.status === "open" || f.status === "acknowledged") && (showMerged || !f.merged_into_id)).length
+                : t.k === "resolved"
+                ? feedback.filter((f) => (f.status === "resolved" || f.status === "wontfix") && (showMerged || !f.merged_into_id)).length
+                : feedback.filter((f) => showMerged || !f.merged_into_id).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4">
@@ -330,17 +422,13 @@ export function PulseTab() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-        >
-          <option value="all">All statuses</option>
-          <option value="open">Open</option>
-          <option value="acknowledged">Acknowledged</option>
-          <option value="resolved">Resolved</option>
-          <option value="wontfix">Won&apos;t fix</option>
-        </select>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search name, email, body, or ticket ID…"
+          className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none min-w-[260px]"
+        />
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
@@ -390,23 +478,18 @@ export function PulseTab() {
       {/* Export panel */}
       {showExport && (
         <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] p-4 space-y-3">
-          <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">Export Options</p>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wide">Export Options</p>
+            <p className="text-[11px] text-[var(--color-text-tertiary)]">
+              Exports the <span className="font-medium text-[var(--color-text-secondary)]">{visibleFeedback.length}</span> rows currently visible
+              {" "}(tab: <span className="font-medium">{activeTab}</span>
+              {search.trim() && <>, search: &ldquo;{search.trim()}&rdquo;</>}
+              {categoryFilter !== "all" && <>, category: {CATEGORY_LABELS[categoryFilter] ?? categoryFilter}</>}
+              {priorityFilter !== "all" && <>, priority: {priorityFilter}</>}
+              ). Add a date range below to narrow further.
+            </p>
+          </div>
           <div className="flex items-end gap-3 flex-wrap">
-            <div>
-              <label className="block text-[10px] text-[var(--color-text-tertiary)] mb-1">Status</label>
-              <select
-                value={exportStatus}
-                onChange={(e) => setExportStatus(e.target.value)}
-                className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:border-[var(--color-accent)] focus:outline-none"
-              >
-                <option value="unresolved">Unresolved (open + acknowledged)</option>
-                <option value="all">All statuses</option>
-                <option value="open">Open only</option>
-                <option value="acknowledged">Acknowledged only</option>
-                <option value="resolved">Resolved only</option>
-                <option value="wontfix">Won&apos;t fix only</option>
-              </select>
-            </div>
             <div>
               <label className="block text-[10px] text-[var(--color-text-tertiary)] mb-1">From</label>
               <input
@@ -459,13 +542,33 @@ export function PulseTab() {
           <table className="min-w-full divide-y divide-[var(--color-border-secondary)] text-sm">
             <thead className="bg-[var(--color-bg-secondary)]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">From</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Priority</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Category</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Feedback</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Page</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase">Date</th>
+                {([
+                  { k: "requestor" as SortKey, label: "From", sortable: true },
+                  { k: null, label: "ID", sortable: false },
+                  { k: "priority" as SortKey, label: "Priority", sortable: true },
+                  { k: "category" as SortKey, label: "Category", sortable: true },
+                  { k: null, label: "Feedback", sortable: false },
+                  { k: "page" as SortKey, label: "Page", sortable: true },
+                  { k: null, label: "Status", sortable: false },
+                  { k: "date" as SortKey, label: "Date", sortable: true },
+                ] as const).map((col) => {
+                  const isActive = col.sortable && sortBy === col.k;
+                  const arrow = !col.sortable ? "" : isActive ? (sortDir === "asc" ? " ▲" : " ▼") : "";
+                  return (
+                    <th
+                      key={col.label}
+                      className={`px-4 py-3 text-left text-xs font-medium uppercase ${
+                        col.sortable
+                          ? "cursor-pointer select-none text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                          : "text-[var(--color-text-secondary)]"
+                      } ${isActive ? "text-[var(--color-text-primary)]" : ""}`}
+                      onClick={col.sortable && col.k ? () => toggleSort(col.k as SortKey) : undefined}
+                    >
+                      {col.label}
+                      <span className="text-[10px]">{arrow}</span>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody className="bg-[var(--color-bg-primary)] divide-y divide-[var(--color-border-secondary)]">
@@ -477,6 +580,7 @@ export function PulseTab() {
                       const next = expandedId === f.id ? null : f.id;
                       setExpandedId(next);
                       if (next && !comments[next]) loadComments(next);
+                      if (next && !attachments[next]) loadAttachments(next);
                     }}
                   >
                     <td className="px-4 py-2.5 text-[var(--color-text-primary)] whitespace-nowrap">
@@ -486,6 +590,11 @@ export function PulseTab() {
                         {f.merged_into_id && (
                           <span className="text-[10px] text-[var(--color-text-tertiary)] italic" title="Merged duplicate">merged</span>
                         )}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 whitespace-nowrap" title={f.id} onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(f.id); }}>
+                      <span className="font-mono text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)] cursor-copy" title={`${f.id} — click to copy`}>
+                        {f.id.slice(0, 8)}
                       </span>
                     </td>
                     <td className="px-4 py-2.5">
@@ -523,7 +632,7 @@ export function PulseTab() {
 
                   {expandedId === f.id && (
                     <tr className="bg-[var(--color-bg-secondary)]/80">
-                      <td colSpan={7} className="px-4 py-4">
+                      <td colSpan={8} className="px-4 py-4">
                         <div className="space-y-4">
 
                           {/* Merged banner */}
@@ -547,6 +656,35 @@ export function PulseTab() {
                             <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Full Feedback</p>
                             <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap leading-relaxed">{f.body}</p>
                           </div>
+
+                          {/* Attachments */}
+                          {(attachments[f.id] ?? []).length > 0 && (
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <p className="text-[10px] text-[var(--color-text-tertiary)] uppercase tracking-wide mb-1">
+                                Attachments ({attachments[f.id]?.length ?? 0})
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {(attachments[f.id] ?? []).map((a) => (
+                                  a.url ? (
+                                    <a
+                                      key={a.id}
+                                      href={a.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="block w-24 h-24 rounded border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)] transition"
+                                    >
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={a.url} alt="" className="h-full w-full object-cover" />
+                                    </a>
+                                  ) : (
+                                    <div key={a.id} className="w-24 h-24 rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)] flex items-center justify-center text-[10px] text-[var(--color-text-tertiary)]">
+                                      image
+                                    </div>
+                                  )
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Priority selector */}
                           <div onClick={(e) => e.stopPropagation()}>

@@ -1,7 +1,27 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format, parseISO } from "date-fns";
+
+type LocalAttachment = { file: File; preview?: string };
+type RemoteAttachment = {
+  id: string;
+  path: string;
+  file_name: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  url: string | null;
+};
+
+const ALLOWED_MIME = [
+  "image/jpeg", "image/png", "image/webp", "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain", "text/csv",
+];
+const MAX_FILES = 5;
+const MAX_BYTES = 10 * 1024 * 1024;
 
 type Request = {
   id: string;
@@ -63,6 +83,11 @@ export function MarketingRequestsView({ currentUserId }: Props) {
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [localAttachments, setLocalAttachments] = useState<LocalAttachment[]>([]);
+  const [remoteAttachments, setRemoteAttachments] = useState<RemoteAttachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [attachmentsByRequest, setAttachmentsByRequest] = useState<Record<string, RemoteAttachment[]>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -83,31 +108,122 @@ export function MarketingRequestsView({ currentUserId }: Props) {
     return r.status === statusFilter;
   });
 
+  function revokeLocalPreviews(list: LocalAttachment[]) {
+    for (const a of list) if (a.preview) URL.revokeObjectURL(a.preview);
+  }
+
   function openCreate() {
+    revokeLocalPreviews(localAttachments);
     setForm(EMPTY_FORM);
+    setLocalAttachments([]);
+    setRemoteAttachments([]);
+    setAttachError(null);
     setModal({ open: true, mode: "create" });
   }
 
-  function openEdit(r: Request) {
+  async function openEdit(r: Request) {
+    revokeLocalPreviews(localAttachments);
     setForm({
       title:       r.title,
       brief:       r.brief ?? "",
       notes:       r.notes ?? "",
       target_date: r.target_date ?? "",
     });
+    setLocalAttachments([]);
+    setAttachError(null);
     setModal({ open: true, mode: "edit", request: r });
+    const res = await fetch(`/api/ad-ops/requests/${r.id}/attachments`);
+    if (res.ok) {
+      const data = await res.json();
+      setRemoteAttachments(data.attachments ?? []);
+    } else {
+      setRemoteAttachments([]);
+    }
   }
 
   function closeModal() {
+    revokeLocalPreviews(localAttachments);
     setModal({ open: false, mode: "create" });
     setForm(EMPTY_FORM);
+    setLocalAttachments([]);
+    setRemoteAttachments([]);
+    setAttachError(null);
+  }
+
+  function addFiles(files: File[]) {
+    setAttachError(null);
+    const totalExisting = remoteAttachments.length + localAttachments.length;
+    const space = MAX_FILES - totalExisting;
+    if (space <= 0) {
+      setAttachError(`Maximum ${MAX_FILES} files.`);
+      return;
+    }
+    const next: LocalAttachment[] = [];
+    for (const f of files.slice(0, space)) {
+      if (!ALLOWED_MIME.includes(f.type)) {
+        setAttachError(`Unsupported file type: ${f.type || "unknown"}`);
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        setAttachError(`File too large: ${f.name} (max 10 MB)`);
+        continue;
+      }
+      const preview = f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined;
+      next.push({ file: f, preview });
+    }
+    if (next.length > 0) setLocalAttachments((prev) => [...prev, ...next]);
+  }
+
+  function removeLocalAttachment(index: number) {
+    setLocalAttachments((prev) => {
+      const target = prev[index];
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function removeRemoteAttachment(requestId: string, attachmentId: string) {
+    const res = await fetch(`/api/ad-ops/requests/${requestId}/attachments?attachment_id=${attachmentId}`, { method: "DELETE" });
+    if (res.ok) {
+      setRemoteAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      setAttachmentsByRequest((prev) => ({
+        ...prev,
+        [requestId]: (prev[requestId] ?? []).filter((a) => a.id !== attachmentId),
+      }));
+    }
+  }
+
+  async function uploadLocalAttachments(requestId: string): Promise<boolean> {
+    if (localAttachments.length === 0) return true;
+    const form = new FormData();
+    for (const a of localAttachments) form.append("files", a.file);
+    const res = await fetch(`/api/ad-ops/requests/${requestId}/attachments`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAttachError(typeof data.error === "string" ? data.error : "Attachment upload failed");
+      return false;
+    }
+    return true;
+  }
+
+  async function loadRequestAttachments(requestId: string) {
+    if (attachmentsByRequest[requestId]) return;
+    const res = await fetch(`/api/ad-ops/requests/${requestId}/attachments`);
+    if (res.ok) {
+      const data = await res.json();
+      setAttachmentsByRequest((prev) => ({ ...prev, [requestId]: data.attachments ?? [] }));
+    }
   }
 
   async function handleSaveDraft() {
     if (!form.title.trim()) return;
     setSaving(true);
+    let targetId: string | null = null;
     if (modal.mode === "create") {
-      await fetch("/api/ad-ops/requests", {
+      const res = await fetch("/api/ad-ops/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,6 +233,10 @@ export function MarketingRequestsView({ currentUserId }: Props) {
           target_date: form.target_date || null,
         }),
       });
+      if (res.ok) {
+        const created = await res.json();
+        targetId = created.id;
+      }
     } else if (modal.request) {
       await fetch(`/api/ad-ops/requests?id=${modal.request.id}`, {
         method: "PATCH",
@@ -128,7 +248,14 @@ export function MarketingRequestsView({ currentUserId }: Props) {
           target_date: form.target_date || null,
         }),
       });
+      targetId = modal.request.id;
     }
+
+    if (targetId) {
+      const ok = await uploadLocalAttachments(targetId);
+      if (!ok) { setSaving(false); return; }
+    }
+
     setSaving(false);
     closeModal();
     await fetchRequests();
@@ -170,6 +297,8 @@ export function MarketingRequestsView({ currentUserId }: Props) {
     }
 
     if (targetId) {
+      const ok = await uploadLocalAttachments(targetId);
+      if (!ok) { setSaving(false); return; }
       await fetch(`/api/ad-ops/requests?id=${targetId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -265,7 +394,11 @@ export function MarketingRequestsView({ currentUserId }: Props) {
                 {/* Row header */}
                 <div
                   className="px-5 py-4 flex items-start gap-3 cursor-pointer hover:bg-[var(--color-surface-hover)]"
-                  onClick={() => setExpanded(isExpanded ? null : r.id)}
+                  onClick={() => {
+                    const next = isExpanded ? null : r.id;
+                    setExpanded(next);
+                    if (next) loadRequestAttachments(next);
+                  }}
                 >
                   <span
                     className={`text-xs px-2.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${STATUS_STYLES[r.status] ?? "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]"}`}
@@ -302,6 +435,17 @@ export function MarketingRequestsView({ currentUserId }: Props) {
                       <div>
                         <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Notes</p>
                         <p className="text-sm text-[var(--color-text-secondary)]">{r.notes}</p>
+                      </div>
+                    )}
+
+                    {(attachmentsByRequest[r.id] ?? []).length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Attachments</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(attachmentsByRequest[r.id] ?? []).map((a) => (
+                            <AttachmentChip key={a.id} a={a} />
+                          ))}
+                        </div>
                       </div>
                     )}
 
@@ -395,6 +539,52 @@ export function MarketingRequestsView({ currentUserId }: Props) {
               />
             </div>
 
+            {/* Attachments */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                  Attachments <span className="text-[var(--color-text-tertiary)]">
+                    ({remoteAttachments.length + localAttachments.length}/{MAX_FILES}) · max 10 MB each
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={remoteAttachments.length + localAttachments.length >= MAX_FILES}
+                  className="text-[11px] text-[var(--color-accent)] hover:underline disabled:text-[var(--color-text-tertiary)] disabled:no-underline disabled:cursor-not-allowed"
+                >
+                  + Attach file
+                </button>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ALLOWED_MIME.join(",")}
+                className="hidden"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  addFiles(files);
+                  e.target.value = "";
+                }}
+              />
+              {(remoteAttachments.length + localAttachments.length) > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {remoteAttachments.map((a) => (
+                    <AttachmentChip
+                      key={a.id}
+                      a={a}
+                      onRemove={modal.request ? () => removeRemoteAttachment(modal.request!.id, a.id) : undefined}
+                    />
+                  ))}
+                  {localAttachments.map((la, i) => (
+                    <LocalAttachmentChip key={i} la={la} onRemove={() => removeLocalAttachment(i)} />
+                  ))}
+                </div>
+              )}
+              {attachError && <p className="text-xs text-[var(--color-error)] mt-1">{attachError}</p>}
+            </div>
+
             {/* Actions */}
             <div className="flex items-center justify-end gap-2 pt-1">
               <button
@@ -421,6 +611,73 @@ export function MarketingRequestsView({ currentUserId }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AttachmentChip({ a, onRemove }: { a: RemoteAttachment; onRemove?: () => void }) {
+  const isImage = a.mime_type?.startsWith("image/");
+  const label = a.file_name ?? a.path.split("/").pop() ?? "file";
+  return (
+    <div className="relative group">
+      {isImage && a.url ? (
+        <a
+          href={a.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="block w-20 h-20 rounded border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={a.url} alt={label} className="h-full w-full object-cover" />
+        </a>
+      ) : (
+        <a
+          href={a.url ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] max-w-[200px]"
+        >
+          <span className="truncate">{label}</span>
+        </a>
+      )}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="absolute -top-1 -right-1 rounded-full bg-black/70 text-white w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Remove"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+function LocalAttachmentChip({ la, onRemove }: { la: LocalAttachment; onRemove: () => void }) {
+  const isImage = la.file.type.startsWith("image/");
+  return (
+    <div className="relative group">
+      {isImage && la.preview ? (
+        <div className="w-20 h-20 rounded border border-[var(--color-border-primary)] overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={la.preview} alt={la.file.name} className="h-full w-full object-cover" />
+        </div>
+      ) : (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] max-w-[200px]">
+          <span className="truncate">{la.file.name}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="absolute -top-1 -right-1 rounded-full bg-black/70 text-white w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label="Remove"
+      >
+        ×
+      </button>
     </div>
   );
 }

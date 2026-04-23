@@ -7,6 +7,7 @@ import { trackEventServer } from "@/lib/observability/track";
 
 const feedbackCreateSchema = z.object({
   category: z.enum(["bug", "missing_feature", "confusing", "slow", "other"]),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
   body: z.string().min(1, "Feedback body is required").max(2000),
   page_url: z.string().max(500).optional(),
   user_agent: z.string().max(500).optional(),
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
     user_id: currentUser.id,
     department_id: currentUser.department?.id ?? null,
     category: body.category,
+    priority: body.priority ?? "medium",
     body: body.body,
     page_url: body.page_url ?? null,
     user_agent: body.user_agent ?? null,

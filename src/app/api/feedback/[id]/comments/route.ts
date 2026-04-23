@@ -29,7 +29,7 @@ export async function GET(
   return NextResponse.json({ comments: data ?? [] });
 }
 
-// POST /api/feedback/[id]/comments — OPS only
+// POST /api/feedback/[id]/comments — OPS or the ticket reporter
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -38,7 +38,17 @@ export async function POST(
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isOps(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  if (!isOps(currentUser)) {
+    const { data: ticket } = await supabase
+      .from("feedback")
+      .select("user_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (!ticket || ticket.user_id !== currentUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   let raw: unknown;
   try {

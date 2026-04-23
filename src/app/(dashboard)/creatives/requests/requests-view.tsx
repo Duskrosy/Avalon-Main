@@ -20,6 +20,15 @@ type Request = {
   kanban_card?: { id: string; col: { name: string } | null } | null;
 };
 
+type RemoteAttachment = {
+  id: string;
+  path: string;
+  file_name: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  url: string | null;
+};
+
 type Member = { id: string; first_name: string; last_name: string; avatar_url?: string | null };
 
 type Props = {
@@ -42,7 +51,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 // Transitions available from the fulfillment side
 const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; style: string }[]> = {
-  submitted:   [{ label: "Accept →  In Progress", next: "in_progress", style: "bg-amber-400 text-white hover:bg-amber-600" }],
+  submitted:   [{ label: "Accept → In Progress", next: "in_progress", style: "bg-amber-400 text-white hover:bg-amber-600" }],
   in_progress: [{ label: "Send for Review", next: "review", style: "bg-purple-600 text-white hover:bg-purple-700" }],
   review:      [
     { label: "Mark Approved", next: "approved",    style: "bg-[var(--color-success)] text-white hover:bg-green-700" },
@@ -50,14 +59,20 @@ const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; sty
   ],
 };
 
+function nextTransition(status: string) {
+  const list = FULFILLMENT_TRANSITIONS[status] ?? [];
+  return list[0] ?? null;
+}
+
 export function CreativesRequestsView({ members, currentUserId, canManage, isCreativesDept = false, isOps = false }: Props) {
   const isFulfillmentView = isCreativesDept || isOps;
 
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("submitted");
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [assigning, setAssigning] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [assigningInModal, setAssigningInModal] = useState(false);
+  const [attachmentsByRequest, setAttachmentsByRequest] = useState<Record<string, RemoteAttachment[]>>({});
 
   // Submit form state (non-creatives only)
   const [formTitle, setFormTitle] = useState("");
@@ -76,7 +91,6 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
       const all: Request[] = await res.json();
 
       if (isFulfillmentView) {
-        // Creatives/OPS: show requests assigned to a creatives member
         const memberIds = new Set(members.map((m) => m.id));
         const assigneesOf = (r: Request) => (r.assignees ?? []);
         const filtered = canManage
@@ -84,7 +98,6 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
           : all.filter((r) => assigneesOf(r).some((a) => a.id === currentUserId));
         setRequests(filtered);
       } else {
-        // Non-creatives: show only their own requests
         setRequests(all.filter((r) => r.requester?.id === currentUserId));
       }
     }
@@ -92,6 +105,32 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
   }, [statusFilter, members, canManage, currentUserId, isFulfillmentView]);
 
   useEffect(() => { fetchRequests(); }, [fetchRequests]);
+
+  async function loadAttachments(requestId: string) {
+    if (attachmentsByRequest[requestId]) return;
+    const res = await fetch(`/api/ad-ops/requests/${requestId}/attachments`);
+    if (res.ok) {
+      const data = await res.json();
+      setAttachmentsByRequest((prev) => ({ ...prev, [requestId]: data.attachments ?? [] }));
+    }
+  }
+
+  // Preload attachment previews for every visible request (so the row thumbnail renders)
+  useEffect(() => {
+    const missing = requests.map((r) => r.id).filter((id) => !(id in attachmentsByRequest));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      await Promise.all(missing.map(async (id) => {
+        const res = await fetch(`/api/ad-ops/requests/${id}/attachments`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setAttachmentsByRequest((prev) => ({ ...prev, [id]: data.attachments ?? [] }));
+      }));
+    })();
+    return () => { cancelled = true; };
+  }, [requests, attachmentsByRequest]);
 
   async function updateStatus(id: string, status: string) {
     await fetch(`/api/ad-ops/requests?id=${id}`, {
@@ -149,6 +188,19 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     { value: "approved",    label: "Approved" },
     { value: "",            label: "All" },
   ];
+
+  const detailRequest = detailId ? requests.find((r) => r.id === detailId) ?? null : null;
+
+  function openDetail(id: string) {
+    setDetailId(id);
+    setAssigningInModal(false);
+    loadAttachments(id);
+  }
+
+  function closeDetail() {
+    setDetailId(null);
+    setAssigningInModal(false);
+  }
 
   return (
     <div>
@@ -237,12 +289,10 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
         </form>
       )}
 
-      {/* Section label for non-creatives list */}
       {!isFulfillmentView && (
         <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Your Requests</p>
       )}
 
-      {/* Status filter tabs */}
       <div className="flex items-center gap-1 mb-5 flex-wrap">
         {STATUS_FILTERS.map((f) => (
           <button
@@ -278,105 +328,290 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
         </div>
       ) : (
         <div className="space-y-2">
-          {requests.map((r) => (
-            <div key={r.id} className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden">
-              {/* Row header */}
+          {requests.map((r) => {
+            const attachments = attachmentsByRequest[r.id] ?? [];
+            const firstImage = attachments.find((a) => a.mime_type?.startsWith("image/"));
+            const transition = nextTransition(r.status);
+            return (
               <div
-                className="px-5 py-4 flex items-start gap-3 cursor-pointer hover:bg-[var(--color-surface-hover)]"
-                onClick={() => setExpanded(expanded === r.id ? null : r.id)}
+                key={r.id}
+                className="bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] overflow-hidden hover:bg-[var(--color-surface-hover)] cursor-pointer"
+                onClick={() => openDetail(r.id)}
               >
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium shrink-0 mt-0.5 ${STATUS_STYLES[r.status] ?? ""}`}>
-                  {r.status.replace("_", " ")}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[var(--color-text-primary)]">{r.title}</p>
-                  <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
-                    {isFulfillmentView && (
-                      <>
-                        From: {r.requester ? `${r.requester.first_name} ${r.requester.last_name}` : "Unknown"}
-                        {r.assignees && r.assignees.length > 0
-                          ? ` · Assigned to ${r.assignees.map((a) => `${a.first_name} ${a.last_name}`).join(", ")}`
-                          : " · Unassigned"}
-                      </>
-                    )}
-                    {r.target_date ? `${isFulfillmentView ? " · " : ""}due ${format(parseISO(r.target_date), "d MMM")}` : ""}
-                  </p>
-                  {!isFulfillmentView && r.kanban_card?.col?.name && (
-                    <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
-                      Stage: {r.kanban_card.col.name}
-                    </span>
+                <div className="px-4 py-3 flex items-center gap-3">
+                  {/* Thumbnail (or placeholder) */}
+                  {firstImage?.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={firstImage.url}
+                      alt=""
+                      className="w-12 h-12 rounded-md object-cover border border-[var(--color-border-primary)] shrink-0"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-md bg-[var(--color-bg-tertiary)] border border-[var(--color-border-primary)] shrink-0 flex items-center justify-center text-[10px] text-[var(--color-text-tertiary)]">
+                      {attachments.length > 0 ? `${attachments.length}📎` : "—"}
+                    </div>
                   )}
+
+                  <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium shrink-0 ${STATUS_STYLES[r.status] ?? ""}`}>
+                    {r.status.replace("_", " ")}
+                  </span>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-[var(--color-text-primary)] truncate">{r.title}</p>
+                    <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5 truncate">
+                      {isFulfillmentView && (
+                        <>
+                          From: {r.requester ? `${r.requester.first_name} ${r.requester.last_name}` : "Unknown"}
+                          {r.assignees && r.assignees.length > 0
+                            ? ` · Assigned to ${r.assignees.map((a) => `${a.first_name} ${a.last_name}`).join(", ")}`
+                            : " · Unassigned"}
+                        </>
+                      )}
+                      {r.target_date ? `${isFulfillmentView ? " · " : ""}due ${format(parseISO(r.target_date), "d MMM")}` : ""}
+                    </p>
+                    {!isFulfillmentView && r.kanban_card?.col?.name && (
+                      <span className="inline-flex mt-1 text-[10px] px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full font-medium">
+                        Stage: {r.kanban_card.col.name}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Edge actions — fulfillment only, visible on the row */}
+                  {isFulfillmentView && (
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {transition && (
+                        <button
+                          onClick={() => updateStatus(r.id, transition.next)}
+                          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${transition.style}`}
+                        >
+                          Move Next
+                        </button>
+                      )}
+                      {canManage && (
+                        <button
+                          onClick={() => openDetail(r.id)}
+                          className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
+                        >
+                          {(r.assignees ?? []).length > 0 ? "Reassign" : "Assign"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
+                    {format(parseISO(r.created_at), "d MMM")}
+                  </span>
                 </div>
-                <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
-                  {format(parseISO(r.created_at), "d MMM")}
-                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {detailRequest && (
+        <RequestDetailModal
+          request={detailRequest}
+          attachments={attachmentsByRequest[detailRequest.id] ?? []}
+          members={members}
+          canManage={canManage}
+          isFulfillmentView={isFulfillmentView}
+          assigning={assigningInModal}
+          onStartAssign={() => setAssigningInModal(true)}
+          onStopAssign={() => setAssigningInModal(false)}
+          onUpdateStatus={(status) => updateStatus(detailRequest.id, status)}
+          onReassign={(ids) => reassign(detailRequest.id, ids)}
+          onClose={closeDetail}
+        />
+      )}
+    </div>
+  );
+}
+
+function RequestDetailModal({
+  request: r,
+  attachments,
+  members,
+  canManage,
+  isFulfillmentView,
+  assigning,
+  onStartAssign,
+  onStopAssign,
+  onUpdateStatus,
+  onReassign,
+  onClose,
+}: {
+  request: Request;
+  attachments: RemoteAttachment[];
+  members: Member[];
+  canManage: boolean;
+  isFulfillmentView: boolean;
+  assigning: boolean;
+  onStartAssign: () => void;
+  onStopAssign: () => void;
+  onUpdateStatus: (status: string) => void;
+  onReassign: (ids: string[]) => void;
+  onClose: () => void;
+}) {
+  const transitions = FULFILLMENT_TRANSITIONS[r.status] ?? [];
+  const moveNext = transitions[0] ?? null;
+  const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith("image/"));
+  const fileAttachments = attachments.filter((a) => !a.mime_type?.startsWith("image/"));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 z-10 bg-[var(--color-bg-primary)] border-b border-[var(--color-border-secondary)] px-6 py-4 flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${STATUS_STYLES[r.status] ?? ""}`}>
+                {r.status.replace("_", " ")}
+              </span>
+              <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                Created {format(parseISO(r.created_at), "d MMM yyyy")}
+              </span>
+            </div>
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] truncate">{r.title}</h2>
+            <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5">
+              From: {r.requester ? `${r.requester.first_name} ${r.requester.last_name}` : "Unknown"}
+              {r.target_date ? ` · due ${format(parseISO(r.target_date), "d MMM yyyy")}` : ""}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] transition-colors"
+            aria-label="Close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {r.brief && (
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Brief</p>
+              <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap">{r.brief}</p>
+            </div>
+          )}
+
+          {r.notes && (
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Notes</p>
+              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{r.notes}</p>
+            </div>
+          )}
+
+          {imageAttachments.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">
+                Images ({imageAttachments.length})
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {imageAttachments.map((a) => (
+                  a.url ? (
+                    <a
+                      key={a.id}
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block aspect-square rounded-md border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.url} alt={a.file_name ?? ""} className="h-full w-full object-cover" />
+                    </a>
+                  ) : (
+                    <div key={a.id} className="aspect-square rounded-md border border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)] flex items-center justify-center text-[10px] text-[var(--color-text-tertiary)]">
+                      image
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          )}
+
+          {fileAttachments.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Files</p>
+              <div className="flex flex-wrap gap-2">
+                {fileAttachments.map((a) => (
+                  <a
+                    key={a.id}
+                    href={a.url ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] max-w-[260px]"
+                  >
+                    <span className="truncate">{a.file_name ?? a.path.split("/").pop()}</span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {isFulfillmentView && (
+            <div className="pt-4 border-t border-[var(--color-border-secondary)] space-y-3">
+              <p className="text-xs font-medium text-[var(--color-text-secondary)]">Actions</p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {transitions.map((t) => (
+                  <button
+                    key={t.next}
+                    onClick={() => onUpdateStatus(t.next)}
+                    className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${t.style}`}
+                  >
+                    {t === moveNext ? `Move Next — ${t.label}` : t.label}
+                  </button>
+                ))}
+                {transitions.length === 0 && (
+                  <p className="text-xs text-[var(--color-text-tertiary)] italic">No transitions available from this status.</p>
+                )}
               </div>
 
-              {/* Expanded detail */}
-              {expanded === r.id && (
-                <div className="border-t border-[var(--color-border-secondary)] px-5 py-4 bg-[var(--color-bg-secondary)] space-y-3">
-                  {r.brief && (
-                    <div>
-                      <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Brief</p>
-                      <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap">{r.brief}</p>
+              {canManage && (
+                <div>
+                  <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Assignees</p>
+                  {assigning ? (
+                    <div className="flex items-start gap-2">
+                      <div className="flex-1">
+                        <PeoplePicker
+                          value={(r.assignees ?? []).map((a) => a.id)}
+                          onChange={(ids) => { onReassign(ids); }}
+                          allUsers={members}
+                          placeholder="Add assignees…"
+                        />
+                      </div>
+                      <button
+                        onClick={onStopAssign}
+                        className="text-xs text-[var(--color-text-tertiary)] px-2 py-2 hover:text-[var(--color-text-primary)]"
+                      >
+                        Done
+                      </button>
                     </div>
-                  )}
-                  {r.notes && (
-                    <div>
-                      <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Notes</p>
-                      <p className="text-sm text-[var(--color-text-secondary)]">{r.notes}</p>
-                    </div>
-                  )}
-
-                  {/* Fulfillment actions — creatives/OPS only */}
-                  {isFulfillmentView && (
-                    <div className="flex items-center gap-2 flex-wrap pt-1">
-                      {(FULFILLMENT_TRANSITIONS[r.status] ?? []).map((t) => (
-                        <button
-                          key={t.next}
-                          onClick={() => updateStatus(r.id, t.next)}
-                          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${t.style}`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-
-                      {/* Assign / reassign — managers only */}
-                      {canManage && (
-                        assigning === r.id ? (
-                          <div className="flex items-start gap-2 flex-1 min-w-[260px]">
-                            <div className="flex-1">
-                              <PeoplePicker
-                                value={(r.assignees ?? []).map((a) => a.id)}
-                                onChange={(ids) => { reassign(r.id, ids); }}
-                                allUsers={members}
-                                placeholder="Add assignees…"
-                              />
-                            </div>
-                            <button
-                              onClick={() => setAssigning(null)}
-                              className="text-xs text-[var(--color-text-tertiary)] px-2 py-2 hover:text-[var(--color-text-primary)]"
-                            >
-                              Done
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setAssigning(r.id); }}
-                            className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
-                          >
-                            {(r.assignees ?? []).length > 0 ? "Edit assignees" : "Assign"}
-                          </button>
-                        )
-                      )}
+                  ) : (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm text-[var(--color-text-primary)]">
+                        {(r.assignees ?? []).length > 0
+                          ? (r.assignees ?? []).map((a) => `${a.first_name} ${a.last_name}`).join(", ")
+                          : <span className="text-[var(--color-text-tertiary)]">Unassigned</span>}
+                      </span>
+                      <button
+                        onClick={onStartAssign}
+                        className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] border border-[var(--color-border-primary)] px-3 py-1.5 rounded-lg"
+                      >
+                        {(r.assignees ?? []).length > 0 ? "Edit assignees" : "Assign"}
+                      </button>
                     </div>
                   )}
                 </div>
               )}
             </div>
-          ))}
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
