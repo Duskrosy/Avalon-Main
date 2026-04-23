@@ -65,13 +65,29 @@ export default async function ShopifyPage() {
     profiles: any;
   };
   const confirmedSalesFromDate = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
-  const confirmedSales = await fetchAllRows<ConfirmedSaleRow>(() =>
+  const confirmedSalesRaw = await fetchAllRows<Omit<ConfirmedSaleRow, "profiles">>(() =>
     admin
       .from("sales_confirmed_sales")
-      .select("id, order_id, confirmed_date, net_value, agent_id, profiles(first_name, last_name)")
+      .select("id, order_id, confirmed_date, net_value, agent_id")
       .gte("confirmed_date", confirmedSalesFromDate)
       .order("confirmed_date", { ascending: false }),
   );
+
+  // Fetch profiles in a second query and stitch in JS — sales_confirmed_sales has
+  // multiple FKs to profiles (agent_id, created_by) so PostgREST can't auto-embed.
+  const agentIds = [...new Set(confirmedSalesRaw.map((c) => c.agent_id))];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: agentProfiles } = agentIds.length
+    ? await (admin as any).from("profiles").select("id, first_name, last_name").in("id", agentIds)
+    : { data: [] };
+  const agentMap = new Map<string, { first_name: string | null; last_name: string | null }>();
+  for (const p of (agentProfiles ?? []) as Array<{ id: string; first_name: string | null; last_name: string | null }>) {
+    agentMap.set(p.id, { first_name: p.first_name, last_name: p.last_name });
+  }
+  const confirmedSales: ConfirmedSaleRow[] = confirmedSalesRaw.map((c) => ({
+    ...c,
+    profiles: agentMap.get(c.agent_id) ?? null,
+  }));
 
   // ── Build lookup sets ─────────────────────────────────────────────────────
   // Normalise: strip all non-digits from order_id
