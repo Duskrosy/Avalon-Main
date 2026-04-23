@@ -121,6 +121,7 @@ export async function fetchShopifyOrderById(
  */
 export async function fetchShopifyOrders(params: {
   createdAtMin?: string;  // ISO timestamp
+  createdAtMax?: string;  // ISO timestamp (inclusive upper bound)
   status?: string;        // "any" | "open" | "closed" | "cancelled"
   limit?: number;         // max 250 per page
 }): Promise<ShopifyOrder[]> {
@@ -138,6 +139,7 @@ export async function fetchShopifyOrders(params: {
     fields,
   });
   if (params.createdAtMin) qs.set("created_at_min", params.createdAtMin);
+  if (params.createdAtMax) qs.set("created_at_max", params.createdAtMax);
 
   let nextUrl: string | null =
     `https://${shopDomain}/admin/api/2024-01/orders.json?${qs}`;

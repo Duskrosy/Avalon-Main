@@ -11,14 +11,15 @@ export default async function ShopifyPage() {
 
   const admin = createAdminClient();
 
-  // ── Last sync run ─────────────────────────────────────────────────────────
+  // ── Last sync run + recent history ────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: lastSync } = await (admin as any)
+  const { data: recentRunsRaw } = await (admin as any)
     .from("shopify_sync_runs")
-    .select("status, triggered_by, orders_synced, started_at, completed_at, error_log")
+    .select("id, status, triggered_by, orders_synced, sync_date, started_at, completed_at, error_log")
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
+  const recentRuns = recentRunsRaw ?? [];
+  const lastSync = recentRuns[0] ?? null;
 
   type ShopifyOrderRow = {
     shopify_order_id: string;
@@ -118,6 +119,7 @@ export default async function ShopifyPage() {
   return (
     <ShopifyReconciliation
       lastSync={lastSync ?? null}
+      recentRuns={recentRuns}
       unmatchedOrders={unmatchedOrders ?? []}
       unverifiedSales={unverifiedSales ?? []}
       mismatches={mismatches}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { useToast, Toast } from "@/components/ui/toast";
 import {
@@ -63,8 +64,14 @@ type StatsData = {
   last_synced: string | null;
 };
 
+type SyncRunFull = SyncRun & {
+  id: string;
+  sync_date: string | null;
+};
+
 type Props = {
   lastSync: SyncRun | null;
+  recentRuns: SyncRunFull[];
   unmatchedOrders: UnmatchedOrder[];
   unverifiedSales: UnverifiedSale[];
   mismatches: Mismatch[];
@@ -116,14 +123,46 @@ const PRESET_LABELS: Record<StatsPreset, string> = {
 
 export function ShopifyReconciliation({
   lastSync,
+  recentRuns,
   unmatchedOrders,
   unverifiedSales,
   mismatches,
   shopifyDomain,
 }: Props) {
+  const router = useRouter();
   const { toast, setToast } = useToast();
   const [tab, setTab]       = useState<"unmatched" | "unverified" | "mismatches">("unmatched");
   const [syncing, setSyncing] = useState(false);
+
+  // Backfill panel state
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+  const [backfillOpen, setBackfillOpen] = useState(false);
+  const [backfillFrom, setBackfillFrom] = useState(weekAgo);
+  const [backfillTo, setBackfillTo] = useState(today);
+  const [backfilling, setBackfilling] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const runBackfill = useCallback(async () => {
+    setBackfilling(true);
+    try {
+      const res = await fetch("/api/sales/shopify-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: backfillFrom, to: backfillTo }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setToast({ message: data.error ?? "Backfill failed", type: "error" });
+      } else {
+        setToast({ message: `Backfilled ${data.synced ?? 0} orders (${backfillFrom} → ${backfillTo})`, type: "success" });
+        setBackfillOpen(false);
+        router.refresh();
+      }
+    } finally {
+      setBackfilling(false);
+    }
+  }, [backfillFrom, backfillTo, router, setToast]);
 
   // ── Analytics state ───────────────────────────────────────────────────────
   const [statsPreset, setStatsPreset] = useState<StatsPreset>("today");
@@ -154,10 +193,11 @@ export function ShopifyReconciliation({
       // Refetch stats after sync
       await fetchStats(statsPreset);
       setToast({ message: "Shopify data synced", type: "success" });
+      router.refresh();
     } finally {
       setSyncing(false);
     }
-  }, [fetchStats, statsPreset, setToast]);
+  }, [fetchStats, statsPreset, setToast, router]);
 
   const tabs = [
     { key: "unmatched",  label: "Unmatched Orders",    count: unmatchedOrders.length },
@@ -174,21 +214,109 @@ export function ShopifyReconciliation({
           <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Shopify</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">Sales analytics · reconciliation · audit</p>
         </div>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center gap-2 bg-[#3A5635] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#2e4429] disabled:opacity-50 transition-colors"
-        >
-          {syncing ? (
-            <>
-              <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Syncing…
-            </>
-          ) : (
-            "↻ Sync Now"
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowHistory((v) => !v)}
+            className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          >
+            {showHistory ? "Hide history" : "Sync history"}
+          </button>
+          <button
+            onClick={() => setBackfillOpen((v) => !v)}
+            className="text-sm px-3 py-2 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          >
+            Backfill…
+          </button>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 bg-[#3A5635] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#2e4429] disabled:opacity-50 transition-colors"
+          >
+            {syncing ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Syncing…
+              </>
+            ) : (
+              "↻ Sync Now"
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* ── Backfill panel ──────────────────────────────────────────────── */}
+      {backfillOpen && (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-4 py-3 flex items-center gap-3 flex-wrap">
+          <span className="text-xs font-medium text-[var(--color-text-secondary)]">Backfill range (PH time):</span>
+          <label className="text-xs text-[var(--color-text-tertiary)] flex items-center gap-1">
+            From
+            <input
+              type="date"
+              value={backfillFrom}
+              max={backfillTo}
+              onChange={(e) => setBackfillFrom(e.target.value)}
+              className="text-xs px-2 py-1 rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]"
+            />
+          </label>
+          <label className="text-xs text-[var(--color-text-tertiary)] flex items-center gap-1">
+            To
+            <input
+              type="date"
+              value={backfillTo}
+              min={backfillFrom}
+              max={today}
+              onChange={(e) => setBackfillTo(e.target.value)}
+              className="text-xs px-2 py-1 rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)]"
+            />
+          </label>
+          <button
+            onClick={runBackfill}
+            disabled={backfilling || !backfillFrom || !backfillTo}
+            className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50"
+          >
+            {backfilling ? "Backfilling…" : "Run backfill"}
+          </button>
+          <span className="text-[11px] text-[var(--color-text-tertiary)] ml-auto">
+            Pulls Shopify orders created in this range. Idempotent — safe to re-run.
+          </span>
+        </div>
+      )}
+
+      {/* ── Sync history ────────────────────────────────────────────────── */}
+      {showHistory && (
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] overflow-hidden">
+          <div className="px-4 py-2 border-b border-[var(--color-border-secondary)] text-xs font-medium text-[var(--color-text-secondary)]">
+            Recent sync runs ({recentRuns.length})
+          </div>
+          {recentRuns.length === 0 ? (
+            <div className="px-4 py-3 text-xs text-[var(--color-text-tertiary)]">No runs recorded yet.</div>
+          ) : (
+            <div className="divide-y divide-[var(--color-border-secondary)]">
+              {recentRuns.map((r) => (
+                <div key={r.id} className="px-4 py-2 flex items-center gap-3 text-xs">
+                  <span className={`px-2 py-0.5 rounded-full font-medium shrink-0 ${
+                    r.status === "success" ? "bg-[var(--color-success-light)] text-[var(--color-success)]" :
+                    r.status === "failed"  ? "bg-[var(--color-error-light)] text-[var(--color-error)]" :
+                    "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]"
+                  }`}>{r.status}</span>
+                  <span className="text-[var(--color-text-secondary)] shrink-0 w-16">
+                    {r.triggered_by}
+                  </span>
+                  <span className="text-[var(--color-text-tertiary)] shrink-0 w-44">
+                    {format(parseISO(r.started_at), "d MMM yyyy · HH:mm")}
+                  </span>
+                  <span className="text-[var(--color-text-secondary)] shrink-0 w-24">
+                    {r.orders_synced ?? 0} orders
+                  </span>
+                  <span className="text-[var(--color-error)] truncate flex-1" title={r.error_log ?? ""}>
+                    {r.error_log ?? ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Sync status ─────────────────────────────────────────────────── */}
       {lastSync && (

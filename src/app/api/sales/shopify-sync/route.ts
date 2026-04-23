@@ -32,26 +32,51 @@ export async function POST(req: NextRequest) {
   const triggeredBy = fromCron ? "cron" : "manual";
   const admin = createAdminClient();
 
-  // Default: 25-hour window (overlapping handles midnight edge cases)
-  // Optional body: { date: "YYYY-MM-DD" } to backfill a specific date
+  // Window resolution — three modes:
+  //   • explicit { date: "YYYY-MM-DD" }     → that calendar day (PH time)
+  //   • explicit { from, to } date range    → from..to inclusive (PH time)
+  //   • default (cron/manual without body)  → self-healing: start from
+  //     max(created_at_shopify) minus a 6h overlap buffer, capped at 30 days.
+  //     If the table is empty, fall back to a 25h window.
   let createdAtMin: string;
+  let createdAtMax: string | undefined;
   let syncDate: string;
 
-  try {
-    const body = await req.json().catch(() => ({}));
-    if (body?.date && typeof body.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
-      // Manual backfill: pull orders created on that calendar date
-      createdAtMin = `${body.date}T00:00:00+08:00`;
-      syncDate = body.date;
+  const body = await req.json().catch(() => ({}));
+  const isYmd = (s: unknown): s is string =>
+    typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+
+  if (isYmd(body?.date)) {
+    const start = `${body.date}T00:00:00+08:00`;
+    const end   = `${body.date}T23:59:59+08:00`;
+    createdAtMin = start;
+    createdAtMax = end;
+    syncDate = body.date;
+  } else if (isYmd(body?.from) && isYmd(body?.to)) {
+    createdAtMin = `${body.from}T00:00:00+08:00`;
+    createdAtMax = `${body.to}T23:59:59+08:00`;
+    syncDate = body.from;
+  } else {
+    // Self-healing: pick up where we left off
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: latest } = await (admin as any)
+      .from("shopify_orders")
+      .select("created_at_shopify")
+      .order("created_at_shopify", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const MAX_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;  // cap so a first run doesn't pull the whole store
+    const OVERLAP_MS      = 6  * 60 * 60 * 1000;       // re-pull last 6h to catch updates + clock drift
+
+    if (latest?.created_at_shopify) {
+      const lastOrder = new Date(latest.created_at_shopify);
+      const overlapStart = new Date(lastOrder.getTime() - OVERLAP_MS);
+      const floor = new Date(Date.now() - MAX_LOOKBACK_MS);
+      createdAtMin = (overlapStart < floor ? floor : overlapStart).toISOString();
     } else {
-      // Default: last 25 hours
-      const windowStart = new Date(Date.now() - 25 * 60 * 60 * 1000);
-      createdAtMin = windowStart.toISOString();
-      syncDate = new Date().toISOString().slice(0, 10);
+      createdAtMin = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
     }
-  } catch {
-    const windowStart = new Date(Date.now() - 25 * 60 * 60 * 1000);
-    createdAtMin = windowStart.toISOString();
     syncDate = new Date().toISOString().slice(0, 10);
   }
 
@@ -70,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // ── 2. Fetch orders from Shopify ────────────────────────────────────────
-    const orders = await fetchShopifyOrders({ createdAtMin, status: "any" });
+    const orders = await fetchShopifyOrders({ createdAtMin, createdAtMax, status: "any" });
 
     if (orders.length === 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
