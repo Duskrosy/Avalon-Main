@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/permissions";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { redirect } from "next/navigation";
 import { ShopifyReconciliation } from "./shopify-reconciliation";
 
@@ -38,27 +39,39 @@ export default async function ShopifyPage() {
   // Join shopify_orders against sales_confirmed_sales by normalised order number.
   // We fetch shopify_orders and then do the match in JS — Supabase PostgREST
   // doesn't support NOT EXISTS across tables, so we pull both sides and filter.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: allShopifyOrdersRaw } = await (admin as any)
-    .from("shopify_orders")
-    .select(
-      "shopify_order_id, order_number, order_number_display, created_at_shopify, " +
-      "financial_status, fulfillment_status, total_price, first_line_item_name, " +
-      "total_quantity, customer_name",
-    )
-    .gte(
-      "created_at_shopify",
-      new Date(Date.now() - 90 * 86400000).toISOString(),
-    )
-    .order("created_at_shopify", { ascending: false });
-  const allShopifyOrders = (allShopifyOrdersRaw ?? []) as ShopifyOrderRow[];
+  // Paginated because PostgREST caps a single SELECT at 1000 rows.
+  const ninetyDaysAgoIso = new Date(Date.now() - 90 * 86400000).toISOString();
+  const allShopifyOrders = await fetchAllRows<ShopifyOrderRow>(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin as any)
+      .from("shopify_orders")
+      .select(
+        "shopify_order_id, order_number, order_number_display, created_at_shopify, " +
+        "financial_status, fulfillment_status, total_price, first_line_item_name, " +
+        "total_quantity, customer_name",
+      )
+      .gte("created_at_shopify", ninetyDaysAgoIso)
+      .order("created_at_shopify", { ascending: false }),
+  );
 
   // ── 2. Confirmed sales with numeric order IDs ──────────────────────────────
-  const { data: confirmedSales } = await admin
-    .from("sales_confirmed_sales")
-    .select("id, order_id, confirmed_date, net_value, agent_id, profiles(first_name, last_name)")
-    .gte("confirmed_date", new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10))
-    .order("confirmed_date", { ascending: false });
+  type ConfirmedSaleRow = {
+    id: string;
+    order_id: string;
+    confirmed_date: string;
+    net_value: number;
+    agent_id: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    profiles: any;
+  };
+  const confirmedSalesFromDate = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
+  const confirmedSales = await fetchAllRows<ConfirmedSaleRow>(() =>
+    admin
+      .from("sales_confirmed_sales")
+      .select("id, order_id, confirmed_date, net_value, agent_id, profiles(first_name, last_name)")
+      .gte("confirmed_date", confirmedSalesFromDate)
+      .order("confirmed_date", { ascending: false }),
+  );
 
   // ── Build lookup sets ─────────────────────────────────────────────────────
   // Normalise: strip all non-digits from order_id

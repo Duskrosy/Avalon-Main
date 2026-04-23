@@ -136,12 +136,18 @@ export async function POST(req: NextRequest) {
     });
 
     // ── 5. Upsert into shopify_orders ────────────────────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: upsertError } = await (admin as any)
-      .from("shopify_orders")
-      .upsert(rows, { onConflict: "shopify_order_id" });
-
-    if (upsertError) throw new Error(`Upsert failed: ${upsertError.message}`);
+    // Batch upserts: Supabase/PostgREST silently caps a single write payload
+    // at ~1000 rows, so a 5000-order backfill would lose everything past row
+    // 999. Chunk and iterate.
+    const UPSERT_BATCH = 500;
+    for (let i = 0; i < rows.length; i += UPSERT_BATCH) {
+      const batch = rows.slice(i, i + UPSERT_BATCH);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: upsertError } = await (admin as any)
+        .from("shopify_orders")
+        .upsert(batch, { onConflict: "shopify_order_id" });
+      if (upsertError) throw new Error(`Upsert failed at batch ${i / UPSERT_BATCH}: ${upsertError.message}`);
+    }
 
     // ── 6. Finalize sync run ─────────────────────────────────────────────────
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

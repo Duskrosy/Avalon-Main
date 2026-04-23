@@ -84,17 +84,22 @@ async function main() {
   console.log(`\nDays in the last 60 with NO successful cron run: ${missing.length}`);
   if (missing.length > 0) console.log(`  ${missing.slice(0, 20).join(", ")}${missing.length > 20 ? ", …" : ""}`);
 
-  // Shopify-order coverage: count distinct order dates in shopify_orders (last 60 days)
+  // Shopify-order coverage: count distinct order dates in shopify_orders (last 60 days).
+  // Paginated because PostgREST caps SELECT at 1000 rows.
   const since = new Date(Date.now() - 60 * 86400000).toISOString();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: orders, error: ordErr } = await (admin as any)
-    .from("shopify_orders")
-    .select("created_at_shopify")
-    .gte("created_at_shopify", since);
-
-  if (ordErr) {
-    console.error("\nshopify_orders query failed:", ordErr.message);
-    return;
+  const PAGE = 1000;
+  const orders: Array<{ created_at_shopify: string }> = [];
+  for (let start = 0; ; start += PAGE) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (admin as any)
+      .from("shopify_orders")
+      .select("created_at_shopify")
+      .gte("created_at_shopify", since)
+      .range(start, start + PAGE - 1);
+    if (error) { console.error("\nshopify_orders query failed:", error.message); return; }
+    const rows = (data ?? []) as Array<{ created_at_shopify: string }>;
+    orders.push(...rows);
+    if (rows.length < PAGE) break;
   }
 
   const orderDays = new Map<string, number>();
@@ -111,7 +116,21 @@ async function main() {
   }
   console.log(`\nDays in the last 60 with ZERO shopify_orders rows: ${orderMissing.length}`);
   if (orderMissing.length > 0) console.log(`  ${orderMissing.slice(0, 20).join(", ")}${orderMissing.length > 20 ? ", …" : ""}`);
-  console.log(`\nTotal shopify_orders in last 60 days: ${orders?.length ?? 0}`);
+  console.log(`\nTotal shopify_orders fetched (paginated, last 60 days): ${orders.length}`);
+
+  // Authoritative COUNT(*) to detect row-cap illusion
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: totalCount } = await (admin as any)
+    .from("shopify_orders")
+    .select("shopify_order_id", { count: "exact", head: true })
+    .gte("created_at_shopify", since);
+  console.log(`Authoritative COUNT(*) in last 60 days: ${totalCount ?? "?"}`);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: grandTotal } = await (admin as any)
+    .from("shopify_orders")
+    .select("shopify_order_id", { count: "exact", head: true });
+  console.log(`Authoritative COUNT(*) across ALL time: ${grandTotal ?? "?"}`);
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });

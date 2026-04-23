@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { NextRequest, NextResponse } from "next/server";
 import { fetchShopifyOrders } from "@/lib/shopify/client";
 
@@ -43,13 +44,24 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
 
   // ── 1. DB query for selected range ────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: dbOrders } = await (admin as any)
-    .from("shopify_orders")
-    .select("order_number, total_price, financial_status, fulfillment_status, created_at_shopify, payment_gateway, total_quantity")
-    .gte("created_at_shopify", fromUTC)
-    .lte("created_at_shopify", toUTC)
-    .order("created_at_shopify", { ascending: true });
+  type DbOrderRow = {
+    order_number: number;
+    total_price: string;
+    financial_status: string | null;
+    fulfillment_status: string | null;
+    created_at_shopify: string;
+    payment_gateway: string | null;
+    total_quantity: number;
+  };
+  const dbOrders = await fetchAllRows<DbOrderRow>(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin as any)
+      .from("shopify_orders")
+      .select("order_number, total_price, financial_status, fulfillment_status, created_at_shopify, payment_gateway, total_quantity")
+      .gte("created_at_shopify", fromUTC)
+      .lte("created_at_shopify", toUTC)
+      .order("created_at_shopify", { ascending: true }),
+  );
 
   // ── 2. If range includes today: supplement with live Shopify data ─────────
   let liveOrders: { order_number: number; total_price: string; created_at: string; financial_status: string | null }[] = [];
@@ -77,12 +89,14 @@ export async function GET(req: NextRequest) {
   }
 
   // ── 3. DB query for previous period ──────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: prevOrders } = await (admin as any)
-    .from("shopify_orders")
-    .select("total_price")
-    .gte("created_at_shopify", prevFromUTC)
-    .lte("created_at_shopify", prevToUTC);
+  const prevOrders = await fetchAllRows<{ total_price: string }>(() =>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (admin as any)
+      .from("shopify_orders")
+      .select("total_price")
+      .gte("created_at_shopify", prevFromUTC)
+      .lte("created_at_shopify", prevToUTC),
+  );
 
   // ── 4. Last sync info ─────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
