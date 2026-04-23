@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -154,6 +155,19 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
     fetchAds();
     const t = setInterval(() => fetchAds(), AUTO_REFRESH_MS);
     return () => clearInterval(t);
+  }, [fetchAds]);
+
+  // Realtime: refetch when Meta sync writes campaigns, stats, or caps.
+  // Polling interval above stays as a fallback for when the WS drops.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("ad-ops-live-ads")
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_campaigns" },  () => fetchAds())
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_ad_stats" },   () => fetchAds())
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_adset_caps" }, () => fetchAds())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [fetchAds]);
 
   // ── Thumbnail fetch on adset expand ───────────────────────────────────────

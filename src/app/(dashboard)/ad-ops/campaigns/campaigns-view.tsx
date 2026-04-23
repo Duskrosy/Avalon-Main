@@ -2,9 +2,11 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { format, parseISO, differenceInCalendarDays, subDays } from "date-fns";
+import { useRouter } from "next/navigation";
 import { useToast, Toast } from "@/components/ui/toast";
 import { DeltaBadge } from "@/components/ui/delta-badge";
 import { DemographicBar, GENDER_COLORS, AGE_COLORS, type BarSegment } from "@/components/ui/demographic-bar";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -471,6 +473,19 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [activeTab, setActiveTab] = useState<"main" | "messenger">("main");
 
   const settingsRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Realtime: when Meta sync writes campaigns or stats, re-run the server
+  // component so the page picks up fresh props.
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("ad-ops-campaigns")
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_campaigns" }, () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_ad_stats" },  () => router.refresh())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [router]);
 
   // Close settings on outside click
   useEffect(() => {
