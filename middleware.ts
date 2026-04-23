@@ -46,11 +46,11 @@ function buildCsp(supabaseHost: string): string {
     // 'unsafe-inline' is required for Next.js App Router (inline hydration scripts).
     // 'strict-dynamic' cannot be used because Next.js emits static <script src> chunk
     // tags that don't carry nonces and aren't dynamically created by a trusted script.
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'unsafe-inline' https://us-assets.i.posthog.com",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https:",
     "font-src 'self'",
-    `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.giphy.com https://us.i.posthog.com`,
+    `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://api.giphy.com https://us.i.posthog.com https://us-assets.i.posthog.com`,
     `frame-src 'self' https://${supabaseHost} https://*.supabase.co https://*.supabase.in https://docs.google.com`,
     "object-src 'none'",
     "base-uri 'self'",
