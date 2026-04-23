@@ -7,6 +7,7 @@ import { CalendarWidget } from "../calendar-widget";
 import { LookAhead, computeAlerts } from "../look-ahead";
 import { AttendanceCard } from "../attendance-card";
 import { CeoPlanning } from "../ceo-planning";
+import { seedDefaultColumns } from "@/lib/kanban/defaults";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CalEvent = any;
@@ -74,14 +75,7 @@ export default async function ExecutivePlanningPage() {
       .select("id, owner_id")
       .single();
     if (newBoard) {
-      const defaultColumns = ["To Do", "In Progress", "Review", "Done"];
-      await admin.from("kanban_columns").insert(
-        defaultColumns.map((name, i) => ({
-          board_id: newBoard.id,
-          name,
-          sort_order: i,
-        })),
-      );
+      await seedDefaultColumns(admin, newBoard.id, "personal");
       featuredBoard = newBoard;
     }
   }

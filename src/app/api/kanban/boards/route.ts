@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
+import { seedDefaultColumns } from "@/lib/kanban/defaults";
 
 // POST /api/kanban/boards — create a new board
 export async function POST(req: NextRequest) {
@@ -85,16 +86,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // Create default columns
-  const defaultColumns = ["To Do", "In Progress", "Review", "Done"];
-  await admin.from("kanban_columns").insert(
-    defaultColumns.map((colName, i) => ({
-      board_id: newBoard.id,
-      name: colName,
-      sort_order: i,
-      color: "#6b7280",
-    }))
-  );
+  // Create default columns — creatives team boards get tracker-status columns
+  let departmentSlug: string | null = null;
+  if (scope === "team" && department_id) {
+    const { data: dept } = await admin
+      .from("departments")
+      .select("slug")
+      .eq("id", department_id)
+      .maybeSingle();
+    departmentSlug = dept?.slug ?? null;
+  }
+  await seedDefaultColumns(admin, newBoard.id, scope, departmentSlug);
 
   return NextResponse.json(newBoard, { status: 201 });
 }

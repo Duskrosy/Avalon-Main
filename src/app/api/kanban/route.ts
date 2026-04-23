@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
+import { seedDefaultColumns } from "@/lib/kanban/defaults";
 
 // GET /api/kanban?board_id=xxx  OR  ?department_id=xxx
 // board_id takes priority (used by realtime refetch for any board scope)
@@ -49,14 +50,12 @@ export async function GET(req: NextRequest) {
       board = newBoard;
 
       if (board) {
-        const defaultColumns = ["To Do", "In Progress", "Review", "Done"];
-        await admin.from("kanban_columns").insert(
-          defaultColumns.map((name, i) => ({
-            board_id: board!.id,
-            name,
-            sort_order: i,
-          }))
-        );
+        const { data: dept } = await admin
+          .from("departments")
+          .select("slug")
+          .eq("id", deptId)
+          .maybeSingle();
+        await seedDefaultColumns(admin, board.id, "team", dept?.slug ?? null);
       }
     }
   }
