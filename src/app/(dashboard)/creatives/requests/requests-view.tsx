@@ -1,8 +1,20 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { PeoplePicker } from "@/components/ui/people-picker";
+
+type LocalAttachment = { file: File; preview?: string };
+
+const ALLOWED_MIME = [
+  "image/jpeg", "image/png", "image/webp", "image/gif",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain", "text/csv",
+];
+const MAX_FILES = 5;
+const MAX_BYTES = 10 * 1024 * 1024;
 
 type Assignee = { id: string; first_name: string; last_name: string; avatar_url?: string | null };
 
@@ -89,6 +101,70 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [localAttachments, setLocalAttachments] = useState<LocalAttachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function revokeLocalPreviews(list: LocalAttachment[]) {
+    for (const a of list) if (a.preview) URL.revokeObjectURL(a.preview);
+  }
+
+  function addFiles(files: File[]) {
+    setAttachError(null);
+    const space = MAX_FILES - localAttachments.length;
+    if (space <= 0) {
+      setAttachError(`Maximum ${MAX_FILES} files.`);
+      return;
+    }
+    const next: LocalAttachment[] = [];
+    for (const f of files.slice(0, space)) {
+      if (!ALLOWED_MIME.includes(f.type)) {
+        setAttachError(`Unsupported file type: ${f.type || "unknown"}`);
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        setAttachError(`File too large: ${f.name} (max 10 MB)`);
+        continue;
+      }
+      const preview = f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined;
+      next.push({ file: f, preview });
+    }
+    if (next.length > 0) setLocalAttachments((prev) => [...prev, ...next]);
+  }
+
+  function removeLocalAttachment(index: number) {
+    setLocalAttachments((prev) => {
+      const target = prev[index];
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function uploadLocalAttachments(requestId: string, files: LocalAttachment[]): Promise<boolean> {
+    if (files.length === 0) return true;
+    const fd = new FormData();
+    for (const a of files) fd.append("files", a.file);
+    const res = await fetch(`/api/ad-ops/requests/${requestId}/attachments`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setAttachError(typeof data.error === "string" ? data.error : "Attachment upload failed");
+      return false;
+    }
+    return true;
+  }
+
+  async function removeRemoteAttachment(requestId: string, attachmentId: string) {
+    const res = await fetch(`/api/ad-ops/requests/${requestId}/attachments?attachment_id=${attachmentId}`, { method: "DELETE" });
+    if (res.ok) {
+      setAttachmentsByRequest((prev) => ({
+        ...prev,
+        [requestId]: (prev[requestId] ?? []).filter((a) => a.id !== attachmentId),
+      }));
+    }
+  }
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -214,6 +290,14 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     });
 
     if (res.ok) {
+      const created = await res.json().catch(() => null);
+      if (created?.id && localAttachments.length > 0) {
+        const ok = await uploadLocalAttachments(created.id, localAttachments);
+        if (!ok) { setSubmitting(false); return; }
+      }
+      revokeLocalPreviews(localAttachments);
+      setLocalAttachments([]);
+      setAttachError(null);
       setFormTitle("");
       setFormBrief("");
       setFormTargetDate("");
@@ -314,6 +398,45 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
               onChange={(e) => setFormTargetDate(e.target.value)}
               className="text-sm px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             />
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+                Attachments <span className="text-[var(--color-text-tertiary)]">
+                  ({localAttachments.length}/{MAX_FILES}) · max 10 MB each
+                </span>
+              </label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={localAttachments.length >= MAX_FILES}
+                className="text-[11px] text-[var(--color-accent)] hover:underline disabled:text-[var(--color-text-tertiary)] disabled:no-underline disabled:cursor-not-allowed"
+              >
+                + Attach file
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={ALLOWED_MIME.join(",")}
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files ?? []);
+                addFiles(files);
+                e.target.value = "";
+              }}
+            />
+            {localAttachments.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {localAttachments.map((la, i) => (
+                  <LocalAttachmentChip key={i} la={la} onRemove={() => removeLocalAttachment(i)} />
+                ))}
+              </div>
+            )}
+            {attachError && <p className="text-xs text-[var(--color-error)] mt-1">{attachError}</p>}
           </div>
 
           {submitError && (
@@ -505,8 +628,18 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
       {editing && (
         <EditRequestModal
           request={editing}
+          remoteAttachments={attachmentsByRequest[editing.id] ?? []}
           onSave={(patch) => saveEdit(editing.id, patch)}
           onDelete={() => deleteRequest(editing.id)}
+          onUploadAttachments={(files) => uploadLocalAttachments(editing.id, files)}
+          onRemoveRemoteAttachment={(attachmentId) => removeRemoteAttachment(editing.id, attachmentId)}
+          onReloadAttachments={async () => {
+            const res = await fetch(`/api/ad-ops/requests/${editing.id}/attachments`);
+            if (res.ok) {
+              const data = await res.json();
+              setAttachmentsByRequest((prev) => ({ ...prev, [editing.id]: data.attachments ?? [] }));
+            }
+          }}
           onClose={() => setEditing(null)}
         />
       )}
@@ -713,23 +846,73 @@ function RequestDetailModal({
 
 function EditRequestModal({
   request: r,
+  remoteAttachments,
   onSave,
   onDelete,
+  onUploadAttachments,
+  onRemoveRemoteAttachment,
+  onReloadAttachments,
   onClose,
 }: {
   request: Request;
+  remoteAttachments: RemoteAttachment[];
   onSave: (patch: { title: string; brief: string | null; target_date: string | null }) => Promise<void> | void;
   onDelete: () => void;
+  onUploadAttachments: (files: LocalAttachment[]) => Promise<boolean>;
+  onRemoveRemoteAttachment: (attachmentId: string) => Promise<void>;
+  onReloadAttachments: () => Promise<void>;
   onClose: () => void;
 }) {
   const [title, setTitle] = useState(r.title);
   const [brief, setBrief] = useState(r.brief ?? "");
   const [targetDate, setTargetDate] = useState(r.target_date ?? "");
   const [saving, setSaving] = useState(false);
+  const [localAttachments, setLocalAttachments] = useState<LocalAttachment[]>([]);
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function addFiles(files: File[]) {
+    setAttachError(null);
+    const totalExisting = remoteAttachments.length + localAttachments.length;
+    const space = MAX_FILES - totalExisting;
+    if (space <= 0) {
+      setAttachError(`Maximum ${MAX_FILES} files.`);
+      return;
+    }
+    const next: LocalAttachment[] = [];
+    for (const f of files.slice(0, space)) {
+      if (!ALLOWED_MIME.includes(f.type)) {
+        setAttachError(`Unsupported file type: ${f.type || "unknown"}`);
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        setAttachError(`File too large: ${f.name} (max 10 MB)`);
+        continue;
+      }
+      const preview = f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined;
+      next.push({ file: f, preview });
+    }
+    if (next.length > 0) setLocalAttachments((prev) => [...prev, ...next]);
+  }
+
+  function removeLocal(index: number) {
+    setLocalAttachments((prev) => {
+      const target = prev[index];
+      if (target?.preview) URL.revokeObjectURL(target.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
 
   async function handleSave() {
     if (!title.trim()) return;
     setSaving(true);
+    if (localAttachments.length > 0) {
+      const ok = await onUploadAttachments(localAttachments);
+      if (!ok) { setSaving(false); return; }
+      for (const a of localAttachments) if (a.preview) URL.revokeObjectURL(a.preview);
+      setLocalAttachments([]);
+      await onReloadAttachments();
+    }
     await onSave({
       title: title.trim(),
       brief: brief.trim() || null,
@@ -776,6 +959,47 @@ function EditRequestModal({
           />
         </div>
 
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium text-[var(--color-text-secondary)]">
+              Attachments <span className="text-[var(--color-text-tertiary)]">
+                ({remoteAttachments.length + localAttachments.length}/{MAX_FILES}) · max 10 MB each
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={remoteAttachments.length + localAttachments.length >= MAX_FILES}
+              className="text-[11px] text-[var(--color-accent)] hover:underline disabled:text-[var(--color-text-tertiary)] disabled:no-underline disabled:cursor-not-allowed"
+            >
+              + Attach file
+            </button>
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={ALLOWED_MIME.join(",")}
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              addFiles(files);
+              e.target.value = "";
+            }}
+          />
+          {(remoteAttachments.length + localAttachments.length) > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {remoteAttachments.map((a) => (
+                <AttachmentChip key={a.id} a={a} onRemove={() => onRemoveRemoteAttachment(a.id)} />
+              ))}
+              {localAttachments.map((la, i) => (
+                <LocalAttachmentChip key={i} la={la} onRemove={() => removeLocal(i)} />
+              ))}
+            </div>
+          )}
+          {attachError && <p className="text-xs text-[var(--color-error)] mt-1">{attachError}</p>}
+        </div>
+
         <div className="flex items-center justify-between pt-1">
           <button
             onClick={onDelete}
@@ -800,6 +1024,73 @@ function EditRequestModal({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AttachmentChip({ a, onRemove }: { a: RemoteAttachment; onRemove?: () => void }) {
+  const isImage = a.mime_type?.startsWith("image/");
+  const label = a.file_name ?? a.path.split("/").pop() ?? "file";
+  return (
+    <div className="relative group">
+      {isImage && a.url ? (
+        <a
+          href={a.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="block w-20 h-20 rounded border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={a.url} alt={label} className="h-full w-full object-cover" />
+        </a>
+      ) : (
+        <a
+          href={a.url ?? "#"}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] max-w-[200px]"
+        >
+          <span className="truncate">{label}</span>
+        </a>
+      )}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="absolute -top-1 -right-1 rounded-full bg-black/70 text-white w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+          aria-label="Remove"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+function LocalAttachmentChip({ la, onRemove }: { la: LocalAttachment; onRemove: () => void }) {
+  const isImage = la.file.type.startsWith("image/");
+  return (
+    <div className="relative group">
+      {isImage && la.preview ? (
+        <div className="w-20 h-20 rounded border border-[var(--color-border-primary)] overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={la.preview} alt={la.file.name} className="h-full w-full object-cover" />
+        </div>
+      ) : (
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] max-w-[200px]">
+          <span className="truncate">{la.file.name}</span>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        className="absolute -top-1 -right-1 rounded-full bg-black/70 text-white w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+        aria-label="Remove"
+      >
+        ×
+      </button>
     </div>
   );
 }

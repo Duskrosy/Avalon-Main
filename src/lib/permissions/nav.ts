@@ -121,7 +121,6 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: "Competitors", slug: "marketing-competitors", route: "/marketing/competitors" },
       { name: "News Feed",   slug: "marketing-news",        route: "/marketing/news" },
-      { name: "Requests",    slug: "marketing-requests",    route: "/marketing/requests" },
     ],
   },
   {
