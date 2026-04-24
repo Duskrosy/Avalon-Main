@@ -217,20 +217,49 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
   }, [requests, attachmentsByRequest]);
 
   async function updateStatus(id: string, status: string) {
-    await fetch(`/api/ad-ops/requests?id=${id}`, {
+    const snapshot = requests;
+    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+    const res = await fetch(`/api/ad-ops/requests?id=${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
+    if (!res.ok) {
+      setRequests(snapshot);
+      alert("Could not update status. Please try again.");
+      return;
+    }
     await fetchRequests();
   }
 
   async function reassign(id: string, assigneeIds: string[]) {
-    await fetch(`/api/ad-ops/requests?id=${id}`, {
+    const snapshot = requests;
+    const nextAssignees = assigneeIds
+      .map((uid) => members.find((m) => m.id === uid))
+      .filter((m): m is Member => Boolean(m))
+      .map((m) => ({
+        id: m.id,
+        first_name: m.first_name,
+        last_name: m.last_name,
+        avatar_url: m.avatar_url ?? null,
+      }));
+    setRequests((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? { ...r, assignees: nextAssignees, assignee: nextAssignees[0] ?? null }
+          : r,
+      ),
+    );
+    const res = await fetch(`/api/ad-ops/requests?id=${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ assignee_ids: assigneeIds }),
     });
+    if (!res.ok) {
+      setRequests(snapshot);
+      alert("Could not reassign. Please try again.");
+      return;
+    }
     await fetchRequests();
   }
 

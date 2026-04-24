@@ -2,6 +2,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { SlowActionSpinner } from "@/components/ui/delayed-loader";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 type Dept = { id: string; name: string; slug: string };
 type ReactionMap = Record<string, { user_id: string; name: string }[]>;
@@ -641,9 +643,12 @@ export function AnnouncementsView({
                 <button
                   type="submit"
                   disabled={posting}
-                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+                  className="flex-1 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 inline-flex items-center justify-center gap-2"
                 >
                   {posting ? "Posting..." : "Post Announcement"}
+                  <SlowActionSpinner loading={posting} afterMs={3000}>
+                    <ButtonSpinner size={14} />
+                  </SlowActionSpinner>
                 </button>
               </div>
             </form>

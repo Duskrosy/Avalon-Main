@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { format, parseISO } from "date-fns";
 import type { DailyVolume } from "@/lib/sales/types";
+import { SlowActionSpinner } from "@/components/ui/delayed-loader";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 type Agent = { id: string; first_name: string; last_name: string; email: string };
 
@@ -347,9 +349,12 @@ export function DailyVolumeView({ agents, currentUserId, canManage, initialRows 
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-[#3A5635] text-white text-sm py-2 rounded-lg hover:bg-[#2e4429] disabled:opacity-50"
+                  className="flex-1 bg-[#3A5635] text-white text-sm py-2 rounded-lg hover:bg-[#2e4429] disabled:opacity-50 inline-flex items-center justify-center gap-2"
                 >
                   {saving ? "Saving..." : "Save"}
+                  <SlowActionSpinner loading={saving} afterMs={3000}>
+                    <ButtonSpinner size={14} />
+                  </SlowActionSpinner>
                 </button>
               </div>
             </form>
