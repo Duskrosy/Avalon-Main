@@ -30,6 +30,7 @@ import {
   Pencil,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { AvalonMark } from "@/components/brand/avalon-mark";
 
 // ─── Icon map ───────────────────────────────────────────────
 const GROUP_ICONS: Record<string, LucideIcon> = {
@@ -365,8 +366,18 @@ export function Sidebar({
   return (
     <aside className="w-64 h-screen bg-[var(--color-bg-primary)] border-r border-[var(--color-border-primary)] flex-col fixed left-0 top-0 hidden lg:flex">
       <div className="px-6 py-5 border-b border-[var(--color-border-secondary)] shrink-0">
-        <Link href="/" className="text-lg font-semibold text-[var(--color-text-primary)] tracking-tight">
-          Avalon
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2.5 text-[var(--color-text-primary)]"
+          aria-label="Avalon — Home"
+        >
+          <AvalonMark size={22} className="text-[var(--color-accent)]" />
+          <span
+            style={{ fontFamily: "var(--font-serif, 'Cormorant Garamond', serif)" }}
+            className="text-xl font-semibold tracking-[0.14em]"
+          >
+            AVALON
+          </span>
         </Link>
       </div>
 

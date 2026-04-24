@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/ui/password-input";
+import { AvalonMark } from "@/components/brand/avalon-mark";
 
 type Step = "credentials" | "mfa" | "forgot" | "magic" | "force_change";
 
@@ -223,8 +224,16 @@ function LoginInner() {
 
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Avalon</h1>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+            <div className="inline-flex flex-col items-center gap-2">
+              <AvalonMark size={44} className="text-[var(--color-accent)]" />
+              <h1
+                style={{ fontFamily: "var(--font-serif, 'Cormorant Garamond', serif)" }}
+                className="text-3xl font-semibold tracking-[0.18em] text-[var(--color-text-primary)]"
+              >
+                AVALON
+              </h1>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-2">
               {step === "credentials"  && "Sign in to your account"}
               {step === "mfa"          && "Two-factor authentication"}
               {step === "forgot"       && "Reset your password"}

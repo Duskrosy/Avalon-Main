@@ -1,113 +1,139 @@
 @import "tailwindcss";
 
-/* ── Light theme (default) ─────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────
+   Avalon brand palette
+   Blade Compass identity · parchment + obsidian + gold + oxblood
+   Raw brand tokens live here; semantic --color-* tokens below map
+   onto them so existing components inherit the re-skin automatically.
+   ────────────────────────────────────────────────────────────────── */
 :root {
+  /* Brand raw tokens (do not reference directly in components) */
+  --avalon-parchment: #f1e9d2;
+  --avalon-parchment-deep: #e6dcbe;
+  --avalon-ivory: #f4ece0;
+  --avalon-obsidian: #0c0a06;
+  --avalon-obsidian-2: #2a2418;
+  --avalon-midnight: #0e1a2e;
+  --avalon-gold: #b8903a;
+  --avalon-gold-deep: #7a5a1e;
+  --avalon-gold-soft: rgba(184, 144, 58, 0.12);
+  --avalon-steel: #8a8a8e;
+  --avalon-steel-deep: #3a3a40;
+  --avalon-oxblood: #5a1a18;
+  --avalon-oxblood-deep: #3a0e0c;
+  --avalon-oxblood-soft: rgba(90, 26, 24, 0.10);
+  --avalon-muted: #6a6050;
+
+  /* Typography */
+  --font-serif: 'Cormorant Garamond', 'Times New Roman', serif;
+
   /* Surfaces */
-  --color-bg-primary: #FFFFFF;
-  --color-bg-secondary: #F8FAFC;
-  --color-bg-tertiary: #F1F5F9;
-  --color-surface-card: #FFFFFF;
-  --color-surface-hover: #F8FAFC;
-  --color-surface-active: #F1F5F9;
+  --color-bg-primary: var(--avalon-ivory);
+  --color-bg-secondary: var(--avalon-parchment);
+  --color-bg-tertiary: var(--avalon-parchment-deep);
+  --color-surface-card: var(--avalon-ivory);
+  --color-surface-hover: #ece3c7;
+  --color-surface-active: var(--avalon-parchment-deep);
 
   /* Borders */
-  --color-border-primary: #E2E8F0;
-  --color-border-secondary: #F1F5F9;
+  --color-border-primary: #d9cfb0;
+  --color-border-secondary: #e6dcbe;
 
   /* Text */
-  --color-text-primary: #0F172A;
-  --color-text-secondary: #64748B;
-  --color-text-tertiary: #94A3B8;
-  --color-text-inverted: #FFFFFF;
+  --color-text-primary: var(--avalon-obsidian);
+  --color-text-secondary: var(--avalon-muted);
+  --color-text-tertiary: #8a7f6a;
+  --color-text-inverted: var(--avalon-parchment);
 
-  /* Accent — default: blue */
-  --color-accent: #2563EB;
-  --color-accent-hover: #1D4ED8;
-  --color-accent-light: #EFF6FF;
-  --color-accent-text: #FFFFFF;
+  /* Accent — Avalon gold */
+  --color-accent: var(--avalon-gold);
+  --color-accent-hover: var(--avalon-gold-deep);
+  --color-accent-light: var(--avalon-gold-soft);
+  --color-accent-text: var(--avalon-obsidian);
 
   /* Semantic */
-  --color-success: #059669;
-  --color-success-light: #ECFDF5;
-  --color-success-text: #065F46;
-  --color-warning: #D97706;
-  --color-warning-light: #FFFBEB;
-  --color-warning-text: #92400E;
-  --color-error: #DC2626;
-  --color-error-light: #FEF2F2;
-  --color-error-text: #991B1B;
-  --color-info: #2563EB;
-  --color-info-light: #EFF6FF;
+  --color-success: #3d6b3a;
+  --color-success-light: rgba(61, 107, 58, 0.12);
+  --color-success-text: #244021;
+  --color-warning: #a76d1a;
+  --color-warning-light: rgba(167, 109, 26, 0.12);
+  --color-warning-text: #6b4410;
+  --color-error: var(--avalon-oxblood);
+  --color-error-light: var(--avalon-oxblood-soft);
+  --color-error-text: var(--avalon-oxblood-deep);
+  --color-info: var(--avalon-midnight);
+  --color-info-light: rgba(14, 26, 46, 0.08);
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
-  --shadow-lg: 0 4px 6px rgba(0,0,0,0.04), 0 12px 24px rgba(0,0,0,0.08);
+  /* Shadows — softer, warmer */
+  --shadow-sm: 0 1px 2px rgba(42, 36, 24, 0.06);
+  --shadow-md: 0 1px 2px rgba(42, 36, 24, 0.06), 0 4px 12px rgba(42, 36, 24, 0.08);
+  --shadow-lg: 0 4px 6px rgba(42, 36, 24, 0.08), 0 12px 24px rgba(42, 36, 24, 0.12);
 
   /* Radius */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 20px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
 }
 
-/* ── Dark theme ────────────────────────────────────────────── */
+/* ── Dark theme — Midnight ─────────────────────────────────── */
 .dark {
-  --color-bg-primary: #0F1117;
-  --color-bg-secondary: #1A1D27;
-  --color-bg-tertiary: #242735;
-  --color-surface-card: #1E2130;
-  --color-surface-hover: #252839;
-  --color-surface-active: #2E3248;
+  --color-bg-primary: var(--avalon-obsidian);
+  --color-bg-secondary: #130f08;
+  --color-bg-tertiary: #1a1510;
+  --color-surface-card: #15110a;
+  --color-surface-hover: #1d1811;
+  --color-surface-active: #2a2418;
 
-  --color-border-primary: #2E3248;
-  --color-border-secondary: #252839;
+  --color-border-primary: #2a2418;
+  --color-border-secondary: #1d1811;
 
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-text-tertiary: #64748B;
-  --color-text-inverted: #0F172A;
+  --color-text-primary: var(--avalon-parchment);
+  --color-text-secondary: #8a7d60;
+  --color-text-tertiary: #5f553f;
+  --color-text-inverted: var(--avalon-obsidian);
 
-  --color-accent: #60A5FA;
-  --color-accent-hover: #93C5FD;
-  --color-accent-light: rgba(96,165,250,0.12);
-  --color-accent-text: #0F172A;
+  --color-accent: var(--avalon-gold);
+  --color-accent-hover: #d1a64a;
+  --color-accent-light: rgba(184, 144, 58, 0.16);
+  --color-accent-text: var(--avalon-obsidian);
 
-  --color-success: #34D399;
-  --color-success-light: rgba(52,211,153,0.12);
-  --color-success-text: #34D399;
-  --color-warning: #FBBF24;
-  --color-warning-light: rgba(251,191,36,0.12);
-  --color-warning-text: #FBBF24;
-  --color-error: #FB7185;
-  --color-error-light: rgba(251,113,133,0.12);
-  --color-error-text: #FB7185;
-  --color-info: #60A5FA;
-  --color-info-light: rgba(96,165,250,0.12);
+  --color-success: #6b9566;
+  --color-success-light: rgba(107, 149, 102, 0.14);
+  --color-success-text: #a1c29d;
+  --color-warning: #d1a64a;
+  --color-warning-light: rgba(209, 166, 74, 0.14);
+  --color-warning-text: #d1a64a;
+  --color-error: #b64a45;
+  --color-error-light: rgba(182, 74, 69, 0.14);
+  --color-error-text: #d68a86;
+  --color-info: #6a8cb0;
+  --color-info-light: rgba(106, 140, 176, 0.14);
 
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-md: 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3);
-  --shadow-lg: 0 4px 6px rgba(0,0,0,0.2), 0 12px 24px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.6);
 }
 
-/* ── Accent overrides ──────────────────────────────────────── */
-/* Light mode accents */
-.accent-violet  { --color-accent: #7C3AED; --color-accent-hover: #6D28D9; --color-accent-light: #F5F3FF; }
-.accent-teal    { --color-accent: #0D9488; --color-accent-hover: #0F766E; --color-accent-light: #F0FDFA; }
-.accent-rose    { --color-accent: #E11D48; --color-accent-hover: #BE123C; --color-accent-light: #FFF1F2; }
-.accent-amber   { --color-accent: #D97706; --color-accent-hover: #B45309; --color-accent-light: #FFFBEB; }
-.accent-emerald { --color-accent: #059669; --color-accent-hover: #047857; --color-accent-light: #ECFDF5; }
-.accent-orange  { --color-accent: #EA580C; --color-accent-hover: #C2410C; --color-accent-light: #FFF7ED; }
-.accent-indigo  { --color-accent: #4F46E5; --color-accent-hover: #4338CA; --color-accent-light: #EEF2FF; }
+/* ── Accent overrides ──────────────────────────────────────────
+   Retained for users who've saved a non-gold accent preference;
+   on Avalon brand, the default is gold. Secondary accents keep
+   their gold-deep hover for brand cohesion. */
+.accent-violet  { --color-accent: #6d4c8f; --color-accent-hover: #52366d; --color-accent-light: rgba(109, 76, 143, 0.12); }
+.accent-teal    { --color-accent: #3a6b6e; --color-accent-hover: #2b5053; --color-accent-light: rgba(58, 107, 110, 0.12); }
+.accent-rose    { --color-accent: var(--avalon-oxblood); --color-accent-hover: var(--avalon-oxblood-deep); --color-accent-light: var(--avalon-oxblood-soft); }
+.accent-amber   { --color-accent: var(--avalon-gold); --color-accent-hover: var(--avalon-gold-deep); --color-accent-light: var(--avalon-gold-soft); }
+.accent-emerald { --color-accent: #3d6b3a; --color-accent-hover: #2b4f28; --color-accent-light: rgba(61, 107, 58, 0.12); }
+.accent-orange  { --color-accent: #a75a1a; --color-accent-hover: #7a4110; --color-accent-light: rgba(167, 90, 26, 0.12); }
+.accent-indigo  { --color-accent: var(--avalon-midnight); --color-accent-hover: #061021; --color-accent-light: rgba(14, 26, 46, 0.12); }
 
-/* Dark mode accent overrides */
-.dark.accent-violet  { --color-accent: #A78BFA; --color-accent-hover: #C4B5FD; --color-accent-light: rgba(167,139,250,0.12); }
-.dark.accent-teal    { --color-accent: #2DD4BF; --color-accent-hover: #5EEAD4; --color-accent-light: rgba(45,212,191,0.12); }
-.dark.accent-rose    { --color-accent: #FB7185; --color-accent-hover: #FDA4AF; --color-accent-light: rgba(251,113,133,0.12); }
-.dark.accent-amber   { --color-accent: #FBBF24; --color-accent-hover: #FCD34D; --color-accent-light: rgba(251,191,36,0.12); }
-.dark.accent-emerald { --color-accent: #34D399; --color-accent-hover: #6EE7B7; --color-accent-light: rgba(52,211,153,0.12); }
-.dark.accent-orange  { --color-accent: #FB923C; --color-accent-hover: #FDBA74; --color-accent-light: rgba(251,146,60,0.12); }
-.dark.accent-indigo  { --color-accent: #818CF8; --color-accent-hover: #A5B4FC; --color-accent-light: rgba(129,140,248,0.12); }
+.dark.accent-violet  { --color-accent: #a98dc9; --color-accent-hover: #c4b0e0; --color-accent-light: rgba(169, 141, 201, 0.16); }
+.dark.accent-teal    { --color-accent: #7ab0b3; --color-accent-hover: #9dc8cb; --color-accent-light: rgba(122, 176, 179, 0.16); }
+.dark.accent-rose    { --color-accent: #d68a86; --color-accent-hover: #e6a8a4; --color-accent-light: rgba(214, 138, 134, 0.16); }
+.dark.accent-amber   { --color-accent: #d1a64a; --color-accent-hover: #e6bf68; --color-accent-light: rgba(209, 166, 74, 0.16); }
+.dark.accent-emerald { --color-accent: #8bb487; --color-accent-hover: #a8cda4; --color-accent-light: rgba(139, 180, 135, 0.16); }
+.dark.accent-orange  { --color-accent: #d89562; --color-accent-hover: #e6ae85; --color-accent-light: rgba(216, 149, 98, 0.16); }
+.dark.accent-indigo  { --color-accent: #6a8cb0; --color-accent-hover: #8ca8c6; --color-accent-light: rgba(106, 140, 176, 0.16); }
 
 /* ── Compact density ───────────────────────────────────────── */
 .density-compact {
@@ -120,48 +146,37 @@
 /* ── System theme via media query ──────────────────────────── */
 @media (prefers-color-scheme: dark) {
   .theme-system {
-    --color-bg-primary: #0F1117;
-    --color-bg-secondary: #1A1D27;
-    --color-bg-tertiary: #242735;
-    --color-surface-card: #1E2130;
-    --color-surface-hover: #252839;
-    --color-surface-active: #2E3248;
-    --color-border-primary: #2E3248;
-    --color-border-secondary: #252839;
-    --color-text-primary: #F1F5F9;
-    --color-text-secondary: #94A3B8;
-    --color-text-tertiary: #64748B;
-    --color-text-inverted: #0F172A;
-    --color-accent: #60A5FA;
-    --color-accent-hover: #93C5FD;
-    --color-accent-light: rgba(96,165,250,0.12);
-    --color-accent-text: #0F172A;
-    --color-success: #34D399;
-    --color-success-light: rgba(52,211,153,0.12);
-    --color-success-text: #34D399;
-    --color-warning: #FBBF24;
-    --color-warning-light: rgba(251,191,36,0.12);
-    --color-warning-text: #FBBF24;
-    --color-error: #FB7185;
-    --color-error-light: rgba(251,113,133,0.12);
-    --color-error-text: #FB7185;
-    --color-info: #60A5FA;
-    --color-info-light: rgba(96,165,250,0.12);
-    --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-    --shadow-md: 0 1px 2px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.3);
-    --shadow-lg: 0 4px 6px rgba(0,0,0,0.2), 0 12px 24px rgba(0,0,0,0.4);
+    --color-bg-primary: var(--avalon-obsidian);
+    --color-bg-secondary: #130f08;
+    --color-bg-tertiary: #1a1510;
+    --color-surface-card: #15110a;
+    --color-surface-hover: #1d1811;
+    --color-surface-active: #2a2418;
+    --color-border-primary: #2a2418;
+    --color-border-secondary: #1d1811;
+    --color-text-primary: var(--avalon-parchment);
+    --color-text-secondary: #8a7d60;
+    --color-text-tertiary: #5f553f;
+    --color-text-inverted: var(--avalon-obsidian);
+    --color-accent: var(--avalon-gold);
+    --color-accent-hover: #d1a64a;
+    --color-accent-light: rgba(184, 144, 58, 0.16);
+    --color-accent-text: var(--avalon-obsidian);
+    --color-success: #6b9566;
+    --color-success-light: rgba(107, 149, 102, 0.14);
+    --color-success-text: #a1c29d;
+    --color-warning: #d1a64a;
+    --color-warning-light: rgba(209, 166, 74, 0.14);
+    --color-warning-text: #d1a64a;
+    --color-error: #b64a45;
+    --color-error-light: rgba(182, 74, 69, 0.14);
+    --color-error-text: #d68a86;
+    --color-info: #6a8cb0;
+    --color-info-light: rgba(106, 140, 176, 0.14);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.6);
   }
-}
-
-/* System theme accent overrides */
-@media (prefers-color-scheme: dark) {
-  .theme-system.accent-violet  { --color-accent: #A78BFA; --color-accent-hover: #C4B5FD; --color-accent-light: rgba(167,139,250,0.12); }
-  .theme-system.accent-teal    { --color-accent: #2DD4BF; --color-accent-hover: #5EEAD4; --color-accent-light: rgba(45,212,191,0.12); }
-  .theme-system.accent-rose    { --color-accent: #FB7185; --color-accent-hover: #FDA4AF; --color-accent-light: rgba(251,113,133,0.12); }
-  .theme-system.accent-amber   { --color-accent: #FBBF24; --color-accent-hover: #FCD34D; --color-accent-light: rgba(251,191,36,0.12); }
-  .theme-system.accent-emerald { --color-accent: #34D399; --color-accent-hover: #6EE7B7; --color-accent-light: rgba(52,211,153,0.12); }
-  .theme-system.accent-orange  { --color-accent: #FB923C; --color-accent-hover: #FDBA74; --color-accent-light: rgba(251,146,60,0.12); }
-  .theme-system.accent-indigo  { --color-accent: #818CF8; --color-accent-hover: #A5B4FC; --color-accent-light: rgba(129,140,248,0.12); }
 }
 
 /* ── Global resets ─────────────────────────────────────────── */
@@ -178,6 +193,12 @@ html.transitioning *::after {
   transition: background-color 200ms ease, border-color 200ms ease, color 200ms ease, box-shadow 200ms ease !important;
 }
 
+/* Avalon serif utility — use sparingly for display/hero type */
+.font-serif-avalon {
+  font-family: var(--font-serif);
+  font-feature-settings: "liga", "kern";
+}
+
 /* ── Mobile nav sheet animation ────────────────────────────── */
 @keyframes slide-up {
   from { transform: translateY(100%); }
@@ -190,4 +211,41 @@ html.transitioning *::after {
 /* Safe area bottom padding for bottom nav */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ── Loading state primitives ──────────────────────────────── */
+@keyframes avalon-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.avalon-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-tertiary) 0%,
+    var(--color-surface-hover) 50%,
+    var(--color-bg-tertiary) 100%
+  );
+  background-size: 200% 100%;
+  animation: avalon-shimmer 1.6s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+@media (prefers-reduced-motion: reduce) {
+  .avalon-skeleton { animation: none; }
+}
+
+@keyframes avalon-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.avalon-progress-indeterminate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 25%;
+  background: var(--color-accent);
+  animation: avalon-indeterminate 1.4s ease-in-out infinite;
+  border-radius: inherit;
+}
+@media (prefers-reduced-motion: reduce) {
+  .avalon-progress-indeterminate::after { animation: none; width: 100%; opacity: 0.5; }
 }

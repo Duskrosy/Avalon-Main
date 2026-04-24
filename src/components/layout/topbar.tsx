@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Bug } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationDropdown } from "./notification-dropdown";
+import { AvalonMark } from "@/components/brand/avalon-mark";
 
 function openFeedback() {
   window.dispatchEvent(new CustomEvent("open-feedback"));
@@ -60,8 +61,18 @@ export function Topbar({ unreadCount, birthdayBanner, userName, userInitials, us
 
       {/* Mobile topbar */}
       <header className="h-12 bg-[var(--color-bg-primary)] border-b border-[var(--color-border-primary)] flex items-center justify-between px-4 lg:hidden">
-        <Link href="/" className="text-base font-semibold text-[var(--color-text-primary)] tracking-tight">
-          Avalon
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-[var(--color-text-primary)]"
+          aria-label="Avalon — Home"
+        >
+          <AvalonMark size={20} className="text-[var(--color-accent)]" />
+          <span
+            style={{ fontFamily: "var(--font-serif, 'Cormorant Garamond', serif)" }}
+            className="text-lg font-semibold tracking-[0.14em]"
+          >
+            AVALON
+          </span>
         </Link>
         <div className="flex items-center gap-3">
           <button
