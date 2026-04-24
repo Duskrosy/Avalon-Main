@@ -8,6 +8,12 @@ import { DeltaBadge } from "@/components/ui/delta-badge";
 import { DemographicBar, GENDER_COLORS, AGE_COLORS, type BarSegment } from "@/components/ui/demographic-bar";
 import { SlowActionSpinner } from "@/components/ui/delayed-loader";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import {
+  SyncProgressOverlay,
+  initialSyncProgress,
+  consumeSyncStream,
+  type SyncProgressState,
+} from "@/components/ad-ops/sync-progress-overlay";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -494,6 +500,7 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
   const [syncMenuOpen, setSyncMenuOpen] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
   const [syncMsg, setSyncMsg]   = useState<{ type: "ok" | "error"; text: string } | null>(null);
+  const [syncProgress, setSyncProgress] = useState<SyncProgressState>(initialSyncProgress);
 
   // Filter / sort state
   const [filterAccount, setFilterAccount] = useState<string>("all");
@@ -723,29 +730,102 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
   );
 
   // ── Sync ──────────────────────────────────────────────────────────────────
-  async function handleSync() {
-    setSyncing(true);
+  async function runStreamedSync(opts: { backfill: boolean }) {
+    const { backfill } = opts;
+    if (backfill) setBackfilling(true); else setSyncing(true);
     setSyncMsg(null);
+    setSyncProgress({
+      open: true,
+      title: backfill ? "Backfilling full campaign catalogue" : "Syncing from Meta",
+      label: "Getting started…",
+      detail: null,
+      pct: 0,
+      status: "running",
+      summaryText: null,
+      errorText: null,
+    });
+
+    const url = backfill ? "/api/ad-ops/sync?mode=full&stream=1" : "/api/ad-ops/sync?stream=1";
     try {
-      const res  = await fetch("/api/ad-ops/sync", { method: "POST" });
-      const body = await res.json().catch(() => ({}));
+      const res = await fetch(url, { method: "POST" });
       if (!res.ok) {
-        setSyncMsg({ type: "error", text: body.error ?? `Sync failed (${res.status})` });
-      } else if (body.errors?.length) {
-        const firstErr = String(body.errors[0]).slice(0, 200);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Sync failed (${res.status})`);
+      }
+
+      type SyncSummary = { synced?: number; failed?: number; campaigns?: number; ads?: number; errors?: string[] };
+      const summaryRef: { current: SyncSummary | null } = { current: null };
+
+      await consumeSyncStream(res, (raw) => {
+        const ev = raw as {
+          stage: string;
+          label?: string;
+          detail?: string;
+          pct?: number;
+          summary?: { synced: number; failed: number; campaigns: number; ads: number; errors?: string[] };
+          message?: string;
+        };
+        if (ev.stage === "error") {
+          setSyncProgress((p) => ({
+            ...p,
+            status: "error",
+            errorText: ev.message ?? "Unknown error",
+            label: "Sync failed",
+          }));
+          return;
+        }
+        if (ev.stage === "done") {
+          summaryRef.current = ev.summary ?? null;
+          const campaigns = ev.summary?.campaigns ?? 0;
+          const ads = ev.summary?.ads ?? 0;
+          const failedAccounts = ev.summary?.failed ?? 0;
+          const hasErrors = (ev.summary?.errors ?? []).length > 0;
+          setSyncProgress((p) => ({
+            ...p,
+            status: hasErrors ? "error" : "done",
+            label: ev.label ?? "All done.",
+            detail: null,
+            pct: 100,
+            summaryText: `${campaigns.toLocaleString()} campaigns · ${ads.toLocaleString()} ads updated.`,
+            errorText: hasErrors
+              ? `${failedAccounts} account${failedAccounts === 1 ? "" : "s"} failed: ${String(ev.summary!.errors![0]).slice(0, 240)}`
+              : null,
+          }));
+          return;
+        }
+        setSyncProgress((p) => ({
+          ...p,
+          status: "running",
+          label: ev.label ?? p.label,
+          detail: ev.detail ?? p.detail,
+          pct: typeof ev.pct === "number" ? ev.pct : p.pct,
+        }));
+      });
+
+      const summary = summaryRef.current;
+      if (summary && !(summary.errors && summary.errors.length > 0)) {
+        const text = `${backfill ? "Backfilled" : "Synced"} ${summary.campaigns ?? 0} campaigns · ${summary.ads ?? 0} ads`;
+        setSyncMsg({ type: "ok", text });
+        setToast({ message: text, type: "success" });
+        setRefetchKey((k) => k + 1);
+      } else if (summary?.errors?.length) {
+        const firstErr = String(summary.errors[0]).slice(0, 200);
         setSyncMsg({
           type: "error",
-          text: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads — ${body.failed ?? 0} account(s) failed: ${firstErr}`,
+          text: `${backfill ? "Backfill" : "Sync"} finished with errors — ${summary.failed ?? 0} account(s) failed: ${firstErr}`,
         });
-      } else {
-        setSyncMsg({ type: "ok", text: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads` });
-        setToast({ message: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads`, type: "success" });
       }
-    } catch {
-      setSyncMsg({ type: "error", text: "Network error — sync request failed" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Network error — sync request failed";
+      setSyncProgress((p) => ({ ...p, status: "error", label: "Sync failed", errorText: msg }));
+      setSyncMsg({ type: "error", text: msg });
     } finally {
-      setSyncing(false);
+      if (backfill) setBackfilling(false); else setSyncing(false);
     }
+  }
+
+  async function handleSync() {
+    await runStreamedSync({ backfill: false });
   }
 
   // ── Manual full-catalog backfill (safety net, tucked in settings menu) ───
@@ -755,29 +835,8 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
       "This can take a minute or two. Continue?",
     );
     if (!ok) return;
-    setBackfilling(true);
     setSyncMenuOpen(false);
-    setSyncMsg(null);
-    try {
-      const res = await fetch("/api/ad-ops/sync?mode=full", { method: "POST" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setSyncMsg({ type: "error", text: body.error ?? `Backfill failed (${res.status})` });
-      } else if (body.errors?.length) {
-        const firstErr = String(body.errors[0]).slice(0, 200);
-        setSyncMsg({
-          type: "error",
-          text: `Backfilled ${body.campaigns ?? 0} campaigns — ${body.failed ?? 0} account(s) failed: ${firstErr}`,
-        });
-      } else {
-        setSyncMsg({ type: "ok", text: `Backfilled ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads` });
-        setToast({ message: `Backfilled ${body.campaigns ?? 0} campaigns`, type: "success" });
-      }
-    } catch {
-      setSyncMsg({ type: "error", text: "Network error — backfill request failed" });
-    } finally {
-      setBackfilling(false);
-    }
+    await runStreamedSync({ backfill: true });
   }
 
   // ── Currency save ─────────────────────────────────────────────────────────
@@ -2600,6 +2659,10 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
         </div>
       )}
       <Toast toast={toast} onDismiss={() => setToast(null)} />
+      <SyncProgressOverlay
+        state={syncProgress}
+        onClose={() => setSyncProgress((p) => ({ ...p, open: false }))}
+      />
     </div>
   );
 }

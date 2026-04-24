@@ -17,48 +17,69 @@ function isCronRequest(req: NextRequest): boolean {
   return req.headers.get("authorization") === `Bearer ${cronSecret}`;
 }
 
-// ─── POST /api/ad-ops/sync ────────────────────────────────────────────────────
+// ─── Progress event shape ────────────────────────────────────────────────────
+// Streamed to the client as Server-Sent Events so the UI can show an accurate
+// full-page progress bar with plain-English stage labels.
+type SyncProgressEvent =
+  | { stage: "init";       label: string; pct: number }
+  | { stage: "pulling";    label: string; detail: string; pct: number }
+  | { stage: "refreshing"; label: string; detail: string; pct: number }
+  | { stage: "saving";     label: string; detail: string; pct: number }
+  | { stage: "done";       label: string; pct: 100; summary: SyncSummary }
+  | { stage: "error";      message: string };
 
-export async function POST(req: NextRequest) {
-  // Dual auth: Vercel cron bearer token OR an OPS user session
-  const fromCron = isCronRequest(req);
-  if (!fromCron) {
-    const supabase = await createClient();
-    const currentUser = await getCurrentUser(supabase);
-    if (!currentUser || !isOps(currentUser)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+type SyncSummary = {
+  synced: number;
+  failed: number;
+  campaigns: number;
+  ads: number;
+  errors?: string[];
+};
 
-  // mode=full = paginate every campaign (safety-net backfill). Default is the
-  // incremental path that only touches campaigns with activity yesterday.
-  const fullBackfill = req.nextUrl.searchParams.get("mode") === "full";
-  const triggeredBy = fromCron ? "cron" : fullBackfill ? "backfill" : "manual";
+type AccountRow = {
+  id: string;
+  account_id: string;
+  name: string;
+  meta_access_token: string | null;
+  currency: string | null;
+  primary_conversion_id: string | null;
+  primary_conversion_name: string | null;
+};
+
+type AccountResult = {
+  account_id: string;
+  name: string;
+  status: "ok" | "error";
+  error?: string;
+  campaigns?: number;
+  ads?: number;
+};
+
+// ─── Core pipeline (shared between streaming + JSON modes) ───────────────────
+
+async function runSync(
+  fullBackfill: boolean,
+  triggeredBy: string,
+  onProgress: (event: SyncProgressEvent) => void,
+): Promise<SyncSummary> {
   const admin = createAdminClient();
 
-  // Yesterday's date (the data we're pulling)
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   const metricDate = yesterday.toISOString().split("T")[0];
 
-  // ── 1. Create sync run record ─────────────────────────────────────────────
+  onProgress({ stage: "init", label: "Checking your connected ad accounts…", pct: 2 });
+
   const { data: syncRun, error: syncRunError } = await admin
     .from("ad_meta_sync_runs")
-    .insert({
-      status: "running",
-      triggered_by: triggeredBy,
-      sync_date: metricDate,
-    })
+    .insert({ status: "running", triggered_by: triggeredBy, sync_date: metricDate })
     .select("id")
     .single();
-
   if (syncRunError || !syncRun) {
-    return NextResponse.json({ error: "Failed to create sync run" }, { status: 500 });
+    throw new Error("Failed to create sync run");
   }
-
   const syncRunId = syncRun.id;
 
-  // ── 2. Fetch all active Meta accounts ─────────────────────────────────────
   const { data: accounts } = await admin
     .from("ad_meta_accounts")
     .select("id, account_id, name, meta_access_token, currency, primary_conversion_id, primary_conversion_name")
@@ -71,33 +92,41 @@ export async function POST(req: NextRequest) {
       records_processed: 0,
       account_results: [],
     }).eq("id", syncRunId);
-    return NextResponse.json({ synced: 0, failed: 0, message: "No active accounts configured" });
+    const summary = { synced: 0, failed: 0, campaigns: 0, ads: 0 };
+    onProgress({ stage: "done", label: "No active ad accounts configured.", pct: 100, summary });
+    return summary;
   }
 
-  // ── 3. Sync each account ──────────────────────────────────────────────────
-  type AccountResult = {
-    account_id: string;
-    name: string;
-    status: "ok" | "error";
-    error?: string;
-    campaigns?: number;
-    ads?: number;
+  const total = accounts.length;
+  const phasesPerAccount = 3; // pulling, refreshing, saving
+  const totalSteps = total * phasesPerAccount;
+  let completedSteps = 0;
+
+  const bumpPct = () => {
+    completedSteps += 1;
+    // Reserve the last 3% for the final "done" event so the bar doesn't hit
+    // 100% before we've written the sync_runs row.
+    return Math.min(97, 2 + Math.round((completedSteps / totalSteps) * 95));
   };
 
-  const accountResults: AccountResult[] = [];
-  let totalRecords = 0;
-  let failedCount = 0;
-  const errors: string[] = [];
+  const syncedAccountDetail = (idx: number, acct: AccountRow) =>
+    `Account ${idx + 1} of ${total}: ${acct.name}`;
 
-  const settled = await Promise.allSettled(
-    accounts.map(async (account) => {
+  const processAccount = async (account: AccountRow, idx: number): Promise<AccountResult> => {
+    const detail = syncedAccountDetail(idx, account);
+    try {
       const token = resolveToken(account);
       if (!token) throw new Error("No access token available");
 
-      // Default: insights for the window is the source of truth for "what
-      // moved". We only refresh campaign rows that actually appeared, instead
-      // of paginating the full ~3,500-campaign catalog every run.
-      // Backfill (mode=full): paginate the whole catalog — manual safety net.
+      onProgress({
+        stage: "pulling",
+        label: fullBackfill
+          ? "Pulling every campaign from Meta (backfill mode)…"
+          : "Pulling yesterday's performance from Meta…",
+        detail,
+        pct: Math.min(97, 2 + Math.round((completedSteps / totalSteps) * 95)),
+      });
+
       const [adInsights, fullCampaigns] = await Promise.all([
         fetchAdInsights(account.account_id, token, "yesterday"),
         fullBackfill ? fetchCampaigns(account.account_id, token) : Promise.resolve([]),
@@ -111,7 +140,13 @@ export async function POST(req: NextRequest) {
             return ids.length > 0 ? fetchCampaignsByIds(token, ids) : [];
           })();
 
-      // ── Upsert campaigns into meta_campaigns ──────────────────────────
+      onProgress({
+        stage: "refreshing",
+        label: "Refreshing campaign names, status, and budgets…",
+        detail,
+        pct: bumpPct(),
+      });
+
       if (campaigns.length > 0) {
         const campaignRows = campaigns.map((c) => ({
           meta_account_id: account.id,
@@ -124,23 +159,23 @@ export async function POST(req: NextRequest) {
           lifetime_budget: c.lifetime_budget ? parseFloat(c.lifetime_budget) / 100 : null,
           last_synced_at: new Date().toISOString(),
         }));
-
-        await admin
-          .from("meta_campaigns")
-          .upsert(campaignRows, { onConflict: "meta_account_id,campaign_id" });
+        await admin.from("meta_campaigns").upsert(campaignRows, { onConflict: "meta_account_id,campaign_id" });
       }
 
-      // ── Upsert ad stats into meta_ad_stats ────────────────────────────
+      onProgress({
+        stage: "saving",
+        label: "Saving ad results to your dashboard…",
+        detail,
+        pct: bumpPct(),
+      });
+
       let adCount = 0;
       if (adInsights.length > 0) {
         const customConvId = account.primary_conversion_id;
-        // Custom conversion action type: offsite_conversion.custom.{id}
         const customActionType = customConvId ? `offsite_conversion.custom.${customConvId}` : null;
 
         const statRows = adInsights.map((insight) => {
           const spend = parseFloat(insight.spend ?? "0");
-
-          // Conversions: use custom conversion if configured, otherwise default purchase
           let conversions: number;
           let conversion_value: number;
 
@@ -150,16 +185,14 @@ export async function POST(req: NextRequest) {
             conversions = parseInt(countEntry?.value ?? "0", 10);
             conversion_value = parseFloat(valueEntry?.value ?? "0");
           } else {
-            // Fallback: default purchase action + purchase_roas
             conversions = parseInt(insight.conversions ?? "0", 10);
             const roas = insight.purchase_roas?.[0]?.value;
             conversion_value = roas ? Math.round(parseFloat(roas) * spend * 100) / 100 : 0;
           }
 
-          // Messaging conversations started (for Messenger-objective campaigns)
           const messaging_conversations = parseInt(
             insight.raw_actions?.find(
-              (a) => a.action_type === "onsite_conversion.messaging_conversation_started_7d"
+              (a) => a.action_type === "onsite_conversion.messaging_conversation_started_7d",
             )?.value ?? "0",
             10,
           );
@@ -189,13 +222,9 @@ export async function POST(req: NextRequest) {
         const { error } = await admin
           .from("meta_ad_stats")
           .upsert(statRows, { onConflict: "meta_account_id,ad_id,metric_date" });
-
         if (!error) adCount = statRows.length;
       }
 
-      // ── Also sync deployment statuses (backward compat) ───────────────
-      // Fan out in parallel; serialising 3.5k updates per account pushed sync
-      // past Vercel's function timeout.
       await Promise.allSettled(
         campaigns.map((campaign) => {
           const dbStatus =
@@ -209,51 +238,110 @@ export async function POST(req: NextRequest) {
         }),
       );
 
+      bumpPct();
+
       return {
         account_id: account.account_id,
         name: account.name,
+        status: "ok",
         campaigns: campaigns.length,
         ads: adCount,
       };
-    }),
+    } catch (err) {
+      // Mark all three phases as done for this account so the bar doesn't stall
+      while (completedSteps < (idx + 1) * phasesPerAccount) bumpPct();
+      const msg = err instanceof Error ? err.message : String(err);
+      return { account_id: account.account_id, name: account.name, status: "error", error: msg };
+    }
+  };
+
+  const settled = await Promise.allSettled(accounts.map((a, i) => processAccount(a, i)));
+  const accountResults: AccountResult[] = settled.map((r, i) =>
+    r.status === "fulfilled"
+      ? r.value
+      : { account_id: accounts[i]!.account_id, name: accounts[i]!.name, status: "error", error: String(r.reason) },
   );
 
-  // ── 4. Collect results ────────────────────────────────────────────────────
-  settled.forEach((result, i) => {
-    const account = accounts[i]!;
-    if (result.status === "fulfilled") {
-      const val = result.value;
-      totalRecords += val.ads;
-      accountResults.push({
-        account_id: account.account_id,
-        name: account.name,
-        status: "ok",
-        campaigns: val.campaigns,
-        ads: val.ads,
-      });
-    } else {
-      failedCount++;
-      const msg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-      errors.push(`[${account.name}] ${msg}`);
-      accountResults.push({ account_id: account.account_id, name: account.name, status: "error", error: msg });
-    }
-  });
+  const failedCount = accountResults.filter((r) => r.status === "error").length;
+  const totalAds = accountResults.reduce((s, r) => s + (r.ads ?? 0), 0);
+  const totalCampaigns = accountResults.reduce((s, r) => s + (r.campaigns ?? 0), 0);
+  const errors = accountResults.filter((r) => r.error).map((r) => `[${r.name}] ${r.error}`);
 
-  // ── 5. Finalise sync run ──────────────────────────────────────────────────
-  const finalStatus = failedCount === accounts.length ? "failed" : "success";
   await admin.from("ad_meta_sync_runs").update({
-    status: finalStatus,
+    status: failedCount === accounts.length ? "failed" : "success",
     completed_at: new Date().toISOString(),
-    records_processed: totalRecords,
+    records_processed: totalAds,
     account_results: accountResults,
     error_log: errors.length > 0 ? errors.join("\n") : null,
   }).eq("id", syncRunId);
 
-  return NextResponse.json({
+  const summary: SyncSummary = {
     synced: accounts.length - failedCount,
     failed: failedCount,
-    campaigns: accountResults.reduce((s, r) => s + (r.campaigns ?? 0), 0),
-    ads: totalRecords,
+    campaigns: totalCampaigns,
+    ads: totalAds,
     errors: errors.length > 0 ? errors : undefined,
+  };
+
+  onProgress({
+    stage: "done",
+    label: `All done — ${totalCampaigns.toLocaleString()} campaign${totalCampaigns === 1 ? "" : "s"} · ${totalAds.toLocaleString()} ad${totalAds === 1 ? "" : "s"} updated.`,
+    pct: 100,
+    summary,
   });
+
+  return summary;
+}
+
+// ─── POST /api/ad-ops/sync ────────────────────────────────────────────────────
+
+export async function POST(req: NextRequest) {
+  const fromCron = isCronRequest(req);
+  if (!fromCron) {
+    const supabase = await createClient();
+    const currentUser = await getCurrentUser(supabase);
+    if (!currentUser || !isOps(currentUser)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+
+  const fullBackfill = req.nextUrl.searchParams.get("mode") === "full";
+  const streaming = req.nextUrl.searchParams.get("stream") === "1";
+  const triggeredBy = fromCron ? "cron" : fullBackfill ? "backfill" : "manual";
+
+  if (streaming) {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (event: SyncProgressEvent) => {
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          } catch { /* client disconnected */ }
+        };
+        try {
+          await runSync(fullBackfill, triggeredBy, send);
+        } catch (err) {
+          send({ stage: "error", message: err instanceof Error ? err.message : String(err) });
+        } finally {
+          controller.close();
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
+  // Non-streaming mode (cron + any legacy callers)
+  try {
+    const summary = await runSync(fullBackfill, triggeredBy, () => { /* silent */ });
+    return NextResponse.json(summary);
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+  }
 }
