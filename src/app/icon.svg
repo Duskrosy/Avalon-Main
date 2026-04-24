@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <g fill="#b8903a">
+    <g>
+      <path d="M 30 24 L 32 2 L 34 24 Z" />
+      <rect x="28.5" y="23" width="7" height="1.8" />
+    </g>
+    <g transform="rotate(90 32 32)">
+      <path d="M 30 24 L 32 2 L 34 24 Z" />
+      <rect x="28.5" y="23" width="7" height="1.8" />
+    </g>
+    <g transform="rotate(180 32 32)">
+      <path d="M 30 24 L 32 2 L 34 24 Z" />
+      <rect x="28.5" y="23" width="7" height="1.8" />
+    </g>
+    <g transform="rotate(270 32 32)">
+      <path d="M 30 24 L 32 2 L 34 24 Z" />
+      <rect x="28.5" y="23" width="7" height="1.8" />
+    </g>
+  </g>
+  <g fill="#b8903a" opacity="0.6">
+    <path d="M 30.8 24 L 32 12 L 33.2 24 Z" transform="rotate(45 32 32)" />
+    <path d="M 30.8 24 L 32 12 L 33.2 24 Z" transform="rotate(135 32 32)" />
+    <path d="M 30.8 24 L 32 12 L 33.2 24 Z" transform="rotate(225 32 32)" />
+    <path d="M 30.8 24 L 32 12 L 33.2 24 Z" transform="rotate(315 32 32)" />
+  </g>
+  <path fill="#b8903a" fill-rule="evenodd" d="M 32 25 L 39 32 L 32 39 L 25 32 Z M 32 28.5 L 35.5 32 L 32 35.5 L 28.5 32 Z" />
+</svg>
