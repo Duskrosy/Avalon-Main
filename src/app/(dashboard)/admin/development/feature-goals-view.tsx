@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { SlowActionSpinner } from "@/components/ui/delayed-loader";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { CenterSpinner } from "@/components/ui/center-spinner";
 
 type FeatureGoal = {
   id: string;
@@ -160,7 +161,7 @@ export function FeatureGoalsView() {
       )}
 
       {loading ? (
-        <div className="text-sm text-[var(--color-text-secondary)]">Loading…</div>
+        <CenterSpinner />
       ) : goals.length === 0 ? (
         <div className="rounded-lg border border-dashed border-[var(--color-border)] p-8 text-center text-sm text-[var(--color-text-secondary)]">
           No feature goals yet. Create one to start tracking progress.

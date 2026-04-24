@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { format, parseISO } from "date-fns";
+import { CenterSpinner } from "@/components/ui/center-spinner";
 
 type JobRun = {
   id: string;
@@ -103,7 +104,7 @@ export function JobsTab() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
+        <CenterSpinner />
       ) : jobs.length === 0 ? (
         <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           <p className="text-sm text-[var(--color-text-tertiary)]">No job runs recorded yet.</p>

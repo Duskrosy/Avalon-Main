@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { CenterSpinner } from "@/components/ui/center-spinner";
 
 type Alert = {
   id: string;
@@ -73,7 +74,7 @@ export function AlertsTab() {
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
+        <CenterSpinner />
       ) : alerts.length === 0 ? (
         <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           <p className="text-sm text-[var(--color-text-tertiary)]">

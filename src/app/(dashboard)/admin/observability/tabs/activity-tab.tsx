@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { PeoplePicker } from "@/components/ui/people-picker";
+import { CenterSpinner } from "@/components/ui/center-spinner";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -369,7 +370,7 @@ export function ActivityTab({ currentDeptId }: { currentDeptId: string | null })
 
       {/* Timeline */}
       {loading ? (
-        <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
+        <CenterSpinner />
       ) : timeline.length === 0 ? (
         <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
           <p className="text-sm text-[var(--color-text-tertiary)]">

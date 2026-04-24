@@ -3,6 +3,7 @@
 import { useState, useEffect, Fragment, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { toCSV, toMarkdown, downloadFile } from "@/lib/export/format";
+import { CenterSpinner } from "@/components/ui/center-spinner";
 
 type Priority = "low" | "medium" | "high" | "urgent";
 
@@ -531,7 +532,7 @@ export function PulseTab() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>
+          <CenterSpinner />
         ) : error ? (
           <div className="text-center py-16 text-[var(--color-error)] text-sm">{error}</div>
         ) : visibleFeedback.length === 0 ? (

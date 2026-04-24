@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, BarChart, Bar
 } from "recharts";
 import { format, parseISO } from "date-fns";
+import { CenterSpinner } from "@/components/ui/center-spinner";
 
 type UsageData = {
   dau: { day: string; unique_users: number }[];
@@ -29,7 +30,7 @@ export function UsageTab() {
       .catch(() => setLoading(false));
   }, [days]);
 
-  if (loading) return <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading...</div>;
+  if (loading) return <CenterSpinner />;
   if (!data) return null;
 
   return (
