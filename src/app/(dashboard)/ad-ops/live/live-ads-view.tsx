@@ -141,7 +141,7 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [filter, setFilter] = useState<"all" | "active" | "paused" | "historical">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "paused" | "pending" | "historical">("all");
   const [msgTab, setMsgTab] = useState<"main" | "messenger">("main");
 
   // Pending-hide queue: campaigns that have been optimistically removed but
@@ -508,15 +508,8 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
 
   const isHistorical = (a: LiveCampaign) => a.has_activity === false;
 
-  // Pending (not-yet-approved) campaigns get their own section, independent of
-  // the active/paused filter — they're neither. Historical never overlaps with
-  // Pending (pending campaigns have no activity either, but the pending banner
-  // is more informative than "Historical").
-  const pendingCampaigns = ads.filter(
-    (a) => isPendingMeta(a.effective_status) && matchesMsgTab(a),
-  );
-
   const filtered = ads.filter((a) => {
+    if (filter === "pending") return isPendingMeta(a.effective_status) && matchesMsgTab(a);
     if (isPendingMeta(a.effective_status)) return false;
     if (filter === "historical") return isHistorical(a) && matchesMsgTab(a);
     if (isHistorical(a)) return false;
@@ -584,13 +577,15 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
       {/* Filter tabs */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 bg-[var(--color-bg-tertiary)] rounded-lg p-1">
-          {(["all", "active", "paused", "historical"] as const).map((tab) => {
+          {(["all", "active", "paused", "pending", "historical"] as const).map((tab) => {
             if (tab === "historical" && historicalCount === 0) return null;
+            if (tab === "pending" && pendingCount === 0) return null;
             const allCount = activeAds.length;
             const label =
               tab === "all"        ? `All (${allCount})` :
               tab === "active"     ? `Active (${activeCount})` :
               tab === "paused"     ? `Paused (${pausedCount})` :
+              tab === "pending"    ? `Pending Meta (${pendingCount})` :
                                      `Historical (${historicalCount})`;
             return (
               <button key={tab} onClick={() => setFilter(tab)}
@@ -630,22 +625,16 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
         </div>
       )}
 
-      {!loading && filtered.length === 0 && pendingCampaigns.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">
           No {filter !== "all" ? filter : ""} campaigns found
         </div>
       )}
 
-      {/* Not yet approved by Meta */}
-      {!loading && pendingCampaigns.length > 0 && (
+      {/* Pending Meta approval — rendered as cards in dedicated tab */}
+      {!loading && filter === "pending" && filtered.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2 px-1 pt-1">
-            <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-              Not yet approved by Meta
-            </h2>
-            <span className="text-xs text-[var(--color-text-tertiary)]">({pendingCampaigns.length})</span>
-          </div>
-          {pendingCampaigns.map((ad) => {
+          {filtered.map((ad) => {
             const label = PENDING_STATUS_LABELS[ad.effective_status ?? ""] ?? "In Review";
             return (
               <div
@@ -673,24 +662,21 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
         </div>
       )}
 
-      {/* Campaign accordion */}
-      {!loading && filtered.length > 0 && (
+      {/* Campaign accordion (non-pending tabs) */}
+      {!loading && filter !== "pending" && filtered.length > 0 && (
         <div className="space-y-2">
-          {pendingCampaigns.length > 0 && (
-            <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider px-1 pt-2">
-              Live campaigns
-            </h2>
-          )}
           {filtered.map((ad) => {
             const isActive   = ad.status === "active";
             const isAutoP    = !!ad.auto_paused_at;
             const isExpanded = expandedCampaign === ad.id;
             const currency   = ad.account?.currency ?? "USD";
             const pct        = spendPct(ad.live_spend, ad.spend_cap);
-            const totalSpend = ad.adsets.reduce((s, a) => s + a.spend, 0);
-            const totalConvV = ad.adsets.reduce((s, a) => s + a.conversion_value, 0);
-            const roas       = totalSpend > 0 ? totalConvV / totalSpend : null;
-            const totalAds   = ad.adsets.reduce((s, a) => s + a.ads.length, 0);
+            const totalSpend  = ad.adsets.reduce((s, a) => s + a.spend, 0);
+            const totalConvV  = ad.adsets.reduce((s, a) => s + a.conversion_value, 0);
+            const totalConv   = ad.adsets.reduce((s, a) => s + a.conversions, 0);
+            const roas        = totalSpend > 0 ? totalConvV / totalSpend : null;
+            const totalAds    = ad.adsets.reduce((s, a) => s + a.ads.length, 0);
+            const hasLiveOnly = (ad.live_spend ?? 0) > 0 && totalSpend === 0;
             const isCampToggling = togglingCampaign === ad.id;
             const isEditingThisCap = editingCap === ad.id;
 
@@ -717,8 +703,16 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
 
                   <div className="hidden sm:flex items-center gap-4 text-xs shrink-0">
                     <span className="text-[var(--color-text-secondary)]">
-                      <span className="font-semibold text-[var(--color-text-primary)]">{fmtMoney(ad.live_spend, currency)}</span> live
+                      <span className="font-semibold text-[var(--color-text-primary)]">
+                        {fmtMoney(hasLiveOnly ? ad.live_spend : totalSpend, currency)}
+                      </span> spent
                     </span>
+                    <span className="text-[var(--color-text-secondary)]">
+                      <span className="font-semibold text-[var(--color-text-primary)]">{totalConv.toLocaleString()}</span> results
+                    </span>
+                    {(ad.live_spend ?? 0) > 0 && (
+                      <span className="text-[var(--color-text-tertiary)]">{fmtMoney(ad.live_spend, currency)} live</span>
+                    )}
                     {roas !== null && (
                       <span className={`font-semibold ${roasColor(roas)}`}>{fmt(roas)}x ROAS</span>
                     )}

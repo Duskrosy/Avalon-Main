@@ -573,7 +573,7 @@ export function CampaignsView({ accounts, canSync }: Props) {
   const colFormulaRef = useRef<HTMLInputElement>(null);
 
   // Tabs: conversion (main) / messenger / historical (no activity in window).
-  const [activeTab, setActiveTab] = useState<"main" | "messenger" | "historical">("main");
+  const [activeTab, setActiveTab] = useState<"main" | "messenger" | "pending" | "historical">("main");
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -1224,6 +1224,9 @@ export function CampaignsView({ accounts, canSync }: Props) {
     () => visibleCampaigns.filter((c) => {
       const messenger = isMessengerCampaign(c.campaign_name);
       const historical = isHistorical(c);
+      const pending = isPendingMeta(c.effective_status);
+      if (activeTab === "pending") return pending;
+      if (pending) return false;
       if (activeTab === "historical") return historical;
       if (historical) return false;
       return activeTab === "messenger" ? messenger : !messenger;
@@ -1233,14 +1236,9 @@ export function CampaignsView({ accounts, canSync }: Props) {
     [visibleCampaigns, activeTab, hasActivity],
   );
 
-  const pendingTabCampaigns = useMemo(
-    () => tabCampaigns.filter((c) => isPendingMeta(c.effective_status)),
-    [tabCampaigns],
-  );
-
-  const liveTabCampaigns = useMemo(
-    () => tabCampaigns.filter((c) => !isPendingMeta(c.effective_status)),
-    [tabCampaigns],
+  const pendingCount = useMemo(
+    () => visibleCampaigns.filter((c) => isPendingMeta(c.effective_status)).length,
+    [visibleCampaigns],
   );
 
   // Unique statuses for filter dropdown
@@ -1800,11 +1798,13 @@ export function CampaignsView({ accounts, canSync }: Props) {
         const conversionCount = activeList.length - messengerCount;
         const showMessenger = hasMessengerCampaigns;
         const showHistorical = historicalCount > 0;
-        if (!showMessenger && !showHistorical) return null;
+        const showPending = pendingCount > 0;
+        if (!showMessenger && !showHistorical && !showPending) return null;
 
-        const tabs: { key: "main" | "messenger" | "historical"; label: string; count: number; show: boolean }[] = [
+        const tabs: { key: "main" | "messenger" | "pending" | "historical"; label: string; count: number; show: boolean }[] = [
           { key: "main",        label: "Conversion",  count: conversionCount, show: true },
           { key: "messenger",   label: "Messenger",   count: messengerCount,  show: showMessenger },
+          { key: "pending",     label: "Pending Meta",count: pendingCount,    show: showPending },
           { key: "historical",  label: "Historical",  count: historicalCount, show: showHistorical },
         ];
 
@@ -1857,58 +1857,40 @@ export function CampaignsView({ accounts, canSync }: Props) {
             Clear filters
           </button>
         </div>
+      ) : activeTab === "pending" ? (
+        <div className="space-y-2">
+          {tabCampaigns.map((campaign) => {
+            const account = accountMap[campaign.meta_account_id];
+            const statusLabel =
+              PENDING_STATUS_LABELS[campaign.effective_status] ?? campaign.effective_status;
+            return (
+              <div
+                key={campaign.id}
+                className="bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-warning)] rounded-[var(--radius-lg)] px-5 py-4"
+              >
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-[var(--color-warning-light)] text-[var(--color-warning)]">
+                    {statusLabel}
+                  </span>
+                  <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)] min-w-0 truncate">
+                    {campaign.campaign_name}
+                  </span>
+                  <CampaignTypeTag name={campaign.campaign_name} />
+                  {accounts.length > 1 && account && (
+                    <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded-full shrink-0">
+                      {account.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="space-y-6">
-          {pendingTabCampaigns.length > 0 && (
-            <section className="space-y-2">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-                  Not yet approved by Meta
-                </h3>
-                <span className="text-xs text-[var(--color-text-tertiary)]">
-                  {pendingTabCampaigns.length}
-                </span>
-              </div>
+          <section className="space-y-2">
               <div className="space-y-2">
-                {pendingTabCampaigns.map((campaign) => {
-                  const account = accountMap[campaign.meta_account_id];
-                  const statusLabel =
-                    PENDING_STATUS_LABELS[campaign.effective_status] ?? campaign.effective_status;
-                  return (
-                    <div
-                      key={campaign.id}
-                      className="bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-warning)] rounded-[var(--radius-lg)] px-5 py-4"
-                    >
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-[var(--color-warning-light)] text-[var(--color-warning)]">
-                          {statusLabel}
-                        </span>
-                        <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)] min-w-0 truncate">
-                          {campaign.campaign_name}
-                        </span>
-                        <CampaignTypeTag name={campaign.campaign_name} />
-                        {accounts.length > 1 && account && (
-                          <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded-full shrink-0">
-                            {account.name}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {liveTabCampaigns.length > 0 && (
-            <section className="space-y-2">
-              {pendingTabCampaigns.length > 0 && (
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
-                  Live campaigns
-                </h3>
-              )}
-              <div className="space-y-2">
-          {liveTabCampaigns.map((campaign) => {
+          {tabCampaigns.map((campaign) => {
             const key     = `${campaign.meta_account_id}__${campaign.campaign_id}`;
             const totals  = campaignTotals.get(key);
             const account = accountMap[campaign.meta_account_id];
@@ -2099,7 +2081,6 @@ export function CampaignsView({ accounts, canSync }: Props) {
           })}
               </div>
             </section>
-          )}
         </div>
       )}
 
