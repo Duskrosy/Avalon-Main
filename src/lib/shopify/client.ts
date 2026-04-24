@@ -235,3 +235,272 @@ export function buildOrderRow(
     last_synced_at:          new Date().toISOString(),
   };
 }
+
+// ─── Write helpers (Phase 1: Sales Tracker) ──────────────────────────────────
+//
+// Avalon owns the order draft lifecycle. These helpers are called from
+// /api/sales/orders/[id]/confirm and adjacent routes when an Avalon-native
+// order is being pushed to Shopify for the first time, retried after a failed
+// sync, or cancelled.
+
+async function shopifyPost<T>(path: string, body: unknown): Promise<T> {
+  const token = await getShopifyToken();
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const responseBody = await res.text();
+    throw new Error(`Shopify API error ${res.status}: ${responseBody}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// ─── Customer write methods ──────────────────────────────────────────────────
+
+export type ShopifyCustomer = {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  addresses?: Array<{
+    address1?: string;
+    address2?: string;
+    city?: string;
+    province?: string;
+    zip?: string;
+    country_code?: string;
+  }>;
+};
+
+export type ShopifyCustomerInput = {
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+  addresses?: Array<{
+    address1?: string | null;
+    address2?: string | null;
+    city?: string | null;
+    province?: string | null;
+    zip?: string | null;
+    country?: string;
+  }>;
+};
+
+/**
+ * Search Shopify customers by email, phone, or name. Returns the first 10
+ * matches. Used as the email-pre-search dedup guard before customer create.
+ */
+export async function searchShopifyCustomers(
+  query: string,
+): Promise<ShopifyCustomer[]> {
+  try {
+    const q = encodeURIComponent(query.trim());
+    if (!q) return [];
+    const json = await shopifyGet<{ customers: ShopifyCustomer[] }>(
+      `/customers/search.json?query=${q}&limit=10`,
+    );
+    return json.customers ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Create a customer in Shopify. Caller is responsible for email-pre-search
+ * dedup: invoke searchShopifyCustomers(email) first, and reuse the existing
+ * Shopify customer id if a match is returned. This function does not dedup.
+ */
+export async function createShopifyCustomer(
+  input: ShopifyCustomerInput,
+): Promise<ShopifyCustomer> {
+  const json = await shopifyPost<{ customer: ShopifyCustomer }>(
+    `/customers.json`,
+    { customer: input },
+  );
+  return json.customer;
+}
+
+// ─── Order write methods ─────────────────────────────────────────────────────
+
+export type ShopifyOrderLineItemInput = {
+  variant_id?: number | string;       // Shopify variant id
+  title?: string;                      // fallback when no variant_id
+  quantity: number;
+  price: string;                       // Shopify expects string, e.g. "3500.00"
+  sku?: string;
+};
+
+export type ShopifyOrderInput = {
+  customer?: { id: number } | ShopifyCustomerInput;
+  line_items: ShopifyOrderLineItemInput[];
+  discount_codes?: Array<{ code: string; amount: string; type: "percentage" | "fixed_amount" }>;
+  shipping_lines?: Array<{ title: string; price: string; code?: string }>;
+  shipping_address?: {
+    first_name?: string;
+    last_name?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    province?: string;
+    zip?: string;
+    phone?: string;
+    country?: string;
+  };
+  note?: string;
+  note_attributes?: Array<{ name: string; value: string }>;
+  tags?: string;
+  // CRITICAL — COD payment-due-later semantics: omit `transactions[]` to keep
+  // financial_status='pending' on create. Do NOT add transactions here unless
+  // the upstream caller is recording an actual collected payment.
+  // Inventory behavior bypass: Avalon's Inventory v1 already allocated stock,
+  // we do not want Shopify to also decrement its placeholder 999.
+  inventory_behavior?: "bypass" | "decrement_obeying_policy" | "decrement_ignoring_policy";
+};
+
+/**
+ * Create a Shopify order from an Avalon-confirmed draft. The caller MUST have
+ * inserted an `order_shopify_syncs` row with status='in_flight' before calling
+ * this; on success/failure, update that row in the same transaction context.
+ *
+ * Defaults baked in:
+ *   • inventory_behavior = 'bypass' (Inventory v1 owns stock; Shopify is 999)
+ *   • no transactions[] → financial_status = 'pending' (COD payment-due-later)
+ */
+export async function createShopifyOrder(
+  input: ShopifyOrderInput,
+): Promise<ShopifyOrder> {
+  const payload = {
+    order: {
+      ...input,
+      inventory_behavior: input.inventory_behavior ?? "bypass",
+    },
+  };
+  const json = await shopifyPost<{ order: ShopifyOrder }>(
+    `/orders.json`,
+    payload,
+  );
+  return json.order;
+}
+
+/**
+ * Idempotency guard for Shopify order creation. Searches recent orders by
+ * note_attributes.avalon_order_number to detect "POST succeeded but response
+ * was lost" scenarios, so the retry path can recover instead of duplicating.
+ *
+ * Shopify's REST API does not natively filter on note_attributes, so we
+ * narrow with `created_at_min` and scan client-side. windowHours=1 keeps the
+ * scan cheap; bump if confirm-retry windows ever exceed an hour in practice.
+ */
+export async function fetchShopifyOrderByNoteAttribute(
+  name: string,
+  value: string,
+  windowHours = 1,
+): Promise<ShopifyOrder | null> {
+  try {
+    const since = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
+    const fields =
+      "id,order_number,name,created_at,financial_status,fulfillment_status," +
+      "total_price,line_items,customer,payment_gateway,tags,note_attributes";
+    const params = new URLSearchParams({
+      status: "any",
+      created_at_min: since,
+      fields,
+      limit: "100",
+    });
+    const json = await shopifyGet<{ orders: ShopifyOrder[] }>(
+      `/orders.json?${params.toString()}`,
+    );
+    for (const o of json.orders ?? []) {
+      const match = (o.note_attributes ?? []).find(
+        (a) => a.name === name && a.value === value,
+      );
+      if (match) return o;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Cancel a Shopify order. Used by both /api/sales/orders/[id]/cancel and
+ * /api/sales/orders/[id]/revert-to-draft when the order has previously
+ * synced (sync_status='synced'). Failures bubble up — caller decides whether
+ * to retry or surface to the agent.
+ */
+export async function cancelShopifyOrder(
+  shopifyOrderId: string | number,
+  reason: "customer" | "inventory" | "fraud" | "declined" | "other" = "other",
+): Promise<ShopifyOrder> {
+  const json = await shopifyPost<{ order: ShopifyOrder }>(
+    `/orders/${shopifyOrderId}/cancel.json`,
+    { reason },
+  );
+  return json.order;
+}
+
+// ─── Discount / voucher list ─────────────────────────────────────────────────
+
+export type ShopifyDiscountCode = {
+  id: number;
+  price_rule_id: number;
+  code: string;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+// Module-scoped cache (60s TTL). Voucher lists don't change minute-to-minute;
+// caching saves ~300 calls/agent/day on the drawer mount. Cache is per-process,
+// so Vercel Functions get a cold cache on each new instance — that's fine.
+let _voucherCache: { at: number; codes: ShopifyDiscountCode[] } | null = null;
+const VOUCHER_CACHE_MS = 60_000;
+
+/**
+ * List active Shopify discount codes for the voucher dropdown on the Payment
+ * step of the Create Order drawer. Cached for 60 seconds.
+ */
+export async function listShopifyVouchers(
+  options: { force?: boolean } = {},
+): Promise<ShopifyDiscountCode[]> {
+  const now = Date.now();
+  if (
+    !options.force &&
+    _voucherCache &&
+    now - _voucherCache.at < VOUCHER_CACHE_MS
+  ) {
+    return _voucherCache.codes;
+  }
+  try {
+    // Phase 1: list price rules, then their discount codes. Shopify's discount
+    // codes API requires a price_rule_id, so this is a 2-step join.
+    const rulesJson = await shopifyGet<{ price_rules: Array<{ id: number; ends_at: string | null }> }>(
+      `/price_rules.json?limit=250`,
+    );
+    const activeRules = (rulesJson.price_rules ?? []).filter((r) => {
+      if (!r.ends_at) return true;
+      return new Date(r.ends_at).getTime() > now;
+    });
+    const all: ShopifyDiscountCode[] = [];
+    for (const rule of activeRules) {
+      try {
+        const dcJson = await shopifyGet<{ discount_codes: ShopifyDiscountCode[] }>(
+          `/price_rules/${rule.id}/discount_codes.json`,
+        );
+        all.push(...(dcJson.discount_codes ?? []));
+      } catch {
+        // Per-rule failure should not blow up the whole list.
+        continue;
+      }
+    }
+    _voucherCache = { at: now, codes: all };
+    return all;
+  } catch {
+    return _voucherCache?.codes ?? [];
+  }
+}
