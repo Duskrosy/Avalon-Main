@@ -475,6 +475,8 @@ export function CampaignsView({ accounts, canSync }: Props) {
 
   // Sync state
   const [syncing, setSyncing]   = useState(false);
+  const [syncMenuOpen, setSyncMenuOpen] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
   const [syncMsg, setSyncMsg]   = useState<{ type: "ok" | "error"; text: string } | null>(null);
 
   // Filter / sort state
@@ -719,6 +721,38 @@ export function CampaignsView({ accounts, canSync }: Props) {
       setSyncMsg({ type: "error", text: "Network error — sync request failed" });
     } finally {
       setSyncing(false);
+    }
+  }
+
+  // ── Manual full-catalog backfill (safety net, tucked in settings menu) ───
+  async function handleBackfill() {
+    const ok = window.confirm(
+      "Backfill will paginate every campaign on every account (~3,500 rows). " +
+      "This can take a minute or two. Continue?",
+    );
+    if (!ok) return;
+    setBackfilling(true);
+    setSyncMenuOpen(false);
+    setSyncMsg(null);
+    try {
+      const res = await fetch("/api/ad-ops/sync?mode=full", { method: "POST" });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSyncMsg({ type: "error", text: body.error ?? `Backfill failed (${res.status})` });
+      } else if (body.errors?.length) {
+        const firstErr = String(body.errors[0]).slice(0, 200);
+        setSyncMsg({
+          type: "error",
+          text: `Backfilled ${body.campaigns ?? 0} campaigns — ${body.failed ?? 0} account(s) failed: ${firstErr}`,
+        });
+      } else {
+        setSyncMsg({ type: "ok", text: `Backfilled ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads` });
+        setToast({ message: `Backfilled ${body.campaigns ?? 0} campaigns`, type: "success" });
+      }
+    } catch {
+      setSyncMsg({ type: "error", text: "Network error — backfill request failed" });
+    } finally {
+      setBackfilling(false);
     }
   }
 
@@ -1683,7 +1717,7 @@ export function CampaignsView({ accounts, canSync }: Props) {
           {canSync && (
             <button
               onClick={handleSync}
-              disabled={syncing}
+              disabled={syncing || backfilling}
               className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {syncing ? "Syncing…" : "Sync Now"}
@@ -1691,6 +1725,51 @@ export function CampaignsView({ accounts, canSync }: Props) {
                 <ButtonSpinner size={14} />
               </SlowActionSpinner>
             </button>
+          )}
+
+          {/* Settings menu — gear icon with a hidden backfill action */}
+          {canSync && (
+            <div className="relative">
+              <button
+                onClick={() => setSyncMenuOpen((v) => !v)}
+                disabled={syncing || backfilling}
+                aria-label="Sync settings"
+                className="p-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+
+              {syncMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setSyncMenuOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-lg z-20 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-[var(--color-border-secondary)]">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">Safety net</p>
+                    </div>
+                    <button
+                      onClick={handleBackfill}
+                      disabled={backfilling}
+                      className="w-full text-left px-3 py-2.5 hover:bg-[var(--color-surface-hover)] disabled:opacity-50 flex items-start gap-2"
+                    >
+                      <svg className="w-4 h-4 mt-0.5 text-[var(--color-text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                          {backfilling ? "Backfilling…" : "Backfill all campaigns"}
+                        </p>
+                        <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5 leading-snug">
+                          Paginates every campaign on every account. Slow; use only when something's missing from the catalog.
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>

@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   resolveToken,
   fetchAdInsights,
+  fetchCampaigns,
   fetchCampaignsByIds,
 } from "@/lib/meta/client";
 
@@ -29,7 +30,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const triggeredBy = fromCron ? "cron" : "manual";
+  // mode=full = paginate every campaign (safety-net backfill). Default is the
+  // incremental path that only touches campaigns with activity yesterday.
+  const fullBackfill = req.nextUrl.searchParams.get("mode") === "full";
+  const triggeredBy = fromCron ? "cron" : fullBackfill ? "backfill" : "manual";
   const admin = createAdminClient();
 
   // Yesterday's date (the data we're pulling)
@@ -90,16 +94,22 @@ export async function POST(req: NextRequest) {
       const token = resolveToken(account);
       if (!token) throw new Error("No access token available");
 
-      // Incremental: insights for the window is the source of truth for "what
+      // Default: insights for the window is the source of truth for "what
       // moved". We only refresh campaign rows that actually appeared, instead
       // of paginating the full ~3,500-campaign catalog every run.
-      const adInsights = await fetchAdInsights(account.account_id, token, "yesterday");
-      const activeCampaignIds = Array.from(
-        new Set(adInsights.map((i) => i.campaign_id).filter(Boolean)),
-      );
-      const campaigns = activeCampaignIds.length > 0
-        ? await fetchCampaignsByIds(token, activeCampaignIds)
-        : [];
+      // Backfill (mode=full): paginate the whole catalog — manual safety net.
+      const [adInsights, fullCampaigns] = await Promise.all([
+        fetchAdInsights(account.account_id, token, "yesterday"),
+        fullBackfill ? fetchCampaigns(account.account_id, token) : Promise.resolve([]),
+      ]);
+      const campaigns = fullBackfill
+        ? fullCampaigns
+        : await (async () => {
+            const ids = Array.from(
+              new Set(adInsights.map((i) => i.campaign_id).filter(Boolean)),
+            );
+            return ids.length > 0 ? fetchCampaignsByIds(token, ids) : [];
+          })();
 
       // ── Upsert campaigns into meta_campaigns ──────────────────────────
       if (campaigns.length > 0) {
