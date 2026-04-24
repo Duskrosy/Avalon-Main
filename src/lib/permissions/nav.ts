@@ -130,7 +130,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: "Live Ads",       slug: "live-ads",       route: "/ad-ops/live" },
       { name: "Dashboard",      slug: "ad-dashboard",   route: "/ad-ops/dashboard" },
-      { name: "Live Campaigns", slug: "ad-campaigns",   route: "/ad-ops/campaigns" },
+      { name: "All Campaigns",  slug: "ad-campaigns",   route: "/ad-ops/campaigns" },
       { name: "Performance",    slug: "ad-performance", route: "/ad-ops/performance" },
       { name: "Settings",       slug: "ad-settings",    route: "/ad-ops/settings", minTier: 1 },
     ],

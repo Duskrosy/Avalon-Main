@@ -1502,7 +1502,7 @@ export function CampaignsView({ accounts, canSync }: Props) {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="mb-5 flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">Live Campaigns</h1>
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)]">All Campaigns</h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1 flex items-center gap-2 flex-wrap">
             <span>
               Auto-synced from Meta · {campaigns.length} campaign{campaigns.length !== 1 ? "s" : ""}

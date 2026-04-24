@@ -66,7 +66,7 @@ const FUNNEL_COLORS: Record<string, string> = {
 };
 
 const MODULES = [
-  { href: "/ad-ops/campaigns",   label: "Live Campaigns", desc: "Auto-synced from Meta — all campaigns & ad stats" },
+  { href: "/ad-ops/campaigns",   label: "All Campaigns",  desc: "Auto-synced from Meta — all campaigns & ad stats" },
   { href: "/ad-ops/requests",    label: "Requests",       desc: "Creative briefs from Marketing" },
   { href: "/ad-ops/library",     label: "Asset Library",  desc: "All produced creatives" },
   { href: "/ad-ops/deployments", label: "Deployments",    desc: "Active campaigns across Meta accounts" },

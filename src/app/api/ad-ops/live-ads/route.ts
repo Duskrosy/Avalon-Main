@@ -62,10 +62,24 @@ async function requireAccess() {
   return { error: null, user };
 }
 
+// Full-response in-memory cache. Meta fan-out (per-account campaign + adset
+// spend) dominates cold-request latency; within this TTL we serve the prior
+// result instantly. The 60s client poll keeps data fresh, and the cache is
+// force-busted via ?fresh=1 after any pause/resume/hide mutation so optimistic
+// UI stays truthful.
+type LiveAdsCacheEntry = { expiresAt: number; body: unknown };
+let liveAdsCache: LiveAdsCacheEntry | null = null;
+const LIVE_ADS_CACHE_TTL_MS = 20_000;
+
 // ─── GET — live campaigns + stats + thumbnails ─────────────────────────────────
 export async function GET(req: NextRequest) {
   const { error } = await requireAccess();
   if (error) return error;
+
+  const fresh = req.nextUrl.searchParams.get("fresh") === "1";
+  if (!fresh && liveAdsCache && liveAdsCache.expiresAt > Date.now()) {
+    return NextResponse.json(liveAdsCache.body);
+  }
 
   // Live Ads shows today-only values — "just for today's running"
   const metricDate = new Date().toISOString().split("T")[0];
@@ -347,6 +361,7 @@ export async function GET(req: NextRequest) {
     };
   });
 
+  liveAdsCache = { expiresAt: Date.now() + LIVE_ADS_CACHE_TTL_MS, body: result };
   return NextResponse.json(result);
 }
 
@@ -389,6 +404,7 @@ export async function POST(req: NextRequest) {
       })
       .eq("id", deployment_id);
     if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+    liveAdsCache = null;
     return NextResponse.json({ ok: true, hidden: action === "hide" });
   }
 
@@ -419,6 +435,7 @@ export async function POST(req: NextRequest) {
     auto_paused_reason: action === "pause" ? "Manually paused via Live Ads" : null,
   }).eq("id", deployment_id);
 
+  liveAdsCache = null;
   return NextResponse.json({ ok: true, status: action === "pause" ? "paused" : "active" });
 }
 
@@ -457,5 +474,6 @@ export async function PATCH(req: NextRequest) {
 
   const { error: dbErr } = await admin.from("meta_campaigns").update(updates).eq("id", deployment_id);
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+  liveAdsCache = null;
   return NextResponse.json({ ok: true });
 }
