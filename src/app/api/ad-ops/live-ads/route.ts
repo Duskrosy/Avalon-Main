@@ -77,7 +77,12 @@ export async function GET(req: NextRequest) {
   if (error) return error;
 
   const fresh = req.nextUrl.searchParams.get("fresh") === "1";
-  if (!fresh && liveAdsCache && liveAdsCache.expiresAt > Date.now()) {
+  // skipMeta=1 drops the per-account Graph API fan-out (campaign + adset
+  // spend) and returns DB-only numbers instantly. Used by SSR so the page
+  // paints on first byte; the client then issues a regular call to
+  // backfill accurate live_spend.
+  const skipMeta = req.nextUrl.searchParams.get("skipMeta") === "1";
+  if (!fresh && !skipMeta && liveAdsCache && liveAdsCache.expiresAt > Date.now()) {
     return NextResponse.json(liveAdsCache.body);
   }
 
@@ -257,7 +262,7 @@ export async function GET(req: NextRequest) {
   // 6b. Live adset spend from Meta for capped adsets only
   const cappedAdsetIds = (adsetCapsRaw ?? []).map((c) => c.adset_id);
   const adsetSpendMap: Record<string, number> = {};
-  if (cappedAdsetIds.length) {
+  if (!skipMeta && cappedAdsetIds.length) {
     // Group capped adsets by account
     const adsetByAccount = new Map<string, { adsetIds: string[]; acctId: string }>();
     for (const cap of adsetCapsRaw ?? []) {
@@ -287,7 +292,7 @@ export async function GET(req: NextRequest) {
   }
 
   const spendMap: Record<string, number> = {};
-  await Promise.allSettled(
+  if (!skipMeta) await Promise.allSettled(
     Array.from(byAccount.entries()).map(async ([accountId, camps]) => {
       const acct = accountMap[camps[0].meta_account_id];
       const token = resolveToken(acct ?? {});
@@ -361,7 +366,9 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  liveAdsCache = { expiresAt: Date.now() + LIVE_ADS_CACHE_TTL_MS, body: result };
+  if (!skipMeta) {
+    liveAdsCache = { expiresAt: Date.now() + LIVE_ADS_CACHE_TTL_MS, body: result };
+  }
   return NextResponse.json(result);
 }
 

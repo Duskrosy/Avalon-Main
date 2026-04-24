@@ -108,6 +108,16 @@ type AdColumnConfig = {
 type Props = {
   accounts: Account[];
   canSync: boolean;
+  /** Server-rendered snapshot for the default window so the table paints on
+   * first byte. Null if the SSR fetch failed — client will fall back to the
+   * normal useEffect fetch path. */
+  initialWindow?: {
+    window: { start: string; end: string; prevStart: string | null; prevEnd: string | null };
+    campaigns: Campaign[];
+    stats: WindowStat[];
+    prevStats: WindowStat[];
+    hasActivity: Record<string, boolean>;
+  } | null;
 };
 
 /** Aggregated window row returned by /api/ad-ops/campaigns (one per ad). */
@@ -461,17 +471,23 @@ const DEFAULT_AD_COLUMNS: AdColumnConfig[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CampaignsView({ accounts, canSync }: Props) {
+export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
   const { toast, setToast } = useToast();
 
-  // ── Window-aggregated data, fetched from /api/ad-ops/campaigns ──────────
-  // Campaigns + stats arrive via API rather than SSR so the browser doesn't
-  // download 30 days of raw ad-stats and silently hit Supabase's 1000-row cap.
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [stats, setStats] = useState<AdStat[]>([]);
-  const [prevStats, setPrevStats] = useState<AdStat[]>([]);
-  const [hasActivity, setHasActivity] = useState<Record<string, boolean>>({});
-  const [dataLoading, setDataLoading] = useState(true);
+  // ── Window-aggregated data ──────────────────────────────────────────────
+  // Seeded from SSR when available so the table paints on first byte. Date
+  // preset changes still go through /api/ad-ops/campaigns via the effect.
+  const initialStats = initialWindow
+    ? initialWindow.stats.map((s) => toAdStat(s, initialWindow.window.start))
+    : [];
+  const initialPrevStats = initialWindow
+    ? initialWindow.prevStats.map((s) => toAdStat(s, initialWindow.window.prevStart ?? initialWindow.window.start))
+    : [];
+  const [campaigns, setCampaigns] = useState<Campaign[]>(initialWindow?.campaigns ?? []);
+  const [stats, setStats] = useState<AdStat[]>(initialStats);
+  const [prevStats, setPrevStats] = useState<AdStat[]>(initialPrevStats);
+  const [hasActivity, setHasActivity] = useState<Record<string, boolean>>(initialWindow?.hasActivity ?? {});
+  const [dataLoading, setDataLoading] = useState(!initialWindow);
 
   // Sync state
   const [syncing, setSyncing]   = useState(false);
@@ -584,7 +600,15 @@ export function CampaignsView({ accounts, canSync }: Props) {
   // Re-runs whenever the date preset (or custom range) changes. The API does
   // paginated .range() reads so we don't hit Supabase's 1000-row cap.
   const [refetchKey, setRefetchKey] = useState(0);
+  const initialFetchSkippedRef = useRef(!!initialWindow);
   useEffect(() => {
+    // First render already has SSR-seeded data for datePreset="7"; skip the
+    // redundant client fetch. Any preset change or manual refetchKey bump will
+    // fall through to the real fetch below.
+    if (initialFetchSkippedRef.current) {
+      initialFetchSkippedRef.current = false;
+      return;
+    }
     const ctl = new AbortController();
     const params = new URLSearchParams({ preset: datePreset });
     if (datePreset === "custom") {

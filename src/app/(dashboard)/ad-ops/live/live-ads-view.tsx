@@ -181,9 +181,24 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 
+  // Two-phase fetch on first load: start with a DB-only snapshot (no Meta
+  // fan-out) so the page paints in ~200ms, then trigger a full refresh in the
+  // background to backfill accurate intraday live_spend. Subsequent fetches
+  // skip the fast phase.
+  const firstLoadRef = useRef(true);
   const fetchAds = useCallback(async () => {
+    const firstLoad = firstLoadRef.current;
+    firstLoadRef.current = false;
     setLoading(true);
     try {
+      if (firstLoad) {
+        const fast = await fetch(`/api/ad-ops/live-ads?skipMeta=1`);
+        if (fast.ok) {
+          setAds(await fast.json());
+          setLastRefreshed(new Date());
+          setLoading(false);
+        }
+      }
       const res = await fetch(`/api/ad-ops/live-ads`);
       if (!res.ok) return;
       setAds(await res.json());
