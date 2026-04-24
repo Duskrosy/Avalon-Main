@@ -705,6 +705,12 @@ export function CampaignsView({ accounts, canSync }: Props) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setSyncMsg({ type: "error", text: body.error ?? `Sync failed (${res.status})` });
+      } else if (body.errors?.length) {
+        const firstErr = String(body.errors[0]).slice(0, 200);
+        setSyncMsg({
+          type: "error",
+          text: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads — ${body.failed ?? 0} account(s) failed: ${firstErr}`,
+        });
       } else {
         setSyncMsg({ type: "ok", text: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads` });
         setToast({ message: `Synced ${body.campaigns ?? 0} campaigns · ${body.ads ?? 0} ads`, type: "success" });

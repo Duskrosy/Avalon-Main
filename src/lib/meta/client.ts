@@ -151,8 +151,6 @@ export async function fetchCampaigns(
     effective_status: JSON.stringify([
       "ACTIVE",
       "PAUSED",
-      "CAMPAIGN_PAUSED",
-      "ADSET_PAUSED",
       "IN_PROCESS",
       "WITH_ISSUES",
       "PENDING_REVIEW",
