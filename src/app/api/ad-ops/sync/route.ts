@@ -179,17 +179,20 @@ export async function POST(req: NextRequest) {
       }
 
       // ── Also sync deployment statuses (backward compat) ───────────────
-      for (const campaign of campaigns) {
-        const dbStatus =
-          campaign.effective_status === "ACTIVE" ? "active" :
-          campaign.effective_status === "PAUSED" ? "paused" : "planned";
-
-        await admin
-          .from("ad_deployments")
-          .update({ status: dbStatus })
-          .eq("meta_campaign_id", campaign.id)
-          .eq("meta_account_id", account.id);
-      }
+      // Fan out in parallel; serialising 3.5k updates per account pushed sync
+      // past Vercel's function timeout.
+      await Promise.allSettled(
+        campaigns.map((campaign) => {
+          const dbStatus =
+            campaign.effective_status === "ACTIVE" ? "active" :
+            campaign.effective_status === "PAUSED" ? "paused" : "planned";
+          return admin
+            .from("ad_deployments")
+            .update({ status: dbStatus })
+            .eq("meta_campaign_id", campaign.id)
+            .eq("meta_account_id", account.id);
+        }),
+      );
 
       return {
         account_id: account.account_id,

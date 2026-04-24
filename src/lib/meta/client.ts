@@ -84,6 +84,22 @@ async function metaGet<T>(url: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Follow Graph API's `paging.next` cursor and return every row.
+ * Hard cap at `maxPages` to protect against runaway loops.
+ */
+async function metaGetAllPages<T>(initialUrl: string, maxPages = 40): Promise<T[]> {
+  type Page = { data?: T[]; paging?: { next?: string } };
+  let url: string | null = initialUrl;
+  const out: T[] = [];
+  for (let i = 0; i < maxPages && url; i++) {
+    const json: Page = await metaGet<Page>(url);
+    if (json.data?.length) out.push(...json.data);
+    url = json.paging?.next ?? null;
+  }
+  return out;
+}
+
 function buildInsightsUrl(
   accountId: string,
   token: string,
@@ -135,18 +151,19 @@ export async function fetchCampaigns(
     effective_status: JSON.stringify([
       "ACTIVE",
       "PAUSED",
+      "CAMPAIGN_PAUSED",
+      "ADSET_PAUSED",
       "IN_PROCESS",
       "WITH_ISSUES",
       "PENDING_REVIEW",
+      "DISAPPROVED",
       "PREAPPROVED",
       "PENDING_BILLING_INFO",
     ]),
-    limit: "200",
+    limit: "500",
   });
   const url = `${BASE}/act_${accountId}/campaigns?${params}`;
-
-  const json = await metaGet<{ data: MetaCampaign[] }>(url);
-  return json.data ?? [];
+  return metaGetAllPages<MetaCampaign>(url);
 }
 
 // ─── Ad-level performance ─────────────────────────────────────────────────────
@@ -186,10 +203,8 @@ export async function fetchAdInsights(
     limit: "500",
   });
 
-  const json = await metaGet<{ data: RawAdInsight[] }>(url);
-
-  // Normalise the nested action arrays into flat numbers
-  return (json.data ?? []).map(normaliseAdInsight);
+  const rows = await metaGetAllPages<RawAdInsight>(url);
+  return rows.map(normaliseAdInsight);
 }
 
 // ─── Normaliser ───────────────────────────────────────────────────────────────
