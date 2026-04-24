@@ -79,7 +79,11 @@ function progressColor(pct: number) {
 }
 
 const PERIOD_LABELS: Record<string, string> = { lifetime: "Lifetime", monthly: "This Month", daily: "Today" };
-const AUTO_REFRESH_MS = 50 * 60 * 1000;
+// "Live" cadence: every 60s we ask the server to re-sync today from Meta.
+// Server-side debouncer in /api/ad-ops/sync-today collapses concurrent clients.
+const POLL_MS = 60 * 1000;
+// Hide delay: how long the Undo toast stays before the hide is committed to DB.
+const UNDO_WINDOW_MS = 10 * 1000;
 
 function roasColor(r: number) {
   if (r >= 2) return "text-[var(--color-success)]";
@@ -92,9 +96,15 @@ function roasColor(r: number) {
 export function LiveAdsView({ canControl }: { canControl: boolean }) {
   const [ads, setAds] = useState<LiveCampaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [filter, setFilter] = useState<"all" | "active" | "paused">("all");
   const [msgTab, setMsgTab] = useState<"main" | "messenger">("main");
+
+  // Pending-hide queue: campaigns that have been optimistically removed but
+  // not yet committed to DB. Undo = cancel timer and re-insert.
+  type PendingHide = { campaign: LiveCampaign; timerId: ReturnType<typeof setTimeout> };
+  const [pendingHides, setPendingHides] = useState<PendingHide[]>([]);
 
   // Accordion
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
@@ -151,11 +161,34 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ads]);
 
+  // Trigger a Meta sync of today's insights. Server debounces at 30s so
+  // concurrent polls collapse to a single Meta call.
+  const syncToday = useCallback(async () => {
+    try {
+      await fetch("/api/ad-ops/sync-today", { method: "POST" });
+    } catch {
+      // Silent: realtime subscription will still pick up whatever the last
+      // successful sync wrote; no need to surface transient fetch failures.
+    }
+  }, []);
+
+  // Kick a sync + refetch on mount, then every POLL_MS while the tab is visible.
+  // Realtime subscription below handles the push-to-update; polling is a
+  // fallback for when the WS drops AND the trigger that pulls today's data
+  // from Meta on a cadence.
   useEffect(() => {
-    fetchAds();
-    const t = setInterval(() => fetchAds(), AUTO_REFRESH_MS);
-    return () => clearInterval(t);
-  }, [fetchAds]);
+    let cancelled = false;
+    const tick = async () => {
+      if (document.visibilityState !== "visible") return;
+      await syncToday();
+      if (!cancelled) await fetchAds();
+    };
+    tick();
+    const t = setInterval(tick, POLL_MS);
+    const onVis = () => { if (document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { cancelled = true; clearInterval(t); document.removeEventListener("visibilitychange", onVis); };
+  }, [fetchAds, syncToday]);
 
   // Realtime: refetch when Meta sync writes campaigns, stats, or caps.
   // Polling interval above stays as a fallback for when the WS drops.
@@ -185,6 +218,51 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
     } finally {
       fetchingThumbsRef.current.delete(adsetKey);
     }
+  }
+
+  // ── Manual "Sync Today" button ─────────────────────────────────────────────
+
+  async function handleSyncToday() {
+    setSyncing(true);
+    try {
+      await syncToday();
+      await fetchAds();
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  // ── Hide campaign (managers/ops only) ──────────────────────────────────────
+  // Optimistic: remove from UI instantly, commit hide to DB after UNDO_WINDOW_MS.
+  // Undo = cancel timer, re-insert.
+
+  function handleHide(campaign: LiveCampaign) {
+    // Optimistically remove from the list
+    setAds((prev) => prev.filter((a) => a.id !== campaign.id));
+    // Schedule the DB commit
+    const timerId = setTimeout(async () => {
+      try {
+        await fetch("/api/ad-ops/live-ads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deployment_id: campaign.id, action: "hide" }),
+        });
+      } finally {
+        setPendingHides((prev) => prev.filter((p) => p.campaign.id !== campaign.id));
+      }
+    }, UNDO_WINDOW_MS);
+    setPendingHides((prev) => [...prev, { campaign, timerId }]);
+  }
+
+  function handleUndoHide(campaignId: string) {
+    const entry = pendingHides.find((p) => p.campaign.id === campaignId);
+    if (!entry) return;
+    clearTimeout(entry.timerId);
+    setPendingHides((prev) => prev.filter((p) => p.campaign.id !== campaignId));
+    // Re-insert the campaign — easiest is to refetch (fresh spend etc.) but
+    // immediate restore looks snappier. Use the stashed copy and then let
+    // the next poll/realtime tick refresh its stats.
+    setAds((prev) => (prev.some((a) => a.id === entry.campaign.id) ? prev : [...prev, entry.campaign]));
   }
 
   // ── Campaign toggle ────────────────────────────────────────────────────────
@@ -400,7 +478,7 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-success)]" />
             </span>
             <p className="text-sm text-[var(--color-text-secondary)]">
-              Live · auto-refreshes every 50 min
+              Live · today only · syncs every 60s
               {lastRefreshed && (
                 <span className="ml-2 text-[var(--color-text-tertiary)]">
                   · Updated {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
@@ -410,13 +488,13 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => fetchAds()} disabled={loading}
+          <button onClick={handleSyncToday} disabled={syncing || loading}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-50">
-            <svg className={`w-4 h-4 text-[var(--color-text-secondary)] ${loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-4 h-4 text-[var(--color-text-secondary)] ${syncing || loading ? "animate-spin" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            Refresh
+            {syncing ? "Syncing…" : "Sync Today"}
           </button>
         </div>
       </div>
@@ -535,6 +613,14 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
                           : "bg-[var(--color-success-light)] text-[var(--color-success)] hover:bg-[var(--color-success-light)] border-green-200"
                       }`}>
                       {isCampToggling ? "…" : isActive ? "⏸ Pause" : "▶ Resume"}
+                    </button>
+                  )}
+
+                  {canControl && (
+                    <button onClick={() => handleHide(ad)}
+                      title="Hide from Live Ads list"
+                      className="shrink-0 text-xs px-2 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] hover:border-[var(--color-error)] transition-colors">
+                      ✕
                     </button>
                   )}
 
@@ -815,6 +901,24 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Undo toast stack: each pending hide gets its own row */}
+      {pendingHides.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+          {pendingHides.map((p) => (
+            <div key={p.campaign.id}
+              className="flex items-center gap-3 bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] rounded-lg px-4 py-2.5 shadow-lg text-sm">
+              <span className="truncate max-w-[280px]">
+                Hid <span className="font-semibold">{p.campaign.campaign_name}</span>
+              </span>
+              <button onClick={() => handleUndoHide(p.campaign.id)}
+                className="text-xs font-semibold underline underline-offset-2 hover:text-white/80">
+                Undo
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

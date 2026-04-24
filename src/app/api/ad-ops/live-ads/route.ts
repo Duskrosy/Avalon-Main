@@ -17,16 +17,22 @@ export async function GET(req: NextRequest) {
   const { error } = await requireAccess();
   if (error) return error;
 
-  const days = parseInt(req.nextUrl.searchParams.get("days") ?? "7");
-  const cutoff = new Date(Date.now() - days * 86400000).toISOString().split("T")[0];
+  // Live Ads shows today-only values — "just for today's running"
+  const metricDate = new Date().toISOString().split("T")[0];
+  // Retain optional ?days override for debug/tooling (defaults to today)
+  const daysParam = req.nextUrl.searchParams.get("days");
+  const cutoff = daysParam
+    ? new Date(Date.now() - parseInt(daysParam) * 86400000).toISOString().split("T")[0]
+    : metricDate;
 
   const admin = createAdminClient();
 
-  // 1. Campaigns: ACTIVE, or paused via this page (auto_paused_at IS NOT NULL)
+  // 1. Campaigns: ACTIVE or auto-paused via this page, excluding manually hidden ones
   const { data: campaigns, error: dbErr } = await admin
     .from("meta_campaigns")
-    .select("id, campaign_id, campaign_name, effective_status, meta_account_id, daily_budget, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason")
+    .select("id, campaign_id, campaign_name, effective_status, meta_account_id, daily_budget, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason, hidden_at")
     .or("effective_status.eq.ACTIVE,auto_paused_at.not.is.null")
+    .is("hidden_at", null)
     .order("campaign_name");
 
   if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
@@ -223,10 +229,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(result);
 }
 
-// ─── POST — toggle campaign status ────────────────────────────────────────────
+// ─── POST — toggle campaign status OR hide/unhide from Live Ads list ──────────
 const toggleSchema = z.object({
   deployment_id: z.string().uuid(),
-  action: z.enum(["pause", "resume"]),
+  action: z.enum(["pause", "resume", "hide", "unhide"]),
 });
 
 export async function POST(req: NextRequest) {
@@ -252,6 +258,20 @@ export async function POST(req: NextRequest) {
   const { deployment_id, action } = parsed.data;
   const admin = createAdminClient();
 
+  // ── Hide / unhide: DB-only, no Meta call ──
+  if (action === "hide" || action === "unhide") {
+    const { error: dbErr } = await admin
+      .from("meta_campaigns")
+      .update({
+        hidden_at: action === "hide" ? new Date().toISOString() : null,
+        hidden_by: action === "hide" ? user!.id : null,
+      })
+      .eq("id", deployment_id);
+    if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
+    return NextResponse.json({ ok: true, hidden: action === "hide" });
+  }
+
+  // ── Pause / resume: call Meta + update DB ──
   const { data: campaign } = await admin
     .from("meta_campaigns")
     .select("campaign_id, meta_account_id")
