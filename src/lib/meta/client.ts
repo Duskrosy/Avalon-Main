@@ -168,6 +168,37 @@ export async function fetchCampaigns(
   return metaGetAllPages<MetaCampaign>(url);
 }
 
+/**
+ * Fetch a specific subset of campaigns by ID via Graph's multi-get endpoint.
+ * Used by the intraday Live Ads sync — we only care about the handful of
+ * campaigns that have activity today, not the full 3,500-row catalog.
+ * Meta caps `ids=` at ~50 per call, so we chunk.
+ */
+export async function fetchCampaignsByIds(
+  token: string,
+  campaignIds: string[],
+): Promise<MetaCampaign[]> {
+  if (campaignIds.length === 0) return [];
+  const fields = "id,name,status,effective_status,objective,daily_budget,lifetime_budget,created_time,updated_time";
+  const chunks: string[][] = [];
+  for (let i = 0; i < campaignIds.length; i += 50) {
+    chunks.push(campaignIds.slice(i, i + 50));
+  }
+  const results = await Promise.allSettled(
+    chunks.map(async (chunk) => {
+      const params = new URLSearchParams({
+        access_token: token,
+        fields,
+        ids: chunk.join(","),
+      });
+      const url = `${BASE}/?${params}`;
+      const json = await metaGet<Record<string, MetaCampaign>>(url);
+      return Object.values(json ?? {});
+    }),
+  );
+  return results.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+}
+
 // ─── Ad-level performance ─────────────────────────────────────────────────────
 
 /**

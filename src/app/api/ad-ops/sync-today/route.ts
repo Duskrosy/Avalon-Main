@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
-import { resolveToken, fetchAdInsights, fetchCampaigns } from "@/lib/meta/client";
+import { resolveToken, fetchAdInsights, fetchCampaignsByIds } from "@/lib/meta/client";
 
 // Server-side debounce window: Meta hates us, so we batch all concurrent
 // client polls into one call every DEBOUNCE_SECONDS.
@@ -96,10 +96,16 @@ export async function POST(req: NextRequest) {
       const token = resolveToken(account);
       if (!token) throw new Error("No access token available");
 
-      const [campaigns, adInsights] = await Promise.all([
-        fetchCampaigns(account.account_id, token),
-        fetchAdInsights(account.account_id, token, "today"),
-      ]);
+      // Insights first — the unique campaign IDs it returns are the only
+      // campaigns we actually care about for Live Ads. Skipping the full
+      // /act_X/campaigns pagination (~3,500 rows) keeps Sync Today fast.
+      const adInsights = await fetchAdInsights(account.account_id, token, "today");
+      const activeCampaignIds = Array.from(
+        new Set(adInsights.map((i) => i.campaign_id).filter(Boolean)),
+      );
+      const campaigns = activeCampaignIds.length > 0
+        ? await fetchCampaignsByIds(token, activeCampaignIds)
+        : [];
 
       // Upsert campaigns (status/budget may have changed intraday)
       if (campaigns.length > 0) {
