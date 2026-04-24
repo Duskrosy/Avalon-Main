@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   resolveToken,
   fetchAdInsights,
-  fetchCampaigns,
+  fetchCampaignsByIds,
 } from "@/lib/meta/client";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -90,11 +90,16 @@ export async function POST(req: NextRequest) {
       const token = resolveToken(account);
       if (!token) throw new Error("No access token available");
 
-      // Fetch campaigns + ad insights in parallel
-      const [campaigns, adInsights] = await Promise.all([
-        fetchCampaigns(account.account_id, token),
-        fetchAdInsights(account.account_id, token, "yesterday"),
-      ]);
+      // Incremental: insights for the window is the source of truth for "what
+      // moved". We only refresh campaign rows that actually appeared, instead
+      // of paginating the full ~3,500-campaign catalog every run.
+      const adInsights = await fetchAdInsights(account.account_id, token, "yesterday");
+      const activeCampaignIds = Array.from(
+        new Set(adInsights.map((i) => i.campaign_id).filter(Boolean)),
+      );
+      const campaigns = activeCampaignIds.length > 0
+        ? await fetchCampaignsByIds(token, activeCampaignIds)
+        : [];
 
       // ── Upsert campaigns into meta_campaigns ──────────────────────────
       if (campaigns.length > 0) {
