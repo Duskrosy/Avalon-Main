@@ -116,7 +116,15 @@ export async function fetchCampaigns(
   const params = new URLSearchParams({
     access_token: token,
     fields,
-    effective_status: JSON.stringify(["ACTIVE", "PAUSED"]),
+    effective_status: JSON.stringify([
+      "ACTIVE",
+      "PAUSED",
+      "IN_PROCESS",
+      "WITH_ISSUES",
+      "PENDING_REVIEW",
+      "PREAPPROVED",
+      "PENDING_BILLING_INFO",
+    ]),
     limit: "200",
   });
   const url = `${BASE}/act_${accountId}/campaigns?${params}`;

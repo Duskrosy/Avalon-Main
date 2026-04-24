@@ -119,7 +119,51 @@ const STATUS_STYLES: Record<string, string> = {
   PAUSED:   "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
   ARCHIVED: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
   DELETED:  "bg-[var(--color-error-light)] text-red-400",
+  IN_PROCESS:           "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  WITH_ISSUES:          "bg-[var(--color-error-light)] text-[var(--color-error)]",
+  PENDING_REVIEW:       "bg-[var(--color-warning-light)] text-[var(--color-warning-text)]",
+  PREAPPROVED:          "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  PENDING_BILLING_INFO: "bg-[var(--color-error-light)] text-[var(--color-error)]",
 };
+
+const PENDING_META_STATUSES = new Set([
+  "IN_PROCESS",
+  "WITH_ISSUES",
+  "PENDING_REVIEW",
+  "PREAPPROVED",
+  "PENDING_BILLING_INFO",
+]);
+
+const PENDING_STATUS_LABELS: Record<string, string> = {
+  IN_PROCESS: "In Process",
+  WITH_ISSUES: "With Issues",
+  PENDING_REVIEW: "Pending Review",
+  PREAPPROVED: "Preapproved",
+  PENDING_BILLING_INFO: "Pending Billing",
+};
+
+function isPendingMeta(s: string | null | undefined) {
+  return !!s && PENDING_META_STATUSES.has(s);
+}
+
+function isMessengerCampaign(name: string | null | undefined) {
+  return !!name && name.toLowerCase().includes("messenger");
+}
+
+function CampaignTypeTag({ name }: { name: string | null | undefined }) {
+  const messenger = isMessengerCampaign(name);
+  return (
+    <span
+      className={
+        messenger
+          ? "text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--color-accent-light)] text-[var(--color-accent)] shrink-0"
+          : "text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--color-success-light)] text-[var(--color-success)] shrink-0"
+      }
+    >
+      {messenger ? "Messenger" : "Conversion"}
+    </span>
+  );
+}
 
 const SORT_OPTIONS = [
   { value: "spend",       label: "Spend (high→low)" },
@@ -1098,10 +1142,20 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
 
   const tabCampaigns = useMemo(
     () => visibleCampaigns.filter((c) => {
-      const isMessenger = c.campaign_name.toLowerCase().includes("messenger");
+      const isMessenger = isMessengerCampaign(c.campaign_name);
       return activeTab === "messenger" ? isMessenger : !isMessenger;
     }),
     [visibleCampaigns, activeTab],
+  );
+
+  const pendingTabCampaigns = useMemo(
+    () => tabCampaigns.filter((c) => isPendingMeta(c.effective_status)),
+    [tabCampaigns],
+  );
+
+  const liveTabCampaigns = useMemo(
+    () => tabCampaigns.filter((c) => !isPendingMeta(c.effective_status)),
+    [tabCampaigns],
   );
 
   // Unique statuses for filter dropdown
@@ -1704,8 +1758,57 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
-          {tabCampaigns.map((campaign) => {
+        <div className="space-y-6">
+          {pendingTabCampaigns.length > 0 && (
+            <section className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+                  Not yet approved by Meta
+                </h3>
+                <span className="text-xs text-[var(--color-text-tertiary)]">
+                  {pendingTabCampaigns.length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {pendingTabCampaigns.map((campaign) => {
+                  const account = accountMap[campaign.meta_account_id];
+                  const statusLabel =
+                    PENDING_STATUS_LABELS[campaign.effective_status] ?? campaign.effective_status;
+                  return (
+                    <div
+                      key={campaign.id}
+                      className="bg-[var(--color-bg-primary)] border border-dashed border-[var(--color-warning)] rounded-[var(--radius-lg)] px-5 py-4"
+                    >
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0 bg-[var(--color-warning-light)] text-[var(--color-warning)]">
+                          {statusLabel}
+                        </span>
+                        <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)] min-w-0 truncate">
+                          {campaign.campaign_name}
+                        </span>
+                        <CampaignTypeTag name={campaign.campaign_name} />
+                        {accounts.length > 1 && account && (
+                          <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded-full shrink-0">
+                            {account.name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {liveTabCampaigns.length > 0 && (
+            <section className="space-y-2">
+              {pendingTabCampaigns.length > 0 && (
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-secondary)]">
+                  Live campaigns
+                </h3>
+              )}
+              <div className="space-y-2">
+          {liveTabCampaigns.map((campaign) => {
             const key     = `${campaign.meta_account_id}__${campaign.campaign_id}`;
             const totals  = campaignTotals.get(key);
             const account = accountMap[campaign.meta_account_id];
@@ -1730,6 +1833,8 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
                     <span className="flex-1 text-sm font-medium text-[var(--color-text-primary)] min-w-0 truncate">
                       {campaign.campaign_name}
                     </span>
+
+                    <CampaignTypeTag name={campaign.campaign_name} />
 
                     {accounts.length > 1 && account && (
                       <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] px-2 py-0.5 rounded-full shrink-0">
@@ -1892,6 +1997,9 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               </div>
             );
           })}
+              </div>
+            </section>
+          )}
         </div>
       )}
 

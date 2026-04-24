@@ -27,11 +27,22 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
 
-  // 1. Campaigns: ACTIVE or auto-paused via this page, excluding manually hidden ones
+  // 1. Campaigns: ACTIVE, auto-paused via this page, or not-yet-approved by Meta.
+  //    Excludes manually hidden ones.
   const { data: campaigns, error: dbErr } = await admin
     .from("meta_campaigns")
     .select("id, campaign_id, campaign_name, effective_status, meta_account_id, daily_budget, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason, hidden_at")
-    .or("effective_status.eq.ACTIVE,auto_paused_at.not.is.null")
+    .or(
+      [
+        "effective_status.eq.ACTIVE",
+        "effective_status.eq.IN_PROCESS",
+        "effective_status.eq.WITH_ISSUES",
+        "effective_status.eq.PENDING_REVIEW",
+        "effective_status.eq.PREAPPROVED",
+        "effective_status.eq.PENDING_BILLING_INFO",
+        "auto_paused_at.not.is.null",
+      ].join(",")
+    )
     .is("hidden_at", null)
     .order("campaign_name");
 
@@ -214,6 +225,7 @@ export async function GET(req: NextRequest) {
       id: c.id,
       campaign_name: c.campaign_name,
       status: (c.effective_status ?? "").toLowerCase(),
+      effective_status: c.effective_status ?? null,
       meta_campaign_id: c.campaign_id,
       spend_cap: c.spend_cap,
       spend_cap_period: c.spend_cap_period ?? "lifetime",

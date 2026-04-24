@@ -41,6 +41,7 @@ type LiveCampaign = {
   id: string;
   campaign_name: string;
   status: string;
+  effective_status: string | null;
   meta_campaign_id: string | null;
   spend_cap: number | null;
   spend_cap_period: "lifetime" | "monthly" | "daily";
@@ -89,6 +90,46 @@ function roasColor(r: number) {
   if (r >= 2) return "text-[var(--color-success)]";
   if (r < 1)  return "text-[var(--color-error)]";
   return "text-[var(--color-text-primary)]";
+}
+
+// Meta effective_status values that mean "created but not yet approved / live".
+const PENDING_META_STATUSES = new Set([
+  "IN_PROCESS",
+  "WITH_ISSUES",
+  "PENDING_REVIEW",
+  "PREAPPROVED",
+  "PENDING_BILLING_INFO",
+]);
+
+function isPendingMeta(effectiveStatus: string | null | undefined) {
+  return !!effectiveStatus && PENDING_META_STATUSES.has(effectiveStatus);
+}
+
+function isMessengerCampaign(name: string | null | undefined) {
+  return !!name && name.toLowerCase().includes("messenger");
+}
+
+const PENDING_STATUS_LABELS: Record<string, string> = {
+  IN_PROCESS: "In Process",
+  WITH_ISSUES: "With Issues",
+  PENDING_REVIEW: "Pending Review",
+  PREAPPROVED: "Preapproved",
+  PENDING_BILLING_INFO: "Pending Billing",
+};
+
+function CampaignTypeTag({ name }: { name: string | null | undefined }) {
+  const messenger = isMessengerCampaign(name);
+  return (
+    <span
+      className={
+        messenger
+          ? "text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--color-accent-light)] text-[var(--color-accent)]"
+          : "text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--color-success-light)] text-[var(--color-success)]"
+      }
+    >
+      {messenger ? "Messenger" : "Conversion"}
+    </span>
+  );
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────────
@@ -453,22 +494,31 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
 
   // ── Filtered list ──────────────────────────────────────────────────────────
 
-  const hasMessenger = ads.some((a) => a.campaign_name?.toLowerCase().includes("messenger"));
+  const hasMessenger = ads.some((a) => isMessengerCampaign(a.campaign_name));
+
+  const matchesMsgTab = (a: LiveCampaign) => {
+    if (!hasMessenger) return true;
+    const isMsg = isMessengerCampaign(a.campaign_name);
+    if (msgTab === "messenger" && !isMsg) return false;
+    if (msgTab === "main" && isMsg) return false;
+    return true;
+  };
+
+  // Pending (not-yet-approved) campaigns get their own section, independent of
+  // the active/paused filter — they're neither.
+  const pendingCampaigns = ads.filter((a) => isPendingMeta(a.effective_status) && matchesMsgTab(a));
 
   const filtered = ads.filter((a) => {
+    if (isPendingMeta(a.effective_status)) return false;
     if (filter === "active") { if (a.status !== "active") return false; }
     else if (filter === "paused") { if (a.status !== "paused") return false; }
-    if (hasMessenger) {
-      const isMsg = a.campaign_name?.toLowerCase().includes("messenger") ?? false;
-      if (msgTab === "messenger" && !isMsg) return false;
-      if (msgTab === "main" && isMsg) return false;
-    }
-    return true;
+    return matchesMsgTab(a);
   });
 
-  const activeCount = ads.filter((a) => a.status === "active").length;
-  const pausedCount = ads.filter((a) => a.status === "paused").length;
+  const activeCount = ads.filter((a) => a.status === "active" && !isPendingMeta(a.effective_status)).length;
+  const pausedCount = ads.filter((a) => a.status === "paused" && !isPendingMeta(a.effective_status)).length;
   const autoCount   = ads.filter((a) => a.auto_paused_at && a.auto_paused_reason !== "Manually paused via Live Ads").length;
+  const pendingCount = ads.filter((a) => isPendingMeta(a.effective_status)).length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -559,15 +609,57 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
         </div>
       )}
 
-      {!loading && filtered.length === 0 && (
+      {!loading && filtered.length === 0 && pendingCampaigns.length === 0 && (
         <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">
           No {filter !== "all" ? filter : ""} campaigns found
         </div>
       )}
 
-      {/* Campaign accordion */}
-      {!loading && (
+      {/* Not yet approved by Meta */}
+      {!loading && pendingCampaigns.length > 0 && (
         <div className="space-y-2">
+          <div className="flex items-center gap-2 px-1 pt-1">
+            <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
+              Not yet approved by Meta
+            </h2>
+            <span className="text-xs text-[var(--color-text-tertiary)]">({pendingCampaigns.length})</span>
+          </div>
+          {pendingCampaigns.map((ad) => {
+            const label = PENDING_STATUS_LABELS[ad.effective_status ?? ""] ?? "In Review";
+            return (
+              <div
+                key={ad.id}
+                className="bg-[var(--color-bg-primary)] rounded-[var(--radius-lg)] border border-dashed border-[var(--color-warning)]/50 px-5 py-3.5 flex items-center gap-3"
+              >
+                <span className="shrink-0 text-xs px-2 py-0.5 rounded-full font-medium bg-[var(--color-warning-light)] text-[var(--color-warning-text)]">
+                  ⧗ {label}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{ad.campaign_name}</p>
+                    <CampaignTypeTag name={ad.campaign_name} />
+                  </div>
+                  {ad.account?.name && <p className="text-xs text-[var(--color-text-tertiary)]">{ad.account.name}</p>}
+                </div>
+                {ad.daily_budget !== null && ad.daily_budget !== undefined && (
+                  <span className="hidden sm:inline text-xs text-[var(--color-text-tertiary)]">
+                    {fmtMoney(ad.daily_budget, ad.account?.currency ?? "USD")}/day budget
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Campaign accordion */}
+      {!loading && filtered.length > 0 && (
+        <div className="space-y-2">
+          {pendingCampaigns.length > 0 && (
+            <h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider px-1 pt-2">
+              Live campaigns
+            </h2>
+          )}
           {filtered.map((ad) => {
             const isActive   = ad.status === "active";
             const isAutoP    = !!ad.auto_paused_at;
@@ -595,7 +687,10 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
                   </span>
 
                   <button className="flex-1 text-left min-w-0" onClick={() => setExpandedCampaign(isExpanded ? null : ad.id)}>
-                    <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{ad.campaign_name}</p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{ad.campaign_name}</p>
+                      <CampaignTypeTag name={ad.campaign_name} />
+                    </div>
                     {ad.account?.name && <p className="text-xs text-[var(--color-text-tertiary)]">{ad.account.name}</p>}
                   </button>
 
