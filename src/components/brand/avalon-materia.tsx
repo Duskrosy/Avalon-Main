@@ -2,15 +2,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@/components/providers/theme-provider";
+import { MateriaCursorHint, SummonSequence } from "@/components/brand/summon-sequence";
 
 const REQUIRED_CLICKS = 7;
 const RESET_WINDOW_MS = 2000;
+const CURSOR_SFX = "/easter-egg/sfx-cursor.wav";
+const ACTIVATION_SFX = "/easter-egg/sfx-activation.wav";
+
+function playSfx(src: string, volume: number) {
+  try {
+    const audio = new Audio(src);
+    audio.volume = volume;
+    void audio.play().catch(() => {});
+  } catch {
+    /* noop */
+  }
+}
 
 export function AvalonMateria({ size = 14 }: { size?: number }) {
-  const { theme, avalonUnlocked, setTheme, setAvalonUnlocked } = useTheme();
+  const { theme, avalonUnlocked, materiaRevealed, setTheme, setAvalonUnlocked } = useTheme();
   const [count, setCount] = useState(0);
   const [flash, setFlash] = useState(false);
+  const [summoning, setSummoning] = useState(false);
   const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Hint only shows on the Konami-triggered reveal, for users who haven't unlocked yet.
+  const showHint = materiaRevealed && !avalonUnlocked && count === 0 && !summoning;
 
   useEffect(() => {
     return () => {
@@ -19,20 +35,38 @@ export function AvalonMateria({ size = 14 }: { size?: number }) {
   }, []);
 
   const handleClick = useCallback(() => {
+    if (summoning) return;
     if (resetTimer.current) clearTimeout(resetTimer.current);
     setCount((prev) => {
       const nextCount = prev + 1;
       if (nextCount >= REQUIRED_CLICKS) {
-        if (!avalonUnlocked) setAvalonUnlocked(true);
-        setTheme(theme === "avalon" ? "light" : "avalon");
-        setFlash(true);
-        setTimeout(() => setFlash(false), 1200);
+        playSfx(ACTIVATION_SFX, 0.7);
+        if (!avalonUnlocked) {
+          // First-time unlock — play the full summon sequence; congrats modal
+          // announces the unlock, so suppress the default toast.
+          setAvalonUnlocked(true, { silent: true });
+          setSummoning(true);
+        } else {
+          // Already unlocked — preserve original toggle behavior.
+          setTheme(theme === "avalon" ? "light" : "avalon");
+          setFlash(true);
+          setTimeout(() => setFlash(false), 1200);
+        }
         return 0;
       }
+      playSfx(CURSOR_SFX, 0.5);
       return nextCount;
     });
     resetTimer.current = setTimeout(() => setCount(0), RESET_WINDOW_MS);
-  }, [avalonUnlocked, setAvalonUnlocked, setTheme, theme]);
+  }, [avalonUnlocked, setAvalonUnlocked, setTheme, summoning, theme]);
+
+  const handleSummonDismiss = useCallback(() => {
+    setSummoning(false);
+    // Apply the Avalon theme now that the user has confirmed.
+    setTheme("avalon");
+    setFlash(true);
+    setTimeout(() => setFlash(false), 1200);
+  }, [setTheme]);
 
   const progress = count / REQUIRED_CLICKS;
   const active = theme === "avalon";
@@ -41,6 +75,7 @@ export function AvalonMateria({ size = 14 }: { size?: number }) {
     : "Hidden materia. Click 7× in quick succession to summon.";
 
   return (
+    <>
     <button
       type="button"
       onClick={handleClick}
@@ -105,6 +140,9 @@ export function AvalonMateria({ size = 14 }: { size?: number }) {
           }}
         />
       )}
+      {showHint && <MateriaCursorHint />}
     </button>
+    {summoning && <SummonSequence onDismiss={handleSummonDismiss} />}
+    </>
   );
 }

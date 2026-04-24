@@ -17,7 +17,7 @@ type ThemeContextValue = {
   setTheme: (t: Theme) => void;
   setAccent: (a: Accent) => void;
   setDensity: (d: Density) => void;
-  setAvalonUnlocked: (u: boolean) => void;
+  setAvalonUnlocked: (u: boolean, opts?: { silent?: boolean }) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -176,10 +176,10 @@ export function ThemeProvider({
     persistToServer(userId, { theme, accent, density: d });
   }, [userId, theme, accent]);
 
-  const setAvalonUnlocked = useCallback((u: boolean) => {
+  const setAvalonUnlocked = useCallback((u: boolean, opts?: { silent?: boolean }) => {
     setAvalonUnlockedState(u);
     persistToServer(userId, { avalon_unlocked: u }, true);
-    if (u) {
+    if (u && !opts?.silent) {
       setToastMessage("You've unlocked the secret theme, go to appearances to check it out");
     }
   }, [userId]);
