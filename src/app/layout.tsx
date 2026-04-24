@@ -29,10 +29,16 @@ const themeScript = `
     var a = s.accent || 'blue';
     var d = s.density || 'comfortable';
     var r = document.documentElement;
-    if (t === 'dark') r.classList.add('dark');
+    if (t === 'avalon') r.classList.add('avalon-brand');
+    else if (t === 'dark') r.classList.add('dark');
     else if (t === 'system') r.classList.add('theme-system');
-    if (a !== 'blue') r.classList.add('accent-' + a);
+    if (t !== 'avalon' && a !== 'blue') r.classList.add('accent-' + a);
     if (d === 'compact') r.classList.add('density-compact');
+    // Legacy: migrate old 'avalon-brand' flag into unlock marker
+    if (localStorage.getItem('avalon-brand') === '1') {
+      localStorage.setItem('avalon-unlocked', '1');
+      localStorage.removeItem('avalon-brand');
+    }
   } catch(e) {}
 })();
 `;

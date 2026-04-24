@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useTheme } from "@/components/providers/theme-provider";
 import { Sun, Moon, Monitor, Check } from "lucide-react";
+import { AvalonMark } from "@/components/brand/avalon-mark";
 import type { UserPreferences } from "@/types/database";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -518,8 +519,21 @@ const ACCENTS = [
 ] as const;
 
 function AppearanceTab() {
-  const { theme, accent, density, resolvedTheme, setTheme, setAccent, setDensity } = useTheme();
+  const { theme, accent, density, resolvedTheme, avalonUnlocked, setTheme, setAccent, setDensity } = useTheme();
   const isDark = resolvedTheme === "dark";
+  const isAvalon = theme === "avalon";
+
+  const themeOptions: Array<
+    | { value: "light" | "dark" | "system"; label: string; icon: typeof Sun; type: "icon" }
+    | { value: "avalon"; label: string; type: "avalon" }
+  > = [
+    { value: "light", label: "Light", icon: Sun, type: "icon" },
+    { value: "dark", label: "Dark", icon: Moon, type: "icon" },
+    { value: "system", label: "System", icon: Monitor, type: "icon" },
+  ];
+  if (avalonUnlocked) {
+    themeOptions.push({ value: "avalon", label: "Avalon", type: "avalon" });
+  }
 
   return (
     <div className="max-w-xl space-y-8">
@@ -527,50 +541,74 @@ function AppearanceTab() {
       <section>
         <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Theme</h2>
         <p className="text-xs text-[var(--color-text-tertiary)] mb-4">Choose how Avalon looks to you.</p>
-        <div className="grid grid-cols-3 gap-3">
-          {([
-            { value: "light", label: "Light", icon: Sun },
-            { value: "dark", label: "Dark", icon: Moon },
-            { value: "system", label: "System", icon: Monitor },
-          ] as const).map(({ value, label, icon: Icon }) => (
-            <button
-              key={value}
-              onClick={() => setTheme(value)}
-              className={cn(
-                "flex flex-col items-center gap-2 p-4 rounded-[var(--radius-lg)] border-2 transition-all",
-                theme === value
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]"
-                  : "border-[var(--color-border-primary)] hover:border-[var(--color-text-tertiary)] bg-[var(--color-surface-card)]"
-              )}
-            >
-              <Icon size={20} strokeWidth={1.5} className={theme === value ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"} />
-              <span className={cn("text-sm font-medium", theme === value ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>{label}</span>
-            </button>
-          ))}
+        <div className={cn("grid gap-3", avalonUnlocked ? "grid-cols-4" : "grid-cols-3")}>
+          {themeOptions.map((opt) => {
+            const selected = theme === opt.value;
+            return (
+              <button
+                key={opt.value}
+                onClick={() => setTheme(opt.value)}
+                className={cn(
+                  "flex flex-col items-center gap-2 p-4 rounded-[var(--radius-lg)] border-2 transition-all",
+                  selected
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]"
+                    : "border-[var(--color-border-primary)] hover:border-[var(--color-text-tertiary)] bg-[var(--color-surface-card)]"
+                )}
+              >
+                {opt.type === "icon" ? (
+                  <opt.icon
+                    size={20}
+                    strokeWidth={1.5}
+                    className={selected ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}
+                  />
+                ) : (
+                  <AvalonMark
+                    size={20}
+                    className={selected ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]"}
+                  />
+                )}
+                <span className={cn("text-sm font-medium", selected ? "text-[var(--color-accent)]" : "text-[var(--color-text-secondary)]")}>{opt.label}</span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
       {/* Accent color */}
       <section>
         <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-1">Accent color</h2>
-        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">Personalizes buttons, links, and highlights.</p>
-        <div className="flex gap-3 flex-wrap">
-          {ACCENTS.map((a) => (
-            <button
-              key={a.name}
-              onClick={() => setAccent(a.name as any)}
-              title={a.name.charAt(0).toUpperCase() + a.name.slice(1)}
-              className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-all ring-2 ring-offset-2",
-                accent === a.name
-                  ? "ring-[var(--color-accent)] ring-offset-[var(--color-bg-primary)]"
-                  : "ring-transparent ring-offset-transparent hover:ring-[var(--color-border-primary)] hover:ring-offset-[var(--color-bg-primary)]"
-              )}
-              style={{ backgroundColor: isDark ? a.darkColor : a.color }}
+        <p className="text-xs text-[var(--color-text-tertiary)] mb-4">
+          {isAvalon
+            ? "Locked to Avalon gold while the Avalon theme is active."
+            : "Personalizes buttons, links, and highlights."}
+        </p>
+        <div className={cn("flex gap-3 flex-wrap", isAvalon && "opacity-60")}>
+          {isAvalon ? (
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-offset-2 ring-[var(--color-accent)] ring-offset-[var(--color-bg-primary)]"
+              style={{ backgroundColor: "#b8903a" }}
+              title="Avalon gold"
             >
-              {accent === a.name && <Check size={14} strokeWidth={2.5} className="text-white" />}
-            </button>
-          ))}
+              <Check size={14} strokeWidth={2.5} className="text-white" />
+            </div>
+          ) : (
+            ACCENTS.map((a) => (
+              <button
+                key={a.name}
+                onClick={() => setAccent(a.name as any)}
+                title={a.name.charAt(0).toUpperCase() + a.name.slice(1)}
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all ring-2 ring-offset-2",
+                  accent === a.name
+                    ? "ring-[var(--color-accent)] ring-offset-[var(--color-bg-primary)]"
+                    : "ring-transparent ring-offset-transparent hover:ring-[var(--color-border-primary)] hover:ring-offset-[var(--color-bg-primary)]"
+                )}
+                style={{ backgroundColor: isDark ? a.darkColor : a.color }}
+              >
+                {accent === a.name && <Check size={14} strokeWidth={2.5} className="text-white" />}
+              </button>
+            ))
+          )}
         </div>
       </section>
 

@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { AvalonMark } from "@/components/brand/avalon-mark";
+import { AvalonMateria } from "@/components/brand/avalon-materia";
 
 // ─── Icon map ───────────────────────────────────────────────
 const GROUP_ICONS: Record<string, LucideIcon> = {
@@ -362,10 +363,11 @@ export function Sidebar({
   const pathname = usePathname();
   const active = activeGroups(navigation, pathname);
   const mainNav = navigation.filter((g) => g.slug !== "account");
+  const { avalonUnlocked, materiaRevealed } = useTheme();
 
   return (
     <aside className="w-64 h-screen bg-[var(--color-bg-primary)] border-r border-[var(--color-border-primary)] flex-col fixed left-0 top-0 hidden lg:flex">
-      <div className="px-6 py-5 border-b border-[var(--color-border-secondary)] shrink-0">
+      <div className="px-6 py-5 border-b border-[var(--color-border-secondary)] shrink-0 flex items-center justify-between gap-2">
         <Link
           href="/"
           className="inline-flex items-center gap-2.5 text-[var(--color-text-primary)]"
@@ -379,6 +381,7 @@ export function Sidebar({
             AVALON
           </span>
         </Link>
+        {(materiaRevealed || avalonUnlocked) && <AvalonMateria size={12} />}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-0.5">

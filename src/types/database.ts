@@ -24,9 +24,10 @@ export type Role = {
 };
 
 export type UserPreferences = {
-  theme?: "light" | "dark" | "system";
+  theme?: "light" | "dark" | "system" | "avalon";
   accent?: "blue" | "violet" | "teal" | "rose" | "amber" | "emerald" | "orange" | "indigo";
   density?: "comfortable" | "compact";
+  avalon_unlocked?: boolean;
 };
 
 export type Profile = {

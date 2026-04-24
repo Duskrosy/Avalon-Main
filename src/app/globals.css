@@ -1,13 +1,15 @@
 @import "tailwindcss";
 
 /* ──────────────────────────────────────────────────────────────────
-   Avalon brand palette
-   Blade Compass identity · parchment + obsidian + gold + oxblood
-   Raw brand tokens live here; semantic --color-* tokens below map
-   onto them so existing components inherit the re-skin automatically.
+   Avalon tokens
+   Default palette: neutral slate + blue accent (clean light/dark).
+   A warm parchment/obsidian/gold "Avalon Brand" palette is kept as
+   an opt-in override via the `.avalon-brand` class (Knights of Round
+   easter egg). Raw --avalon-* tokens remain available for the brand
+   mark and lockup components regardless of active palette.
    ────────────────────────────────────────────────────────────────── */
 :root {
-  /* Brand raw tokens (do not reference directly in components) */
+  /* Raw brand tokens — still used by AvalonMark / AvalonLockup SVGs */
   --avalon-parchment: #f1e9d2;
   --avalon-parchment-deep: #e6dcbe;
   --avalon-ivory: #f4ece0;
@@ -28,6 +30,116 @@
   --font-serif: 'Cormorant Garamond', 'Times New Roman', serif;
 
   /* Surfaces */
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F8FAFC;
+  --color-bg-tertiary: #F1F5F9;
+  --color-surface-card: #FFFFFF;
+  --color-surface-hover: #F1F5F9;
+  --color-surface-active: #E2E8F0;
+
+  /* Borders */
+  --color-border-primary: #E2E8F0;
+  --color-border-secondary: #F1F5F9;
+
+  /* Text */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-text-tertiary: #94A3B8;
+  --color-text-inverted: #FFFFFF;
+
+  /* Accent — blue (reads well on light + dark) */
+  --color-accent: #2563EB;
+  --color-accent-hover: #1D4ED8;
+  --color-accent-light: #EFF6FF;
+  --color-accent-text: #FFFFFF;
+
+  /* Semantic */
+  --color-success: #059669;
+  --color-success-light: #ECFDF5;
+  --color-success-text: #065F46;
+  --color-warning: #D97706;
+  --color-warning-light: #FFFBEB;
+  --color-warning-text: #92400E;
+  --color-error: #DC2626;
+  --color-error-light: #FEF2F2;
+  --color-error-text: #991B1B;
+  --color-info: #2563EB;
+  --color-info-light: #EFF6FF;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 4px 6px rgba(15, 23, 42, 0.08), 0 12px 24px rgba(15, 23, 42, 0.12);
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 16px;
+}
+
+/* ── Dark theme (default: neutral slate + lighter blue accent) ──── */
+.dark {
+  --color-bg-primary: #0F1117;
+  --color-bg-secondary: #1A1D27;
+  --color-bg-tertiary: #242836;
+  --color-surface-card: #1A1D27;
+  --color-surface-hover: #242836;
+  --color-surface-active: #2E3342;
+
+  --color-border-primary: #2E3342;
+  --color-border-secondary: #242836;
+
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-tertiary: #64748B;
+  --color-text-inverted: #0F172A;
+
+  --color-accent: #60A5FA;
+  --color-accent-hover: #93C5FD;
+  --color-accent-light: rgba(96, 165, 250, 0.14);
+  --color-accent-text: #0F172A;
+
+  --color-success: #34D399;
+  --color-success-light: rgba(52, 211, 153, 0.14);
+  --color-success-text: #A7F3D0;
+  --color-warning: #FBBF24;
+  --color-warning-light: rgba(251, 191, 36, 0.14);
+  --color-warning-text: #FDE68A;
+  --color-error: #F87171;
+  --color-error-light: rgba(248, 113, 113, 0.14);
+  --color-error-text: #FCA5A5;
+  --color-info: #60A5FA;
+  --color-info-light: rgba(96, 165, 250, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Accent overrides (user-selectable) ────────────────────────── */
+.accent-violet  { --color-accent: #7C3AED; --color-accent-hover: #6D28D9; --color-accent-light: #F5F3FF; }
+.accent-teal    { --color-accent: #0D9488; --color-accent-hover: #0F766E; --color-accent-light: #F0FDFA; }
+.accent-rose    { --color-accent: #E11D48; --color-accent-hover: #BE123C; --color-accent-light: #FFF1F2; }
+.accent-amber   { --color-accent: #D97706; --color-accent-hover: #B45309; --color-accent-light: #FFFBEB; }
+.accent-emerald { --color-accent: #059669; --color-accent-hover: #047857; --color-accent-light: #ECFDF5; }
+.accent-orange  { --color-accent: #EA580C; --color-accent-hover: #C2410C; --color-accent-light: #FFF7ED; }
+.accent-indigo  { --color-accent: #4F46E5; --color-accent-hover: #4338CA; --color-accent-light: #EEF2FF; }
+
+.dark.accent-violet  { --color-accent: #A78BFA; --color-accent-hover: #C4B5FD; --color-accent-light: rgba(167, 139, 250, 0.16); }
+.dark.accent-teal    { --color-accent: #2DD4BF; --color-accent-hover: #5EEAD4; --color-accent-light: rgba(45, 212, 191, 0.16); }
+.dark.accent-rose    { --color-accent: #FB7185; --color-accent-hover: #FDA4AF; --color-accent-light: rgba(251, 113, 133, 0.16); }
+.dark.accent-amber   { --color-accent: #FBBF24; --color-accent-hover: #FCD34D; --color-accent-light: rgba(251, 191, 36, 0.16); }
+.dark.accent-emerald { --color-accent: #34D399; --color-accent-hover: #6EE7B7; --color-accent-light: rgba(52, 211, 153, 0.16); }
+.dark.accent-orange  { --color-accent: #FB923C; --color-accent-hover: #FDBA74; --color-accent-light: rgba(251, 146, 60, 0.16); }
+.dark.accent-indigo  { --color-accent: #818CF8; --color-accent-hover: #A5B4FC; --color-accent-light: rgba(129, 140, 248, 0.16); }
+
+/* ──────────────────────────────────────────────────────────────────
+   Avalon Brand palette — Knights of Round easter egg
+   Applied by toggling `.avalon-brand` on <html>. Overrides the default
+   neutral palette with the parchment + obsidian + gold identity.
+   ────────────────────────────────────────────────────────────────── */
+.avalon-brand {
   --color-bg-primary: var(--avalon-ivory);
   --color-bg-secondary: var(--avalon-parchment);
   --color-bg-tertiary: var(--avalon-parchment-deep);
@@ -35,23 +147,19 @@
   --color-surface-hover: #ece3c7;
   --color-surface-active: var(--avalon-parchment-deep);
 
-  /* Borders */
   --color-border-primary: #d9cfb0;
   --color-border-secondary: #e6dcbe;
 
-  /* Text */
   --color-text-primary: var(--avalon-obsidian);
   --color-text-secondary: var(--avalon-muted);
   --color-text-tertiary: #8a7f6a;
   --color-text-inverted: var(--avalon-parchment);
 
-  /* Accent — Avalon gold */
   --color-accent: var(--avalon-gold);
   --color-accent-hover: var(--avalon-gold-deep);
   --color-accent-light: var(--avalon-gold-soft);
   --color-accent-text: var(--avalon-obsidian);
 
-  /* Semantic */
   --color-success: #3d6b3a;
   --color-success-light: rgba(61, 107, 58, 0.12);
   --color-success-text: #244021;
@@ -64,20 +172,12 @@
   --color-info: var(--avalon-midnight);
   --color-info-light: rgba(14, 26, 46, 0.08);
 
-  /* Shadows — softer, warmer */
   --shadow-sm: 0 1px 2px rgba(42, 36, 24, 0.06);
   --shadow-md: 0 1px 2px rgba(42, 36, 24, 0.06), 0 4px 12px rgba(42, 36, 24, 0.08);
   --shadow-lg: 0 4px 6px rgba(42, 36, 24, 0.08), 0 12px 24px rgba(42, 36, 24, 0.12);
-
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  --radius-xl: 16px;
 }
 
-/* ── Dark theme — Midnight ─────────────────────────────────── */
-.dark {
+.avalon-brand.dark {
   --color-bg-primary: var(--avalon-obsidian);
   --color-bg-secondary: #130f08;
   --color-bg-tertiary: #1a1510;
@@ -115,26 +215,6 @@
   --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.6);
 }
 
-/* ── Accent overrides ──────────────────────────────────────────
-   Retained for users who've saved a non-gold accent preference;
-   on Avalon brand, the default is gold. Secondary accents keep
-   their gold-deep hover for brand cohesion. */
-.accent-violet  { --color-accent: #6d4c8f; --color-accent-hover: #52366d; --color-accent-light: rgba(109, 76, 143, 0.12); }
-.accent-teal    { --color-accent: #3a6b6e; --color-accent-hover: #2b5053; --color-accent-light: rgba(58, 107, 110, 0.12); }
-.accent-rose    { --color-accent: var(--avalon-oxblood); --color-accent-hover: var(--avalon-oxblood-deep); --color-accent-light: var(--avalon-oxblood-soft); }
-.accent-amber   { --color-accent: var(--avalon-gold); --color-accent-hover: var(--avalon-gold-deep); --color-accent-light: var(--avalon-gold-soft); }
-.accent-emerald { --color-accent: #3d6b3a; --color-accent-hover: #2b4f28; --color-accent-light: rgba(61, 107, 58, 0.12); }
-.accent-orange  { --color-accent: #a75a1a; --color-accent-hover: #7a4110; --color-accent-light: rgba(167, 90, 26, 0.12); }
-.accent-indigo  { --color-accent: var(--avalon-midnight); --color-accent-hover: #061021; --color-accent-light: rgba(14, 26, 46, 0.12); }
-
-.dark.accent-violet  { --color-accent: #a98dc9; --color-accent-hover: #c4b0e0; --color-accent-light: rgba(169, 141, 201, 0.16); }
-.dark.accent-teal    { --color-accent: #7ab0b3; --color-accent-hover: #9dc8cb; --color-accent-light: rgba(122, 176, 179, 0.16); }
-.dark.accent-rose    { --color-accent: #d68a86; --color-accent-hover: #e6a8a4; --color-accent-light: rgba(214, 138, 134, 0.16); }
-.dark.accent-amber   { --color-accent: #d1a64a; --color-accent-hover: #e6bf68; --color-accent-light: rgba(209, 166, 74, 0.16); }
-.dark.accent-emerald { --color-accent: #8bb487; --color-accent-hover: #a8cda4; --color-accent-light: rgba(139, 180, 135, 0.16); }
-.dark.accent-orange  { --color-accent: #d89562; --color-accent-hover: #e6ae85; --color-accent-light: rgba(216, 149, 98, 0.16); }
-.dark.accent-indigo  { --color-accent: #6a8cb0; --color-accent-hover: #8ca8c6; --color-accent-light: rgba(106, 140, 176, 0.16); }
-
 /* ── Compact density ───────────────────────────────────────── */
 .density-compact {
   --density-padding-y: 0.375rem;
@@ -143,9 +223,42 @@
   --density-text: 0.75rem;
 }
 
-/* ── System theme via media query ──────────────────────────── */
+/* ── System theme via media query (neutral dark) ───────────── */
 @media (prefers-color-scheme: dark) {
-  .theme-system {
+  .theme-system:not(.avalon-brand) {
+    --color-bg-primary: #0F1117;
+    --color-bg-secondary: #1A1D27;
+    --color-bg-tertiary: #242836;
+    --color-surface-card: #1A1D27;
+    --color-surface-hover: #242836;
+    --color-surface-active: #2E3342;
+    --color-border-primary: #2E3342;
+    --color-border-secondary: #242836;
+    --color-text-primary: #F1F5F9;
+    --color-text-secondary: #94A3B8;
+    --color-text-tertiary: #64748B;
+    --color-text-inverted: #0F172A;
+    --color-accent: #60A5FA;
+    --color-accent-hover: #93C5FD;
+    --color-accent-light: rgba(96, 165, 250, 0.14);
+    --color-accent-text: #0F172A;
+    --color-success: #34D399;
+    --color-success-light: rgba(52, 211, 153, 0.14);
+    --color-success-text: #A7F3D0;
+    --color-warning: #FBBF24;
+    --color-warning-light: rgba(251, 191, 36, 0.14);
+    --color-warning-text: #FDE68A;
+    --color-error: #F87171;
+    --color-error-light: rgba(248, 113, 113, 0.14);
+    --color-error-text: #FCA5A5;
+    --color-info: #60A5FA;
+    --color-info-light: rgba(96, 165, 250, 0.14);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.6);
+  }
+
+  .theme-system.avalon-brand {
     --color-bg-primary: var(--avalon-obsidian);
     --color-bg-secondary: #130f08;
     --color-bg-tertiary: #1a1510;
@@ -162,20 +275,6 @@
     --color-accent-hover: #d1a64a;
     --color-accent-light: rgba(184, 144, 58, 0.16);
     --color-accent-text: var(--avalon-obsidian);
-    --color-success: #6b9566;
-    --color-success-light: rgba(107, 149, 102, 0.14);
-    --color-success-text: #a1c29d;
-    --color-warning: #d1a64a;
-    --color-warning-light: rgba(209, 166, 74, 0.14);
-    --color-warning-text: #d1a64a;
-    --color-error: #b64a45;
-    --color-error-light: rgba(182, 74, 69, 0.14);
-    --color-error-text: #d68a86;
-    --color-info: #6a8cb0;
-    --color-info-light: rgba(106, 140, 176, 0.14);
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 24px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -249,3 +348,14 @@ html.transitioning *::after {
 @media (prefers-reduced-motion: reduce) {
   .avalon-progress-indeterminate::after { animation: none; width: 100%; opacity: 0.5; }
 }
+
+/* ── Materia orb (Knights of Round easter egg) ─────────────── */
+@keyframes materia-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(200, 30, 30, 0.35), inset 0 0 4px rgba(0, 0, 0, 0.4); }
+  50%      { box-shadow: 0 0 14px rgba(220, 60, 60, 0.55), inset 0 0 4px rgba(0, 0, 0, 0.4); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .materia-orb-glow { animation: none !important; }
+}
+
+/* touched 1777014440 */
