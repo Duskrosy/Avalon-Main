@@ -270,20 +270,22 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
   async function handleCampaignToggle(id: string, currentStatus: string, isAuto = false) {
     setTogglingCampaign(id);
     const action = currentStatus === "active" ? "pause" : "resume";
+    const snapshot = ads;
+    setAds((prev) => prev.map((a) => a.id === id ? {
+      ...a,
+      status: action === "pause" ? "paused" : "active",
+      auto_paused_at: action === "pause" ? new Date().toISOString() : null,
+      auto_paused_reason: isAuto ? "Spend cap reached" : action === "pause" ? "Manually paused via Live Ads" : null,
+    } : a));
     try {
       const res = await fetch("/api/ad-ops/live-ads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deployment_id: id, action }),
       });
-      if (res.ok) {
-        setAds((prev) => prev.map((a) => a.id === id ? {
-          ...a,
-          status: action === "pause" ? "paused" : "active",
-          auto_paused_at: action === "pause" ? new Date().toISOString() : null,
-          auto_paused_reason: isAuto ? "Spend cap reached" : action === "pause" ? "Manually paused via Live Ads" : null,
-        } : a));
-      }
+      if (!res.ok) setAds(snapshot);
+    } catch {
+      setAds(snapshot);
     } finally {
       setTogglingCampaign(null);
     }
@@ -295,19 +297,21 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
     const isPaused = pausedAdsets.has(adsetId);
     const action = isPaused ? "resume" : "pause";
     setTogglingAdset(adsetId);
+    const snapshot = pausedAdsets;
+    setPausedAdsets((prev) => {
+      const next = new Set(prev);
+      isPaused ? next.delete(adsetId) : next.add(adsetId);
+      return next;
+    });
     try {
       const res = await fetch("/api/ad-ops/live-ads/adset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adset_id: adsetId, action }),
       });
-      if (res.ok) {
-        setPausedAdsets((prev) => {
-          const next = new Set(prev);
-          isPaused ? next.delete(adsetId) : next.add(adsetId);
-          return next;
-        });
-      }
+      if (!res.ok) setPausedAdsets(snapshot);
+    } catch {
+      setPausedAdsets(snapshot);
     } finally {
       setTogglingAdset(null);
     }
@@ -325,21 +329,23 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
     const parsed = parseFloat(adsetCapAmount);
     if (isNaN(parsed) || parsed <= 0) return;
     setSavingAdsetCap(true);
+    const snapshot = ads;
+    setAds((prev) => prev.map((c) => ({
+      ...c,
+      adsets: c.adsets.map((a) =>
+        a.adset_id === adsetId ? { ...a, spend_cap: parsed, spend_cap_period: adsetCapPeriod } : a
+      ),
+    })));
+    setEditingAdsetCap(null);
     try {
       const res = await fetch("/api/ad-ops/live-ads/adset", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ adset_id: adsetId, spend_cap: parsed, spend_cap_period: adsetCapPeriod }),
       });
-      if (res.ok) {
-        setAds((prev) => prev.map((c) => ({
-          ...c,
-          adsets: c.adsets.map((a) =>
-            a.adset_id === adsetId ? { ...a, spend_cap: parsed, spend_cap_period: adsetCapPeriod } : a
-          ),
-        })));
-        setEditingAdsetCap(null);
-      }
+      if (!res.ok) setAds(snapshot);
+    } catch {
+      setAds(snapshot);
     } finally {
       setSavingAdsetCap(false);
     }

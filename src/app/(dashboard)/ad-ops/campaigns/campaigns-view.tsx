@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useToast, Toast } from "@/components/ui/toast";
 import { DeltaBadge } from "@/components/ui/delta-badge";
 import { DemographicBar, GENDER_COLORS, AGE_COLORS, type BarSegment } from "@/components/ui/demographic-bar";
+import { SlowActionSpinner } from "@/components/ui/delayed-loader";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -1541,14 +1543,10 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
               disabled={syncing}
               className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
-              {syncing ? (
-                <>
-                  <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                  </svg>
-                  Syncing…
-                </>
-              ) : "Sync Now"}
+              {syncing ? "Syncing…" : "Sync Now"}
+              <SlowActionSpinner loading={syncing} afterMs={3000}>
+                <ButtonSpinner size={14} />
+              </SlowActionSpinner>
             </button>
           )}
         </div>
@@ -1686,9 +1684,12 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="mt-4 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-5 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50"
+              className="mt-4 bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-5 py-2 rounded-lg hover:bg-[var(--color-text-secondary)] disabled:opacity-50 inline-flex items-center gap-2"
             >
               {syncing ? "Syncing…" : "Sync Now"}
+              <SlowActionSpinner loading={syncing} afterMs={3000}>
+                <ButtonSpinner size={14} />
+              </SlowActionSpinner>
             </button>
           )}
         </div>

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Consistency } from "@/lib/sales/types";
 import { CONSISTENCY_TIERS } from "@/lib/sales/constants";
+import { SlowActionSpinner } from "@/components/ui/delayed-loader";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 type Agent = { id: string; first_name: string; last_name: string; email: string };
 type Props = { agents: Agent[]; canManage: boolean };
@@ -109,23 +111,34 @@ export function ConsistencyView({ agents, canManage }: Props) {
 
     setSaving(agentId);
 
+    const snapshot = rows;
     const existing = rows.find((r) => r.agent_id === agentId);
     if (existing) {
-      await fetch(`/api/sales/consistency?id=${existing.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ranges_hit, evaluator: evaluator || null }),
-      });
-    } else {
-      await fetch("/api/sales/consistency", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agent_id: agentId, month, ranges_hit, evaluator: evaluator || null }),
-      });
+      setRows((prev) => prev.map((r) => r.id === existing.id ? { ...r, ranges_hit, evaluator: evaluator || null } : r));
     }
 
-    await fetchRows();
-    setSaving(null);
+    try {
+      const res = existing
+        ? await fetch(`/api/sales/consistency?id=${existing.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ranges_hit, evaluator: evaluator || null }),
+          })
+        : await fetch("/api/sales/consistency", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ agent_id: agentId, month, ranges_hit, evaluator: evaluator || null }),
+          });
+      if (!res.ok) {
+        setRows(snapshot);
+      } else if (!existing) {
+        await fetchRows();
+      }
+    } catch {
+      setRows(snapshot);
+    } finally {
+      setSaving(null);
+    }
   }
 
   return (
@@ -207,9 +220,12 @@ export function ConsistencyView({ agents, canManage }: Props) {
                     <button
                       onClick={() => handleSave(agent.id)}
                       disabled={isSavingThis}
-                      className="text-xs bg-[#3A5635] text-white px-3 py-1.5 rounded-lg hover:bg-[#2e4429] disabled:opacity-50"
+                      className="text-xs bg-[#3A5635] text-white px-3 py-1.5 rounded-lg hover:bg-[#2e4429] disabled:opacity-50 inline-flex items-center gap-1.5"
                     >
-                      {isSavingThis ? "..." : "Save"}
+                      {isSavingThis ? "Saving" : "Save"}
+                      <SlowActionSpinner loading={isSavingThis} afterMs={3000}>
+                        <ButtonSpinner size={12} />
+                      </SlowActionSpinner>
                     </button>
                   </div>
                 )}

@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { platformBadge, resolveThumb } from "../tracker/ledger-helpers";
+import { SlowActionSpinner } from "@/components/ui/delayed-loader";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 export type PostedSource = "organic" | "ad";
 
@@ -168,9 +170,12 @@ export function PostedContentView({ rows, windowSel }: { rows: PostedRow[]; wind
             <button
               onClick={handleSync}
               disabled={syncState === "syncing"}
-              className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors font-medium"
+              className="text-xs px-3 py-1.5 rounded-lg bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] hover:bg-[var(--color-text-secondary)] disabled:opacity-50 transition-colors font-medium inline-flex items-center gap-2"
             >
               {syncState === "syncing" ? "Syncing…" : "↻ Sync"}
+              <SlowActionSpinner loading={syncState === "syncing"} afterMs={3000}>
+                <ButtonSpinner size={12} />
+              </SlowActionSpinner>
             </button>
           </div>
           {/* Window tabs */}

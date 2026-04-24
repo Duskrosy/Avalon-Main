@@ -137,12 +137,18 @@ export function DowntimeLogView({ agents, canManage }: Props) {
   }
 
   async function handleVerify(id: string, verified: boolean) {
-    await fetch(`/api/sales/downtime?id=${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verified }),
-    });
-    await fetchRows();
+    const snapshot = rows;
+    setRows((prev) => prev.map((r) => r.id === id ? { ...r, verified } : r));
+    try {
+      const res = await fetch(`/api/sales/downtime?id=${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ verified }),
+      });
+      if (!res.ok) setRows(snapshot);
+    } catch {
+      setRows(snapshot);
+    }
   }
 
   async function handleDelete(id: string) {

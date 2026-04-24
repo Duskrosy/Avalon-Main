@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SlowActionSpinner } from "@/components/ui/delayed-loader";
+import { ButtonSpinner } from "@/components/ui/button-spinner";
 
 type FeatureGoal = {
   id: string;
@@ -322,9 +324,12 @@ export function FeatureGoalsView() {
               <button
                 onClick={handleSave}
                 disabled={saving || !form.title.trim()}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity"
+                className="px-4 py-2 text-sm font-medium rounded-md bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-50 transition-opacity inline-flex items-center gap-2"
               >
                 {saving ? "Saving…" : editing ? "Save Changes" : "Create Goal"}
+                <SlowActionSpinner loading={saving} afterMs={3000}>
+                  <ButtonSpinner size={14} />
+                </SlowActionSpinner>
               </button>
             </div>
           </div>
