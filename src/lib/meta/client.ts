@@ -3,15 +3,19 @@
 
 const BASE = "https://graph.facebook.com/v21.0";
 
-// Per-request timeout so one hung Meta account can't stall a whole page.
-// Graph API p99 is well under 5s for small insight windows — anything slower
-// is almost always a throttle or transient outage, and the caller handles
-// failure via Promise.allSettled.
-const META_REQUEST_TIMEOUT_MS = 5_000;
+// Default per-request timeout is generous enough for paginated sync (big
+// insights responses routinely take 10-20s). User-facing Live Ads calls that
+// can't afford to block for that long pass a tighter `timeoutMs` explicitly.
+const META_DEFAULT_TIMEOUT_MS = 45_000;
+const META_FAST_TIMEOUT_MS = 6_000;
 
-async function metaFetch(url: string, init?: RequestInit): Promise<Response> {
+async function metaFetch(
+  url: string,
+  init?: RequestInit,
+  timeoutMs: number = META_DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), META_REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
     return await fetch(url, { cache: "no-store", ...init, signal: ctl.signal });
   } finally {
@@ -75,8 +79,8 @@ export type MetaAdInsight = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function metaGet<T>(url: string): Promise<T> {
-  const res = await metaFetch(url);
+async function metaGet<T>(url: string, timeoutMs?: number): Promise<T> {
+  const res = await metaFetch(url, undefined, timeoutMs);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Meta API error ${res.status}: ${body}`);
@@ -262,7 +266,7 @@ export async function fetchAdThumbnails(
     adIds.map(async (adId) => {
       try {
         const url = `${BASE}/${adId}?fields=creative%7Bthumbnail_url%7D&access_token=${encodeURIComponent(token)}`;
-        const res = await metaFetch(url);
+        const res = await metaFetch(url, undefined, META_FAST_TIMEOUT_MS);
         if (!res.ok) return;
         const json = await res.json() as { creative?: { thumbnail_url?: string } };
         const thumb = json?.creative?.thumbnail_url;
@@ -388,7 +392,7 @@ export async function fetchAdsetSpend(
   }
 
   const url = `${BASE}/act_${accountId}/insights?${params}`;
-  const res = await metaFetch(url);
+  const res = await metaFetch(url, undefined, META_FAST_TIMEOUT_MS);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Meta adset spend error ${res.status}: ${body}`);
@@ -436,7 +440,7 @@ export async function fetchCampaignSpend(
   }
 
   const url = `${BASE}/act_${accountId}/insights?${params}`;
-  const res = await metaFetch(url);
+  const res = await metaFetch(url, undefined, META_FAST_TIMEOUT_MS);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Meta spend fetch error ${res.status}: ${body}`);
