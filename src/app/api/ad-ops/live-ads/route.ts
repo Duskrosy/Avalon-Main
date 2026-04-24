@@ -5,6 +5,56 @@ import { getCurrentUser, isManagerOrAbove, isOps } from "@/lib/permissions";
 import { resolveToken, fetchCampaignSpend, fetchAdsetSpend, updateCampaignStatus } from "@/lib/meta/client";
 import { z } from "zod";
 
+// ─── Small in-memory cache for Meta spend fetches ─────────────────────────────
+// Live Ads fans out to Meta for every account on every request. A 30s TTL
+// stops rapid reloads from re-fanning and keeps the page snappy without going
+// fully stale.
+const SPEND_CACHE_TTL_MS = 30_000;
+type CacheEntry = { value: Record<string, number>; expiresAt: number };
+const spendCache = new Map<string, CacheEntry>();
+
+function cacheKey(scope: string, accountId: string, ids: string[], period: string) {
+  const sorted = [...ids].sort().join(",");
+  return `${scope}:${accountId}:${period}:${sorted}`;
+}
+
+async function cachedSpend(
+  scope: "campaign" | "adset",
+  accountId: string,
+  token: string,
+  ids: string[],
+  period: "lifetime" | "monthly" | "daily",
+): Promise<Record<string, number>> {
+  if (!ids.length || !token) return {};
+  const key = cacheKey(scope, accountId, ids, period);
+  const now = Date.now();
+  const hit = spendCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.value;
+  const fetcher = scope === "campaign" ? fetchCampaignSpend : fetchAdsetSpend;
+  const value = await fetcher(accountId, token, ids, period);
+  spendCache.set(key, { value, expiresAt: now + SPEND_CACHE_TTL_MS });
+  return value;
+}
+
+// ─── Paginated Supabase helpers ──────────────────────────────────────────────
+const PAGE = 1000;
+
+// The builder type from @supabase/postgrest-js is complex and intentionally
+// narrow per-query; keeping `drain` untyped on the builder lets every caller
+// pass its own typed select() chain while still getting back a typed T[].
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function drain<T>(build: () => any): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await build().range(from, from + PAGE - 1);
+    if (error) throw new Error((error as { message?: string }).message ?? "Supabase query failed");
+    const rows = (data ?? []) as T[];
+    out.push(...rows);
+    if (rows.length < PAGE) break;
+  }
+  return out;
+}
+
 async function requireAccess() {
   const supabase = await createClient();
   const user = await getCurrentUser(supabase);
@@ -28,26 +78,44 @@ export async function GET(req: NextRequest) {
   const admin = createAdminClient();
 
   // 1. Campaigns: ACTIVE, auto-paused via this page, or not-yet-approved by Meta.
-  //    Excludes manually hidden ones.
-  const { data: campaigns, error: dbErr } = await admin
-    .from("meta_campaigns")
-    .select("id, campaign_id, campaign_name, effective_status, meta_account_id, daily_budget, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason, hidden_at")
-    .or(
-      [
-        "effective_status.eq.ACTIVE",
-        "effective_status.eq.IN_PROCESS",
-        "effective_status.eq.WITH_ISSUES",
-        "effective_status.eq.PENDING_REVIEW",
-        "effective_status.eq.PREAPPROVED",
-        "effective_status.eq.PENDING_BILLING_INFO",
-        "auto_paused_at.not.is.null",
-      ].join(",")
-    )
-    .is("hidden_at", null)
-    .order("campaign_name");
-
-  if (dbErr) return NextResponse.json({ error: dbErr.message }, { status: 500 });
-  if (!campaigns?.length) return NextResponse.json([]);
+  //    Excludes manually hidden ones. Paginated to break the 1000-row default cap.
+  type CampaignRow = {
+    id: string;
+    campaign_id: string;
+    campaign_name: string;
+    effective_status: string;
+    meta_account_id: string;
+    daily_budget: number | null;
+    spend_cap: number | null;
+    spend_cap_period: string | null;
+    auto_paused_at: string | null;
+    auto_paused_reason: string | null;
+    hidden_at: string | null;
+  };
+  let campaigns: CampaignRow[] = [];
+  try {
+    campaigns = await drain<CampaignRow>(() =>
+      admin
+        .from("meta_campaigns")
+        .select("id, campaign_id, campaign_name, effective_status, meta_account_id, daily_budget, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason, hidden_at")
+        .or(
+          [
+            "effective_status.eq.ACTIVE",
+            "effective_status.eq.IN_PROCESS",
+            "effective_status.eq.WITH_ISSUES",
+            "effective_status.eq.PENDING_REVIEW",
+            "effective_status.eq.PREAPPROVED",
+            "effective_status.eq.PENDING_BILLING_INFO",
+            "auto_paused_at.not.is.null",
+          ].join(",")
+        )
+        .is("hidden_at", null)
+        .order("campaign_name"),
+    );
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Failed to load campaigns" }, { status: 500 });
+  }
+  if (!campaigns.length) return NextResponse.json([]);
 
   // 2. Accounts for token + currency lookup
   const { data: accounts } = await admin
@@ -57,25 +125,46 @@ export async function GET(req: NextRequest) {
 
   const accountMap = Object.fromEntries((accounts ?? []).map((a) => [a.id, a]));
 
-  // 3. Stats for these campaigns over the requested window
+  // 3. Stats for these campaigns over the requested window — paginated.
+  type StatRow = {
+    campaign_id: string | null;
+    meta_account_id: string | null;
+    ad_id: string;
+    ad_name: string | null;
+    adset_id: string | null;
+    adset_name: string | null;
+    spend: number | null;
+    conversions: number | null;
+    conversion_value: number | null;
+    impressions: number | null;
+    clicks: number | null;
+    video_plays: number | null;
+    video_plays_25pct: number | null;
+    metric_date: string;
+  };
   const campaignIds = campaigns.map((c) => c.campaign_id).filter(Boolean) as string[];
-  const { data: statsRaw } = campaignIds.length
-    ? await admin
-        .from("meta_ad_stats")
-        .select("campaign_id, meta_account_id, ad_id, ad_name, adset_id, adset_name, spend, conversions, conversion_value, impressions, clicks, video_plays, video_plays_25pct, metric_date")
-        .in("campaign_id", campaignIds)
-        .gte("metric_date", cutoff)
-    : { data: [] };
+  const statsRaw: StatRow[] = campaignIds.length
+    ? await drain<StatRow>(() =>
+        admin
+          .from("meta_ad_stats")
+          .select("campaign_id, meta_account_id, ad_id, ad_name, adset_id, adset_name, spend, conversions, conversion_value, impressions, clicks, video_plays, video_plays_25pct, metric_date")
+          .in("campaign_id", campaignIds)
+          .gte("metric_date", cutoff),
+      ).catch(() => [])
+    : [];
 
   // 4. Thumbnail map: meta_ad_id → thumbnail_url via ad_deployments → ad_assets
+  type DepRow = { meta_ad_id: string | null; asset: { thumbnail_url: string | null } | null };
   const adIds = [...new Set((statsRaw ?? []).map((s) => s.ad_id).filter(Boolean))] as string[];
   const thumbnailMap: Record<string, string> = {};
   if (adIds.length) {
-    const { data: deps } = await admin
-      .from("ad_deployments")
-      .select("meta_ad_id, asset:ad_assets(thumbnail_url)")
-      .in("meta_ad_id", adIds);
-    for (const d of deps ?? []) {
+    const deps = await drain<DepRow>(() =>
+      admin
+        .from("ad_deployments")
+        .select("meta_ad_id, asset:ad_assets(thumbnail_url)")
+        .in("meta_ad_id", adIds),
+    ).catch(() => [] as DepRow[]);
+    for (const d of deps) {
       const thumb = (d.asset as unknown as { thumbnail_url: string | null } | null)?.thumbnail_url;
       if (d.meta_ad_id && thumb) thumbnailMap[d.meta_ad_id] = thumb;
     }
@@ -133,10 +222,23 @@ export async function GET(req: NextRequest) {
       )
     )
   ));
-  const { data: adsetCapsRaw } = allAdsetIds.length
-    ? await admin.from("meta_adset_caps").select("adset_id, meta_account_id, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason").in("adset_id", allAdsetIds)
-    : { data: [] };
-  const adsetCapMap = Object.fromEntries((adsetCapsRaw ?? []).map((c) => [c.adset_id, c]));
+  type AdsetCapRow = {
+    adset_id: string;
+    meta_account_id: string | null;
+    spend_cap: number | null;
+    spend_cap_period: "lifetime" | "monthly" | "daily" | null;
+    auto_paused_at: string | null;
+    auto_paused_reason: string | null;
+  };
+  const adsetCapsRaw: AdsetCapRow[] = allAdsetIds.length
+    ? await drain<AdsetCapRow>(() =>
+        admin
+          .from("meta_adset_caps")
+          .select("adset_id, meta_account_id, spend_cap, spend_cap_period, auto_paused_at, auto_paused_reason")
+          .in("adset_id", allAdsetIds),
+      ).catch(() => [] as AdsetCapRow[])
+    : [];
+  const adsetCapMap = Object.fromEntries(adsetCapsRaw.map((c) => [c.adset_id, c]));
 
   // 6b. Live adset spend from Meta for capped adsets only
   const cappedAdsetIds = (adsetCapsRaw ?? []).map((c) => c.adset_id);
@@ -155,7 +257,7 @@ export async function GET(req: NextRequest) {
         const acct = (accounts ?? []).find((a) => a.account_id === accountId);
         if (!acct) return;
         const token = resolveToken(acct);
-        const result = await fetchAdsetSpend(accountId, token, adsetIds, "lifetime");
+        const result = await cachedSpend("adset", accountId, token, adsetIds, "lifetime");
         Object.assign(adsetSpendMap, result);
       })
     );
@@ -178,7 +280,7 @@ export async function GET(req: NextRequest) {
       const ids = camps.map((c) => c.campaign_id).filter(Boolean) as string[];
       if (!ids.length || !token) return;
       const period = (camps[0].spend_cap_period ?? "lifetime") as "lifetime" | "monthly" | "daily";
-      Object.assign(spendMap, await fetchCampaignSpend(accountId, token, ids, period));
+      Object.assign(spendMap, await cachedSpend("campaign", accountId, token, ids, period));
     }),
   );
 
@@ -221,6 +323,12 @@ export async function GET(req: NextRequest) {
         }).sort((a, b) => b.spend - a.spend)
       : [];
 
+    // "Historical" tab = campaigns with no activity in the current window (today by default).
+    // Live Meta spend also counts — a campaign may have today spend without a
+    // stats row yet (the nightly sync hasn't fired yet).
+    const liveSpend = c.campaign_id ? (spendMap[c.campaign_id] ?? 0) : 0;
+    const hasActivity = !!adsetMap || liveSpend > 0;
+
     return {
       id: c.id,
       campaign_name: c.campaign_name,
@@ -235,6 +343,7 @@ export async function GET(req: NextRequest) {
       live_spend: c.campaign_id ? (spendMap[c.campaign_id] ?? null) : null,
       account: acct ? { id: acct.id, name: acct.name, account_id: acct.account_id, currency: acct.currency ?? "USD" } : null,
       adsets,
+      has_activity: hasActivity,
     };
   });
 

@@ -3,6 +3,22 @@
 
 const BASE = "https://graph.facebook.com/v21.0";
 
+// Per-request timeout so one hung Meta account can't stall a whole page.
+// Graph API p99 is well under 5s for small insight windows — anything slower
+// is almost always a throttle or transient outage, and the caller handles
+// failure via Promise.allSettled.
+const META_REQUEST_TIMEOUT_MS = 5_000;
+
+async function metaFetch(url: string, init?: RequestInit): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), META_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { cache: "no-store", ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ─── Token resolution ─────────────────────────────────────────────────────────
 
 /** Returns the per-account token if set, otherwise falls back to the global system-user token. */
@@ -60,7 +76,7 @@ export type MetaAdInsight = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function metaGet<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await metaFetch(url);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Meta API error ${res.status}: ${body}`);
@@ -233,7 +249,7 @@ export async function fetchAdThumbnails(
     adIds.map(async (adId) => {
       try {
         const url = `${BASE}/${adId}?fields=creative%7Bthumbnail_url%7D&access_token=${encodeURIComponent(token)}`;
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await metaFetch(url);
         if (!res.ok) return;
         const json = await res.json() as { creative?: { thumbnail_url?: string } };
         const thumb = json?.creative?.thumbnail_url;
@@ -255,7 +271,7 @@ export async function updateCampaignStatus(
   token: string,
   status: "ACTIVE" | "PAUSED",
 ): Promise<void> {
-  const res = await fetch(`${BASE}/${campaignId}`, {
+  const res = await metaFetch(`${BASE}/${campaignId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, access_token: token }),
@@ -274,7 +290,7 @@ export async function updateAdsetStatus(
   token: string,
   status: "ACTIVE" | "PAUSED",
 ): Promise<void> {
-  const res = await fetch(`${BASE}/${adsetId}`, {
+  const res = await metaFetch(`${BASE}/${adsetId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, access_token: token }),
@@ -293,7 +309,7 @@ export async function updateAdStatus(
   token: string,
   status: "ACTIVE" | "PAUSED",
 ): Promise<void> {
-  const res = await fetch(`${BASE}/${adId}`, {
+  const res = await metaFetch(`${BASE}/${adId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, access_token: token }),
@@ -314,7 +330,7 @@ export async function setAdsetDailyBudget(
   dailyBudget: number, // in major currency units (e.g. PHP 500)
 ): Promise<void> {
   const budgetMinorUnit = Math.round(dailyBudget * 100); // convert to cents
-  const res = await fetch(`${BASE}/${adsetId}`, {
+  const res = await metaFetch(`${BASE}/${adsetId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ daily_budget: budgetMinorUnit, access_token: token }),
@@ -359,7 +375,7 @@ export async function fetchAdsetSpend(
   }
 
   const url = `${BASE}/act_${accountId}/insights?${params}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await metaFetch(url);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Meta adset spend error ${res.status}: ${body}`);
@@ -407,7 +423,7 @@ export async function fetchCampaignSpend(
   }
 
   const url = `${BASE}/act_${accountId}/insights?${params}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await metaFetch(url);
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`Meta spend fetch error ${res.status}: ${body}`);
@@ -453,8 +469,8 @@ export async function fetchAdDemographics(
     async: "false", // REQUIRED — without this Meta returns a job ID instead of data
     access_token: token,
   });
-  const res = await fetch(
-    `https://graph.facebook.com/v21.0/${campaignId}/insights?${params}`
+  const res = await metaFetch(
+    `https://graph.facebook.com/v21.0/${campaignId}/insights?${params}`,
   );
   if (!res.ok) {
     const text = await res.text().catch(() => "");

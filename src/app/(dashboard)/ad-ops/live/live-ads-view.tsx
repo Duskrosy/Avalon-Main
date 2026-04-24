@@ -51,6 +51,8 @@ type LiveCampaign = {
   live_spend: number | null;
   account: { id: string; name: string; account_id: string; currency: string } | null;
   adsets: AdsetRow[];
+  /** False when the campaign has no stats rows AND no live Meta spend today. */
+  has_activity?: boolean;
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -139,7 +141,7 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [filter, setFilter] = useState<"all" | "active" | "paused">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "paused" | "historical">("all");
   const [msgTab, setMsgTab] = useState<"main" | "messenger">("main");
 
   // Pending-hide queue: campaigns that have been optimistically removed but
@@ -504,21 +506,31 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
     return true;
   };
 
+  const isHistorical = (a: LiveCampaign) => a.has_activity === false;
+
   // Pending (not-yet-approved) campaigns get their own section, independent of
-  // the active/paused filter — they're neither.
-  const pendingCampaigns = ads.filter((a) => isPendingMeta(a.effective_status) && matchesMsgTab(a));
+  // the active/paused filter — they're neither. Historical never overlaps with
+  // Pending (pending campaigns have no activity either, but the pending banner
+  // is more informative than "Historical").
+  const pendingCampaigns = ads.filter(
+    (a) => isPendingMeta(a.effective_status) && matchesMsgTab(a),
+  );
 
   const filtered = ads.filter((a) => {
     if (isPendingMeta(a.effective_status)) return false;
+    if (filter === "historical") return isHistorical(a) && matchesMsgTab(a);
+    if (isHistorical(a)) return false;
     if (filter === "active") { if (a.status !== "active") return false; }
     else if (filter === "paused") { if (a.status !== "paused") return false; }
     return matchesMsgTab(a);
   });
 
-  const activeCount = ads.filter((a) => a.status === "active" && !isPendingMeta(a.effective_status)).length;
-  const pausedCount = ads.filter((a) => a.status === "paused" && !isPendingMeta(a.effective_status)).length;
-  const autoCount   = ads.filter((a) => a.auto_paused_at && a.auto_paused_reason !== "Manually paused via Live Ads").length;
+  const activeAds = ads.filter((a) => !isPendingMeta(a.effective_status) && !isHistorical(a));
+  const activeCount = activeAds.filter((a) => a.status === "active").length;
+  const pausedCount = activeAds.filter((a) => a.status === "paused").length;
+  const autoCount   = activeAds.filter((a) => a.auto_paused_at && a.auto_paused_reason !== "Manually paused via Live Ads").length;
   const pendingCount = ads.filter((a) => isPendingMeta(a.effective_status)).length;
+  const historicalCount = ads.filter((a) => isHistorical(a) && !isPendingMeta(a.effective_status)).length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -572,14 +584,23 @@ export function LiveAdsView({ canControl }: { canControl: boolean }) {
       {/* Filter tabs */}
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex gap-1 bg-[var(--color-bg-tertiary)] rounded-lg p-1">
-          {(["all", "active", "paused"] as const).map((tab) => (
-            <button key={tab} onClick={() => setFilter(tab)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors capitalize ${
-                filter === tab ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-              }`}>
-              {tab === "all" ? `All (${ads.length})` : tab === "active" ? `Active (${activeCount})` : `Paused (${pausedCount})`}
-            </button>
-          ))}
+          {(["all", "active", "paused", "historical"] as const).map((tab) => {
+            if (tab === "historical" && historicalCount === 0) return null;
+            const allCount = activeAds.length;
+            const label =
+              tab === "all"        ? `All (${allCount})` :
+              tab === "active"     ? `Active (${activeCount})` :
+              tab === "paused"     ? `Paused (${pausedCount})` :
+                                     `Historical (${historicalCount})`;
+            return (
+              <button key={tab} onClick={() => setFilter(tab)}
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors capitalize ${
+                  filter === tab ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                }`}>
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Messenger auto-tab */}

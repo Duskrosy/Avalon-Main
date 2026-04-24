@@ -147,25 +147,27 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Force sign-out: detected via app_metadata flag set by /api/users/[id]/signout ──
-  // We have the user's session in hand here, so we can truly revoke it.
+  // ── Force sign-out: detected via app_metadata flag set by
+  //    /api/users/[id]/signout. We kick off the admin revoke + flag-clear in
+  //    the background so the redirect returns immediately — blocking here is
+  //    what historically pushed middleware past Vercel's invocation timeout.
   if (user?.app_metadata?.force_logout_at) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const adminClient = createAdminClient();
-
-      if (session?.access_token) {
-        // Revoke all sessions for this user (global scope)
-        await adminClient.auth.admin.signOut(session.access_token, "global");
+    const userId = user.id;
+    const userMeta = user.app_metadata;
+    void (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const adminClient = createAdminClient();
+        if (session?.access_token) {
+          await adminClient.auth.admin.signOut(session.access_token, "global");
+        }
+        await adminClient.auth.admin.updateUserById(userId, {
+          app_metadata: { ...userMeta, force_logout_at: null },
+        });
+      } catch (err) {
+        console.error("[middleware] force sign-out background error:", err);
       }
-
-      // Clear the flag so they can log back in normally
-      await adminClient.auth.admin.updateUserById(user.id, {
-        app_metadata: { ...user.app_metadata, force_logout_at: null },
-      });
-    } catch (err) {
-      console.error("[middleware] force sign-out error:", err);
-    }
+    })();
 
     const url = request.nextUrl.clone();
     url.pathname = "/login";

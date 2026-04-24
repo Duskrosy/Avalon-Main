@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { format, parseISO, differenceInCalendarDays, subDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useToast, Toast } from "@/components/ui/toast";
 import { DeltaBadge } from "@/components/ui/delta-badge";
@@ -106,11 +106,59 @@ type AdColumnConfig = {
 };
 
 type Props = {
-  campaigns: Campaign[];
   accounts: Account[];
-  stats: AdStat[];
   canSync: boolean;
 };
+
+/** Aggregated window row returned by /api/ad-ops/campaigns (one per ad). */
+type WindowStat = {
+  meta_account_id: string;
+  campaign_id: string;
+  ad_id: string;
+  ad_name: string | null;
+  adset_name: string | null;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  reach: number;
+  conversions: number;
+  conversion_value: number;
+  messaging_conversations: number;
+  video_plays: number;
+  video_plays_25pct: number;
+  roas_weighted_sum: number;
+};
+
+/**
+ * Convert a WindowStat row into the AdStat shape the existing aggregation logic
+ * expects. `metric_date` is set to the window-start so the in-range filter
+ * passes; per-day `hook_rate`/`ctr` are unused downstream (the view always
+ * recomputes rates from raw counters). `roas` is the spend-weighted average,
+ * which keeps `t.roas_weighted_sum += s.roas * s.spend` mathematically correct.
+ */
+function toAdStat(row: WindowStat, metricDate: string): AdStat {
+  const avgRoas = row.spend > 0 ? row.roas_weighted_sum / row.spend : 0;
+  return {
+    campaign_id: row.campaign_id,
+    meta_account_id: row.meta_account_id,
+    ad_id: row.ad_id,
+    ad_name: row.ad_name,
+    adset_name: row.adset_name,
+    metric_date: metricDate,
+    impressions: row.impressions,
+    clicks: row.clicks,
+    spend: row.spend,
+    reach: row.reach,
+    video_plays: row.video_plays,
+    video_plays_25pct: row.video_plays_25pct,
+    conversions: row.conversions,
+    conversion_value: row.conversion_value,
+    messaging_conversations: row.messaging_conversations,
+    hook_rate: null,
+    ctr: null,
+    roas: avgRoas,
+  };
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -413,8 +461,17 @@ const DEFAULT_AD_COLUMNS: AdColumnConfig[] = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
+export function CampaignsView({ accounts, canSync }: Props) {
   const { toast, setToast } = useToast();
+
+  // ── Window-aggregated data, fetched from /api/ad-ops/campaigns ──────────
+  // Campaigns + stats arrive via API rather than SSR so the browser doesn't
+  // download 30 days of raw ad-stats and silently hit Supabase's 1000-row cap.
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<AdStat[]>([]);
+  const [prevStats, setPrevStats] = useState<AdStat[]>([]);
+  const [hasActivity, setHasActivity] = useState<Record<string, boolean>>({});
+  const [dataLoading, setDataLoading] = useState(true);
 
   // Sync state
   const [syncing, setSyncing]   = useState(false);
@@ -515,20 +572,55 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
   const [colSuggestions, setColSuggestions] = useState<string[]>([]);
   const colFormulaRef = useRef<HTMLInputElement>(null);
 
-  // Messenger tab
-  const [activeTab, setActiveTab] = useState<"main" | "messenger">("main");
+  // Tabs: conversion (main) / messenger / historical (no activity in window).
+  const [activeTab, setActiveTab] = useState<"main" | "messenger" | "historical">("main");
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Realtime: when Meta sync writes campaigns or stats, re-run the server
-  // component so the page picks up fresh props.
+  // ── Fetch campaigns + aggregated window stats from the API ──────────────
+  // Re-runs whenever the date preset (or custom range) changes. The API does
+  // paginated .range() reads so we don't hit Supabase's 1000-row cap.
+  const [refetchKey, setRefetchKey] = useState(0);
+  useEffect(() => {
+    const ctl = new AbortController();
+    const params = new URLSearchParams({ preset: datePreset });
+    if (datePreset === "custom") {
+      if (customStart) params.set("start", customStart);
+      if (customEnd)   params.set("end",   customEnd);
+    }
+    setDataLoading(true);
+    fetch(`/api/ad-ops/campaigns?${params}`, { signal: ctl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((body: {
+        campaigns: Campaign[];
+        stats: WindowStat[];
+        prevStats: WindowStat[];
+        hasActivity: Record<string, boolean>;
+        window: { start: string; prevStart: string | null };
+      }) => {
+        setCampaigns(body.campaigns ?? []);
+        setStats((body.stats ?? []).map((s) => toAdStat(s, body.window.start)));
+        setPrevStats(
+          (body.prevStats ?? []).map((s) => toAdStat(s, body.window.prevStart ?? body.window.start)),
+        );
+        setHasActivity(body.hasActivity ?? {});
+      })
+      .catch((err) => {
+        if (err?.name === "AbortError") return;
+        setToast({ message: "Failed to load campaigns", type: "error" });
+      })
+      .finally(() => setDataLoading(false));
+    return () => ctl.abort();
+  }, [datePreset, customStart, customEnd, refetchKey, setToast]);
+
+  // Realtime: when Meta sync writes campaigns or stats, re-fetch the window.
   useEffect(() => {
     const supabase = createClient();
     const channel = supabase
       .channel("ad-ops-campaigns")
-      .on("postgres_changes", { event: "*", schema: "public", table: "meta_campaigns" }, () => router.refresh())
-      .on("postgres_changes", { event: "*", schema: "public", table: "meta_ad_stats" },  () => router.refresh())
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_campaigns" }, () => setRefetchKey((k) => k + 1))
+      .on("postgres_changes", { event: "*", schema: "public", table: "meta_ad_stats" },  () => setRefetchKey((k) => k + 1))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [router]);
@@ -851,27 +943,12 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     }
   }, [datePreset, customStart, customEnd]);
 
-  // Compute previous period: same number of days ending the day before startDate
+  // Previous-period ad aggregates, sourced from the API's prevStats payload.
+  // The API skips prev-period fetch for "30" and "today" presets (matching the
+  // previous behaviour where those had no prev baseline available).
   const prevByAdId = useMemo<Map<string, AdRow>>(() => {
-    // No previous period for 30-day preset (outside the 30-day DB window) or live today
-    if (datePreset === "30" || datePreset === "today") return new Map();
-
-    const start = parseISO(startDate);
-    const end   = parseISO(endDate);
-    const dayCount = differenceInCalendarDays(end, start) + 1;
-    const prevEnd   = subDays(start, 1);
-    const prevStart = subDays(prevEnd, dayCount - 1);
-    const prevStartStr = prevStart.toISOString().split("T")[0];
-    const prevEndStr   = prevEnd.toISOString().split("T")[0];
-
-    // Always use DB stats for previous period (never live)
-    const prevRows = stats.filter(
-      (s) => s.metric_date >= prevStartStr && s.metric_date <= prevEndStr
-    );
-
-    // Aggregate raw counters by ad_id — rates computed on access, not stored
     const map = new Map<string, AdRow>();
-    for (const row of prevRows) {
+    for (const row of prevStats) {
       const existing = map.get(row.ad_id);
       if (!existing) {
         map.set(row.ad_id, {
@@ -904,7 +981,7 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
       }
     }
     return map;
-  }, [stats, datePreset, startDate, endDate]);
+  }, [prevStats]);
 
   const overallTotalsPrev = useMemo(() => {
     if (prevByAdId.size === 0) return null;
@@ -1140,12 +1217,20 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
     [visibleCampaigns],
   );
 
+  const isHistorical = (c: Campaign) =>
+    hasActivity[`${c.meta_account_id}__${c.campaign_id}`] === false;
+
   const tabCampaigns = useMemo(
     () => visibleCampaigns.filter((c) => {
-      const isMessenger = isMessengerCampaign(c.campaign_name);
-      return activeTab === "messenger" ? isMessenger : !isMessenger;
+      const messenger = isMessengerCampaign(c.campaign_name);
+      const historical = isHistorical(c);
+      if (activeTab === "historical") return historical;
+      if (historical) return false;
+      return activeTab === "messenger" ? messenger : !messenger;
     }),
-    [visibleCampaigns, activeTab],
+    // isHistorical is stable per-render via hasActivity; only campaigns/tab change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleCampaigns, activeTab, hasActivity],
   );
 
   const pendingTabCampaigns = useMemo(
@@ -1707,30 +1792,45 @@ export function CampaignsView({ campaigns, accounts, stats, canSync }: Props) {
         </div>
       )}
 
-      {/* ── Messenger tabs ──────────────────────────────────────────────────── */}
-      {hasMessengerCampaigns && campaigns.length > 0 && (
-        <div className="flex gap-1 bg-[var(--color-bg-tertiary)] rounded-lg p-1 w-fit">
-          {(["main", "messenger"] as const).map((tab) => {
-            const count = tab === "messenger"
-              ? visibleCampaigns.filter((c) => c.campaign_name.toLowerCase().includes("messenger")).length
-              : visibleCampaigns.filter((c) => !c.campaign_name.toLowerCase().includes("messenger")).length;
-            return (
+      {/* ── Conversion / Messenger / Historical tabs ───────────────────────── */}
+      {campaigns.length > 0 && (() => {
+        const historicalCount = visibleCampaigns.filter(isHistorical).length;
+        const activeList = visibleCampaigns.filter((c) => !isHistorical(c));
+        const messengerCount = activeList.filter((c) => isMessengerCampaign(c.campaign_name)).length;
+        const conversionCount = activeList.length - messengerCount;
+        const showMessenger = hasMessengerCampaigns;
+        const showHistorical = historicalCount > 0;
+        if (!showMessenger && !showHistorical) return null;
+
+        const tabs: { key: "main" | "messenger" | "historical"; label: string; count: number; show: boolean }[] = [
+          { key: "main",        label: "Conversion",  count: conversionCount, show: true },
+          { key: "messenger",   label: "Messenger",   count: messengerCount,  show: showMessenger },
+          { key: "historical",  label: "Historical",  count: historicalCount, show: showHistorical },
+        ];
+
+        return (
+          <div className="flex gap-1 bg-[var(--color-bg-tertiary)] rounded-lg p-1 w-fit">
+            {tabs.filter((t) => t.show).map((t) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  activeTab === tab ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                  activeTab === t.key ? "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] shadow-[var(--shadow-sm)]" : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                 }`}
               >
-                {tab === "main" ? `Conversion (${count})` : `Messenger (${count})`}
+                {t.label} ({t.count})
               </button>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
 
       {/* ── Campaign list ───────────────────────────────────────────────────── */}
-      {campaigns.length === 0 ? (
+      {dataLoading && campaigns.length === 0 ? (
+        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-16 flex items-center justify-center">
+          <ButtonSpinner size={20} />
+        </div>
+      ) : campaigns.length === 0 ? (
         <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-16 text-center">
           <p className="text-sm font-medium text-[var(--color-text-secondary)]">No campaigns synced yet</p>
           <p className="text-xs text-[var(--color-text-tertiary)] mt-2">Click <strong>Sync Now</strong> to pull your campaigns from Meta</p>
