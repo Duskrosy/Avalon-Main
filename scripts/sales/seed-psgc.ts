@@ -173,6 +173,9 @@ async function main() {
         region_code: regionCode,
         name: sm.name,
         city_class: "SubMunicipality",
+        // Persist the chartered-city parent so the picker can fold sub-munis
+        // under it (Manila → Sampaloc → barangays).
+        parent_city_code: sm.cityCode,
       };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
