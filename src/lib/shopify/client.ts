@@ -593,8 +593,16 @@ export async function searchShopifyVariants(
     options: { option1: string | null; option2: string | null; option3: string | null };
   }>
 > {
-  const q = query.trim().toLowerCase();
-  if (q.length < 2) return [];
+  const raw = query.trim().toLowerCase();
+  if (raw.length < 2) return [];
+
+  // Tokenize so multi-word queries narrow down: "altitude 36" → only
+  // Altitude variants in size 36; "altitude black 36" → only Altitude
+  // variants whose color is black AND size is 36. Each token must hit
+  // somewhere in the variant's searchable haystack (product title,
+  // variant title, SKU, options). Empty tokens are dropped.
+  const tokens = raw.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [];
 
   const products = await listShopifyProducts();
   const out: Array<{
@@ -609,15 +617,23 @@ export async function searchShopifyVariants(
   }> = [];
 
   for (const p of products) {
-    const productMatches = p.title.toLowerCase().includes(q);
     for (const v of p.variants ?? []) {
-      const variantMatches =
-        productMatches ||
-        (v.sku?.toLowerCase().includes(q) ?? false) ||
-        v.title.toLowerCase().includes(q) ||
-        (v.option1?.toLowerCase().includes(q) ?? false) ||
-        (v.option2?.toLowerCase().includes(q) ?? false);
-      if (!variantMatches) continue;
+      // Build a single haystack per variant. Including the product title
+      // means a token like "altitude" matches every variant of every
+      // Altitude product, while a token like "36" or "black" then narrows
+      // it to the right size/color.
+      const haystack = [
+        p.title,
+        v.title,
+        v.sku ?? "",
+        v.option1 ?? "",
+        v.option2 ?? "",
+        v.option3 ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      const allMatch = tokens.every((t) => haystack.includes(t));
+      if (!allMatch) continue;
       out.push({
         shopify_product_id: String(p.id),
         shopify_variant_id: String(v.id),

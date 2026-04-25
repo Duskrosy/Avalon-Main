@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Search, UserPlus, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, Search, UserPlus, X } from "lucide-react";
 import type { CustomerLite } from "./types";
 
 type Props = {
@@ -9,10 +9,147 @@ type Props = {
   onSelect: (c: CustomerLite | null) => void;
 };
 
+// Search-result row coming back from /api/sales/customers. Local matches have
+// a real `id`; Shopify-only matches arrive with `id: null` and `_source:
+// "shopify"` — picking one of those triggers a POST to mirror them locally.
+type CustomerSearchRow = Omit<CustomerLite, "id"> & {
+  id: string | null;
+  _source?: "shopify";
+};
+
+// Inline searchable combobox used for region/city/barangay. Native <select>
+// has no filter, and these lists run hundreds of items long (1,650 cities,
+// up to 1,500 barangays per region) — typing to narrow is non-negotiable.
+type SearchableSelectProps = {
+  items: Array<{ code: string; name: string; short_code?: string }>;
+  value: string;
+  onChange: (code: string, item: { code: string; name: string } | null) => void;
+  placeholder: string;
+  disabled?: boolean;
+  loading?: boolean;
+};
+
+function SearchableSelect({
+  items,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  loading,
+}: SearchableSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside closes the popover so it doesn't trap the layout.
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const selectedLabel = useMemo(() => {
+    const found = items.find((i) => i.code === value);
+    if (!found) return "";
+    return found.short_code
+      ? `${found.short_code} · ${found.name}`
+      : found.name;
+  }, [items, value]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items.slice(0, 200);
+    return items
+      .filter((i) => {
+        const hay = `${i.name} ${i.short_code ?? ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 200);
+  }, [items, query]);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setOpen((o) => !o);
+          setQuery("");
+        }}
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-left"
+      >
+        <span className={selectedLabel ? "" : "text-gray-400"}>
+          {selectedLabel || placeholder}
+        </span>
+        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+      </button>
+      {open && !disabled && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
+          <div className="relative border-b border-gray-100">
+            <Search
+              size={12}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Type to filter…"
+              autoFocus
+              className="w-full pl-7 pr-2 py-1.5 text-xs focus:outline-none"
+            />
+          </div>
+          <ul className="max-h-56 overflow-auto text-sm">
+            {loading && (
+              <li className="px-3 py-2 text-xs text-gray-500">Loading…</li>
+            )}
+            {!loading && filtered.length === 0 && (
+              <li className="px-3 py-2 text-xs text-gray-500">No matches</li>
+            )}
+            {filtered.map((i) => (
+              <li key={i.code}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(i.code, i);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 ${
+                    i.code === value ? "bg-blue-50 text-blue-900" : ""
+                  }`}
+                >
+                  {i.short_code ? (
+                    <>
+                      <span className="font-medium">{i.short_code}</span>
+                      <span className="text-gray-500 ml-1.5">{i.name}</span>
+                    </>
+                  ) : (
+                    i.name
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function StepCustomer({ selected, onSelect }: Props) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<CustomerLite[]>([]);
+  const [results, setResults] = useState<CustomerSearchRow[]>([]);
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
@@ -96,6 +233,45 @@ export function StepCustomer({ selected, onSelect }: Props) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [query, selected]);
+
+  // Picking a search result. For local rows we just hand the row to the
+  // parent. For Shopify-only rows (id null, _source "shopify") we POST a
+  // mirror to /api/sales/customers passing the existing shopify_customer_id
+  // so we don't double-create on Shopify, then hand the resulting local row
+  // to the parent.
+  const handlePickResult = async (c: CustomerSearchRow) => {
+    if (c.id) {
+      onSelect(c as CustomerLite);
+      return;
+    }
+    if (!c.shopify_customer_id) return;
+    const key = `shopify:${c.shopify_customer_id}`;
+    setImporting(key);
+    try {
+      const res = await fetch("/api/sales/customers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: c.first_name || "Customer",
+          last_name: c.last_name || "(Shopify)",
+          email: c.email,
+          phone: c.phone,
+          shopify_customer_id: c.shopify_customer_id,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.customer) {
+        // Surface the failure inline; reuse the existing search-loading row
+        // by clearing — user can retry by re-typing.
+        setResults([]);
+        setQuery("");
+        return;
+      }
+      onSelect(json.customer);
+    } finally {
+      setImporting(null);
+    }
+  };
 
   const submitCreate = async () => {
     setCreateError(null);
@@ -184,25 +360,40 @@ export function StepCustomer({ selected, onSelect }: Props) {
 
       {results.length > 0 && (
         <ul className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-60 overflow-auto">
-          {results.map((c) => (
-            <li key={c.id}>
-              <button
-                type="button"
-                onClick={() => onSelect(c)}
-                className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm flex items-center justify-between"
-              >
-                <span>
-                  <span className="font-medium">{c.full_name}</span>
-                  <span className="text-gray-500 text-xs ml-2">
-                    {c.phone ?? c.email ?? ""}
+          {results.map((c) => {
+            const key = c.id ?? `shopify:${c.shopify_customer_id}`;
+            const isShopifyOnly = c._source === "shopify";
+            const isImporting = importing === key;
+            return (
+              <li key={key}>
+                <button
+                  type="button"
+                  disabled={isImporting}
+                  onClick={() => handlePickResult(c)}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 disabled:opacity-60 text-sm flex items-center justify-between"
+                >
+                  <span>
+                    <span className="font-medium">{c.full_name}</span>
+                    <span className="text-gray-500 text-xs ml-2">
+                      {c.phone ?? c.email ?? ""}
+                    </span>
                   </span>
-                </span>
-                {c.total_orders_cached != null && (
-                  <span className="text-xs text-gray-400">{c.total_orders_cached} orders</span>
-                )}
-              </button>
-            </li>
-          ))}
+                  <span className="flex items-center gap-2">
+                    {isShopifyOnly && (
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+                        {isImporting ? "Importing…" : "Shopify"}
+                      </span>
+                    )}
+                    {c.total_orders_cached != null && (
+                      <span className="text-xs text-gray-400">
+                        {c.total_orders_cached} orders
+                      </span>
+                    )}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -250,61 +441,48 @@ export function StepCustomer({ selected, onSelect }: Props) {
             onChange={(e) => setForm({ ...form, address_line_1: e.target.value })}
           />
           <div className="grid grid-cols-3 gap-2">
-            <select
-              className="input"
+            <SearchableSelect
+              items={regions}
               value={form.region_code}
-              onChange={(e) => {
-                const code = e.target.value;
-                const r = regions.find((x) => x.code === code);
+              loading={phLoading.regions}
+              placeholder="Region…"
+              onChange={(code, item) =>
                 setForm((s) => ({
                   ...s,
                   region_code: code,
-                  region_text: r?.name ?? "",
-                  // Reset city + barangay when region changes
+                  region_text: item?.name ?? "",
                   city_code: "",
                   city_text: "",
                   barangay_code: "",
                   postal_code: "",
-                }));
-              }}
-            >
-              <option value="">Region…</option>
-              {phLoading.regions && <option disabled>Loading…</option>}
-              {regions.map((r) => (
-                <option key={r.code} value={r.code}>
-                  {r.short_code ? `${r.short_code} · ${r.name}` : r.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input"
+                }))
+              }
+            />
+            <SearchableSelect
+              items={cities}
               value={form.city_code}
-              onChange={(e) => {
-                const code = e.target.value;
-                const c = cities.find((x) => x.code === code);
+              loading={phLoading.cities}
+              disabled={!form.region_code}
+              placeholder={
+                form.region_code ? "City / Municipality…" : "Pick region first"
+              }
+              onChange={(code, item) =>
                 setForm((s) => ({
                   ...s,
                   city_code: code,
-                  city_text: c?.name ?? "",
+                  city_text: item?.name ?? "",
                   barangay_code: "",
                   postal_code: "",
-                }));
-              }}
-              disabled={!form.region_code}
-            >
-              <option value="">{form.region_code ? "City / Municipality…" : "Pick region first"}</option>
-              {phLoading.cities && <option disabled>Loading…</option>}
-              {cities.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <select
-              className="input"
+                }))
+              }
+            />
+            <SearchableSelect
+              items={barangays}
               value={form.barangay_code}
-              onChange={(e) => {
-                const code = e.target.value;
+              loading={phLoading.barangays}
+              disabled={!form.city_code}
+              placeholder={form.city_code ? "Barangay…" : "Pick city first"}
+              onChange={(code) => {
                 const b = barangays.find((x) => x.code === code);
                 setForm((s) => ({
                   ...s,
@@ -314,16 +492,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   postal_code: b?.postal_code ?? s.postal_code,
                 }));
               }}
-              disabled={!form.city_code}
-            >
-              <option value="">{form.city_code ? "Barangay…" : "Pick city first"}</option>
-              {phLoading.barangays && <option disabled>Loading…</option>}
-              {barangays.map((b) => (
-                <option key={b.code} value={b.code}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <input
             placeholder="Postal code (auto-filled when barangay is picked)"
