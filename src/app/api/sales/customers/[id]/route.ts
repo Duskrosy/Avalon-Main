@@ -100,13 +100,16 @@ export async function PATCH(
           last_name: row.last_name,
           email: row.email ?? undefined,
           phone: row.phone ?? undefined,
+          // province intentionally omitted — Shopify validates it against
+          // PH's real province list (Cebu / Bulacan / Abra …) and our
+          // region_text is the PSA region grouping, not a province.
+          // Postal code lets Shopify infer the province for shipping.
           addresses: addressTouched
             ? [
                 {
                   address1: row.address_line_1 ?? null,
                   address2: row.address_line_2 ?? null,
                   city: row.city_text ?? null,
-                  province: row.region_text ?? null,
                   zip: row.postal_code ?? null,
                   country: "Philippines",
                 },

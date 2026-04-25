@@ -18,9 +18,16 @@ import {
  *
  * Shopify expects `city` to be the most-specific addressing level — for
  * Manila that's the sub-muni name (Sampaloc, Tondo I, …) which is what
- * we store in customers.city_text. `province` is sent as the region's
- * label (e.g. "Region V") — Shopify accepts free text here even though
- * its province_code field would prefer a normalized PSA code.
+ * we store in customers.city_text.
+ *
+ * `province` is intentionally NOT sent. Shopify validates province
+ * against Philippines's actual province list (Cebu, Bulacan, Abra,
+ * etc.) — and our `region_text` holds the PSA region label ("Region V",
+ * "NCR") which is a regional grouping, not a province, so it 422s with
+ * "addresses.province is invalid". Until we add a ph_provinces seed
+ * (PSGC /provinces/ endpoint) Shopify will infer the province from the
+ * postal code (Phlpost zones are province-coded). City + zip + country
+ * is enough for shipping.
  */
 function buildShopifyAddresses(input: {
   address_line_1?: string | null;
@@ -32,7 +39,6 @@ function buildShopifyAddresses(input: {
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
-  province?: string | null;
   zip?: string | null;
   country?: string;
 }> | undefined {
@@ -40,7 +46,6 @@ function buildShopifyAddresses(input: {
     input.address_line_1 ||
     input.address_line_2 ||
     input.city_text ||
-    input.region_text ||
     input.postal_code;
   if (!hasAny) return undefined;
   return [
@@ -48,7 +53,6 @@ function buildShopifyAddresses(input: {
       address1: input.address_line_1 ?? null,
       address2: input.address_line_2 ?? null,
       city: input.city_text ?? null,
-      province: input.region_text ?? null,
       zip: input.postal_code ?? null,
       country: "Philippines",
     },

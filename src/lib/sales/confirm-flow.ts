@@ -187,7 +187,10 @@ function buildShopifyOrderInput(
       address1: customer.address_line_1 ?? undefined,
       address2: customer.address_line_2 ?? undefined,
       city: customer.city_text ?? undefined,
-      province: customer.region_text ?? undefined,
+      // province intentionally omitted — Shopify validates it against
+      // PH's province list (Cebu / Bulacan / Abra …) and our region_text
+      // is the PSA region grouping, not a province. Shopify infers the
+      // province from the postal code at fulfilment time.
       zip: customer.postal_code ?? undefined,
       phone: customer.phone ?? undefined,
       country: "PH",
