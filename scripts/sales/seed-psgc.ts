@@ -191,13 +191,23 @@ async function main() {
   // provinceCode/regionCode). API field is a fallback only.
   console.log("[3/4] barangays (this is the slow one — ~42k rows)");
   const barangays = await fetchJson<PsgcBarangay[]>("/barangays/");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: existingCities } = await (admin as any)
-    .from("ph_cities")
-    .select("code");
-  const validCityCodes = new Set(
-    (existingCities ?? []).map((c: { code: string }) => c.code),
-  );
+  // CRITICAL: paginate. PostgREST defaults to 1000 rows per SELECT, and we
+  // have ~1,650 cities (incl. sub-municipalities). Without pagination the
+  // set silently caps at 1,000, dropping NCR / CAR / BARMM / R-IX-XIII
+  // barangays as false orphans (their parent city codes sort late).
+  const validCityCodes = new Set<string>();
+  const CITY_PAGE = 1000;
+  for (let offset = 0; ; offset += CITY_PAGE) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: page } = await (admin as any)
+      .from("ph_cities")
+      .select("code")
+      .range(offset, offset + CITY_PAGE - 1);
+    const rows = (page ?? []) as Array<{ code: string }>;
+    for (const r of rows) validCityCodes.add(r.code);
+    if (rows.length < CITY_PAGE) break;
+  }
+  console.log(`  loaded ${validCityCodes.size} city codes for parent matching`);
 
   const barangayRows = barangays.map((b) => {
     // PSGC-structured parent: replace last 3 digits with "000".
