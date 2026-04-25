@@ -167,6 +167,9 @@ type CityPickItem = {
   region_code?: string;
   parent_city_code?: string | null;
   parent_city_name?: string | null;
+  /** Shopify-acceptable PH province ("Cebu", "Metro Manila"). Used to
+   * seed the editable Shopify Region field on pick. */
+  province_name?: string | null;
 };
 type CityPickerProps = {
   /** Cities loaded for the currently-picked region. Used when regionCode set. */
@@ -380,6 +383,11 @@ export function StepCustomer({ selected, onSelect }: Props) {
     // also the parent of the chosen barangay in ph_barangays).
     sub_municipality_code: "",
     barangay_code: "",
+    // Shopify Region — sent verbatim to Shopify's address.province field.
+    // Auto-fills from the picked city's province (or "Metro Manila" for
+    // NCR) but stays editable so the agent can override when PSGC and
+    // Shopify naming differ (Davao de Oro / Compostela Valley, etc.).
+    shopify_region: "",
   });
   // Snapshot of the form at pick-time, used to compute the "dirty" badge
   // and to know when to show "Save changes" vs hide the button.
@@ -397,6 +405,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
     region_code?: string;
     parent_city_code?: string | null;
     parent_city_name?: string | null;
+    province_name?: string | null;
   };
   const [regions, setRegions] = useState<PhItem[]>([]);
   const [cities, setCities] = useState<PhItem[]>([]);
@@ -441,6 +450,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
         city_code: "",
         sub_municipality_code: "",
         barangay_code: "",
+        shopify_region: "",
       };
       setForm(blank);
       setPristine(blank);
@@ -466,6 +476,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
       city_code: selected.city_code ?? "",
       sub_municipality_code: "",
       barangay_code: selected.barangay_code ?? "",
+      shopify_region: selected.shopify_region ?? "",
     };
     setForm(next);
     setPristine(next);
@@ -638,6 +649,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
         region_code: form.region_code || null,
         city_code: effectiveCityCode,
         barangay_code: form.barangay_code || null,
+        shopify_region: form.shopify_region || null,
       };
       const res = selected?.id
         ? await fetch(`/api/sales/customers/${selected.id}`, {
@@ -687,6 +699,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
         // city_code at save time, so the pristine snapshot stays empty.
         sub_municipality_code: "",
         barangay_code: next.barangay_code ?? "",
+        shopify_region: next.shopify_region ?? "",
       });
       filledFromIdRef.current = next.id;
     } finally {
@@ -886,6 +899,9 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   sub_municipality_code: "",
                   barangay_code: "",
                   postal_code: "",
+                  // Pre-fill Shopify Region for NCR (no city province
+                  // exists); other regions wait for the city pick to seed.
+                  shopify_region: code === "130000000" ? "Metro Manila" : "",
                 }))
               }
             />
@@ -903,6 +919,12 @@ export function StepCustomer({ selected, onSelect }: Props) {
               }
               loading={phLoading.cities}
               onPick={(item) => {
+                // Auto-seed Shopify Region from the picked item. Falls
+                // back to existing form value when the API didn't have a
+                // province_name (very rare; resolver also returns null
+                // for unseeded data).
+                const seededShopifyRegion = (newVal: string) =>
+                  item.province_name ?? newVal;
                 // Sub-muni picked from global search → fold up to its parent
                 // city for the city slot, set the sub-muni code separately.
                 if (!form.region_code && item.parent_city_code) {
@@ -916,6 +938,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                     sub_municipality_code: item.code,
                     barangay_code: "",
                     postal_code: "",
+                    shopify_region: seededShopifyRegion(s.shopify_region),
                   }));
                   return;
                 }
@@ -932,6 +955,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                     sub_municipality_code: "",
                     barangay_code: "",
                     postal_code: "",
+                    shopify_region: seededShopifyRegion(s.shopify_region),
                   }));
                   return;
                 }
@@ -942,6 +966,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   sub_municipality_code: "",
                   barangay_code: "",
                   postal_code: "",
+                  shopify_region: seededShopifyRegion(s.shopify_region),
                 }));
               }}
             />
@@ -961,6 +986,11 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   city_text: item?.name ?? s.city_text,
                   barangay_code: "",
                   postal_code: "",
+                  // Sub-muni inherits province from parent city; the API
+                  // returns province_name on each sub-muni row.
+                  shopify_region:
+                    (item as PhItem | undefined)?.province_name ??
+                    s.shopify_region,
                 }))
               }
             />
@@ -1000,6 +1030,20 @@ export function StepCustomer({ selected, onSelect }: Props) {
             value={form.postal_code}
             onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
           />
+          <div className="space-y-0.5">
+            <input
+              placeholder="Shopify Region (auto-filled from city; editable)"
+              className="input w-full"
+              value={form.shopify_region}
+              onChange={(e) =>
+                setForm({ ...form, shopify_region: e.target.value })
+              }
+            />
+            <div className="text-[10px] text-gray-400 px-0.5">
+              Sent to Shopify as the address province. Use the PH province
+              name Shopify accepts (e.g. Cebu, Bulacan, Metro Manila).
+            </div>
+          </div>
           {createError && <div className="text-xs text-rose-600">{createError}</div>}
           <div className="flex justify-end gap-2 pt-1">
             {!selected && (

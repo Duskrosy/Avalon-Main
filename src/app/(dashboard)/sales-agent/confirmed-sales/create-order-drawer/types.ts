@@ -22,6 +22,9 @@ export type CustomerLite = {
   region_code?: string | null;
   city_code?: string | null;
   barangay_code?: string | null;
+  /** Sent to Shopify's address.province field. Auto-filled from the
+   * picked city's PH province but editable on the form. */
+  shopify_region?: string | null;
 };
 
 export type DrawerLineItem = {

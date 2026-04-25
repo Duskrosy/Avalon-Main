@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
   const { data: localRows } = await (admin as any)
     .from("customers")
     .select(
-      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code",
+      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code, shopify_region",
     )
     .or(orClause)
     .limit(10);
@@ -172,6 +172,7 @@ export async function GET(req: NextRequest) {
     region_code: string | null;
     city_code: string | null;
     barangay_code: string | null;
+    shopify_region: string | null;
   }>;
 
   // Shopify pull. Shopify's /customers/search.json honors a Lucene-style
@@ -238,6 +239,9 @@ export async function GET(req: NextRequest) {
         region_code: null as string | null,
         city_code: null as string | null,
         barangay_code: null as string | null,
+        // Reuse Shopify's address.province as the seed for Shopify Region
+        // — it's already what Shopify expects, so the round-trip is safe.
+        shopify_region: addr?.province ?? null,
         _source: "shopify" as const,
       };
     });
@@ -269,6 +273,12 @@ const postSchema = z.object({
   region_code: z.string().optional().nullable(),
   city_code: z.string().optional().nullable(),
   barangay_code: z.string().optional().nullable(),
+  /**
+   * The Shopify-side province name (e.g. "Cebu", "Metro Manila"). The
+   * drawer auto-fills this from the picked city but the agent can
+   * override before saving — what they type is what Shopify gets.
+   */
+  shopify_region: z.string().optional().nullable(),
   /**
    * Pre-existing Shopify customer id, when claiming a Shopify-only result
    * from the typeahead. The caller has already verified this customer
@@ -307,7 +317,7 @@ export async function POST(req: NextRequest) {
     const { data: existing } = await (admin as any)
       .from("customers")
       .select(
-        "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code",
+        "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code, shopify_region",
       )
       .eq("shopify_customer_id", body.shopify_customer_id)
       .maybeSingle();
@@ -364,13 +374,20 @@ export async function POST(req: NextRequest) {
       shopifyCustomerId = String(existing.id);
     } else {
       try {
-        const [barangayName, provinceName] = await Promise.all([
+        // Province name = whatever the agent typed in Shopify Region.
+        // Fall back to the server-side resolver if they didn't fill it
+        // in (e.g. import-on-pick path, where the form isn't surfaced).
+        const provinceFromForm = body.shopify_region?.trim() || null;
+        const [barangayName, provinceFromResolver] = await Promise.all([
           resolveBarangayName(admin, body.barangay_code),
-          resolveShopifyProvinceName(admin, {
-            city_code: body.city_code,
-            region_code: body.region_code,
-          }),
+          provinceFromForm
+            ? Promise.resolve(null)
+            : resolveShopifyProvinceName(admin, {
+                city_code: body.city_code,
+                region_code: body.region_code,
+              }),
         ]);
+        const provinceName = provinceFromForm ?? provinceFromResolver;
         const created = await createShopifyCustomer({
           first_name: body.first_name,
           last_name: body.last_name,
@@ -413,6 +430,7 @@ export async function POST(req: NextRequest) {
       region_code: body.region_code ?? null,
       city_code: body.city_code ?? null,
       barangay_code: body.barangay_code ?? null,
+      shopify_region: body.shopify_region ?? null,
     })
     .select("*")
     .single();

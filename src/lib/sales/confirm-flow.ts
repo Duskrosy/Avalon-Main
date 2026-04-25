@@ -99,6 +99,9 @@ type CustomerRow = {
   city_code: string | null;
   region_code: string | null;
   barangay_code: string | null;
+  /** Agent-confirmed Shopify-acceptable PH province (set on customer at
+   * create/edit time). Authoritative over the server-side resolver. */
+  shopify_region: string | null;
   /** Resolved barangay name from ph_barangays. Appended to Shopify's
    * address1 as "<street> Barangay <name>" so couriers see it on the
    * waybill — Avalon keeps the structured fields separate. */
@@ -321,7 +324,7 @@ export async function runConfirmFlow(
     .select(
       "id, shopify_customer_id, first_name, last_name, email, phone, " +
         "address_line_1, address_line_2, city_text, region_text, postal_code, " +
-        "city_code, region_code, barangay_code",
+        "city_code, region_code, barangay_code, shopify_region",
     )
     .eq("id", order.customer_id)
     .maybeSingle();
@@ -336,10 +339,10 @@ export async function runConfirmFlow(
     };
   }
 
-  // Resolve barangay (for "<street> Barangay <name>") and province
-  // (Shopify-acceptable name) in parallel. Best-effort: missing data
-  // just leaves those fields off the Shopify payload.
-  const [bgyRes, provinceName] = await Promise.all([
+  // Resolve barangay (for "<street> Barangay <name>"). Province uses
+  // the agent-confirmed shopify_region first; resolver only fires for
+  // legacy customers that don't have it set yet.
+  const [bgyRes, provinceFromResolver] = await Promise.all([
     customer.barangay_code
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any)
@@ -348,14 +351,16 @@ export async function runConfirmFlow(
           .eq("code", customer.barangay_code)
           .maybeSingle()
       : Promise.resolve({ data: null }),
-    resolveShopifyProvinceName(supabase, {
-      city_code: customer.city_code,
-      region_code: customer.region_code,
-    }),
+    customer.shopify_region
+      ? Promise.resolve(null)
+      : resolveShopifyProvinceName(supabase, {
+          city_code: customer.city_code,
+          region_code: customer.region_code,
+        }),
   ]);
   customer.barangay_text =
     (bgyRes?.data as { name?: string } | null)?.name ?? null;
-  customer.province_name = provinceName;
+  customer.province_name = customer.shopify_region ?? provinceFromResolver;
 
   // 2. Idempotency guard for retry path.
   if (options.isRetry) {

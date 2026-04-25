@@ -54,9 +54,9 @@ export async function GET(req: NextRequest) {
   if (level === "city") {
     // Global-search mode: no parent given. Include sub-munis so picking
     // "Sampaloc" can fill the whole region/city/submuni cascade. Returns
-    // up to 50 results, ordered by name. Sub-muni rows are enriched with
-    // their parent city's name so the picker can show the chartered city
-    // in the city slot without an extra round-trip.
+    // up to 50 results, ordered by name. Each row carries the
+    // Shopify-acceptable province name (joined from ph_provinces; or
+    // "Metro Manila" for NCR cities which have province_code NULL).
     if (!parent) {
       if (search.length < 2) {
         return NextResponse.json({ items: [] });
@@ -64,7 +64,9 @@ export async function GET(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (admin as any)
         .from("ph_cities")
-        .select("code, name, city_class, region_code, parent_city_code")
+        .select(
+          "code, name, city_class, region_code, parent_city_code, province_code",
+        )
         .ilike("name", `%${search}%`)
         .order("name")
         .limit(50);
@@ -76,30 +78,92 @@ export async function GET(req: NextRequest) {
         city_class: string | null;
         region_code: string;
         parent_city_code: string | null;
+        province_code: string | null;
       }>;
       const parentCodes = [
         ...new Set(rows.map((r) => r.parent_city_code).filter(Boolean)),
       ] as string[];
-      const parentNames = new Map<string, string>();
-      if (parentCodes.length > 0) {
+      const provinceCodes = [
+        ...new Set(rows.map((r) => r.province_code).filter(Boolean)),
+      ] as string[];
+      // Sub-muni rows have province_code NULL — they inherit from parent
+      // city, so we also need to lookup parents' province_codes.
+      const subMuniParentCodes = rows
+        .filter((r) => r.parent_city_code && !r.province_code)
+        .map((r) => r.parent_city_code as string);
+      const allCodesToLook = [
+        ...new Set([...parentCodes, ...subMuniParentCodes]),
+      ];
+      const parentInfo = new Map<
+        string,
+        { name: string; province_code: string | null; region_code: string }
+      >();
+      if (allCodesToLook.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: parents } = await (admin as any)
           .from("ph_cities")
-          .select("code, name")
-          .in("code", parentCodes);
+          .select("code, name, province_code, region_code")
+          .in("code", allCodesToLook);
         for (const p of (parents ?? []) as Array<{
           code: string;
           name: string;
+          province_code: string | null;
+          region_code: string;
         }>) {
-          parentNames.set(p.code, p.name);
+          parentInfo.set(p.code, {
+            name: p.name,
+            province_code: p.province_code,
+            region_code: p.region_code,
+          });
         }
       }
-      const items = rows.map((r) => ({
-        ...r,
-        parent_city_name: r.parent_city_code
-          ? (parentNames.get(r.parent_city_code) ?? null)
-          : null,
-      }));
+      const allProvinceCodes = [
+        ...new Set([
+          ...provinceCodes,
+          ...Array.from(parentInfo.values())
+            .map((p) => p.province_code)
+            .filter(Boolean) as string[],
+        ]),
+      ];
+      const provinceNames = new Map<string, string>();
+      if (allProvinceCodes.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: provs } = await (admin as any)
+          .from("ph_provinces")
+          .select("code, name")
+          .in("code", allProvinceCodes);
+        for (const p of (provs ?? []) as Array<{
+          code: string;
+          name: string;
+        }>) {
+          provinceNames.set(p.code, p.name);
+        }
+      }
+      const items = rows.map((r) => {
+        // Resolve province name: own province_code → else parent's →
+        // else NCR override → else null.
+        let provinceName: string | null = null;
+        if (r.province_code) {
+          provinceName = provinceNames.get(r.province_code) ?? null;
+        } else if (r.parent_city_code) {
+          const parent = parentInfo.get(r.parent_city_code);
+          if (parent?.province_code) {
+            provinceName = provinceNames.get(parent.province_code) ?? null;
+          } else if (parent?.region_code === "130000000") {
+            provinceName = "Metro Manila";
+          }
+        }
+        if (!provinceName && r.region_code === "130000000") {
+          provinceName = "Metro Manila";
+        }
+        return {
+          ...r,
+          parent_city_name: r.parent_city_code
+            ? (parentInfo.get(r.parent_city_code)?.name ?? null)
+            : null,
+          province_name: provinceName,
+        };
+      });
       return NextResponse.json({ items });
     }
 
@@ -108,7 +172,7 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let q: any = (admin as any)
       .from("ph_cities")
-      .select("code, name, city_class")
+      .select("code, name, city_class, province_code, region_code")
       .eq("region_code", parent)
       .is("parent_city_code", null)
       .order("name")
@@ -135,10 +199,43 @@ export async function GET(req: NextRequest) {
           .filter(Boolean),
       );
     }
+    // Resolve Shopify-acceptable province names for each city in one
+    // batched lookup against ph_provinces.
+    const provinceCodes = [
+      ...new Set(
+        (cities ?? [])
+          .map((c: { province_code: string | null }) => c.province_code)
+          .filter(Boolean),
+      ),
+    ] as string[];
+    const provinceNames = new Map<string, string>();
+    if (provinceCodes.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: provs } = await (admin as any)
+        .from("ph_provinces")
+        .select("code, name")
+        .in("code", provinceCodes);
+      for (const p of (provs ?? []) as Array<{ code: string; name: string }>) {
+        provinceNames.set(p.code, p.name);
+      }
+    }
     const items = (cities ?? []).map(
-      (c: { code: string; name: string; city_class: string | null }) => ({
+      (c: {
+        code: string;
+        name: string;
+        city_class: string | null;
+        province_code: string | null;
+        region_code: string;
+      }) => ({
         ...c,
         has_submunicipalities: parentCodesSet.has(c.code),
+        // Province name = ph_provinces.name, or "Metro Manila" for NCR.
+        // Frontend uses this to seed the editable Shopify Region field.
+        province_name: c.province_code
+          ? (provinceNames.get(c.province_code) ?? null)
+          : c.region_code === "130000000"
+            ? "Metro Manila"
+            : null,
       }),
     );
     return NextResponse.json({ items });
@@ -162,7 +259,36 @@ export async function GET(req: NextRequest) {
     const { data, error } = await q;
     if (error)
       return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ items: data ?? [] });
+
+    // Sub-munis inherit the chartered city's province. Resolve once for
+    // the whole list (one parent → one province lookup).
+    let provinceName: string | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: parentCity } = await (admin as any)
+      .from("ph_cities")
+      .select("province_code, region_code")
+      .eq("code", parent)
+      .maybeSingle();
+    const pc = parentCity as {
+      province_code?: string | null;
+      region_code?: string;
+    } | null;
+    if (pc?.province_code) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: prov } = await (admin as any)
+        .from("ph_provinces")
+        .select("name")
+        .eq("code", pc.province_code)
+        .maybeSingle();
+      provinceName = (prov as { name?: string } | null)?.name ?? null;
+    }
+    if (!provinceName && pc?.region_code === "130000000") {
+      provinceName = "Metro Manila";
+    }
+    const items = ((data ?? []) as Array<Record<string, unknown>>).map(
+      (r) => ({ ...r, province_name: provinceName }),
+    );
+    return NextResponse.json({ items });
   }
 
   if (level === "barangay") {

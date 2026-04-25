@@ -35,6 +35,7 @@ const patchSchema = z.object({
   region_code: z.string().nullable().optional(),
   city_code: z.string().nullable().optional(),
   barangay_code: z.string().nullable().optional(),
+  shopify_region: z.string().nullable().optional(),
 });
 
 export async function PATCH(
@@ -71,7 +72,7 @@ export async function PATCH(
     .update(update)
     .eq("id", id)
     .select(
-      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code",
+      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code, shopify_region",
     )
     .single();
 
@@ -96,13 +97,13 @@ export async function PATCH(
       "phone" in update;
     if (addressTouched || profileTouched) {
       try {
-        // Resolve barangay (for "<street> Barangay <name>") and province
-        // (Shopify-acceptable name like "Cebu" / "Metro Manila") in
-        // parallel.
+        // Province goes out as whatever the agent typed in Shopify Region.
+        // Fall back to the resolver for older customers that don't have
+        // shopify_region set yet (legacy rows from before migration 00090).
         let barangayName: string | null = null;
-        let provinceName: string | null = null;
+        let provinceName: string | null = row.shopify_region ?? null;
         if (addressTouched) {
-          const [bgy, prov] = await Promise.all([
+          const tasks: Array<Promise<unknown>> = [
             row.barangay_code
               ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 (admin as any)
@@ -111,13 +112,20 @@ export async function PATCH(
                   .eq("code", row.barangay_code)
                   .maybeSingle()
               : Promise.resolve({ data: null }),
-            resolveShopifyProvinceName(admin, {
-              city_code: row.city_code,
-              region_code: row.region_code,
-            }),
-          ]);
-          barangayName = (bgy?.data as { name?: string } | null)?.name ?? null;
-          provinceName = prov;
+            provinceName
+              ? Promise.resolve(null)
+              : resolveShopifyProvinceName(admin, {
+                  city_code: row.city_code,
+                  region_code: row.region_code,
+                }),
+          ];
+          const [bgy, prov] = await Promise.all(tasks);
+          barangayName =
+            ((bgy as { data?: { name?: string } | null })?.data?.name ??
+              null) || null;
+          if (!provinceName) {
+            provinceName = (prov as string | null) ?? null;
+          }
         }
         const composedAddress1 =
           row.address_line_1 && barangayName
