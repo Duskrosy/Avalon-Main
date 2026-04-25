@@ -81,6 +81,8 @@ export const NAV_GROUPS: NavGroup[] = [
     departments: ["sales"],
     items: [
       { name: "Chat Sales", slug: "confirmed-sales", route: "/sales-agent/confirmed-sales" },
+      { name: "Customers", slug: "customers", route: "/sales-agent/customers" },
+      { name: "Reports", slug: "reports", route: "/sales-agent/reports" },
     ],
   },
   {
