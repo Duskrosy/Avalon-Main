@@ -56,7 +56,11 @@ type PsgcCity = {
 type PsgcSubMunicipality = {
   code: string;
   name: string;
-  cityCode: string;       // parent city
+  // psgc.gitlab.io's /sub-municipalities/ endpoint exposes the parent
+  // chartered city as `districtCode` (e.g. Manila City = "133900000").
+  // It does NOT expose a `cityCode` field. Older versions of this seed
+  // assumed cityCode and silently dropped the parent linkage.
+  districtCode: string;
   regionCode: string;
 };
 type PsgcBarangay = {
@@ -166,7 +170,7 @@ async function main() {
   for (const c of cities) cityRegionLookup.set(c.code, c.regionCode);
   const subMuniRows = subMunis
     .map((sm) => {
-      const regionCode = sm.regionCode ?? cityRegionLookup.get(sm.cityCode);
+      const regionCode = sm.regionCode ?? cityRegionLookup.get(sm.districtCode);
       if (!regionCode) return null;
       return {
         code: sm.code,
@@ -175,7 +179,7 @@ async function main() {
         city_class: "SubMunicipality",
         // Persist the chartered-city parent so the picker can fold sub-munis
         // under it (Manila → Sampaloc → barangays).
-        parent_city_code: sm.cityCode,
+        parent_city_code: sm.districtCode,
       };
     })
     .filter((r): r is NonNullable<typeof r> => r !== null);
