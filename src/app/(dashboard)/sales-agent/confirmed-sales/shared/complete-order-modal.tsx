@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
+
+type CampaignItem = { name: string; source: "live" | "history" };
 
 // Modal for marking a synced order complete with post-delivery
 // attribution. Lives separate from the create drawer because completion
@@ -48,6 +50,9 @@ export function CompleteOrderModal({
   const [deliveryStatus, setDeliveryStatus] = useState<string>("delivered");
   const [isAbandoned, setIsAbandoned] = useState(false);
   const [adCampaign, setAdCampaign] = useState("");
+  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  const campaignBoxRef = useRef<HTMLDivElement>(null);
   const [alexAssist, setAlexAssist] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +70,39 @@ export function CompleteOrderModal({
     setAlexAssist(order.alex_ai_assist ?? false);
     setError(null);
   }, [open, order]);
+
+  // Load campaign suggestions on open. Failures fall back to free-text
+  // only — the free-text input still works without a campaign list.
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/sales/ad-campaigns")
+      .then((r) => r.json())
+      .then((j) => setCampaigns((j.items ?? []) as CampaignItem[]))
+      .catch(() => setCampaigns([]));
+  }, [open]);
+
+  // Click-outside the campaign combobox closes the dropdown.
+  useEffect(() => {
+    if (!campaignOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (
+        campaignBoxRef.current &&
+        !campaignBoxRef.current.contains(e.target as Node)
+      ) {
+        setCampaignOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [campaignOpen]);
+
+  const filteredCampaigns = useMemo(() => {
+    const q = adCampaign.trim().toLowerCase();
+    const list = q
+      ? campaigns.filter((c) => c.name.toLowerCase().includes(q))
+      : campaigns;
+    return list.slice(0, 30);
+  }, [campaigns, adCampaign]);
 
   if (!open || !order) return null;
 
@@ -180,19 +218,53 @@ export function CompleteOrderModal({
             Customer abandoned the order (zeroes net + flags abandoned)
           </label>
 
-          <div>
+          <div ref={campaignBoxRef} className="relative">
             <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
               Ad campaign source
             </label>
             <input
               type="text"
               value={adCampaign}
-              onChange={(e) => setAdCampaign(e.target.value)}
+              onChange={(e) => {
+                setAdCampaign(e.target.value);
+                setCampaignOpen(true);
+              }}
+              onFocus={() => setCampaignOpen(true)}
               placeholder="e.g. Meta - Avalon Aug Promo"
               className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            {campaignOpen && filteredCampaigns.length > 0 && (
+              <ul className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                {filteredCampaigns.map((c) => (
+                  <li key={`${c.source}:${c.name}`}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdCampaign(c.name);
+                        setCampaignOpen(false);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 flex items-center justify-between gap-2 ${
+                        adCampaign === c.name ? "bg-blue-50 text-blue-900" : ""
+                      }`}
+                    >
+                      <span className="truncate">{c.name}</span>
+                      <span
+                        className={`text-[9px] uppercase tracking-wide px-1 py-0.5 rounded shrink-0 ${
+                          c.source === "live"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {c.source}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <div className="text-[10px] text-gray-400 mt-0.5">
-              Free text for now. Will pull from ad-ops campaigns later.
+              Pick a live Meta campaign or type a custom source. Free text
+              accepted — submits whatever&apos;s in the field.
             </div>
           </div>
 
