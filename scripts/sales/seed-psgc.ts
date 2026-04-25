@@ -254,56 +254,207 @@ async function main() {
   // Coverage: NCR (Manila districts + 17 cities) + major provincial
   // capitals. Provincial barangays outside this map fall back to manual
   // entry until you bundle broader Phlpost data.
-  console.log("[4/4] postal codes (NCR + major cities, name-matched)");
-  const postalByCityName: Record<string, string> = {
-    // Manila sub-municipalities (these come from /sub-municipalities/)
-    "Binondo": "1006",
-    "Ermita": "1000",
-    "Intramuros": "1002",
-    "Malate": "1004",
-    "Paco": "1007",
-    "Pandacan": "1011",
-    "Port Area": "1018",
-    "Quiapo": "1001",
-    "Sampaloc": "1008",
-    "San Andres": "1017",
-    "San Miguel": "1005",
-    "San Nicolas": "1010",
-    "Santa Ana": "1009",
-    "Santa Cruz": "1003",
-    "Santa Mesa": "1016",
-    "Tondo I / I": "1012",
-    "Tondo II": "1013",
-    // Manila City catch-all (in case the user picks Manila City directly)
-    "City of Manila": "1000",
+  console.log("[4/4] postal codes (all regions, name-matched + region-scoped)");
+
+  // Region-scoped postal map. Keys are "<short_code>::<city name>" so that
+  // ambiguous names (Naga in Cam Sur vs Cebu, San Carlos in Pangasinan vs
+  // NegOcc, Santiago in Isabela vs Ilocos Sur, etc.) resolve to the right
+  // postal code without cross-region bleed. Lookup filters ph_cities by
+  // region_code so .or() ilike on a name only matches inside that region.
+  type PostalEntry = { region: string; postal: string };
+  const postalEntries: Array<PostalEntry & { name: string }> = [
+    // ── NCR (Manila districts via /sub-municipalities/) ─────────────
+    { region: "NCR", name: "Binondo", postal: "1006" },
+    { region: "NCR", name: "Ermita", postal: "1000" },
+    { region: "NCR", name: "Intramuros", postal: "1002" },
+    { region: "NCR", name: "Malate", postal: "1004" },
+    { region: "NCR", name: "Paco", postal: "1007" },
+    { region: "NCR", name: "Pandacan", postal: "1011" },
+    { region: "NCR", name: "Port Area", postal: "1018" },
+    { region: "NCR", name: "Quiapo", postal: "1001" },
+    { region: "NCR", name: "Sampaloc", postal: "1008" },
+    { region: "NCR", name: "San Andres", postal: "1017" },
+    { region: "NCR", name: "San Miguel", postal: "1005" },
+    { region: "NCR", name: "San Nicolas", postal: "1010" },
+    { region: "NCR", name: "Santa Ana", postal: "1009" },
+    { region: "NCR", name: "Santa Cruz", postal: "1003" },
+    { region: "NCR", name: "Santa Mesa", postal: "1016" },
+    { region: "NCR", name: "Tondo I / I", postal: "1012" },
+    { region: "NCR", name: "Tondo II", postal: "1013" },
+    { region: "NCR", name: "City of Manila", postal: "1000" },
     // NCR cities
-    "Quezon City": "1100",
-    "City of Mandaluyong": "1550",
-    "City of Makati": "1200",
-    "Pasay City": "1300",
-    "Caloocan City": "1400",
-    "City of Malabon": "1440",
-    "City of Navotas": "1485",
-    "City of Parañaque": "1700",
-    "City of Las Piñas": "1740",
-    "City of Muntinlupa": "1770",
-    "City of Marikina": "1800",
-    "Pasig City": "1600",
-    "City of Taguig": "1630",
-    "Pateros": "1620",
-    "City of San Juan": "1500",
-    "City of Valenzuela": "1440",
-    // Major provincial capitals
-    "City of Cebu": "6000",
-    "Davao City": "8000",
-    "Cagayan De Oro City": "9000",
-    "Iloilo City": "5000",
-    "City of Iligan": "9200",
-    "General Santos City (Dadiangas)": "9500",
-    "Bacolod City": "6100",
-    "Zamboanga City": "7000",
-    "Baguio City": "2600",
-  };
+    { region: "NCR", name: "Quezon City", postal: "1100" },
+    { region: "NCR", name: "City of Mandaluyong", postal: "1550" },
+    { region: "NCR", name: "City of Makati", postal: "1200" },
+    { region: "NCR", name: "Pasay City", postal: "1300" },
+    { region: "NCR", name: "Caloocan City", postal: "1400" },
+    { region: "NCR", name: "City of Malabon", postal: "1440" },
+    { region: "NCR", name: "City of Navotas", postal: "1485" },
+    { region: "NCR", name: "City of Parañaque", postal: "1700" },
+    { region: "NCR", name: "City of Las Piñas", postal: "1740" },
+    { region: "NCR", name: "City of Muntinlupa", postal: "1770" },
+    { region: "NCR", name: "City of Marikina", postal: "1800" },
+    { region: "NCR", name: "Pasig City", postal: "1600" },
+    { region: "NCR", name: "City of Taguig", postal: "1630" },
+    { region: "NCR", name: "Pateros", postal: "1620" },
+    { region: "NCR", name: "City of San Juan", postal: "1500" },
+    { region: "NCR", name: "City of Valenzuela", postal: "1440" },
+    // ── CAR ─────────────────────────────────────────────────────────
+    { region: "CAR", name: "Baguio", postal: "2600" },
+    { region: "CAR", name: "Tabuk", postal: "3800" },
+    // ── Region I — Ilocos ───────────────────────────────────────────
+    { region: "R-I", name: "Laoag", postal: "2900" },
+    { region: "R-I", name: "Batac", postal: "2906" },
+    { region: "R-I", name: "Vigan", postal: "2700" },
+    { region: "R-I", name: "Candon", postal: "2710" },
+    { region: "R-I", name: "Dagupan", postal: "2400" },
+    { region: "R-I", name: "San Carlos", postal: "2420" }, // Pangasinan
+    { region: "R-I", name: "Urdaneta", postal: "2428" },
+    { region: "R-I", name: "Alaminos", postal: "2404" },
+    { region: "R-I", name: "San Fernando", postal: "2500" }, // La Union
+    // ── Region II — Cagayan Valley ──────────────────────────────────
+    { region: "R-II", name: "Tuguegarao", postal: "3500" },
+    { region: "R-II", name: "Cauayan", postal: "3305" },
+    { region: "R-II", name: "Ilagan", postal: "3300" },
+    { region: "R-II", name: "Santiago", postal: "3311" }, // Isabela
+    // ── Region III — Central Luzon ──────────────────────────────────
+    { region: "R-III", name: "Balanga", postal: "2100" },
+    { region: "R-III", name: "Malolos", postal: "3000" },
+    { region: "R-III", name: "Meycauayan", postal: "3020" },
+    { region: "R-III", name: "San Jose Del Monte", postal: "3023" },
+    { region: "R-III", name: "Cabanatuan", postal: "3100" },
+    { region: "R-III", name: "Gapan", postal: "3105" },
+    { region: "R-III", name: "Muñoz", postal: "3119" },
+    { region: "R-III", name: "Palayan", postal: "3132" },
+    { region: "R-III", name: "San Jose", postal: "3121" }, // Nueva Ecija
+    { region: "R-III", name: "Mabalacat", postal: "2010" },
+    { region: "R-III", name: "Angeles", postal: "2009" },
+    { region: "R-III", name: "Olongapo", postal: "2200" },
+    { region: "R-III", name: "San Fernando", postal: "2000" }, // Pampanga
+    { region: "R-III", name: "Tarlac", postal: "2300" },
+    // ── Region IV-A — CALABARZON ────────────────────────────────────
+    { region: "R-IV-A", name: "Bacoor", postal: "4102" },
+    { region: "R-IV-A", name: "Cavite", postal: "4100" },
+    { region: "R-IV-A", name: "Dasmariñas", postal: "4114" },
+    { region: "R-IV-A", name: "Imus", postal: "4103" },
+    { region: "R-IV-A", name: "General Trias", postal: "4107" },
+    { region: "R-IV-A", name: "Tagaytay", postal: "4120" },
+    { region: "R-IV-A", name: "Trece Martires", postal: "4109" },
+    { region: "R-IV-A", name: "Calamba", postal: "4027" },
+    { region: "R-IV-A", name: "Biñan", postal: "4024" },
+    { region: "R-IV-A", name: "San Pedro", postal: "4023" },
+    { region: "R-IV-A", name: "Santa Rosa", postal: "4026" },
+    { region: "R-IV-A", name: "San Pablo", postal: "4000" },
+    { region: "R-IV-A", name: "Cabuyao", postal: "4025" },
+    { region: "R-IV-A", name: "Lucena", postal: "4301" },
+    { region: "R-IV-A", name: "Antipolo", postal: "1870" },
+    { region: "R-IV-A", name: "Batangas", postal: "4200" },
+    { region: "R-IV-A", name: "Lipa", postal: "4217" },
+    { region: "R-IV-A", name: "Tanauan", postal: "4232" }, // Batangas
+    // ── Region IV-B — MIMAROPA ──────────────────────────────────────
+    { region: "R-IV-B", name: "Calapan", postal: "5200" },
+    { region: "R-IV-B", name: "Puerto Princesa", postal: "5300" },
+    // ── Region V — Bicol ────────────────────────────────────────────
+    { region: "R-V", name: "Legazpi", postal: "4500" },
+    { region: "R-V", name: "Ligao", postal: "4504" },
+    { region: "R-V", name: "Tabaco", postal: "4511" },
+    { region: "R-V", name: "Naga", postal: "4400" }, // Camarines Sur
+    { region: "R-V", name: "Iriga", postal: "4431" },
+    { region: "R-V", name: "Sorsogon", postal: "4700" },
+    { region: "R-V", name: "Masbate", postal: "5400" },
+    // ── Region VI — Western Visayas ─────────────────────────────────
+    { region: "R-VI", name: "Iloilo", postal: "5000" },
+    { region: "R-VI", name: "Passi", postal: "5037" },
+    { region: "R-VI", name: "Bacolod", postal: "6100" },
+    { region: "R-VI", name: "Roxas", postal: "5800" }, // Capiz
+    { region: "R-VI", name: "Bago", postal: "6101" },
+    { region: "R-VI", name: "Cadiz", postal: "6121" },
+    { region: "R-VI", name: "Escalante", postal: "6124" },
+    { region: "R-VI", name: "Himamaylan", postal: "6108" },
+    { region: "R-VI", name: "Kabankalan", postal: "6111" },
+    { region: "R-VI", name: "La Carlota", postal: "6130" },
+    { region: "R-VI", name: "Sagay", postal: "6122" },
+    { region: "R-VI", name: "San Carlos", postal: "6127" }, // NegOcc
+    { region: "R-VI", name: "Silay", postal: "6116" },
+    { region: "R-VI", name: "Sipalay", postal: "6113" },
+    { region: "R-VI", name: "Talisay", postal: "6115" }, // NegOcc
+    { region: "R-VI", name: "Victorias", postal: "6119" },
+    // ── Region VII — Central Visayas ────────────────────────────────
+    { region: "R-VII", name: "Cebu", postal: "6000" },
+    { region: "R-VII", name: "Lapu-Lapu", postal: "6015" },
+    { region: "R-VII", name: "Mandaue", postal: "6014" },
+    { region: "R-VII", name: "Talisay", postal: "6045" }, // Cebu
+    { region: "R-VII", name: "Bogo", postal: "6010" },
+    { region: "R-VII", name: "Carcar", postal: "6019" },
+    { region: "R-VII", name: "Danao", postal: "6004" },
+    { region: "R-VII", name: "Naga", postal: "6037" }, // Cebu
+    { region: "R-VII", name: "Toledo", postal: "6038" },
+    { region: "R-VII", name: "Tagbilaran", postal: "6300" },
+    { region: "R-VII", name: "Dumaguete", postal: "6200" },
+    { region: "R-VII", name: "Bais", postal: "6206" },
+    { region: "R-VII", name: "Bayawan", postal: "6221" },
+    { region: "R-VII", name: "Canlaon", postal: "6223" },
+    { region: "R-VII", name: "Guihulngan", postal: "6214" },
+    { region: "R-VII", name: "Tanjay", postal: "6203" },
+    // ── Region VIII — Eastern Visayas ───────────────────────────────
+    { region: "R-VIII", name: "Tacloban", postal: "6500" },
+    { region: "R-VIII", name: "Ormoc", postal: "6541" },
+    { region: "R-VIII", name: "Baybay", postal: "6521" },
+    { region: "R-VIII", name: "Calbayog", postal: "6710" },
+    { region: "R-VIII", name: "Catbalogan", postal: "6700" },
+    { region: "R-VIII", name: "Borongan", postal: "6800" },
+    { region: "R-VIII", name: "Maasin", postal: "6600" },
+    // ── Region IX — Zamboanga Peninsula ─────────────────────────────
+    { region: "R-IX", name: "Zamboanga", postal: "7000" },
+    { region: "R-IX", name: "Pagadian", postal: "7016" },
+    { region: "R-IX", name: "Dipolog", postal: "7100" },
+    { region: "R-IX", name: "Dapitan", postal: "7101" },
+    { region: "R-IX", name: "Isabela", postal: "7300" }, // Basilan
+    // ── Region X — Northern Mindanao ────────────────────────────────
+    { region: "R-X", name: "Cagayan De Oro", postal: "9000" },
+    { region: "R-X", name: "Iligan", postal: "9200" },
+    { region: "R-X", name: "Malaybalay", postal: "8700" },
+    { region: "R-X", name: "Valencia", postal: "8709" },
+    { region: "R-X", name: "Gingoog", postal: "9014" },
+    { region: "R-X", name: "Oroquieta", postal: "7207" },
+    { region: "R-X", name: "Ozamiz", postal: "7200" },
+    { region: "R-X", name: "Tangub", postal: "7214" },
+    { region: "R-X", name: "El Salvador", postal: "9017" },
+    // ── Region XI — Davao ───────────────────────────────────────────
+    { region: "R-XI", name: "Davao", postal: "8000" },
+    { region: "R-XI", name: "Tagum", postal: "8100" },
+    { region: "R-XI", name: "Panabo", postal: "8105" },
+    { region: "R-XI", name: "Island Garden City Of Samal", postal: "8119" },
+    { region: "R-XI", name: "Digos", postal: "8002" },
+    { region: "R-XI", name: "Mati", postal: "8200" },
+    // ── Region XII — SOCCSKSARGEN ───────────────────────────────────
+    { region: "R-XII", name: "General Santos", postal: "9500" },
+    { region: "R-XII", name: "Koronadal", postal: "9506" },
+    { region: "R-XII", name: "Tacurong", postal: "9800" },
+    { region: "R-XII", name: "Kidapawan", postal: "9400" },
+    { region: "R-XII", name: "Cotabato", postal: "9600" },
+    // ── Region XIII — Caraga ────────────────────────────────────────
+    { region: "R-XIII", name: "Butuan", postal: "8600" },
+    { region: "R-XIII", name: "Cabadbaran", postal: "8605" },
+    { region: "R-XIII", name: "Bayugan", postal: "8502" },
+    { region: "R-XIII", name: "Bislig", postal: "8311" },
+    { region: "R-XIII", name: "Tandag", postal: "8300" },
+    { region: "R-XIII", name: "Surigao", postal: "8400" },
+    // ── BARMM ───────────────────────────────────────────────────────
+    { region: "BARMM", name: "Marawi", postal: "9700" },
+    { region: "BARMM", name: "Lamitan", postal: "7302" },
+  ];
+
+  // Resolve region short_code → 9-digit code (filter for ph_cities query).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: regionLookup } = await (admin as any)
+    .from("ph_regions")
+    .select("code, short_code");
+  const regionCodeByShort = new Map<string, string>(
+    ((regionLookup ?? []) as Array<{ code: string; short_code: string }>).map(
+      (r) => [r.short_code, r.code],
+    ),
+  );
 
   // Fuzzy name matching: PSGC returns city names with various conventions
   // ("City of Manila" vs "Manila" vs "Manila City" vs "MANILA"). Try
@@ -327,9 +478,17 @@ async function main() {
 
   let postalUpdated = 0;
   let cityMatches = 0;
-  for (const [cityName, postal] of Object.entries(postalByCityName)) {
-    const variants = nameVariants(cityName);
-    // ilike comparisons via .or() — matches case-insensitively.
+  let unresolvedRegions = 0;
+  for (const entry of postalEntries) {
+    const regionCode = regionCodeByShort.get(entry.region);
+    if (!regionCode) {
+      unresolvedRegions++;
+      continue;
+    }
+    const variants = nameVariants(entry.name);
+    // ilike comparisons via .or() — matches case-insensitively. Constrained
+    // to the entry's region so "Naga" only matches Naga in R-V (Cam Sur),
+    // not Naga in R-VII (Cebu) — and vice versa.
     const orClause = variants
       .map((v) => `name.ilike.${v.replace(/,/g, "")}`)
       .join(",");
@@ -337,6 +496,7 @@ async function main() {
     const { data: cityRows } = await (admin as any)
       .from("ph_cities")
       .select("code, name")
+      .eq("region_code", regionCode)
       .or(orClause);
     if (!cityRows || cityRows.length === 0) continue;
     cityMatches += cityRows.length;
@@ -344,10 +504,15 @@ async function main() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error, count } = await (admin as any)
         .from("ph_barangays")
-        .update({ postal_code: postal }, { count: "exact" })
+        .update({ postal_code: entry.postal }, { count: "exact" })
         .eq("city_code", city.code);
       if (!error && typeof count === "number") postalUpdated += count;
     }
+  }
+  if (unresolvedRegions > 0) {
+    console.log(
+      `  warn: ${unresolvedRegions} entries had unknown region short_codes`,
+    );
   }
   console.log(
     `  matched ${cityMatches} cities/sub-municipalities, updated postal on ${postalUpdated} barangays`,
