@@ -54,7 +54,9 @@ export async function GET(req: NextRequest) {
   if (level === "city") {
     // Global-search mode: no parent given. Include sub-munis so picking
     // "Sampaloc" can fill the whole region/city/submuni cascade. Returns
-    // up to 50 results, ordered by name.
+    // up to 50 results, ordered by name. Sub-muni rows are enriched with
+    // their parent city's name so the picker can show the chartered city
+    // in the city slot without an extra round-trip.
     if (!parent) {
       if (search.length < 2) {
         return NextResponse.json({ items: [] });
@@ -68,7 +70,37 @@ export async function GET(req: NextRequest) {
         .limit(50);
       if (error)
         return NextResponse.json({ error: error.message }, { status: 500 });
-      return NextResponse.json({ items: data ?? [] });
+      const rows = (data ?? []) as Array<{
+        code: string;
+        name: string;
+        city_class: string | null;
+        region_code: string;
+        parent_city_code: string | null;
+      }>;
+      const parentCodes = [
+        ...new Set(rows.map((r) => r.parent_city_code).filter(Boolean)),
+      ] as string[];
+      const parentNames = new Map<string, string>();
+      if (parentCodes.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: parents } = await (admin as any)
+          .from("ph_cities")
+          .select("code, name")
+          .in("code", parentCodes);
+        for (const p of (parents ?? []) as Array<{
+          code: string;
+          name: string;
+        }>) {
+          parentNames.set(p.code, p.name);
+        }
+      }
+      const items = rows.map((r) => ({
+        ...r,
+        parent_city_name: r.parent_city_code
+          ? (parentNames.get(r.parent_city_code) ?? null)
+          : null,
+      }));
+      return NextResponse.json({ items });
     }
 
     // Region-scoped mode: only top-level cities/munis (sub-munis excluded —

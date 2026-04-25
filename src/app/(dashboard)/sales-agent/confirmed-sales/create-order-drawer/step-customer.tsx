@@ -145,6 +145,176 @@ function SearchableSelect({
   );
 }
 
+// City picker that switches modes by whether a region is set:
+//   - region set → client-side filter on the already-loaded city list
+//   - no region  → server-side global search across all cities + sub-munis
+// Picking a row hands a structured payload to the parent so it can fill
+// region / city / sub-muni in one go.
+type CityPickItem = {
+  code: string;
+  name: string;
+  region_code?: string;
+  parent_city_code?: string | null;
+  parent_city_name?: string | null;
+};
+type CityPickerProps = {
+  /** Cities loaded for the currently-picked region. Used when regionCode set. */
+  regionCities: Array<CityPickItem & { has_submunicipalities?: boolean }>;
+  regionCode: string;
+  pickedCityCode: string;
+  pickedCityLabel: string;
+  loading?: boolean;
+  onPick: (item: CityPickItem) => void;
+};
+
+function CityPicker({
+  regionCities,
+  regionCode,
+  pickedCityCode,
+  pickedCityLabel,
+  loading,
+  onPick,
+}: CityPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [remoteResults, setRemoteResults] = useState<CityPickItem[]>([]);
+  const [remoteLoading, setRemoteLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  // Global server-side search runs only when no region is locked in.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (regionCode) {
+      setRemoteResults([]);
+      return;
+    }
+    if (query.trim().length < 2) {
+      setRemoteResults([]);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setRemoteLoading(true);
+      try {
+        const res = await fetch(
+          `/api/sales/ph-address?level=city&q=${encodeURIComponent(query.trim())}`,
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setRemoteResults((json.items ?? []) as CityPickItem[]);
+        }
+      } finally {
+        setRemoteLoading(false);
+      }
+    }, 200);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query, regionCode]);
+
+  const list: CityPickItem[] = useMemo(() => {
+    if (regionCode) {
+      const q = query.trim().toLowerCase();
+      const filtered = q
+        ? regionCities.filter((c) => c.name.toLowerCase().includes(q))
+        : regionCities;
+      return filtered.slice(0, 200);
+    }
+    return remoteResults;
+  }, [regionCode, regionCities, query, remoteResults]);
+
+  const placeholder = regionCode
+    ? "City / Municipality… (type to filter)"
+    : "Type a city, sub-municipality, or municipality";
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((o) => !o);
+          setQuery("");
+        }}
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white hover:bg-gray-50 text-left"
+      >
+        <span className={pickedCityLabel ? "" : "text-gray-400"}>
+          {pickedCityLabel ||
+            (regionCode ? "City / Municipality…" : "Search any city…")}
+        </span>
+        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
+          <div className="relative border-b border-gray-100">
+            <Search
+              size={12}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={placeholder}
+              autoFocus
+              className="w-full pl-7 pr-2 py-1.5 text-xs focus:outline-none"
+            />
+          </div>
+          <ul className="max-h-56 overflow-auto text-sm">
+            {(loading || remoteLoading) && (
+              <li className="px-3 py-2 text-xs text-gray-500">Loading…</li>
+            )}
+            {!loading && !remoteLoading && list.length === 0 && (
+              <li className="px-3 py-2 text-xs text-gray-500">
+                {!regionCode && query.trim().length < 2
+                  ? "Type 2+ characters to search…"
+                  : "No matches"}
+              </li>
+            )}
+            {list.map((c) => {
+              const isSubMuniGlobal = !regionCode && !!c.parent_city_code;
+              return (
+                <li key={c.code}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPick(c);
+                      setOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 ${
+                      c.code === pickedCityCode ? "bg-blue-50 text-blue-900" : ""
+                    }`}
+                  >
+                    <span className="font-medium">{c.name}</span>
+                    {isSubMuniGlobal && c.parent_city_name && (
+                      <span className="text-gray-500 ml-1.5 text-xs">
+                        in {c.parent_city_name}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function StepCustomer({ selected, onSelect }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CustomerSearchRow[]>([]);
@@ -162,6 +332,12 @@ export function StepCustomer({ selected, onSelect }: Props) {
     postal_code: "",
     region_code: "",
     city_code: "",
+    // Sub-municipality (Manila districts: Sampaloc, Tondo I, Binondo …).
+    // When set, this is the level the courier cares about — it overrides
+    // city_text on save so customers.city_text reads "Sampaloc", and the
+    // saved customers.city_code is the sub-muni's PSGC code (which is
+    // also the parent of the chosen barangay in ph_barangays).
+    sub_municipality_code: "",
     barangay_code: "",
   });
   // Snapshot of the form at pick-time, used to compute the "dirty" badge
@@ -170,11 +346,27 @@ export function StepCustomer({ selected, onSelect }: Props) {
   // Track which selected.id we've already filled the form from, so a stale
   // form doesn't get clobbered after the user starts editing.
   const filledFromIdRef = useRef<string | null>(null);
-  type PhItem = { code: string; name: string; short_code?: string; postal_code?: string | null };
+  type PhItem = {
+    code: string;
+    name: string;
+    short_code?: string;
+    postal_code?: string | null;
+    /** True when this city has folded sub-munis (Manila → Sampaloc, …). */
+    has_submunicipalities?: boolean;
+    region_code?: string;
+    parent_city_code?: string | null;
+    parent_city_name?: string | null;
+  };
   const [regions, setRegions] = useState<PhItem[]>([]);
   const [cities, setCities] = useState<PhItem[]>([]);
+  const [subMunis, setSubMunis] = useState<PhItem[]>([]);
   const [barangays, setBarangays] = useState<PhItem[]>([]);
-  const [phLoading, setPhLoading] = useState({ regions: false, cities: false, barangays: false });
+  const [phLoading, setPhLoading] = useState({
+    regions: false,
+    cities: false,
+    subMunis: false,
+    barangays: false,
+  });
 
   // Fetch regions on mount — the form is always visible now, so we always
   // need the region list ready.
@@ -206,6 +398,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
         postal_code: "",
         region_code: "",
         city_code: "",
+        sub_municipality_code: "",
         barangay_code: "",
       };
       setForm(blank);
@@ -224,14 +417,20 @@ export function StepCustomer({ selected, onSelect }: Props) {
       region_text: selected.region_text ?? "",
       postal_code: selected.postal_code ?? "",
       region_code: selected.region_code ?? "",
+      // For now we only re-fill the cascade with what's stored on the
+      // customer. If their saved city_code is actually a sub-muni (e.g.
+      // Sampaloc), the city slot will look empty in the picker until they
+      // re-pick — but the saved text fields (city_text/region_text) keep
+      // the order's address correct in the meantime.
       city_code: selected.city_code ?? "",
+      sub_municipality_code: "",
       barangay_code: selected.barangay_code ?? "",
     };
     setForm(next);
     setPristine(next);
   }, [selected]);
 
-  // Fetch cities when region changes.
+  // Fetch cities (top-level only) when region changes.
   useEffect(() => {
     if (!form.region_code) {
       setCities([]);
@@ -244,18 +443,41 @@ export function StepCustomer({ selected, onSelect }: Props) {
       .finally(() => setPhLoading((p) => ({ ...p, cities: false })));
   }, [form.region_code]);
 
-  // Fetch barangays when city changes.
+  // Fetch sub-munis when the picked city has them (Manila → Sampaloc, …).
+  // Cleared whenever the city changes.
+  const pickedCity = cities.find((c) => c.code === form.city_code);
+  const cityHasSubMunis = pickedCity?.has_submunicipalities === true;
   useEffect(() => {
-    if (!form.city_code) {
+    if (!form.city_code || !cityHasSubMunis) {
+      setSubMunis([]);
+      return;
+    }
+    setPhLoading((p) => ({ ...p, subMunis: true }));
+    fetch(
+      `/api/sales/ph-address?level=submunicipality&parent=${form.city_code}`,
+    )
+      .then((r) => r.json())
+      .then((j) => setSubMunis(j.items ?? []))
+      .finally(() => setPhLoading((p) => ({ ...p, subMunis: false })));
+  }, [form.city_code, cityHasSubMunis]);
+
+  // Fetch barangays. Parent is the sub-muni when the picked city has one
+  // and the agent has chosen it; otherwise it's the city itself. (Manila's
+  // barangays sit under sub-munis, not under "City of Manila".)
+  const barangayParent = cityHasSubMunis
+    ? form.sub_municipality_code
+    : form.city_code;
+  useEffect(() => {
+    if (!barangayParent) {
       setBarangays([]);
       return;
     }
     setPhLoading((p) => ({ ...p, barangays: true }));
-    fetch(`/api/sales/ph-address?level=barangay&parent=${form.city_code}`)
+    fetch(`/api/sales/ph-address?level=barangay&parent=${barangayParent}`)
       .then((r) => r.json())
       .then((j) => setBarangays(j.items ?? []))
       .finally(() => setPhLoading((p) => ({ ...p, barangays: false })));
-  }, [form.city_code]);
+  }, [barangayParent]);
   const [createError, setCreateError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -353,17 +575,27 @@ export function StepCustomer({ selected, onSelect }: Props) {
     }
     setSaving(true);
     try {
+      // When a sub-muni is picked, store the sub-muni's code as city_code
+      // and the sub-muni's name as city_text — that's the level couriers
+      // address to ("Sampaloc, Manila"). The chartered city's identity is
+      // recoverable from ph_cities.parent_city_code if ever needed.
+      const effectiveCityCode =
+        form.sub_municipality_code || form.city_code || null;
+      const effectiveCityText = form.sub_municipality_code
+        ? (subMunis.find((s) => s.code === form.sub_municipality_code)?.name ??
+          form.city_text)
+        : form.city_text;
       const payload = {
         first_name: form.first_name,
         last_name: form.last_name,
         email: form.email || null,
         phone: form.phone || null,
         address_line_1: form.address_line_1 || null,
-        city_text: form.city_text || null,
+        city_text: effectiveCityText || null,
         region_text: form.region_text || null,
         postal_code: form.postal_code || null,
         region_code: form.region_code || null,
-        city_code: form.city_code || null,
+        city_code: effectiveCityCode,
         barangay_code: form.barangay_code || null,
       };
       const res = selected?.id
@@ -410,6 +642,9 @@ export function StepCustomer({ selected, onSelect }: Props) {
         postal_code: next.postal_code ?? "",
         region_code: next.region_code ?? "",
         city_code: next.city_code ?? "",
+        // sub_municipality_code is a UI-only step — it gets folded into
+        // city_code at save time, so the pristine snapshot stays empty.
+        sub_municipality_code: "",
         barangay_code: next.barangay_code ?? "",
       });
       filledFromIdRef.current = next.id;
@@ -541,7 +776,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
             value={form.address_line_1}
             onChange={(e) => setForm({ ...form, address_line_1: e.target.value })}
           />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <SearchableSelect
               items={regions}
               value={form.region_code}
@@ -554,47 +789,116 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   region_text: item?.name ?? "",
                   city_code: "",
                   city_text: "",
+                  sub_municipality_code: "",
                   barangay_code: "",
                   postal_code: "",
                 }))
               }
             />
-            <SearchableSelect
-              items={cities}
-              value={form.city_code}
+            <CityPicker
+              regionCities={cities}
+              regionCode={form.region_code}
+              pickedCityCode={form.city_code}
+              pickedCityLabel={
+                form.city_code
+                  ? (cities.find((c) => c.code === form.city_code)?.name ??
+                    form.city_text ??
+                    "")
+                  : ""
+              }
               loading={phLoading.cities}
-              disabled={!form.region_code}
-              placeholder={
-                form.region_code ? "City / Municipality…" : "Pick region first"
-              }
-              onChange={(code, item) =>
+              onPick={(item) => {
+                // Sub-muni picked from global search → fold up to its parent
+                // city for the city slot, set the sub-muni code separately.
+                if (!form.region_code && item.parent_city_code) {
+                  const r = regions.find((x) => x.code === item.region_code);
+                  setForm((s) => ({
+                    ...s,
+                    region_code: item.region_code ?? "",
+                    region_text: r?.name ?? s.region_text,
+                    city_code: item.parent_city_code ?? "",
+                    city_text: item.parent_city_name ?? "",
+                    sub_municipality_code: item.code,
+                    barangay_code: "",
+                    postal_code: "",
+                  }));
+                  return;
+                }
+                // Top-level city picked (either globally or from the
+                // region-scoped list).
+                if (!form.region_code && item.region_code) {
+                  const r = regions.find((x) => x.code === item.region_code);
+                  setForm((s) => ({
+                    ...s,
+                    region_code: item.region_code ?? "",
+                    region_text: r?.name ?? s.region_text,
+                    city_code: item.code,
+                    city_text: item.name,
+                    sub_municipality_code: "",
+                    barangay_code: "",
+                    postal_code: "",
+                  }));
+                  return;
+                }
                 setForm((s) => ({
                   ...s,
-                  city_code: code,
-                  city_text: item?.name ?? "",
+                  city_code: item.code,
+                  city_text: item.name,
+                  sub_municipality_code: "",
                   barangay_code: "",
                   postal_code: "",
-                }))
-              }
-            />
-            <SearchableSelect
-              items={barangays}
-              value={form.barangay_code}
-              loading={phLoading.barangays}
-              disabled={!form.city_code}
-              placeholder={form.city_code ? "Barangay…" : "Pick city first"}
-              onChange={(code) => {
-                const b = barangays.find((x) => x.code === code);
-                setForm((s) => ({
-                  ...s,
-                  barangay_code: code,
-                  // Auto-fill postal code when barangay has one. Agent can still
-                  // override below if PSGC's postal data is missing/wrong.
-                  postal_code: b?.postal_code ?? s.postal_code,
                 }));
               }}
             />
           </div>
+          {cityHasSubMunis && (
+            <SearchableSelect
+              items={subMunis}
+              value={form.sub_municipality_code}
+              loading={phLoading.subMunis}
+              placeholder={`Sub-municipality of ${pickedCity?.name ?? "city"}…`}
+              onChange={(code, item) =>
+                setForm((s) => ({
+                  ...s,
+                  sub_municipality_code: code,
+                  // Sub-muni name overrides city_text — that's the level
+                  // couriers address to.
+                  city_text: item?.name ?? s.city_text,
+                  barangay_code: "",
+                  postal_code: "",
+                }))
+              }
+            />
+          )}
+          <SearchableSelect
+            items={barangays}
+            value={form.barangay_code}
+            loading={phLoading.barangays}
+            disabled={
+              cityHasSubMunis
+                ? !form.sub_municipality_code
+                : !form.city_code
+            }
+            placeholder={
+              cityHasSubMunis
+                ? form.sub_municipality_code
+                  ? "Barangay…"
+                  : "Pick sub-municipality first"
+                : form.city_code
+                  ? "Barangay…"
+                  : "Pick city first"
+            }
+            onChange={(code) => {
+              const b = barangays.find((x) => x.code === code);
+              setForm((s) => ({
+                ...s,
+                barangay_code: code,
+                // Auto-fill postal code when barangay has one. Agent can still
+                // override below if PSGC's postal data is missing/wrong.
+                postal_code: b?.postal_code ?? s.postal_code,
+              }));
+            }}
+          />
           <input
             placeholder="Postal code (auto-filled when barangay is picked)"
             className="input w-full"
