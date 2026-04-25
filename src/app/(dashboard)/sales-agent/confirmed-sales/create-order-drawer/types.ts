@@ -11,7 +11,17 @@ export type CustomerLite = {
   email: string | null;
   phone: string | null;
   full_address?: string | null;
-  total_orders_cached?: number;
+  total_orders_cached?: number | null;
+  // Address fields (Phase 1.5+) — present so the Customer step can
+  // pre-fill its form when the agent picks an existing customer.
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city_text?: string | null;
+  region_text?: string | null;
+  postal_code?: string | null;
+  region_code?: string | null;
+  city_code?: string | null;
+  barangay_code?: string | null;
 };
 
 export type DrawerLineItem = {

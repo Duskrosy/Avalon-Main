@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   const { data: localRows } = await (admin as any)
     .from("customers")
     .select(
-      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached",
+      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code",
     )
     .or(orClause)
     .limit(10);
@@ -61,6 +61,14 @@ export async function GET(req: NextRequest) {
     phone: string | null;
     full_address: string | null;
     total_orders_cached: number | null;
+    address_line_1: string | null;
+    address_line_2: string | null;
+    city_text: string | null;
+    region_text: string | null;
+    postal_code: string | null;
+    region_code: string | null;
+    city_code: string | null;
+    barangay_code: string | null;
   }>;
 
   // Shopify pull. Shopify's /customers/search.json honors a Lucene-style
@@ -69,6 +77,26 @@ export async function GET(req: NextRequest) {
   // doesn't blank the typeahead.
   const shopifyMatches = await searchShopifyCustomers(search);
 
+  // Index Shopify matches by id so we can both (a) enrich local rows with
+  // Shopify's authoritative orders_count, and (b) drop Shopify-only rows
+  // that already have a local mirror.
+  const shopifyById = new Map<string, (typeof shopifyMatches)[number]>();
+  for (const c of shopifyMatches) shopifyById.set(String(c.id), c);
+
+  // Enrich local rows with Shopify's lifetime orders_count when the Shopify
+  // search happens to return the same id. (total_orders_cached on the
+  // local table defaults to 0 and is never written today, so without this
+  // every existing customer always shows "0 orders".)
+  const enrichedLocal = local.map((r) => {
+    if (r.shopify_customer_id) {
+      const sc = shopifyById.get(r.shopify_customer_id);
+      if (sc?.orders_count != null) {
+        return { ...r, total_orders_cached: sc.orders_count };
+      }
+    }
+    return r;
+  });
+
   // Merge: dedup by shopify_customer_id. Local rows win.
   const localShopifyIds = new Set(
     local.map((r) => r.shopify_customer_id).filter(Boolean) as string[],
@@ -76,33 +104,43 @@ export async function GET(req: NextRequest) {
   const shopifyOnly = shopifyMatches
     .filter((c) => !localShopifyIds.has(String(c.id)))
     .slice(0, 10)
-    .map((c) => ({
-      id: null as string | null,
-      shopify_customer_id: String(c.id),
-      first_name: c.first_name ?? null,
-      last_name: c.last_name ?? null,
-      full_name:
-        [c.first_name, c.last_name].filter(Boolean).join(" ").trim() ||
-        c.email ||
-        c.phone ||
-        "(unnamed)",
-      email: c.email ?? null,
-      phone: c.phone ?? null,
-      full_address: (() => {
-        const addr = c.addresses?.[0];
-        if (!addr) return null;
-        return (
-          [addr.address1, addr.city, addr.province, addr.zip]
+    .map((c) => {
+      const addr = c.addresses?.[0];
+      return {
+        id: null as string | null,
+        shopify_customer_id: String(c.id),
+        first_name: c.first_name ?? null,
+        last_name: c.last_name ?? null,
+        full_name:
+          [c.first_name, c.last_name].filter(Boolean).join(" ").trim() ||
+          c.email ||
+          c.phone ||
+          "(unnamed)",
+        email: c.email ?? null,
+        phone: c.phone ?? null,
+        full_address:
+          addr &&
+          ([addr.address1, addr.city, addr.province, addr.zip]
             .filter(Boolean)
-            .join(", ") || null
-        );
-      })(),
-      total_orders_cached: null,
-      _source: "shopify" as const,
-    }));
+            .join(", ") ||
+            null),
+        total_orders_cached: c.orders_count ?? null,
+        // Shopify addresses don't have PSGC codes — the agent will fill
+        // those manually if they choose to import this customer.
+        address_line_1: addr?.address1 ?? null,
+        address_line_2: addr?.address2 ?? null,
+        city_text: addr?.city ?? null,
+        region_text: addr?.province ?? null,
+        postal_code: addr?.zip ?? null,
+        region_code: null as string | null,
+        city_code: null as string | null,
+        barangay_code: null as string | null,
+        _source: "shopify" as const,
+      };
+    });
 
   return NextResponse.json({
-    customers: [...local, ...shopifyOnly].slice(0, 15),
+    customers: [...enrichedLocal, ...shopifyOnly].slice(0, 15),
   });
 }
 
@@ -165,7 +203,7 @@ export async function POST(req: NextRequest) {
     const { data: existing } = await (admin as any)
       .from("customers")
       .select(
-        "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached",
+        "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code",
       )
       .eq("shopify_customer_id", body.shopify_customer_id)
       .maybeSingle();

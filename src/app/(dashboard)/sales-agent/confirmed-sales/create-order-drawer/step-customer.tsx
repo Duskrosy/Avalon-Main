@@ -150,7 +150,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
   const [results, setResults] = useState<CustomerSearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -164,21 +164,72 @@ export function StepCustomer({ selected, onSelect }: Props) {
     city_code: "",
     barangay_code: "",
   });
+  // Snapshot of the form at pick-time, used to compute the "dirty" badge
+  // and to know when to show "Save changes" vs hide the button.
+  const [pristine, setPristine] = useState(form);
+  // Track which selected.id we've already filled the form from, so a stale
+  // form doesn't get clobbered after the user starts editing.
+  const filledFromIdRef = useRef<string | null>(null);
   type PhItem = { code: string; name: string; short_code?: string; postal_code?: string | null };
   const [regions, setRegions] = useState<PhItem[]>([]);
   const [cities, setCities] = useState<PhItem[]>([]);
   const [barangays, setBarangays] = useState<PhItem[]>([]);
   const [phLoading, setPhLoading] = useState({ regions: false, cities: false, barangays: false });
 
-  // Fetch regions on first render of the create form.
+  // Fetch regions on mount — the form is always visible now, so we always
+  // need the region list ready.
   useEffect(() => {
-    if (!showCreate || regions.length > 0) return;
+    if (regions.length > 0) return;
     setPhLoading((p) => ({ ...p, regions: true }));
     fetch("/api/sales/ph-address?level=region")
       .then((r) => r.json())
       .then((j) => setRegions(j.items ?? []))
       .finally(() => setPhLoading((p) => ({ ...p, regions: false })));
-  }, [showCreate, regions.length]);
+  }, [regions.length]);
+
+  // When `selected` changes (parent picked a customer, or it was cleared),
+  // fill the form with that customer's fields. We also snapshot the values
+  // into `pristine` so we can detect dirty edits below. We only re-fill on
+  // id change so an active edit doesn't get clobbered.
+  useEffect(() => {
+    if (!selected) {
+      // Cleared — reset form to blanks and stop tracking a fill source.
+      filledFromIdRef.current = null;
+      const blank = {
+        first_name: "",
+        last_name: "",
+        email: "",
+        phone: "",
+        address_line_1: "",
+        city_text: "",
+        region_text: "",
+        postal_code: "",
+        region_code: "",
+        city_code: "",
+        barangay_code: "",
+      };
+      setForm(blank);
+      setPristine(blank);
+      return;
+    }
+    if (filledFromIdRef.current === selected.id) return;
+    filledFromIdRef.current = selected.id;
+    const next = {
+      first_name: selected.first_name ?? "",
+      last_name: selected.last_name ?? "",
+      email: selected.email ?? "",
+      phone: selected.phone ?? "",
+      address_line_1: selected.address_line_1 ?? "",
+      city_text: selected.city_text ?? "",
+      region_text: selected.region_text ?? "",
+      postal_code: selected.postal_code ?? "",
+      region_code: selected.region_code ?? "",
+      city_code: selected.city_code ?? "",
+      barangay_code: selected.barangay_code ?? "",
+    };
+    setForm(next);
+    setPristine(next);
+  }, [selected]);
 
   // Fetch cities when region changes.
   useEffect(() => {
@@ -210,7 +261,6 @@ export function StepCustomer({ selected, onSelect }: Props) {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (selected) return;
     if (query.trim().length < 2) {
       setResults([]);
       return;
@@ -232,7 +282,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, selected]);
+  }, [query]);
 
   // Picking a search result. For local rows we just hand the row to the
   // parent. For Shopify-only rows (id null, _source "shopify") we POST a
@@ -242,12 +292,16 @@ export function StepCustomer({ selected, onSelect }: Props) {
   const handlePickResult = async (c: CustomerSearchRow) => {
     if (c.id) {
       onSelect(c as CustomerLite);
+      setQuery("");
+      setResults([]);
       return;
     }
     if (!c.shopify_customer_id) return;
     const key = `shopify:${c.shopify_customer_id}`;
     setImporting(key);
     try {
+      // Carry the address fields forward when claiming a Shopify-only
+      // customer so the local mirror starts populated.
       const res = await fetch("/api/sales/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -256,6 +310,11 @@ export function StepCustomer({ selected, onSelect }: Props) {
           last_name: c.last_name || "(Shopify)",
           email: c.email,
           phone: c.phone,
+          address_line_1: c.address_line_1 ?? null,
+          city_text: c.city_text ?? null,
+          region_text: c.region_text ?? null,
+          postal_code: c.postal_code ?? null,
+          full_address: c.full_address ?? null,
           shopify_customer_id: c.shopify_customer_id,
         }),
       });
@@ -267,22 +326,34 @@ export function StepCustomer({ selected, onSelect }: Props) {
         setQuery("");
         return;
       }
-      onSelect(json.customer);
+      // For Shopify-only imports, fold Shopify's orders_count into the
+      // returned local row so the UI reflects lifetime orders right away
+      // (the local total_orders_cached defaults to 0 and isn't backfilled).
+      const enriched: CustomerLite = {
+        ...json.customer,
+        total_orders_cached:
+          c.total_orders_cached ?? json.customer.total_orders_cached ?? null,
+      };
+      onSelect(enriched);
+      setQuery("");
+      setResults([]);
     } finally {
       setImporting(null);
     }
   };
 
-  const submitCreate = async () => {
+  // Unified save:
+  //   - selected (existing customer) → PATCH /api/sales/customers/[id]
+  //   - no selected → POST /api/sales/customers (create)
+  const submitForm = async () => {
     setCreateError(null);
     if (!form.first_name || !form.last_name) {
       setCreateError("First and last name required");
       return;
     }
-    const res = await fetch("/api/sales/customers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    setSaving(true);
+    try {
+      const payload = {
         first_name: form.first_name,
         last_name: form.last_name,
         email: form.email || null,
@@ -294,53 +365,62 @@ export function StepCustomer({ selected, onSelect }: Props) {
         region_code: form.region_code || null,
         city_code: form.city_code || null,
         barangay_code: form.barangay_code || null,
-      }),
-    });
-    const json = await res.json();
-    if (res.status === 409) {
-      setCreateError(
-        `Possible duplicate: ${json.duplicates?.map((d: CustomerLite) => d.full_name).join(", ")}`,
-      );
-      return;
+      };
+      const res = selected?.id
+        ? await fetch(`/api/sales/customers/${selected.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetch("/api/sales/customers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+      const json = await res.json();
+      if (res.status === 409) {
+        setCreateError(
+          `Possible duplicate: ${json.duplicates?.map((d: CustomerLite) => d.full_name).join(", ")}`,
+        );
+        return;
+      }
+      if (!res.ok) {
+        setCreateError(json.error ?? "Save failed");
+        return;
+      }
+      // Preserve orders_count if the server response doesn't include one
+      // (PATCH response carries total_orders_cached; create leaves it 0).
+      const next: CustomerLite = {
+        ...json.customer,
+        total_orders_cached:
+          json.customer.total_orders_cached ??
+          selected?.total_orders_cached ??
+          null,
+      };
+      onSelect(next);
+      // Snapshot fresh values so dirty state resets.
+      setPristine({
+        first_name: next.first_name ?? "",
+        last_name: next.last_name ?? "",
+        email: next.email ?? "",
+        phone: next.phone ?? "",
+        address_line_1: next.address_line_1 ?? "",
+        city_text: next.city_text ?? "",
+        region_text: next.region_text ?? "",
+        postal_code: next.postal_code ?? "",
+        region_code: next.region_code ?? "",
+        city_code: next.city_code ?? "",
+        barangay_code: next.barangay_code ?? "",
+      });
+      filledFromIdRef.current = next.id;
+    } finally {
+      setSaving(false);
     }
-    if (!res.ok) {
-      setCreateError(json.error ?? "Create failed");
-      return;
-    }
-    onSelect(json.customer);
-    setShowCreate(false);
   };
 
-  if (selected) {
-    return (
-      <div className="rounded-md border border-emerald-200 bg-emerald-50 p-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="font-medium text-emerald-900">{selected.full_name}</div>
-            <div className="text-xs text-emerald-700/80 mt-0.5">
-              {selected.phone ?? "—"} · {selected.email ?? "—"}
-            </div>
-            {selected.full_address && (
-              <div className="text-xs text-emerald-700/70 mt-1">{selected.full_address}</div>
-            )}
-            {selected.total_orders_cached != null && (
-              <div className="text-xs text-emerald-700/70 mt-0.5">
-                {selected.total_orders_cached} prior orders
-              </div>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={() => onSelect(null)}
-            className="text-emerald-700/70 hover:text-emerald-900"
-            aria-label="Clear selection"
-          >
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const isDirty = (
+    Object.keys(form) as Array<keyof typeof form>
+  ).some((k) => form[k] !== pristine[k]);
 
   return (
     <div className="space-y-3">
@@ -355,6 +435,36 @@ export function StepCustomer({ selected, onSelect }: Props) {
           autoFocus
         />
       </div>
+
+      {selected && (
+        <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-medium text-emerald-900">
+              Editing: {selected.full_name}
+            </span>
+            {selected.total_orders_cached != null &&
+              selected.total_orders_cached > 0 && (
+                <span className="text-emerald-700/80">
+                  · {selected.total_orders_cached} prior order
+                  {selected.total_orders_cached === 1 ? "" : "s"}
+                </span>
+              )}
+            {isDirty && (
+              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                Unsaved changes
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            className="text-emerald-700/70 hover:text-emerald-900"
+            aria-label="Clear selection"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {loading && <div className="text-xs text-gray-500">Searching…</div>}
 
@@ -397,16 +507,11 @@ export function StepCustomer({ selected, onSelect }: Props) {
         </ul>
       )}
 
-      {!showCreate ? (
-        <button
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="w-full flex items-center justify-center gap-2 text-sm border border-dashed border-gray-300 rounded-md py-2 text-gray-600 hover:bg-gray-50"
-        >
-          <UserPlus size={14} /> Create new customer
-        </button>
-      ) : (
-        <div className="border border-gray-200 rounded-md p-3 space-y-2 bg-gray-50">
+      <div className="border border-gray-200 rounded-md p-3 space-y-2 bg-gray-50">
+        <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1 flex items-center gap-1.5">
+          <UserPlus size={11} />
+          {selected ? "Customer details" : "New customer details"}
+        </div>
           <div className="grid grid-cols-2 gap-2">
             <input
               placeholder="First name"
@@ -502,23 +607,28 @@ export function StepCustomer({ selected, onSelect }: Props) {
           />
           {createError && <div className="text-xs text-rose-600">{createError}</div>}
           <div className="flex justify-end gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => setShowCreate(false)}
-              className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-900"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={submitCreate}
-              className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              Create
-            </button>
+            {!selected && (
+              <button
+                type="button"
+                disabled={saving || !form.first_name || !form.last_name}
+                onClick={submitForm}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? "Creating…" : "Create customer"}
+              </button>
+            )}
+            {selected && isDirty && (
+              <button
+                type="button"
+                disabled={saving}
+                onClick={submitForm}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            )}
           </div>
         </div>
-      )}
 
       <style jsx>{`
         .input {

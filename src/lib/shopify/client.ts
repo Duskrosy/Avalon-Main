@@ -266,6 +266,8 @@ export type ShopifyCustomer = {
   last_name?: string;
   email?: string;
   phone?: string;
+  /** Shopify's lifetime order count. Authoritative when present. */
+  orders_count?: number;
   addresses?: Array<{
     address1?: string;
     address2?: string;
