@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateBody } from "@/lib/api/validate";
+import { updateShopifyCustomer } from "@/lib/shopify/client";
 
 // ─── PATCH /api/sales/customers/[id] ────────────────────────────────────────
 //
@@ -11,6 +12,13 @@ import { validateBody } from "@/lib/api/validate";
 // drawer when the agent picks an existing customer and edits their fields
 // (e.g. fixes a wrong address) before placing the order. Only the supplied
 // fields are written; the rest stay untouched.
+//
+// Single-source-of-truth: when the row carries a shopify_customer_id, the
+// edit is also pushed to Shopify so both systems stay in sync. A Shopify
+// failure surfaces a 502 and the local update is rolled forward anyway —
+// the local row is the picker's view of the world, and we don't want to
+// silently revert its UI back to stale state if Shopify is briefly
+// unavailable.
 
 const patchSchema = z.object({
   first_name: z.string().min(1).optional(),
@@ -62,12 +70,62 @@ export async function PATCH(
     .update(update)
     .eq("id", id)
     .select(
-      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached",
+      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code",
     )
     .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  // Push the same edit to Shopify when the customer is mirrored there.
+  // Address fields go in addresses[] (Shopify keeps name/email/phone on
+  // the customer object and the postal address as a sub-resource).
+  if (row?.shopify_customer_id) {
+    const addressTouched =
+      "address_line_1" in update ||
+      "address_line_2" in update ||
+      "city_text" in update ||
+      "region_text" in update ||
+      "postal_code" in update;
+    const profileTouched =
+      "first_name" in update ||
+      "last_name" in update ||
+      "email" in update ||
+      "phone" in update;
+    if (addressTouched || profileTouched) {
+      try {
+        await updateShopifyCustomer(row.shopify_customer_id, {
+          first_name: row.first_name,
+          last_name: row.last_name,
+          email: row.email ?? undefined,
+          phone: row.phone ?? undefined,
+          addresses: addressTouched
+            ? [
+                {
+                  address1: row.address_line_1 ?? null,
+                  address2: row.address_line_2 ?? null,
+                  city: row.city_text ?? null,
+                  province: row.region_text ?? null,
+                  zip: row.postal_code ?? null,
+                  country: "Philippines",
+                },
+              ]
+            : undefined,
+        });
+      } catch (err) {
+        return NextResponse.json(
+          {
+            customer: row,
+            shopify_sync: {
+              ok: false,
+              detail: err instanceof Error ? err.message : String(err),
+            },
+          },
+          { status: 502 },
+        );
+      }
+    }
   }
 
   return NextResponse.json({ customer: row });

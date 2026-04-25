@@ -9,6 +9,52 @@ import {
   searchShopifyCustomers,
 } from "@/lib/shopify/client";
 
+// ─── Shared helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Build the addresses[] entry Shopify wants from the address fields the
+ * Avalon drawer hands us. Returns undefined when there's nothing
+ * addressable so we don't push an empty object that Shopify validates.
+ *
+ * Shopify expects `city` to be the most-specific addressing level — for
+ * Manila that's the sub-muni name (Sampaloc, Tondo I, …) which is what
+ * we store in customers.city_text. `province` is sent as the region's
+ * label (e.g. "Region V") — Shopify accepts free text here even though
+ * its province_code field would prefer a normalized PSA code.
+ */
+function buildShopifyAddresses(input: {
+  address_line_1?: string | null;
+  address_line_2?: string | null;
+  city_text?: string | null;
+  region_text?: string | null;
+  postal_code?: string | null;
+}): Array<{
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  zip?: string | null;
+  country?: string;
+}> | undefined {
+  const hasAny =
+    input.address_line_1 ||
+    input.address_line_2 ||
+    input.city_text ||
+    input.region_text ||
+    input.postal_code;
+  if (!hasAny) return undefined;
+  return [
+    {
+      address1: input.address_line_1 ?? null,
+      address2: input.address_line_2 ?? null,
+      city: input.city_text ?? null,
+      province: input.region_text ?? null,
+      zip: input.postal_code ?? null,
+      country: "Philippines",
+    },
+  ];
+}
+
 // ─── GET /api/sales/customers?search=... ─────────────────────────────────────
 //
 // Typeahead search for the Customer step of the Create Order drawer.
@@ -174,11 +220,12 @@ const postSchema = z.object({
    */
   shopify_customer_id: z.string().optional().nullable(),
   /**
-   * If true, also create the customer in Shopify immediately. Default false
-   * (defer to order-confirm time). Ignored when shopify_customer_id is
-   * already supplied.
+   * If true (default), also create the customer in Shopify immediately —
+   * Shopify is the single source of truth, so Avalon-side creation should
+   * propagate. Set false only for the import-on-pick path (where we
+   * already have shopify_customer_id and don't want to double-create).
    */
-  create_in_shopify: z.boolean().optional().default(false),
+  create_in_shopify: z.boolean().optional().default(true),
 });
 
 export async function POST(req: NextRequest) {
@@ -243,12 +290,21 @@ export async function POST(req: NextRequest) {
 
   // Pre-existing Shopify id wins. Otherwise create-in-Shopify path may set it.
   let shopifyCustomerId: string | null = body.shopify_customer_id ?? null;
-  if (!shopifyCustomerId && body.create_in_shopify && body.email) {
-    // Email-pre-search dedup against Shopify.
-    const matches = await searchShopifyCustomers(`email:${body.email}`);
-    const found = matches.find((c) => c.email === body.email);
-    if (found) {
-      shopifyCustomerId = String(found.id);
+  if (!shopifyCustomerId && body.create_in_shopify) {
+    // Dedup against Shopify before create. Email is the strongest dedup
+    // key when we have it; phone is best-effort (Shopify search treats
+    // phone matches as substrings, so we re-verify the exact match).
+    let existing: { id: number } | undefined;
+    if (body.email) {
+      const matches = await searchShopifyCustomers(`email:${body.email}`);
+      existing = matches.find((c) => c.email === body.email);
+    }
+    if (!existing && body.phone) {
+      const matches = await searchShopifyCustomers(`phone:${body.phone}`);
+      existing = matches.find((c) => c.phone === body.phone);
+    }
+    if (existing) {
+      shopifyCustomerId = String(existing.id);
     } else {
       try {
         const created = await createShopifyCustomer({
@@ -256,6 +312,7 @@ export async function POST(req: NextRequest) {
           last_name: body.last_name,
           email: body.email,
           phone: body.phone,
+          addresses: buildShopifyAddresses(body),
         });
         shopifyCustomerId = String(created.id);
       } catch (err) {

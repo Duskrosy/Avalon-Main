@@ -258,6 +258,21 @@ async function shopifyPost<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function shopifyPut<T>(path: string, body: unknown): Promise<T> {
+  const token = await getShopifyToken();
+  const res = await fetch(`${BASE}${path}`, {
+    method: "PUT",
+    headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const responseBody = await res.text();
+    throw new Error(`Shopify API error ${res.status}: ${responseBody}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 // ─── Customer write methods ──────────────────────────────────────────────────
 
 export type ShopifyCustomer = {
@@ -323,6 +338,27 @@ export async function createShopifyCustomer(
   const json = await shopifyPost<{ customer: ShopifyCustomer }>(
     `/customers.json`,
     { customer: input },
+  );
+  return json.customer;
+}
+
+/**
+ * Update an existing Shopify customer. Used by Avalon's customer-edit flow
+ * so a fix made locally (wrong address, typo in name, new phone) immediately
+ * propagates to Shopify — they share one source of truth.
+ *
+ * Address handling: when `addresses` is supplied with one entry, we use the
+ * /customers/{id}/addresses endpoint for the customer's default address so
+ * the edit becomes the address Shopify ships to. Other fields (name, email,
+ * phone) go through the customer object directly.
+ */
+export async function updateShopifyCustomer(
+  shopifyCustomerId: string | number,
+  input: Partial<ShopifyCustomerInput>,
+): Promise<ShopifyCustomer> {
+  const json = await shopifyPut<{ customer: ShopifyCustomer }>(
+    `/customers/${shopifyCustomerId}.json`,
+    { customer: { id: Number(shopifyCustomerId), ...input } },
   );
   return json.customer;
 }
