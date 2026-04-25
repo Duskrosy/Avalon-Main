@@ -472,7 +472,6 @@ export function StepCustomer({ selected, onSelect }: Props) {
         <ul className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-60 overflow-auto">
           {results.map((c) => {
             const key = c.id ?? `shopify:${c.shopify_customer_id}`;
-            const isShopifyOnly = c._source === "shopify";
             const isImporting = importing === key;
             return (
               <li key={key}>
@@ -489,16 +488,13 @@ export function StepCustomer({ selected, onSelect }: Props) {
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
-                    {isShopifyOnly && (
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
-                        {isImporting ? "Importing…" : "Shopify"}
-                      </span>
-                    )}
-                    {c.total_orders_cached != null && (
-                      <span className="text-xs text-gray-400">
-                        {c.total_orders_cached} orders
-                      </span>
-                    )}
+                    {c.total_orders_cached != null &&
+                      c.total_orders_cached > 0 && (
+                        <span className="text-xs text-gray-400">
+                          {c.total_orders_cached} order
+                          {c.total_orders_cached === 1 ? "" : "s"}
+                        </span>
+                      )}
                   </span>
                 </button>
               </li>
