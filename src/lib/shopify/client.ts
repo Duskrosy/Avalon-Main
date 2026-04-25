@@ -363,6 +363,82 @@ export async function updateShopifyCustomer(
   return json.customer;
 }
 
+// ─── Customer-address methods (multi-address book) ───────────────────────────
+
+export type ShopifyCustomerAddress = {
+  id: number;
+  customer_id?: number;
+  first_name?: string | null;
+  last_name?: string | null;
+  company?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  province?: string | null;
+  province_code?: string | null;
+  country?: string | null;
+  country_code?: string | null;
+  zip?: string | null;
+  phone?: string | null;
+  name?: string | null;
+  default?: boolean;
+};
+
+export type ShopifyCustomerAddressInput = {
+  first_name?: string | null;
+  last_name?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  phone?: string | null;
+  country?: string | null;
+};
+
+/**
+ * Fetch every saved address for a Shopify customer. Older customers
+ * accumulate multiple addresses (one per checkout session); the agent
+ * needs to see them all to pick the right one for the current order.
+ */
+export async function listShopifyCustomerAddresses(
+  shopifyCustomerId: string | number,
+): Promise<ShopifyCustomerAddress[]> {
+  const json = await shopifyGet<{ addresses: ShopifyCustomerAddress[] }>(
+    `/customers/${shopifyCustomerId}/addresses.json?limit=50`,
+  );
+  return json.addresses ?? [];
+}
+
+/**
+ * Update a single saved address on a Shopify customer.
+ */
+export async function updateShopifyCustomerAddress(
+  shopifyCustomerId: string | number,
+  addressId: string | number,
+  input: ShopifyCustomerAddressInput,
+): Promise<ShopifyCustomerAddress> {
+  const json = await shopifyPut<{ customer_address: ShopifyCustomerAddress }>(
+    `/customers/${shopifyCustomerId}/addresses/${addressId}.json`,
+    { address: input },
+  );
+  return json.customer_address;
+}
+
+/**
+ * Mark one of the customer's saved addresses as their Shopify default.
+ * The endpoint takes no body; the address id in the path is the new default.
+ */
+export async function setDefaultShopifyCustomerAddress(
+  shopifyCustomerId: string | number,
+  addressId: string | number,
+): Promise<ShopifyCustomerAddress> {
+  const json = await shopifyPut<{ customer_address: ShopifyCustomerAddress }>(
+    `/customers/${shopifyCustomerId}/addresses/${addressId}/default.json`,
+    {},
+  );
+  return json.customer_address;
+}
+
 // ─── Order write methods ─────────────────────────────────────────────────────
 
 export type ShopifyOrderLineItemInput = {

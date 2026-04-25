@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Search, UserPlus, X } from "lucide-react";
+import { ChevronDown, MapPin, Search, UserPlus, X } from "lucide-react";
 import type { CustomerLite } from "./types";
+import { AddressBookModal } from "./address-book-modal";
 
 type Props = {
   selected: CustomerLite | null;
@@ -360,6 +361,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [addressBookOpen, setAddressBookOpen] = useState(false);
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -753,15 +755,44 @@ export function StepCustomer({ selected, onSelect }: Props) {
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => onSelect(null)}
-            className="text-emerald-700/70 hover:text-emerald-900"
-            aria-label="Clear selection"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-2">
+            {selected.shopify_customer_id && (
+              <button
+                type="button"
+                onClick={() => setAddressBookOpen(true)}
+                className="text-[11px] px-2 py-1 rounded bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1"
+              >
+                <MapPin size={11} />
+                Saved addresses
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onSelect(null)}
+              className="text-emerald-700/70 hover:text-emerald-900"
+              aria-label="Clear selection"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
+      )}
+
+      {selected?.id && selected.shopify_customer_id && (
+        <AddressBookModal
+          open={addressBookOpen}
+          onClose={() => setAddressBookOpen(false)}
+          customerId={selected.id}
+          onSelect={(a) =>
+            setForm((s) => ({
+              ...s,
+              address_line_1: a.address_line_1,
+              address_line_2: a.address_line_2,
+              city_text: a.city_text,
+              postal_code: a.postal_code,
+            }))
+          }
+        />
       )}
 
       {loading && <div className="text-xs text-gray-500">Searching…</div>}
