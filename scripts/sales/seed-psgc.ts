@@ -53,13 +53,21 @@ type PsgcCity = {
   regionCode: string;
   type: string; // "City" | "Mun" | "SubMun"
 };
+type PsgcSubMunicipality = {
+  code: string;
+  name: string;
+  cityCode: string;       // parent city
+  regionCode: string;
+};
 type PsgcBarangay = {
   code: string;
   name: string;
+  // PSGC barangays carry a parent code in one of these fields. Order of
+  // precedence: subMunicipality (Manila districts) → city → municipality.
+  subMunicipalityCode?: string;
   cityCode?: string;
+  cityMunicipalityCode?: string;
   municipalityCode?: string;
-  // PSGC barangays come from either cities or municipalities; one of these
-  // will be the parent code we want to FK on.
 };
 
 const BASE = "https://psgc.gitlab.io/api";
@@ -127,8 +135,14 @@ async function main() {
   }));
   await chunkedUpsert("ph_regions", regionRows);
 
-  // 2. Cities + municipalities (combined endpoint)
-  console.log("[2/3] cities + municipalities");
+  // 2. Cities + municipalities + sub-municipalities
+  // ─────────────────────────────────────────────────────────────────────
+  // PSGC has cities, municipalities, AND sub-municipalities (the latter is
+  // mostly Manila's 14 districts: Binondo, Tondo I/II, Sampaloc, etc.).
+  // Manila's ~897 barangays sit under its sub-municipalities, NOT under
+  // Manila City directly. We load all three into ph_cities so the picker
+  // shows them as selectable parents for their barangays.
+  console.log("[2a/4] cities + municipalities");
   const cities = await fetchJson<PsgcCity[]>("/cities-municipalities/");
   const cityRows = cities.map((c) => ({
     code: c.code,
@@ -138,22 +152,55 @@ async function main() {
   }));
   await chunkedUpsert("ph_cities", cityRows);
 
+  console.log("[2b/4] sub-municipalities (Manila districts)");
+  let subMunis: PsgcSubMunicipality[] = [];
+  try {
+    subMunis = await fetchJson<PsgcSubMunicipality[]>("/sub-municipalities/");
+  } catch (err) {
+    console.log("  (skipping — endpoint unavailable:", String(err), ")");
+  }
+  // Resolve each sub-municipality's region from its parent city. The
+  // /sub-municipalities/ endpoint may or may not include regionCode directly,
+  // so we look up via cityCode for safety.
+  const cityRegionLookup = new Map<string, string>();
+  for (const c of cities) cityRegionLookup.set(c.code, c.regionCode);
+  const subMuniRows = subMunis
+    .map((sm) => {
+      const regionCode = sm.regionCode ?? cityRegionLookup.get(sm.cityCode);
+      if (!regionCode) return null;
+      return {
+        code: sm.code,
+        region_code: regionCode,
+        name: sm.name,
+        city_class: "SubMunicipality",
+      };
+    })
+    .filter((r): r is NonNullable<typeof r> => r !== null);
+  if (subMuniRows.length > 0) {
+    await chunkedUpsert("ph_cities", subMuniRows);
+  }
+  console.log(`  added ${subMuniRows.length} sub-municipalities`);
+
   // 3. Barangays
-  console.log("[3/3] barangays (this is the slow one — ~42k rows)");
+  console.log("[3/4] barangays (this is the slow one — ~42k rows)");
   const barangays = await fetchJson<PsgcBarangay[]>("/barangays/");
   const barangayRows = barangays.map((b) => {
-    const cityCode = b.cityCode ?? b.municipalityCode ?? "";
+    // Prefer subMunicipality (Manila districts) → city → cityMunicipality →
+    // municipality. The field name varies across PSGC API versions.
+    const parentCode =
+      b.subMunicipalityCode ??
+      b.cityCode ??
+      b.cityMunicipalityCode ??
+      b.municipalityCode ??
+      "";
     return {
       code: b.code,
-      city_code: cityCode,
+      city_code: parentCode,
       name: b.name,
       postal_code: null,
     };
   });
-  // Filter out barangays whose parent city/municipality wasn't in the cities
-  // table (PSGC has a few orphaned barangays under sub-municipalities the
-  // /cities-municipalities/ endpoint doesn't include). We skip those rather
-  // than fail the FK.
+  // Filter orphans against the union of cities + sub-municipalities now in DB.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existingCities } = await (admin as any)
     .from("ph_cities")
@@ -168,6 +215,86 @@ async function main() {
   }
   await chunkedUpsert("ph_barangays", valid);
 
+  // 4. Postal codes (matched by city/sub-municipality NAME, not PSGC code)
+  // ─────────────────────────────────────────────────────────────────────
+  // psgc.gitlab.io doesn't expose Phlpost data, so postal_code is null for
+  // every barangay from the API. We populate from a NAME-matched lookup
+  // so we don't need to memorize exact PSGC codes (which can shift between
+  // API versions). Names below match PSGC city/sub-municipality records.
+  // Coverage: NCR (Manila districts + 17 cities) + major provincial
+  // capitals. Provincial barangays outside this map fall back to manual
+  // entry until you bundle broader Phlpost data.
+  console.log("[4/4] postal codes (NCR + major cities, name-matched)");
+  const postalByCityName: Record<string, string> = {
+    // Manila sub-municipalities (these come from /sub-municipalities/)
+    "Binondo": "1006",
+    "Ermita": "1000",
+    "Intramuros": "1002",
+    "Malate": "1004",
+    "Paco": "1007",
+    "Pandacan": "1011",
+    "Port Area": "1018",
+    "Quiapo": "1001",
+    "Sampaloc": "1008",
+    "San Andres": "1017",
+    "San Miguel": "1005",
+    "San Nicolas": "1010",
+    "Santa Ana": "1009",
+    "Santa Cruz": "1003",
+    "Santa Mesa": "1016",
+    "Tondo I / I": "1012",
+    "Tondo II": "1013",
+    // Manila City catch-all (in case the user picks Manila City directly)
+    "City of Manila": "1000",
+    // NCR cities
+    "Quezon City": "1100",
+    "City of Mandaluyong": "1550",
+    "City of Makati": "1200",
+    "Pasay City": "1300",
+    "Caloocan City": "1400",
+    "City of Malabon": "1440",
+    "City of Navotas": "1485",
+    "City of Parañaque": "1700",
+    "City of Las Piñas": "1740",
+    "City of Muntinlupa": "1770",
+    "City of Marikina": "1800",
+    "Pasig City": "1600",
+    "City of Taguig": "1630",
+    "Pateros": "1620",
+    "City of San Juan": "1500",
+    "City of Valenzuela": "1440",
+    // Major provincial capitals
+    "City of Cebu": "6000",
+    "Davao City": "8000",
+    "Cagayan De Oro City": "9000",
+    "Iloilo City": "5000",
+    "City of Iligan": "9200",
+    "General Santos City (Dadiangas)": "9500",
+    "Bacolod City": "6100",
+    "Zamboanga City": "7000",
+    "Baguio City": "2600",
+  };
+
+  let postalUpdated = 0;
+  for (const [cityName, postal] of Object.entries(postalByCityName)) {
+    // Lookup the city/sub-municipality by name first.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: cityRows } = await (admin as any)
+      .from("ph_cities")
+      .select("code")
+      .eq("name", cityName);
+    if (!cityRows || cityRows.length === 0) continue;
+    for (const city of cityRows as Array<{ code: string }>) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error, count } = await (admin as any)
+        .from("ph_barangays")
+        .update({ postal_code: postal }, { count: "exact" })
+        .eq("city_code", city.code);
+      if (!error && typeof count === "number") postalUpdated += count;
+    }
+  }
+  console.log(`  updated postal_code on ${postalUpdated} barangays`);
+
   console.log("\nDone. Counts:");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tables = ["ph_regions", "ph_cities", "ph_barangays"];
@@ -178,6 +305,13 @@ async function main() {
       .select("*", { count: "exact", head: true });
     console.log(`  ${t}: ${count ?? 0}`);
   }
+  // Also report how many barangays now have postal_code populated.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count: withPostal } = await (admin as any)
+    .from("ph_barangays")
+    .select("*", { count: "exact", head: true })
+    .not("postal_code", "is", null);
+  console.log(`  ph_barangays w/ postal_code: ${withPostal ?? 0}`);
 }
 
 main().catch((err) => {
