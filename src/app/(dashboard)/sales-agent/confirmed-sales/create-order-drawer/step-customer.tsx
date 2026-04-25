@@ -163,6 +163,8 @@ type CityPickerProps = {
   regionCode: string;
   pickedCityCode: string;
   pickedCityLabel: string;
+  /** Region lookup so each row can show its region (e.g. "R-V") on the right. */
+  regionLookup: Map<string, { short_code?: string; name: string }>;
   loading?: boolean;
   onPick: (item: CityPickItem) => void;
 };
@@ -172,6 +174,7 @@ function CityPicker({
   regionCode,
   pickedCityCode,
   pickedCityLabel,
+  regionLookup,
   loading,
   onPick,
 }: CityPickerProps) {
@@ -286,6 +289,15 @@ function CityPicker({
             )}
             {list.map((c) => {
               const isSubMuniGlobal = !regionCode && !!c.parent_city_code;
+              // Region label on the right — only shown for global search,
+              // since region-scoped picks are already inside one region.
+              const regionInfo =
+                !regionCode && c.region_code
+                  ? regionLookup.get(c.region_code)
+                  : null;
+              const regionLabel = regionInfo
+                ? (regionInfo.short_code ?? regionInfo.name)
+                : null;
               return (
                 <li key={c.code}>
                   <button
@@ -294,14 +306,21 @@ function CityPicker({
                       onPick(c);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 ${
+                    className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 flex items-center justify-between gap-2 ${
                       c.code === pickedCityCode ? "bg-blue-50 text-blue-900" : ""
                     }`}
                   >
-                    <span className="font-medium">{c.name}</span>
-                    {isSubMuniGlobal && c.parent_city_name && (
-                      <span className="text-gray-500 ml-1.5 text-xs">
-                        in {c.parent_city_name}
+                    <span className="min-w-0 truncate">
+                      <span className="font-medium">{c.name}</span>
+                      {isSubMuniGlobal && c.parent_city_name && (
+                        <span className="text-gray-500 ml-1.5 text-xs">
+                          in {c.parent_city_name}
+                        </span>
+                      )}
+                    </span>
+                    {regionLabel && (
+                      <span className="text-[10px] uppercase tracking-wide text-gray-400 shrink-0">
+                        {regionLabel}
                       </span>
                     )}
                   </button>
@@ -657,6 +676,17 @@ export function StepCustomer({ selected, onSelect }: Props) {
     Object.keys(form) as Array<keyof typeof form>
   ).some((k) => form[k] !== pristine[k]);
 
+  // Map region code → { short_code, name } so the city picker can show the
+  // region of each global-search result (e.g. "Dolores · CAR" vs
+  // "Dolores · R-IV-A") when several cities share the same name.
+  const regionLookup = useMemo(() => {
+    const m = new Map<string, { short_code?: string; name: string }>();
+    for (const r of regions) {
+      m.set(r.code, { short_code: r.short_code, name: r.name });
+    }
+    return m;
+  }, [regions]);
+
   return (
     <div className="space-y-3">
       <div className="relative">
@@ -798,6 +828,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
             <CityPicker
               regionCities={cities}
               regionCode={form.region_code}
+              regionLookup={regionLookup}
               pickedCityCode={form.city_code}
               pickedCityLabel={
                 form.city_code
