@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateBody } from "@/lib/api/validate";
+import { resolveShopifyProvinceName } from "@/lib/sales/ph-province-resolver";
 import {
   createShopifyCustomer,
   searchShopifyCustomers,
@@ -39,10 +40,16 @@ function buildShopifyAddresses(input: {
    * Shopify-side line reads "<street> Barangay <name>". Avalon keeps
    * the structured fields separate; couriers want the barangay inline. */
   barangay_name?: string | null;
+  /** Resolved Shopify-acceptable province name (Cebu, Bulacan, Metro
+   * Manila, …). Caller derives this via resolveShopifyProvinceName.
+   * Optional — when absent, address goes out without a province and
+   * Shopify infers from postal code. */
+  province_name?: string | null;
 }): Array<{
   address1?: string | null;
   address2?: string | null;
   city?: string | null;
+  province?: string | null;
   zip?: string | null;
   country?: string;
 }> | undefined {
@@ -61,6 +68,7 @@ function buildShopifyAddresses(input: {
       ),
       address2: input.address_line_2 ?? null,
       city: input.city_text ?? null,
+      province: input.province_name ?? null,
       zip: input.postal_code ?? null,
       country: "Philippines",
     },
@@ -356,10 +364,13 @@ export async function POST(req: NextRequest) {
       shopifyCustomerId = String(existing.id);
     } else {
       try {
-        const barangayName = await resolveBarangayName(
-          admin,
-          body.barangay_code,
-        );
+        const [barangayName, provinceName] = await Promise.all([
+          resolveBarangayName(admin, body.barangay_code),
+          resolveShopifyProvinceName(admin, {
+            city_code: body.city_code,
+            region_code: body.region_code,
+          }),
+        ]);
         const created = await createShopifyCustomer({
           first_name: body.first_name,
           last_name: body.last_name,
@@ -368,6 +379,7 @@ export async function POST(req: NextRequest) {
           addresses: buildShopifyAddresses({
             ...body,
             barangay_name: barangayName,
+            province_name: provinceName,
           }),
         });
         shopifyCustomerId = String(created.id);

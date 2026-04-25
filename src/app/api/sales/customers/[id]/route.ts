@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateBody } from "@/lib/api/validate";
 import { updateShopifyCustomer } from "@/lib/shopify/client";
+import { resolveShopifyProvinceName } from "@/lib/sales/ph-province-resolver";
 
 // ─── PATCH /api/sales/customers/[id] ────────────────────────────────────────
 //
@@ -95,17 +96,28 @@ export async function PATCH(
       "phone" in update;
     if (addressTouched || profileTouched) {
       try {
-        // Resolve barangay name so address1 can read
-        // "<street> Barangay <name>" on the Shopify side.
+        // Resolve barangay (for "<street> Barangay <name>") and province
+        // (Shopify-acceptable name like "Cebu" / "Metro Manila") in
+        // parallel.
         let barangayName: string | null = null;
-        if (addressTouched && row.barangay_code) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: bgy } = await (admin as any)
-            .from("ph_barangays")
-            .select("name")
-            .eq("code", row.barangay_code)
-            .maybeSingle();
-          barangayName = (bgy as { name?: string } | null)?.name ?? null;
+        let provinceName: string | null = null;
+        if (addressTouched) {
+          const [bgy, prov] = await Promise.all([
+            row.barangay_code
+              ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (admin as any)
+                  .from("ph_barangays")
+                  .select("name")
+                  .eq("code", row.barangay_code)
+                  .maybeSingle()
+              : Promise.resolve({ data: null }),
+            resolveShopifyProvinceName(admin, {
+              city_code: row.city_code,
+              region_code: row.region_code,
+            }),
+          ]);
+          barangayName = (bgy?.data as { name?: string } | null)?.name ?? null;
+          provinceName = prov;
         }
         const composedAddress1 =
           row.address_line_1 && barangayName
@@ -120,16 +132,13 @@ export async function PATCH(
           last_name: row.last_name,
           email: row.email ?? undefined,
           phone: row.phone ?? undefined,
-          // province intentionally omitted — Shopify validates it against
-          // PH's real province list (Cebu / Bulacan / Abra …) and our
-          // region_text is the PSA region grouping, not a province.
-          // Postal code lets Shopify infer the province for shipping.
           addresses: addressTouched
             ? [
                 {
                   address1: composedAddress1,
                   address2: row.address_line_2 ?? null,
                   city: row.city_text ?? null,
+                  province: provinceName,
                   zip: row.postal_code ?? null,
                   country: "Philippines",
                 },

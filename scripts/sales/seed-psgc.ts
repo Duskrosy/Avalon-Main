@@ -47,10 +47,17 @@ type PsgcRegion = {
   name: string;
   regionName: string;
 };
+type PsgcProvince = {
+  code: string;
+  name: string;
+  regionCode: string;
+};
 type PsgcCity = {
   code: string;
   name: string;
   regionCode: string;
+  /** PSGC sets `provinceCode: false` for NCR cities (NCR is provinceless). */
+  provinceCode: string | false;
   type: string; // "City" | "Mun" | "SubMun"
 };
 type PsgcSubMunicipality = {
@@ -146,6 +153,18 @@ async function main() {
   // Manila's ~897 barangays sit under its sub-municipalities, NOT under
   // Manila City directly. We load all three into ph_cities so the picker
   // shows them as selectable parents for their barangays.
+  // Provinces have to be inserted before cities so the FK on
+  // ph_cities.province_code (added in migration 00089) resolves cleanly.
+  console.log("[1b/4] provinces");
+  const provinces = await fetchJson<PsgcProvince[]>("/provinces/");
+  const provinceRows = provinces.map((p) => ({
+    code: p.code,
+    region_code: p.regionCode,
+    name: p.name,
+  }));
+  await chunkedUpsert("ph_provinces", provinceRows);
+  console.log(`  added ${provinceRows.length} provinces`);
+
   console.log("[2a/4] cities + municipalities");
   const cities = await fetchJson<PsgcCity[]>("/cities-municipalities/");
   const cityRows = cities.map((c) => ({
@@ -153,6 +172,10 @@ async function main() {
     region_code: c.regionCode,
     name: c.name,
     city_class: c.type ?? null,
+    // PSGC sets provinceCode: false for NCR cities (NCR doesn't have
+    // provinces). Coerce to null so the FK leaves them unlinked; the
+    // Shopify resolver falls back to "Metro Manila" for NCR.
+    province_code: typeof c.provinceCode === "string" ? c.provinceCode : null,
   }));
   await chunkedUpsert("ph_cities", cityRows);
 

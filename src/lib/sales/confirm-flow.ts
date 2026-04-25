@@ -27,6 +27,7 @@ import {
   type ShopifyOrderInput,
   type ShopifyOrderLineItemInput,
 } from "@/lib/shopify/client";
+import { resolveShopifyProvinceName } from "@/lib/sales/ph-province-resolver";
 
 export type ConfirmFlowResult =
   | {
@@ -95,11 +96,17 @@ type CustomerRow = {
   city_text: string | null;
   region_text: string | null;
   postal_code: string | null;
+  city_code: string | null;
+  region_code: string | null;
   barangay_code: string | null;
   /** Resolved barangay name from ph_barangays. Appended to Shopify's
    * address1 as "<street> Barangay <name>" so couriers see it on the
    * waybill — Avalon keeps the structured fields separate. */
   barangay_text?: string | null;
+  /** Resolved Shopify-acceptable province name (Cebu, Bulacan, Metro
+   * Manila, …). Resolved post-fetch; populated only when address fields
+   * actually go to Shopify. */
+  province_name?: string | null;
 };
 
 /**
@@ -205,10 +212,7 @@ function buildShopifyOrderInput(
       address1: composedAddress1,
       address2: customer.address_line_2 ?? undefined,
       city: customer.city_text ?? undefined,
-      // province intentionally omitted — Shopify validates it against
-      // PH's province list (Cebu / Bulacan / Abra …) and our region_text
-      // is the PSA region grouping, not a province. Shopify infers the
-      // province from the postal code at fulfilment time.
+      province: customer.province_name ?? undefined,
       zip: customer.postal_code ?? undefined,
       phone: customer.phone ?? undefined,
       country: "PH",
@@ -316,7 +320,8 @@ export async function runConfirmFlow(
     .from("customers")
     .select(
       "id, shopify_customer_id, first_name, last_name, email, phone, " +
-        "address_line_1, address_line_2, city_text, region_text, postal_code, barangay_code",
+        "address_line_1, address_line_2, city_text, region_text, postal_code, " +
+        "city_code, region_code, barangay_code",
     )
     .eq("id", order.customer_id)
     .maybeSingle();
@@ -331,19 +336,26 @@ export async function runConfirmFlow(
     };
   }
 
-  // Resolve barangay name so the Shopify shipping_address line reads
-  // "<street> Barangay <name>". Best-effort: a missing/unseeded code
-  // just leaves the line as the street alone.
-  if (customer.barangay_code) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: bgy } = await (supabase as any)
-      .from("ph_barangays")
-      .select("name")
-      .eq("code", customer.barangay_code)
-      .maybeSingle();
-    customer.barangay_text =
-      (bgy as { name?: string } | null)?.name ?? null;
-  }
+  // Resolve barangay (for "<street> Barangay <name>") and province
+  // (Shopify-acceptable name) in parallel. Best-effort: missing data
+  // just leaves those fields off the Shopify payload.
+  const [bgyRes, provinceName] = await Promise.all([
+    customer.barangay_code
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (supabase as any)
+          .from("ph_barangays")
+          .select("name")
+          .eq("code", customer.barangay_code)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    resolveShopifyProvinceName(supabase, {
+      city_code: customer.city_code,
+      region_code: customer.region_code,
+    }),
+  ]);
+  customer.barangay_text =
+    (bgyRes?.data as { name?: string } | null)?.name ?? null;
+  customer.province_name = provinceName;
 
   // 2. Idempotency guard for retry path.
   if (options.isRetry) {

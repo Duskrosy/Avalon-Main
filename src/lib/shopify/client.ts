@@ -331,15 +331,43 @@ export async function searchShopifyCustomers(
  * Create a customer in Shopify. Caller is responsible for email-pre-search
  * dedup: invoke searchShopifyCustomers(email) first, and reuse the existing
  * Shopify customer id if a match is returned. This function does not dedup.
+ *
+ * Self-heals on `addresses.province: is invalid` (a Shopify 422) by
+ * retrying once with province stripped — covers PSGC name drift Shopify
+ * doesn't recognise (renames, splits, etc.) without a hard failure.
  */
 export async function createShopifyCustomer(
   input: ShopifyCustomerInput,
 ): Promise<ShopifyCustomer> {
-  const json = await shopifyPost<{ customer: ShopifyCustomer }>(
-    `/customers.json`,
-    { customer: input },
+  try {
+    const json = await shopifyPost<{ customer: ShopifyCustomer }>(
+      `/customers.json`,
+      { customer: input },
+    );
+    return json.customer;
+  } catch (err) {
+    if (isInvalidProvinceError(err) && input.addresses) {
+      const stripped = input.addresses.map(({ province, ...rest }) => {
+        void province;
+        return rest;
+      });
+      const json = await shopifyPost<{ customer: ShopifyCustomer }>(
+        `/customers.json`,
+        { customer: { ...input, addresses: stripped } },
+      );
+      return json.customer;
+    }
+    throw err;
+  }
+}
+
+/** True when a Shopify error mentions an invalid address.province. */
+function isInvalidProvinceError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes("addresses.province") &&
+    msg.toLowerCase().includes("invalid")
   );
-  return json.customer;
 }
 
 /**
@@ -356,11 +384,32 @@ export async function updateShopifyCustomer(
   shopifyCustomerId: string | number,
   input: Partial<ShopifyCustomerInput>,
 ): Promise<ShopifyCustomer> {
-  const json = await shopifyPut<{ customer: ShopifyCustomer }>(
-    `/customers/${shopifyCustomerId}.json`,
-    { customer: { id: Number(shopifyCustomerId), ...input } },
-  );
-  return json.customer;
+  try {
+    const json = await shopifyPut<{ customer: ShopifyCustomer }>(
+      `/customers/${shopifyCustomerId}.json`,
+      { customer: { id: Number(shopifyCustomerId), ...input } },
+    );
+    return json.customer;
+  } catch (err) {
+    if (isInvalidProvinceError(err) && input.addresses) {
+      const stripped = input.addresses.map(({ province, ...rest }) => {
+        void province;
+        return rest;
+      });
+      const json = await shopifyPut<{ customer: ShopifyCustomer }>(
+        `/customers/${shopifyCustomerId}.json`,
+        {
+          customer: {
+            id: Number(shopifyCustomerId),
+            ...input,
+            addresses: stripped,
+          },
+        },
+      );
+      return json.customer;
+    }
+    throw err;
+  }
 }
 
 // ─── Customer-address methods (multi-address book) ───────────────────────────
@@ -494,11 +543,35 @@ export async function createShopifyOrder(
       inventory_behavior: input.inventory_behavior ?? "bypass",
     },
   };
-  const json = await shopifyPost<{ order: ShopifyOrder }>(
-    `/orders.json`,
-    payload,
-  );
-  return json.order;
+  try {
+    const json = await shopifyPost<{ order: ShopifyOrder }>(
+      `/orders.json`,
+      payload,
+    );
+    return json.order;
+  } catch (err) {
+    // Self-heal on `addresses.province: invalid` — strip province from
+    // shipping_address and retry once. Same drift defence we use on
+    // customer create/update; covers PSGC name renames Shopify hasn't
+    // caught up with.
+    if (isInvalidProvinceError(err) && input.shipping_address?.province) {
+      const stripped = { ...input.shipping_address };
+      delete (stripped as { province?: string }).province;
+      const retryPayload = {
+        order: {
+          ...input,
+          shipping_address: stripped,
+          inventory_behavior: input.inventory_behavior ?? "bypass",
+        },
+      };
+      const json = await shopifyPost<{ order: ShopifyOrder }>(
+        `/orders.json`,
+        retryPayload,
+      );
+      return json.order;
+    }
+    throw err;
+  }
 }
 
 /**
