@@ -1,14 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Plus, AlertTriangle, RefreshCw, Search, X } from "lucide-react";
+import {
+  Plus,
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
 import { CreateOrderDrawer } from "./create-order-drawer";
 import { SyncStatusBadge } from "./shared/sync-status-badge";
 import { OrderActionsMenu } from "./shared/order-actions-menu";
 import { RevertOrCancelDialog } from "./shared/revert-to-draft-dialog";
 import { SyncErrorModal } from "./shared/sync-error-modal";
 import { CompleteOrderModal } from "./shared/complete-order-modal";
+import { ExpandedOrderRow } from "./shared/expanded-order-row";
 
 type Order = {
   id: string;
@@ -80,6 +89,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [syncErrorOrder, setSyncErrorOrder] = useState<Order | null>(null);
   const [completingOrder, setCompletingOrder] = useState<Order | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [actionDialog, setActionDialog] = useState<{
     order: Order;
     mode: "revert" | "cancel";
@@ -252,6 +262,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-600">
             <tr>
+              <th className="px-2 py-2 w-6"></th>
               <th className="px-3 py-2 text-left">Order</th>
               <th className="px-3 py-2 text-left">Customer</th>
               <th className="px-3 py-2 text-right">Total</th>
@@ -265,36 +276,30 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
           <tbody className="divide-y divide-gray-100">
             {orders.length === 0 && !loading && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-xs text-gray-400">
+                <td colSpan={9} className="px-3 py-8 text-center text-xs text-gray-400">
                   No orders in this range. Click <strong>Create Order</strong> to start.
                 </td>
               </tr>
             )}
             {orders.map((o) => {
-              const isDraft = o.status === "draft";
-              const isFailed = o.sync_status === "failed";
-              const clickable = isDraft || isFailed;
+              const isExpanded = expandedOrderId === o.id;
               const onRowClick = () => {
-                if (isDraft) {
-                  setEditingOrderId(o.id);
-                  setDrawerOpen(true);
-                } else if (isFailed) {
-                  setSyncErrorOrder(o);
-                }
+                setExpandedOrderId(isExpanded ? null : o.id);
               };
               return (
+              <React.Fragment key={o.id}>
               <tr
-                key={o.id}
-                onClick={clickable ? onRowClick : undefined}
-                className={`hover:bg-gray-50 ${clickable ? "cursor-pointer" : ""}`}
-                title={
-                  isDraft
-                    ? "Click to resume editing"
-                    : isFailed
-                      ? "Click to inspect sync failure"
-                      : undefined
-                }
+                onClick={onRowClick}
+                className="hover:bg-gray-50 cursor-pointer"
+                title="Click to expand"
               >
+                <td className="px-2 py-2 text-gray-400 align-middle">
+                  {isExpanded ? (
+                    <ChevronDown size={14} />
+                  ) : (
+                    <ChevronRight size={14} />
+                  )}
+                </td>
                 <td className="px-3 py-2 font-mono text-xs">
                   {o.avalon_order_number ?? <span className="text-gray-400">— draft —</span>}
                   {o.route_type === "tnvs" && (
@@ -347,6 +352,31 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                   />
                 </td>
               </tr>
+              {isExpanded && (
+                <tr key={`${o.id}-detail`}>
+                  <td colSpan={9} className="p-0">
+                    <ExpandedOrderRow
+                      orderId={o.id}
+                      onComplete={() => setCompletingOrder(o)}
+                      onEdit={() => {
+                        if (o.status === "draft") {
+                          setEditingOrderId(o.id);
+                          setDrawerOpen(true);
+                        } else {
+                          // For non-draft orders, edit means revert-to-draft
+                          // first (Phase 2 in-place edit window can replace
+                          // this once the 15-min timer is wired).
+                          setActionDialog({ order: o, mode: "revert" });
+                        }
+                      }}
+                      onDelete={() =>
+                        setActionDialog({ order: o, mode: "cancel" })
+                      }
+                    />
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
               );
             })}
           </tbody>
