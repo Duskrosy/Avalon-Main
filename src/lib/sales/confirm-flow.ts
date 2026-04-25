@@ -231,7 +231,12 @@ function buildShopifyOrderInput(
  * pending=true so the drawer polls instead of hanging.
  */
 async function postWithTimeout(input: ShopifyOrderInput): Promise<
-  | { kind: "ok"; shopifyOrderId: string }
+  | {
+      kind: "ok";
+      shopifyOrderId: string;
+      shopifyOrderName: string | null;
+      shopifyOrderNumber: number | null;
+    }
   | { kind: "error"; message: string }
   | { kind: "timeout" }
 > {
@@ -242,6 +247,9 @@ async function postWithTimeout(input: ShopifyOrderInput): Promise<
       createShopifyOrder(input).then((order) => ({
         kind: "ok" as const,
         shopifyOrderId: String(order.id),
+        shopifyOrderName: order.name ?? null,
+        shopifyOrderNumber:
+          typeof order.order_number === "number" ? order.order_number : null,
       })),
       new Promise<{ kind: "timeout" }>((resolve) => {
         controller.signal.addEventListener("abort", () => resolve({ kind: "timeout" }));
@@ -367,14 +375,25 @@ export async function runConfirmFlow(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: priorSyncs } = await (supabase as any)
       .from("order_shopify_syncs")
-      .select("id, attempt_number, status, shopify_order_id")
+      .select(
+        "id, attempt_number, status, shopify_order_id, shopify_order_name, shopify_order_number",
+      )
       .eq("order_id", orderId)
       .order("attempt_number", { ascending: false });
 
     const succeeded = (priorSyncs ?? []).find(
-      (s: { status: string; shopify_order_id: string | null }) =>
-        s.status === "succeeded" && s.shopify_order_id,
-    );
+      (s: {
+        status: string;
+        shopify_order_id: string | null;
+      }) => s.status === "succeeded" && s.shopify_order_id,
+    ) as
+      | {
+          attempt_number: number;
+          shopify_order_id: string;
+          shopify_order_name: string | null;
+          shopify_order_number: number | null;
+        }
+      | undefined;
     if (succeeded) {
       // Recover from a previously-successful attempt without re-POSTing.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -383,6 +402,8 @@ export async function runConfirmFlow(
         .update({
           sync_status: "synced",
           shopify_order_id: succeeded.shopify_order_id,
+          shopify_order_name: succeeded.shopify_order_name ?? null,
+          shopify_order_number: succeeded.shopify_order_number ?? null,
           sync_error: null,
         })
         .eq("id", orderId);
@@ -407,12 +428,19 @@ export async function runConfirmFlow(
       if (recovered) {
         const newAttemptNumber =
           ((priorSyncs ?? [])[0]?.attempt_number ?? 0) + 1;
+        const recoveredName = recovered.name ?? null;
+        const recoveredNumber =
+          typeof recovered.order_number === "number"
+            ? recovered.order_number
+            : null;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase as any).from("order_shopify_syncs").insert({
           order_id: orderId,
           attempt_number: newAttemptNumber,
           avalon_order_number: order.avalon_order_number,
           shopify_order_id: String(recovered.id),
+          shopify_order_name: recoveredName,
+          shopify_order_number: recoveredNumber,
           status: "succeeded",
           sync_finished_at: new Date().toISOString(),
         });
@@ -422,6 +450,8 @@ export async function runConfirmFlow(
           .update({
             sync_status: "synced",
             shopify_order_id: String(recovered.id),
+            shopify_order_name: recoveredName,
+            shopify_order_number: recoveredNumber,
             sync_error: null,
           })
           .eq("id", orderId);
@@ -558,6 +588,8 @@ export async function runConfirmFlow(
       status: "succeeded",
       sync_finished_at: new Date().toISOString(),
       shopify_order_id: result.shopifyOrderId,
+      shopify_order_name: result.shopifyOrderName,
+      shopify_order_number: result.shopifyOrderNumber,
     })
     .eq("id", attemptRow.id);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -566,6 +598,8 @@ export async function runConfirmFlow(
     .update({
       sync_status: "synced",
       shopify_order_id: result.shopifyOrderId,
+      shopify_order_name: result.shopifyOrderName,
+      shopify_order_number: result.shopifyOrderNumber,
       sync_error: null,
     })
     .eq("id", orderId);

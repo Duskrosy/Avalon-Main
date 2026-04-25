@@ -54,6 +54,8 @@ type Stats = {
 type RecentOrder = {
   id: string;
   avalon_order_number: string | null;
+  shopify_order_name: string | null;
+  shopify_order_number: number | null;
   status: string;
   sync_status: string;
   completion_status: string;
@@ -268,9 +270,10 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                   {recent_orders.map((o) => (
                     <tr key={o.id} className="hover:bg-gray-50">
                       <td className="px-3 py-2 font-mono text-xs">
-                        {o.avalon_order_number ?? (
-                          <span className="text-gray-400">— draft —</span>
-                        )}
+                        {o.shopify_order_name ??
+                          (o.status === "draft" ? null : o.avalon_order_number) ?? (
+                            <span className="text-gray-400">— draft —</span>
+                          )}
                         <span className="ml-2 text-[10px] text-gray-400">
                           {o.item_count}{" "}
                           {o.item_count === 1 ? "item" : "items"}

@@ -21,6 +21,7 @@ type Sync = {
 type Order = {
   id: string;
   avalon_order_number: string | null;
+  shopify_order_name?: string | null;
   sync_error: string | null;
 };
 
@@ -84,7 +85,10 @@ export function SyncErrorModal({ open, order, onClose, onRetried }: Props) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
             <AlertTriangle size={14} className="text-rose-600" />
-            Sync failure — {order.avalon_order_number ?? "(no number yet)"}
+            Sync failure —{" "}
+            {order.shopify_order_name ??
+              order.avalon_order_number ??
+              "(no number yet)"}
           </div>
           <button
             type="button"

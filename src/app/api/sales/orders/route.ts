@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
   let query = (admin as any)
     .from("orders")
     .select(
-      "id, avalon_order_number, shopify_order_id, customer_id, created_by_user_id, " +
+      "id, avalon_order_number, shopify_order_id, shopify_order_name, " +
+        "shopify_order_number, customer_id, created_by_user_id, " +
         "created_by_name, status, sync_status, sync_error, subtotal_amount, " +
         "voucher_code, voucher_discount_amount, manual_discount_amount, " +
         "shipping_fee_amount, final_total_amount, mode_of_payment, " +

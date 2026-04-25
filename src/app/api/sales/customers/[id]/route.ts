@@ -81,7 +81,7 @@ export async function GET(
   const { data: orderRows } = await (admin as any)
     .from("orders")
     .select(
-      "id, avalon_order_number, status, sync_status, completion_status, final_total_amount, net_value_amount, delivery_status, created_at, completed_at, items:order_items(product_name, variant_name, size, color, quantity, image_url)",
+      "id, avalon_order_number, shopify_order_name, shopify_order_number, status, sync_status, completion_status, final_total_amount, net_value_amount, delivery_status, created_at, completed_at, items:order_items(product_name, variant_name, size, color, quantity, image_url)",
     )
     .eq("customer_id", id)
     .is("deleted_at", null)
@@ -90,6 +90,8 @@ export async function GET(
   const orders = (orderRows ?? []) as Array<{
     id: string;
     avalon_order_number: string | null;
+    shopify_order_name: string | null;
+    shopify_order_number: number | null;
     status: string;
     sync_status: string;
     completion_status: string;
@@ -160,6 +162,8 @@ export async function GET(
   const recent_orders = orders.slice(0, 20).map((o) => ({
     id: o.id,
     avalon_order_number: o.avalon_order_number,
+    shopify_order_name: o.shopify_order_name,
+    shopify_order_number: o.shopify_order_number,
     status: o.status,
     sync_status: o.sync_status,
     completion_status: o.completion_status,

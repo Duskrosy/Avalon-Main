@@ -24,6 +24,8 @@ type Order = {
   id: string;
   avalon_order_number: string | null;
   shopify_order_id: string | null;
+  shopify_order_name: string | null;
+  shopify_order_number: number | null;
   customer_id: string;
   created_by_user_id: string | null;
   created_by_name: string | null;
@@ -302,7 +304,17 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                   )}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs">
-                  {o.avalon_order_number ?? <span className="text-gray-400">— draft —</span>}
+                  {o.shopify_order_name ? (
+                    <span>{o.shopify_order_name}</span>
+                  ) : o.status === "draft" ? (
+                    <span className="text-gray-400">— draft —</span>
+                  ) : o.avalon_order_number ? (
+                    <span title="Pending Shopify number">
+                      {o.avalon_order_number}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
                   {o.route_type === "tnvs" && (
                     <span className="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
                       Lalamove
