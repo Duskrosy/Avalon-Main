@@ -30,9 +30,25 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  // Match variant_sku, product name, or color label.
+
+  // Two-stage search: agents type product names ("Air Runner Pro") OR SKU
+  // codes ("FAC-001-BLK-42") OR sizes ("42") OR color labels ("black").
+  // Stage 1: find matching parent products by name or parent_sku.
+  // Stage 2: find variants either matching variant_sku/size directly OR
+  //          belonging to the matched parent products.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: variants, error } = await (admin as any)
+  const { data: matchingProducts } = await (admin as any)
+    .from("products")
+    .select("id")
+    .eq("is_active", true)
+    .or(`name.ilike.%${q}%,parent_sku.ilike.%${q}%`)
+    .limit(50);
+  const productIdMatches: string[] = (matchingProducts ?? []).map(
+    (p: { id: string }) => p.id,
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let variantQuery: any = (admin as any)
     .from("product_variants")
     .select(
       `
@@ -40,16 +56,27 @@ export async function GET(req: NextRequest) {
       variant_sku,
       size_label,
       is_active,
+      product_id,
       product:products(id, parent_sku, name, is_active),
       product_color:product_colors(id, color_code, color_label),
       inventory_balances(quantity_available)
     `,
     )
     .eq("is_active", true)
-    .or(
-      `variant_sku.ilike.%${q}%,size_label.ilike.%${q}%`,
-    )
     .limit(limit);
+
+  if (productIdMatches.length > 0) {
+    // Either the variant's SKU/size matches OR the variant's parent product matched.
+    variantQuery = variantQuery.or(
+      `variant_sku.ilike.%${q}%,size_label.ilike.%${q}%,product_id.in.(${productIdMatches.join(",")})`,
+    );
+  } else {
+    variantQuery = variantQuery.or(
+      `variant_sku.ilike.%${q}%,size_label.ilike.%${q}%`,
+    );
+  }
+
+  const { data: variants, error } = await variantQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

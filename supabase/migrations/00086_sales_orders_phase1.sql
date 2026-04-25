@@ -413,4 +413,3 @@ CREATE TRIGGER trg_audit_order_shopify_syncs
 -- ALTER TABLE statements left out intentionally; rely on Supabase service-role
 -- key in src/lib/supabase/admin.ts for server-side writes, and authenticated
 -- clients only via the Next.js API routes (never directly from the browser).
-EOF
