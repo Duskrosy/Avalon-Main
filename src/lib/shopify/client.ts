@@ -504,3 +504,136 @@ export async function listShopifyVouchers(
     return _voucherCache?.codes ?? [];
   }
 }
+
+// ─── Product / variant search (Phase 1.5 hotfix — empty Inventory v1) ───────
+//
+// Used when Avalon's Inventory v1 catalog is unpopulated. We fetch from
+// Shopify's products.json directly so agents can pick items today, and
+// overlay Inventory v1 stock per variant when a row exists. See the products
+// API route for the join logic.
+//
+// Implementation note: Shopify REST products.json filters by exact title only
+// — it doesn't support substring search. We pull the first page (up to 250)
+// and filter server-side. For catalogs above ~500 products, paginate.
+
+export type ShopifyProductVariant = {
+  id: number;
+  product_id: number;
+  title: string;
+  sku: string | null;
+  price: string;
+  inventory_quantity: number;
+  option1: string | null;
+  option2: string | null;
+  option3: string | null;
+};
+
+export type ShopifyProduct = {
+  id: number;
+  title: string;
+  handle: string;
+  status: string;
+  variants: ShopifyProductVariant[];
+  image: { src: string } | null;
+  product_type: string | null;
+};
+
+let _productCache: { at: number; products: ShopifyProduct[] } | null = null;
+const PRODUCT_CACHE_MS = 5 * 60_000;
+
+/**
+ * Fetch active Shopify products. 5-min in-memory cache (per Vercel Function
+ * instance) keeps the search step responsive without hammering the API.
+ *
+ * Note: this returns ACTIVE products only (status=active), and excludes
+ * archived/draft products that agents shouldn't be able to sell.
+ */
+export async function listShopifyProducts(
+  options: { force?: boolean } = {},
+): Promise<ShopifyProduct[]> {
+  const now = Date.now();
+  if (
+    !options.force &&
+    _productCache &&
+    now - _productCache.at < PRODUCT_CACHE_MS
+  ) {
+    return _productCache.products;
+  }
+  try {
+    const fields =
+      "id,title,handle,status,variants,image,product_type";
+    const json = await shopifyGet<{ products: ShopifyProduct[] }>(
+      `/products.json?status=active&limit=250&fields=${fields}`,
+    );
+    const products = json.products ?? [];
+    _productCache = { at: now, products };
+    return products;
+  } catch {
+    return _productCache?.products ?? [];
+  }
+}
+
+/**
+ * Search active Shopify products by case-insensitive substring match on
+ * title, variant title, or variant SKU. Returns flat variant rows
+ * (one per variant) so the UI can render them as line-item picker rows.
+ */
+export async function searchShopifyVariants(
+  query: string,
+  limit = 30,
+): Promise<
+  Array<{
+    shopify_product_id: string;
+    shopify_variant_id: string;
+    product_title: string;
+    variant_title: string;
+    sku: string | null;
+    price: string;
+    image_url: string | null;
+    options: { option1: string | null; option2: string | null; option3: string | null };
+  }>
+> {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+
+  const products = await listShopifyProducts();
+  const out: Array<{
+    shopify_product_id: string;
+    shopify_variant_id: string;
+    product_title: string;
+    variant_title: string;
+    sku: string | null;
+    price: string;
+    image_url: string | null;
+    options: { option1: string | null; option2: string | null; option3: string | null };
+  }> = [];
+
+  for (const p of products) {
+    const productMatches = p.title.toLowerCase().includes(q);
+    for (const v of p.variants ?? []) {
+      const variantMatches =
+        productMatches ||
+        (v.sku?.toLowerCase().includes(q) ?? false) ||
+        v.title.toLowerCase().includes(q) ||
+        (v.option1?.toLowerCase().includes(q) ?? false) ||
+        (v.option2?.toLowerCase().includes(q) ?? false);
+      if (!variantMatches) continue;
+      out.push({
+        shopify_product_id: String(p.id),
+        shopify_variant_id: String(v.id),
+        product_title: p.title,
+        variant_title: v.title,
+        sku: v.sku,
+        price: v.price,
+        image_url: p.image?.src ?? null,
+        options: {
+          option1: v.option1,
+          option2: v.option2,
+          option3: v.option3,
+        },
+      });
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
