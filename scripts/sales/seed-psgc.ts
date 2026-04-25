@@ -182,25 +182,15 @@ async function main() {
   console.log(`  added ${subMuniRows.length} sub-municipalities`);
 
   // 3. Barangays
+  // ─────────────────────────────────────────────────────────────────────
+  // PSGC code structure is canonical 9 digits: PPCCMMMBBB (region/prov/
+  // city/barangay). A barangay's parent city/municipality/sub-municipality
+  // code = the barangay's first 6 digits + "000". This holds regardless of
+  // what the API populates in the cityCode/municipalityCode/etc fields
+  // (psgc.gitlab.io's v1 leaves most of them null and only sets
+  // provinceCode/regionCode). API field is a fallback only.
   console.log("[3/4] barangays (this is the slow one — ~42k rows)");
   const barangays = await fetchJson<PsgcBarangay[]>("/barangays/");
-  const barangayRows = barangays.map((b) => {
-    // Prefer subMunicipality (Manila districts) → city → cityMunicipality →
-    // municipality. The field name varies across PSGC API versions.
-    const parentCode =
-      b.subMunicipalityCode ??
-      b.cityCode ??
-      b.cityMunicipalityCode ??
-      b.municipalityCode ??
-      "";
-    return {
-      code: b.code,
-      city_code: parentCode,
-      name: b.name,
-      postal_code: null,
-    };
-  });
-  // Filter orphans against the union of cities + sub-municipalities now in DB.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existingCities } = await (admin as any)
     .from("ph_cities")
@@ -208,10 +198,40 @@ async function main() {
   const validCityCodes = new Set(
     (existingCities ?? []).map((c: { code: string }) => c.code),
   );
-  const valid = barangayRows.filter((b) => validCityCodes.has(b.city_code));
+
+  const barangayRows = barangays.map((b) => {
+    // PSGC-structured parent: replace last 3 digits with "000".
+    const structuralParent =
+      b.code.length >= 9 ? b.code.slice(0, 6) + "000" : null;
+    // Fallback to API fields if structural code doesn't match a known city
+    // (some edge cases in PSGC's coding — e.g., cities with non-standard
+    // 6-digit prefixes).
+    const apiParent =
+      b.subMunicipalityCode ??
+      b.cityCode ??
+      b.cityMunicipalityCode ??
+      b.municipalityCode ??
+      null;
+
+    let parentCode = "";
+    if (structuralParent && validCityCodes.has(structuralParent)) {
+      parentCode = structuralParent;
+    } else if (apiParent && validCityCodes.has(apiParent)) {
+      parentCode = apiParent;
+    }
+
+    return {
+      code: b.code,
+      city_code: parentCode,
+      name: b.name,
+      postal_code: null,
+    };
+  });
+
+  const valid = barangayRows.filter((b) => b.city_code !== "");
   const skipped = barangayRows.length - valid.length;
   if (skipped > 0) {
-    console.log(`  (skipping ${skipped} orphaned barangays w/o matching city)`);
+    console.log(`  (skipping ${skipped} barangays w/ no matching parent city)`);
   }
   await chunkedUpsert("ph_barangays", valid);
 
@@ -275,16 +295,42 @@ async function main() {
     "Baguio City": "2600",
   };
 
+  // Fuzzy name matching: PSGC returns city names with various conventions
+  // ("City of Manila" vs "Manila" vs "Manila City" vs "MANILA"). Try
+  // multiple variants per key + ilike fallback so we don't miss obvious
+  // matches just due to formatting differences.
+  function nameVariants(name: string): string[] {
+    const stripped = name
+      .replace(/^City of /i, "")
+      .replace(/ City$/i, "")
+      .trim();
+    return Array.from(
+      new Set([
+        name,
+        stripped,
+        `City of ${stripped}`,
+        `${stripped} City`,
+        `CITY OF ${stripped.toUpperCase()}`,
+      ]),
+    );
+  }
+
   let postalUpdated = 0;
+  let cityMatches = 0;
   for (const [cityName, postal] of Object.entries(postalByCityName)) {
-    // Lookup the city/sub-municipality by name first.
+    const variants = nameVariants(cityName);
+    // ilike comparisons via .or() — matches case-insensitively.
+    const orClause = variants
+      .map((v) => `name.ilike.${v.replace(/,/g, "")}`)
+      .join(",");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: cityRows } = await (admin as any)
       .from("ph_cities")
-      .select("code")
-      .eq("name", cityName);
+      .select("code, name")
+      .or(orClause);
     if (!cityRows || cityRows.length === 0) continue;
-    for (const city of cityRows as Array<{ code: string }>) {
+    cityMatches += cityRows.length;
+    for (const city of cityRows as Array<{ code: string; name: string }>) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error, count } = await (admin as any)
         .from("ph_barangays")
@@ -293,7 +339,9 @@ async function main() {
       if (!error && typeof count === "number") postalUpdated += count;
     }
   }
-  console.log(`  updated postal_code on ${postalUpdated} barangays`);
+  console.log(
+    `  matched ${cityMatches} cities/sub-municipalities, updated postal on ${postalUpdated} barangays`,
+  );
 
   console.log("\nDone. Counts:");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
