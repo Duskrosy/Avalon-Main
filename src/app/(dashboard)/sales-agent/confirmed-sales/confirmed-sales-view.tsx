@@ -164,7 +164,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         </button>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
         {canManage && (
           <select
             value={scope}
@@ -214,6 +214,22 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
             </button>
           )}
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className={`px-2 py-1 border rounded text-xs ${
+            statusFilter
+              ? "border-blue-300 bg-blue-50 text-blue-900"
+              : "border-gray-200 text-gray-700"
+          }`}
+          aria-label="Filter by status"
+        >
+          {STATUS_CHIPS.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.value ? `Status: ${c.label}` : "All statuses"}
+            </option>
+          ))}
+        </select>
         <button
           type="button"
           onClick={() => void fetchOrders()}
@@ -222,22 +238,6 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
         </button>
-      </div>
-      <div className="flex flex-wrap items-center gap-1 mb-4 text-xs">
-        {STATUS_CHIPS.map((c) => (
-          <button
-            key={c.value}
-            type="button"
-            onClick={() => setStatusFilter(c.value)}
-            className={`px-2 py-1 rounded ${
-              statusFilter === c.value
-                ? "bg-blue-600 text-white"
-                : "border border-gray-200 hover:bg-gray-50 text-gray-700"
-            }`}
-          >
-            {c.label}
-          </button>
-        ))}
       </div>
 
       <div className="border border-gray-200 rounded-md overflow-hidden">
