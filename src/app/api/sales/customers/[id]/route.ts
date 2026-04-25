@@ -95,6 +95,26 @@ export async function PATCH(
       "phone" in update;
     if (addressTouched || profileTouched) {
       try {
+        // Resolve barangay name so address1 can read
+        // "<street> Barangay <name>" on the Shopify side.
+        let barangayName: string | null = null;
+        if (addressTouched && row.barangay_code) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: bgy } = await (admin as any)
+            .from("ph_barangays")
+            .select("name")
+            .eq("code", row.barangay_code)
+            .maybeSingle();
+          barangayName = (bgy as { name?: string } | null)?.name ?? null;
+        }
+        const composedAddress1 =
+          row.address_line_1 && barangayName
+            ? `${row.address_line_1.trim()} Barangay ${barangayName.trim()}`
+            : row.address_line_1
+              ? row.address_line_1
+              : barangayName
+                ? `Barangay ${barangayName}`
+                : null;
         await updateShopifyCustomer(row.shopify_customer_id, {
           first_name: row.first_name,
           last_name: row.last_name,
@@ -107,7 +127,7 @@ export async function PATCH(
           addresses: addressTouched
             ? [
                 {
-                  address1: row.address_line_1 ?? null,
+                  address1: composedAddress1,
                   address2: row.address_line_2 ?? null,
                   city: row.city_text ?? null,
                   zip: row.postal_code ?? null,

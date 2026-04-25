@@ -95,6 +95,11 @@ type CustomerRow = {
   city_text: string | null;
   region_text: string | null;
   postal_code: string | null;
+  barangay_code: string | null;
+  /** Resolved barangay name from ph_barangays. Appended to Shopify's
+   * address1 as "<street> Barangay <name>" so couriers see it on the
+   * waybill — Avalon keeps the structured fields separate. */
+  barangay_text?: string | null;
 };
 
 /**
@@ -179,12 +184,25 @@ function buildShopifyOrderInput(
     customer.address_line_1 ||
     customer.city_text ||
     customer.region_text ||
-    customer.postal_code
+    customer.postal_code ||
+    customer.barangay_text
   ) {
+    // Compose address1 with the barangay appended ("Lot 3, Jose St
+     // Barangay Talon Uno") so couriers see it inline on the waybill.
+    const street = (customer.address_line_1 ?? "").trim();
+    const barangay = (customer.barangay_text ?? "").trim();
+    const composedAddress1 =
+      street && barangay
+        ? `${street} Barangay ${barangay}`
+        : street
+          ? street
+          : barangay
+            ? `Barangay ${barangay}`
+            : undefined;
     input.shipping_address = {
       first_name: customer.first_name,
       last_name: customer.last_name,
-      address1: customer.address_line_1 ?? undefined,
+      address1: composedAddress1,
       address2: customer.address_line_2 ?? undefined,
       city: customer.city_text ?? undefined,
       // province intentionally omitted — Shopify validates it against
@@ -298,7 +316,7 @@ export async function runConfirmFlow(
     .from("customers")
     .select(
       "id, shopify_customer_id, first_name, last_name, email, phone, " +
-        "address_line_1, address_line_2, city_text, region_text, postal_code",
+        "address_line_1, address_line_2, city_text, region_text, postal_code, barangay_code",
     )
     .eq("id", order.customer_id)
     .maybeSingle();
@@ -311,6 +329,20 @@ export async function runConfirmFlow(
       avalonOrderNumber: order.avalon_order_number,
       attemptNumber: null,
     };
+  }
+
+  // Resolve barangay name so the Shopify shipping_address line reads
+  // "<street> Barangay <name>". Best-effort: a missing/unseeded code
+  // just leaves the line as the street alone.
+  if (customer.barangay_code) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: bgy } = await (supabase as any)
+      .from("ph_barangays")
+      .select("name")
+      .eq("code", customer.barangay_code)
+      .maybeSingle();
+    customer.barangay_text =
+      (bgy as { name?: string } | null)?.name ?? null;
   }
 
   // 2. Idempotency guard for retry path.

@@ -35,6 +35,10 @@ function buildShopifyAddresses(input: {
   city_text?: string | null;
   region_text?: string | null;
   postal_code?: string | null;
+  /** Resolved barangay name; appended to address1 when present so the
+   * Shopify-side line reads "<street> Barangay <name>". Avalon keeps
+   * the structured fields separate; couriers want the barangay inline. */
+  barangay_name?: string | null;
 }): Array<{
   address1?: string | null;
   address2?: string | null;
@@ -46,17 +50,58 @@ function buildShopifyAddresses(input: {
     input.address_line_1 ||
     input.address_line_2 ||
     input.city_text ||
-    input.postal_code;
+    input.postal_code ||
+    input.barangay_name;
   if (!hasAny) return undefined;
   return [
     {
-      address1: input.address_line_1 ?? null,
+      address1: composeAddressLine(
+        input.address_line_1,
+        input.barangay_name,
+      ),
       address2: input.address_line_2 ?? null,
       city: input.city_text ?? null,
       zip: input.postal_code ?? null,
       country: "Philippines",
     },
   ];
+}
+
+/**
+ * Compose Shopify's address1 by appending "Barangay <name>" to the
+ * street line. "Lot 3 Block 39, Jose St" + "Talon Uno" →
+ * "Lot 3 Block 39, Jose St Barangay Talon Uno". Either side may be
+ * empty/null — we just return whatever's present.
+ */
+function composeAddressLine(
+  street: string | null | undefined,
+  barangayName: string | null | undefined,
+): string | null {
+  const s = (street ?? "").trim();
+  const b = (barangayName ?? "").trim();
+  if (s && b) return `${s} Barangay ${b}`;
+  if (s) return s;
+  if (b) return `Barangay ${b}`;
+  return null;
+}
+
+/**
+ * Look up a barangay's name by its PSGC code. Returns null when the
+ * code is missing or the row doesn't exist (e.g. unseeded environment).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolveBarangayName(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  code: string | null | undefined,
+): Promise<string | null> {
+  if (!code) return null;
+  const { data } = await admin
+    .from("ph_barangays")
+    .select("name")
+    .eq("code", code)
+    .maybeSingle();
+  return (data as { name?: string } | null)?.name ?? null;
 }
 
 // ─── GET /api/sales/customers?search=... ─────────────────────────────────────
@@ -311,12 +356,19 @@ export async function POST(req: NextRequest) {
       shopifyCustomerId = String(existing.id);
     } else {
       try {
+        const barangayName = await resolveBarangayName(
+          admin,
+          body.barangay_code,
+        );
         const created = await createShopifyCustomer({
           first_name: body.first_name,
           last_name: body.last_name,
           email: body.email,
           phone: body.phone,
-          addresses: buildShopifyAddresses(body),
+          addresses: buildShopifyAddresses({
+            ...body,
+            barangay_name: barangayName,
+          }),
         });
         shopifyCustomerId = String(created.id);
       } catch (err) {
