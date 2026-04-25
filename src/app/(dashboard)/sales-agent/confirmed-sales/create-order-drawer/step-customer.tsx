@@ -23,7 +23,51 @@ export function StepCustomer({ selected, onSelect }: Props) {
     city_text: "",
     region_text: "",
     postal_code: "",
+    region_code: "",
+    city_code: "",
+    barangay_code: "",
   });
+  type PhItem = { code: string; name: string; short_code?: string; postal_code?: string | null };
+  const [regions, setRegions] = useState<PhItem[]>([]);
+  const [cities, setCities] = useState<PhItem[]>([]);
+  const [barangays, setBarangays] = useState<PhItem[]>([]);
+  const [phLoading, setPhLoading] = useState({ regions: false, cities: false, barangays: false });
+
+  // Fetch regions on first render of the create form.
+  useEffect(() => {
+    if (!showCreate || regions.length > 0) return;
+    setPhLoading((p) => ({ ...p, regions: true }));
+    fetch("/api/sales/ph-address?level=region")
+      .then((r) => r.json())
+      .then((j) => setRegions(j.items ?? []))
+      .finally(() => setPhLoading((p) => ({ ...p, regions: false })));
+  }, [showCreate, regions.length]);
+
+  // Fetch cities when region changes.
+  useEffect(() => {
+    if (!form.region_code) {
+      setCities([]);
+      return;
+    }
+    setPhLoading((p) => ({ ...p, cities: true }));
+    fetch(`/api/sales/ph-address?level=city&parent=${form.region_code}`)
+      .then((r) => r.json())
+      .then((j) => setCities(j.items ?? []))
+      .finally(() => setPhLoading((p) => ({ ...p, cities: false })));
+  }, [form.region_code]);
+
+  // Fetch barangays when city changes.
+  useEffect(() => {
+    if (!form.city_code) {
+      setBarangays([]);
+      return;
+    }
+    setPhLoading((p) => ({ ...p, barangays: true }));
+    fetch(`/api/sales/ph-address?level=barangay&parent=${form.city_code}`)
+      .then((r) => r.json())
+      .then((j) => setBarangays(j.items ?? []))
+      .finally(() => setPhLoading((p) => ({ ...p, barangays: false })));
+  }, [form.city_code]);
   const [createError, setCreateError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -71,6 +115,9 @@ export function StepCustomer({ selected, onSelect }: Props) {
         city_text: form.city_text || null,
         region_text: form.region_text || null,
         postal_code: form.postal_code || null,
+        region_code: form.region_code || null,
+        city_code: form.city_code || null,
+        barangay_code: form.barangay_code || null,
       }),
     });
     const json = await res.json();
@@ -203,25 +250,87 @@ export function StepCustomer({ selected, onSelect }: Props) {
             onChange={(e) => setForm({ ...form, address_line_1: e.target.value })}
           />
           <div className="grid grid-cols-3 gap-2">
-            <input
-              placeholder="Region"
+            <select
               className="input"
-              value={form.region_text}
-              onChange={(e) => setForm({ ...form, region_text: e.target.value })}
-            />
-            <input
-              placeholder="City"
+              value={form.region_code}
+              onChange={(e) => {
+                const code = e.target.value;
+                const r = regions.find((x) => x.code === code);
+                setForm((s) => ({
+                  ...s,
+                  region_code: code,
+                  region_text: r?.name ?? "",
+                  // Reset city + barangay when region changes
+                  city_code: "",
+                  city_text: "",
+                  barangay_code: "",
+                  postal_code: "",
+                }));
+              }}
+            >
+              <option value="">Region…</option>
+              {phLoading.regions && <option disabled>Loading…</option>}
+              {regions.map((r) => (
+                <option key={r.code} value={r.code}>
+                  {r.short_code ? `${r.short_code} · ${r.name}` : r.name}
+                </option>
+              ))}
+            </select>
+            <select
               className="input"
-              value={form.city_text}
-              onChange={(e) => setForm({ ...form, city_text: e.target.value })}
-            />
-            <input
-              placeholder="Postal"
+              value={form.city_code}
+              onChange={(e) => {
+                const code = e.target.value;
+                const c = cities.find((x) => x.code === code);
+                setForm((s) => ({
+                  ...s,
+                  city_code: code,
+                  city_text: c?.name ?? "",
+                  barangay_code: "",
+                  postal_code: "",
+                }));
+              }}
+              disabled={!form.region_code}
+            >
+              <option value="">{form.region_code ? "City / Municipality…" : "Pick region first"}</option>
+              {phLoading.cities && <option disabled>Loading…</option>}
+              {cities.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <select
               className="input"
-              value={form.postal_code}
-              onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
-            />
+              value={form.barangay_code}
+              onChange={(e) => {
+                const code = e.target.value;
+                const b = barangays.find((x) => x.code === code);
+                setForm((s) => ({
+                  ...s,
+                  barangay_code: code,
+                  // Auto-fill postal code when barangay has one. Agent can still
+                  // override below if PSGC's postal data is missing/wrong.
+                  postal_code: b?.postal_code ?? s.postal_code,
+                }));
+              }}
+              disabled={!form.city_code}
+            >
+              <option value="">{form.city_code ? "Barangay…" : "Pick city first"}</option>
+              {phLoading.barangays && <option disabled>Loading…</option>}
+              {barangays.map((b) => (
+                <option key={b.code} value={b.code}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
           </div>
+          <input
+            placeholder="Postal code (auto-filled when barangay is picked)"
+            className="input w-full"
+            value={form.postal_code}
+            onChange={(e) => setForm({ ...form, postal_code: e.target.value })}
+          />
           {createError && <div className="text-xs text-rose-600">{createError}</div>}
           <div className="flex justify-end gap-2 pt-1">
             <button
