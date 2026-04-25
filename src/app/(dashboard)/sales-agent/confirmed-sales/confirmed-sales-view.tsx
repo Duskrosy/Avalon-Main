@@ -8,6 +8,7 @@ import { SyncStatusBadge } from "./shared/sync-status-badge";
 import { OrderActionsMenu } from "./shared/order-actions-menu";
 import { RevertOrCancelDialog } from "./shared/revert-to-draft-dialog";
 import { SyncErrorModal } from "./shared/sync-error-modal";
+import { CompleteOrderModal } from "./shared/complete-order-modal";
 
 type Order = {
   id: string;
@@ -24,6 +25,12 @@ type Order = {
   person_in_charge_label: string | null;
   route_type: string;
   completion_status: string;
+  // Completion fields (filled when an order is marked complete; null otherwise).
+  net_value_amount?: number | null;
+  is_abandoned_cart?: boolean | null;
+  ad_campaign_source?: string | null;
+  alex_ai_assist?: boolean | null;
+  delivery_status?: string | null;
   created_at: string;
   customer: {
     id: string;
@@ -72,6 +79,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [syncErrorOrder, setSyncErrorOrder] = useState<Order | null>(null);
+  const [completingOrder, setCompletingOrder] = useState<Order | null>(null);
   const [actionDialog, setActionDialog] = useState<{
     order: Order;
     mode: "revert" | "cancel";
@@ -306,14 +314,21 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                 <td className="px-3 py-2 text-xs">{o.person_in_charge_label ?? "—"}</td>
                 <td className="px-3 py-2">
                   <SyncStatusBadge status={o.status} syncStatus={o.sync_status} />
-                  {o.completion_status === "incomplete" && o.status !== "draft" && (
-                    <span
-                      className="ml-1 inline-flex items-center text-amber-600"
-                      title="Some attribution fields are missing"
-                    >
-                      <AlertTriangle size={10} />
-                    </span>
-                  )}
+                  {o.completion_status === "incomplete" &&
+                    o.status === "confirmed" &&
+                    o.sync_status === "synced" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompletingOrder(o);
+                        }}
+                        className="ml-1 inline-flex items-center text-amber-600 hover:text-amber-800"
+                        title="Mark complete — capture net value + delivery outcome"
+                      >
+                        <AlertTriangle size={10} />
+                      </button>
+                    )}
                 </td>
                 <td className="px-3 py-2 text-xs text-gray-500">
                   {format(parseISO(o.created_at), "MMM d, HH:mm")}
@@ -328,6 +343,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                     onRetrySync={() => void onRetrySync(o.id)}
                     onRevert={() => setActionDialog({ order: o, mode: "revert" })}
                     onCancel={() => setActionDialog({ order: o, mode: "cancel" })}
+                    onComplete={() => setCompletingOrder(o)}
                   />
                 </td>
               </tr>
@@ -355,6 +371,13 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         order={syncErrorOrder}
         onClose={() => setSyncErrorOrder(null)}
         onRetried={() => void fetchOrders()}
+      />
+
+      <CompleteOrderModal
+        open={!!completingOrder}
+        order={completingOrder}
+        onClose={() => setCompletingOrder(null)}
+        onCompleted={() => void fetchOrders()}
       />
 
       {actionDialog && (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, Undo2, X, RefreshCw } from "lucide-react";
+import { CheckCircle2, MoreHorizontal, Undo2, X, RefreshCw } from "lucide-react";
 
 type Props = {
   status: string;
@@ -9,9 +9,17 @@ type Props = {
   onRevert: () => void;
   onCancel: () => void;
   onRetrySync: () => void;
+  onComplete?: () => void;
 };
 
-export function OrderActionsMenu({ status, syncStatus, onRevert, onCancel, onRetrySync }: Props) {
+export function OrderActionsMenu({
+  status,
+  syncStatus,
+  onRevert,
+  onCancel,
+  onRetrySync,
+  onComplete,
+}: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -48,6 +56,18 @@ export function OrderActionsMenu({ status, syncStatus, onRevert, onCancel, onRet
               className="w-full text-left px-3 py-1.5 hover:bg-gray-50 flex items-center gap-2"
             >
               <RefreshCw size={13} /> Retry sync
+            </button>
+          )}
+          {onComplete && status === "confirmed" && syncStatus === "synced" && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onComplete();
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-emerald-50 text-emerald-700 flex items-center gap-2"
+            >
+              <CheckCircle2 size={13} /> Mark complete
             </button>
           )}
           {status !== "draft" && (
