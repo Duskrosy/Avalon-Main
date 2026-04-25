@@ -769,6 +769,16 @@ export function StepCustomer({ selected, onSelect }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {selected.id && (
+              <a
+                href={`/sales-agent/customers/${selected.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] px-2 py-1 rounded bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1"
+              >
+                View profile
+              </a>
+            )}
             {selected.shopify_customer_id && (
               <button
                 type="button"

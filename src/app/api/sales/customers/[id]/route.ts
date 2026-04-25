@@ -38,6 +38,142 @@ const patchSchema = z.object({
   shopify_region: z.string().nullable().optional(),
 });
 
+// ─── GET /api/sales/customers/[id] ──────────────────────────────────────────
+//
+// Customer detail used by the per-customer page. Returns the full
+// customers row plus lifetime stats and a sample of recent orders so
+// the page can render in one round-trip:
+//
+//   { customer, stats, recent_orders, top_items }
+//
+// stats: order_count, completed_count, total_gross, total_net,
+//        avg_order_value, last_order_at, first_order_at
+// top_items: most-bought product_names (up to 5) by total quantity
+
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> },
+) {
+  const { id } = await ctx.params;
+  const supabase = await createClient();
+  const currentUser = await getCurrentUser(supabase);
+  if (!currentUser) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const admin = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: customer } = await (admin as any)
+    .from("customers")
+    .select(
+      "id, shopify_customer_id, first_name, last_name, full_name, email, phone, full_address, total_orders_cached, address_line_1, address_line_2, city_text, region_text, postal_code, region_code, city_code, barangay_code, shopify_region, created_at, updated_at",
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!customer) {
+    return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+  }
+
+  // All non-deleted orders for stats. Pull only the fields needed; the
+  // recent-orders slice and top-items aggregate run client-side.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: orderRows } = await (admin as any)
+    .from("orders")
+    .select(
+      "id, avalon_order_number, status, sync_status, completion_status, final_total_amount, net_value_amount, delivery_status, created_at, completed_at, items:order_items(product_name, variant_name, size, color, quantity, image_url)",
+    )
+    .eq("customer_id", id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  const orders = (orderRows ?? []) as Array<{
+    id: string;
+    avalon_order_number: string | null;
+    status: string;
+    sync_status: string;
+    completion_status: string;
+    final_total_amount: number;
+    net_value_amount: number | null;
+    delivery_status: string | null;
+    created_at: string;
+    completed_at: string | null;
+    items: Array<{
+      product_name: string;
+      variant_name: string | null;
+      size: string | null;
+      color: string | null;
+      quantity: number;
+      image_url: string | null;
+    }>;
+  }>;
+
+  const completed = orders.filter(
+    (o) => o.status === "completed" || o.status === "confirmed",
+  );
+  const totalGross = orders
+    .filter((o) => o.status !== "cancelled")
+    .reduce((sum, o) => sum + (o.final_total_amount ?? 0), 0);
+  const totalNet = orders.reduce(
+    (sum, o) => sum + (o.net_value_amount ?? 0),
+    0,
+  );
+  const stats = {
+    order_count: orders.length,
+    completed_count: orders.filter((o) => o.status === "completed").length,
+    confirmed_count: orders.filter((o) => o.status === "confirmed").length,
+    cancelled_count: orders.filter((o) => o.status === "cancelled").length,
+    draft_count: orders.filter((o) => o.status === "draft").length,
+    total_gross: totalGross,
+    total_net: totalNet,
+    avg_order_value: completed.length > 0 ? totalGross / completed.length : 0,
+    first_order_at:
+      orders.length > 0 ? orders[orders.length - 1].created_at : null,
+    last_order_at: orders.length > 0 ? orders[0].created_at : null,
+  };
+
+  // Top items: aggregate by product_name, sum quantities, take top 5.
+  const itemMap = new Map<
+    string,
+    { product_name: string; quantity: number; image_url: string | null }
+  >();
+  for (const o of orders) {
+    if (o.status === "cancelled") continue;
+    for (const it of o.items ?? []) {
+      const existing = itemMap.get(it.product_name);
+      if (existing) {
+        existing.quantity += it.quantity;
+      } else {
+        itemMap.set(it.product_name, {
+          product_name: it.product_name,
+          quantity: it.quantity,
+          image_url: it.image_url ?? null,
+        });
+      }
+    }
+  }
+  const top_items = Array.from(itemMap.values())
+    .sort((a, b) => b.quantity - a.quantity)
+    .slice(0, 5);
+
+  // Recent orders: trim to a slim shape for the page.
+  const recent_orders = orders.slice(0, 20).map((o) => ({
+    id: o.id,
+    avalon_order_number: o.avalon_order_number,
+    status: o.status,
+    sync_status: o.sync_status,
+    completion_status: o.completion_status,
+    final_total_amount: o.final_total_amount,
+    net_value_amount: o.net_value_amount,
+    delivery_status: o.delivery_status,
+    created_at: o.created_at,
+    completed_at: o.completed_at,
+    item_count: (o.items ?? []).reduce((s, it) => s + it.quantity, 0),
+  }));
+
+  return NextResponse.json({ customer, stats, recent_orders, top_items });
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

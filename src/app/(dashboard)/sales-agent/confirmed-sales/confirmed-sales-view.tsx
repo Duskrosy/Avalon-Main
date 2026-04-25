@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import {
   Plus,
@@ -308,9 +309,20 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                     </span>
                   )}
                 </td>
-                <td className="px-3 py-2">
-                  <div>{o.customer?.full_name ?? "—"}</div>
-                  <div className="text-xs text-gray-500">{o.customer?.phone ?? ""}</div>
+                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                  {o.customer ? (
+                    <Link
+                      href={`/sales-agent/customers/${o.customer.id}`}
+                      className="hover:underline decoration-gray-300 underline-offset-2"
+                    >
+                      <div>{o.customer.full_name}</div>
+                      <div className="text-xs text-gray-500">
+                        {o.customer.phone ?? o.customer.email ?? ""}
+                      </div>
+                    </Link>
+                  ) : (
+                    <div>—</div>
+                  )}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">
                   ₱{o.final_total_amount.toFixed(2)}
