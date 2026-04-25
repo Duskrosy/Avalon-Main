@@ -4,6 +4,20 @@ import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateBody } from "@/lib/api/validate";
+import {
+  cancelShopifyOrder,
+  createShopifyOrderTransaction,
+  listShopifyOrderTransactions,
+} from "@/lib/shopify/client";
+
+// Delivery statuses that map to "the customer didn't pay" — these cancel
+// the Shopify order. "rescheduled" is in-flight, no Shopify action.
+const NEGATIVE_DELIVERY_STATUSES = new Set([
+  "abandoned",
+  "rejected",
+  "returned",
+  "lost",
+]);
 
 // ─── POST /api/sales/orders/[id]/complete ───────────────────────────────────
 //
@@ -53,7 +67,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: order } = await (admin as any)
     .from("orders")
-    .select("id, status, sync_status, created_by_user_id")
+    .select("id, status, sync_status, created_by_user_id, shopify_order_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -75,6 +89,72 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       },
       { status: 409 },
     );
+  }
+
+  // Push the financial outcome to Shopify before flipping local status —
+  // if the Shopify side errors we'd rather leave the order at status=
+  // 'confirmed' so the agent can retry, instead of having a "completed"
+  // local order that Shopify still thinks is COD-pending.
+  const shopifyOrderId = order.shopify_order_id;
+  let shopifySync: { ok: boolean; action: string; detail?: string } = {
+    ok: true,
+    action: "skip",
+  };
+  if (shopifyOrderId) {
+    try {
+      if (NEGATIVE_DELIVERY_STATUSES.has(body.delivery_status)) {
+        // Cancel on Shopify — covers abandoned / rejected / returned / lost.
+        // If Shopify already reports cancelled (idempotent retry), the
+        // 422 from /cancel.json mentions "already" — we treat that as ok.
+        try {
+          await cancelShopifyOrder(shopifyOrderId, "customer");
+          shopifySync = { ok: true, action: "cancelled" };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (/already|cancelled/i.test(msg)) {
+            shopifySync = { ok: true, action: "cancel-already" };
+          } else {
+            throw err;
+          }
+        }
+      } else if (body.net_value_amount > 0) {
+        // Mark paid — sale transaction. Idempotency guard: skip if a
+        // successful sale transaction already exists on this order.
+        const txns = await listShopifyOrderTransactions(shopifyOrderId);
+        const alreadyPaid = txns.some(
+          (t) => t.kind === "sale" && t.status === "success",
+        );
+        if (alreadyPaid) {
+          shopifySync = { ok: true, action: "paid-already" };
+        } else {
+          await createShopifyOrderTransaction(shopifyOrderId, {
+            kind: "sale",
+            status: "success",
+            amount: body.net_value_amount.toFixed(2),
+            gateway: "cash",
+            authorization: `avalon-complete-${id}`,
+          });
+          shopifySync = { ok: true, action: "paid" };
+        }
+      } else {
+        // net_value 0 with a non-cancelled delivery status (e.g.
+        // "rescheduled"). Don't touch Shopify — order is still in flight.
+        shopifySync = { ok: true, action: "noop" };
+      }
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: "Shopify completion sync failed",
+          detail: err instanceof Error ? err.message : String(err),
+        },
+        { status: 502 },
+      );
+    }
+  } else {
+    // status='confirmed' + sync_status='synced' but no shopify_order_id is
+    // unexpected — probably a stale row. Fall through and let local
+    // completion record what the agent saw; the reconciler can repair.
+    shopifySync = { ok: false, action: "no-shopify-id" };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,5 +179,5 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ order: updated });
+  return NextResponse.json({ order: updated, shopify_sync: shopifySync });
 }

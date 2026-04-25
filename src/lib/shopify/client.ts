@@ -631,6 +631,70 @@ export async function cancelShopifyOrder(
   return json.order;
 }
 
+// ─── Order transactions (for marking COD orders paid) ───────────────────────
+
+export type ShopifyOrderTransaction = {
+  id: number;
+  order_id: number;
+  amount: string;
+  kind: string; // "sale" | "capture" | "authorization" | "void" | "refund"
+  status: string; // "success" | "pending" | "failure" | "error"
+  gateway: string | null;
+  created_at: string;
+  authorization?: string | null;
+};
+
+/**
+ * List the transactions on a Shopify order. Used as an idempotency guard
+ * before posting a sale transaction — if a successful sale already exists,
+ * we skip the post so retrying the complete-flow doesn't double-charge.
+ */
+export async function listShopifyOrderTransactions(
+  shopifyOrderId: string | number,
+): Promise<ShopifyOrderTransaction[]> {
+  const json = await shopifyGet<{ transactions: ShopifyOrderTransaction[] }>(
+    `/orders/${shopifyOrderId}/transactions.json`,
+  );
+  return json.transactions ?? [];
+}
+
+/**
+ * Post a sale transaction to flip a COD order's financial_status from
+ * pending → paid (or partially_paid for partial collection). Avalon
+ * uses gateway="cash" since collection happens at delivery and Shopify
+ * is being told after the fact.
+ *
+ * Idempotency: caller is responsible for not double-posting. The
+ * complete-order route guards against re-posts via
+ * listShopifyOrderTransactions().
+ */
+export async function createShopifyOrderTransaction(
+  shopifyOrderId: string | number,
+  input: {
+    kind: "sale" | "capture" | "void" | "refund";
+    amount: string;
+    gateway?: string;
+    status?: "success" | "pending";
+    /** Free-text dedup hint; we use "avalon-complete-<orderId>" so the
+     * post is identifiable in Shopify's transaction list. */
+    authorization?: string;
+  },
+): Promise<ShopifyOrderTransaction> {
+  const json = await shopifyPost<{ transaction: ShopifyOrderTransaction }>(
+    `/orders/${shopifyOrderId}/transactions.json`,
+    {
+      transaction: {
+        kind: input.kind,
+        amount: input.amount,
+        gateway: input.gateway ?? "cash",
+        status: input.status ?? "success",
+        authorization: input.authorization,
+      },
+    },
+  );
+  return json.transaction;
+}
+
 // ─── Discount / voucher list ─────────────────────────────────────────────────
 
 export type ShopifyDiscountCode = {
