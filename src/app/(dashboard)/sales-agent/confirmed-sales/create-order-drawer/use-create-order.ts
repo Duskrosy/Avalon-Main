@@ -221,6 +221,99 @@ export function useCreateOrder() {
 
   const reset = useCallback(() => setState(INITIAL_STATE), []);
 
+  // Hydrate the drawer from an existing draft order (used when the agent
+  // clicks a draft row in the list to resume editing). Pulls the order +
+  // its items + customer from /api/sales/orders/[id], then maps each
+  // field onto the same shape the drawer renders for net-new orders.
+  const loadDraft = useCallback(
+    async (orderId: string): Promise<{ ok: boolean; error?: string }> => {
+      setSubmitting(true);
+      try {
+        const res = await fetch(`/api/sales/orders/${orderId}`);
+        if (!res.ok) {
+          const j = await res.json();
+          return { ok: false, error: j.error ?? "Failed to load draft" };
+        }
+        const { order } = await res.json();
+        const customer = order.customer
+          ? {
+              id: order.customer.id,
+              shopify_customer_id: order.customer.shopify_customer_id ?? null,
+              first_name: order.customer.first_name ?? "",
+              last_name: order.customer.last_name ?? "",
+              full_name:
+                order.customer.full_name ??
+                `${order.customer.first_name ?? ""} ${order.customer.last_name ?? ""}`.trim(),
+              email: order.customer.email ?? null,
+              phone: order.customer.phone ?? null,
+              full_address: order.customer.full_address ?? null,
+              total_orders_cached: order.customer.total_orders_cached ?? null,
+              address_line_1: order.customer.address_line_1 ?? null,
+              address_line_2: order.customer.address_line_2 ?? null,
+              city_text: order.customer.city_text ?? null,
+              region_text: order.customer.region_text ?? null,
+              postal_code: order.customer.postal_code ?? null,
+              region_code: order.customer.region_code ?? null,
+              city_code: order.customer.city_code ?? null,
+              barangay_code: order.customer.barangay_code ?? null,
+              shopify_region: order.customer.shopify_region ?? null,
+            }
+          : null;
+        const items: DrawerLineItem[] = (order.items ?? []).map(
+          (it: Record<string, unknown>) => ({
+            product_variant_id: (it.product_variant_id as string) ?? null,
+            shopify_product_id: (it.shopify_product_id as string) ?? null,
+            shopify_variant_id: (it.shopify_variant_id as string) ?? null,
+            product_name: (it.product_name as string) ?? "",
+            variant_name: (it.variant_name as string) ?? null,
+            image_url: (it.image_url as string) ?? null,
+            size: (it.size as string) ?? null,
+            color: (it.color as string) ?? null,
+            quantity: (it.quantity as number) ?? 1,
+            unit_price_amount: (it.unit_price_amount as number) ?? 0,
+            adjusted_unit_price_amount:
+              (it.adjusted_unit_price_amount as number | null) ?? null,
+            line_total_amount: (it.line_total_amount as number) ?? 0,
+          }),
+        );
+        const voucher: DrawerVoucher | null = order.voucher_code
+          ? {
+              code: order.voucher_code,
+              amount: order.voucher_discount_amount ?? 0,
+              type: "fixed_amount",
+            }
+          : null;
+        setState({
+          orderId: order.id,
+          step: 1,
+          customer,
+          items,
+          voucher,
+          manualDiscount: order.manual_discount_amount ?? 0,
+          shippingFee: order.shipping_fee_amount ?? 0,
+          handoff: {
+            mode_of_payment: order.mode_of_payment ?? null,
+            person_in_charge_type: order.person_in_charge_type ?? null,
+            person_in_charge_user_id: order.person_in_charge_user_id ?? null,
+            person_in_charge_label: order.person_in_charge_label ?? null,
+            notes: order.notes ?? null,
+          },
+          completion: {
+            net_value_amount: order.net_value_amount ?? null,
+            is_abandoned_cart: order.is_abandoned_cart ?? null,
+            ad_campaign_source: order.ad_campaign_source ?? null,
+            alex_ai_assist: order.alex_ai_assist ?? null,
+            delivery_status: order.delivery_status ?? null,
+          },
+        });
+        return { ok: true };
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [],
+  );
+
   return {
     state,
     submitting,
@@ -245,5 +338,6 @@ export function useCreateOrder() {
     saveDraft,
     confirm,
     reset,
+    loadDraft,
   };
 }

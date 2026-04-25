@@ -14,20 +14,39 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onConfirmed: (orderId: string) => void;
+  /** When set, the drawer hydrates from this draft order instead of starting
+   * blank. Picking up an existing draft from the order list. */
+  editingOrderId?: string | null;
 };
 
-export function CreateOrderDrawer({ open, onClose, onConfirmed }: Props) {
+export function CreateOrderDrawer({
+  open,
+  onClose,
+  onConfirmed,
+  editingOrderId,
+}: Props) {
   const drawer = useCreateOrder();
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) {
       drawer.reset();
       setError(null);
+      return;
     }
-    // intentional: only reset when open flips, not when drawer changes
+    if (editingOrderId) {
+      setLoading(true);
+      drawer
+        .loadDraft(editingOrderId)
+        .then((r) => {
+          if (!r.ok) setError(r.error ?? "Failed to load draft");
+        })
+        .finally(() => setLoading(false));
+    }
+    // intentional: only re-run when open flips or editingOrderId changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  }, [open, editingOrderId]);
 
   if (!open) return null;
 
@@ -84,9 +103,12 @@ export function CreateOrderDrawer({ open, onClose, onConfirmed }: Props) {
       <div className="w-full max-w-xl h-full bg-white shadow-2xl flex flex-col">
         <header className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
           <div>
-            <div className="text-base font-semibold">Create Order</div>
+            <div className="text-base font-semibold">
+              {editingOrderId ? "Resume Draft" : "Create Order"}
+            </div>
             <div className="text-xs text-gray-500">
               Step {drawer.state.step} of 4 · {STEP_LABELS[drawer.state.step - 1]}
+              {loading && " · Loading…"}
             </div>
           </div>
           <button

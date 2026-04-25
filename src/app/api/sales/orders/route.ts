@@ -20,6 +20,11 @@ export async function GET(req: NextRequest) {
   const customFrom = params.get("custom_from");
   const customTo = params.get("custom_to");
   const route = params.get("route"); // 'normal' | 'tnvs' | null
+  const q = (params.get("q") ?? "").trim();
+  // Combined-state filter: matches the visible badge in the UI. Mapped to
+  // status + sync_status server-side so the chip the agent clicks (Draft,
+  // Syncing, Synced, Failed, Cancelled, Completed) becomes one query.
+  const statusFilter = params.get("status"); // null | "draft" | "syncing" | "synced" | "failed" | "cancelled" | "completed"
   const limit = Math.min(parseInt(params.get("limit") ?? "100", 10) || 100, 500);
 
   // Range → date filter
@@ -82,6 +87,62 @@ export async function GET(req: NextRequest) {
   }
   if (route === "normal" || route === "tnvs") {
     query = query.eq("route_type", route);
+  }
+
+  // Status chip → status + sync_status filter. Matches the SyncStatusBadge
+  // labels exactly so what the agent clicks is what they see.
+  switch (statusFilter) {
+    case "draft":
+      query = query.eq("status", "draft");
+      break;
+    case "syncing":
+      query = query
+        .not("status", "in", "(cancelled,completed)")
+        .eq("sync_status", "syncing");
+      break;
+    case "synced":
+      query = query
+        .not("status", "in", "(cancelled,completed)")
+        .eq("sync_status", "synced");
+      break;
+    case "failed":
+      query = query
+        .not("status", "in", "(cancelled,completed)")
+        .eq("sync_status", "failed");
+      break;
+    case "cancelled":
+      query = query.eq("status", "cancelled");
+      break;
+    case "completed":
+      query = query.eq("status", "completed");
+      break;
+    default:
+      // No status filter — return everything in range.
+      break;
+  }
+
+  // Search by avalon order number, customer name, or customer phone.
+  // PostgREST .or() doesn't traverse foreign tables in one string, so we
+  // resolve matching customers first and OR their ids alongside the
+  // order-number ilike. Commas stripped defensively (.or() field separator).
+  if (q.length >= 2) {
+    const safe = q.replace(/,/g, " ");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: matchedCustomers } = await (admin as any)
+      .from("customers")
+      .select("id")
+      .or(`full_name.ilike.%${safe}%,phone.ilike.%${safe}%`)
+      .limit(200);
+    const matchedIds = ((matchedCustomers ?? []) as Array<{ id: string }>).map(
+      (c) => c.id,
+    );
+    const idsClause =
+      matchedIds.length > 0
+        ? `customer_id.in.(${matchedIds.join(",")})`
+        : null;
+    const orParts = [`avalon_order_number.ilike.%${safe}%`];
+    if (idsClause) orParts.push(idsClause);
+    query = query.or(orParts.join(","));
   }
 
   const { data, error } = await query;

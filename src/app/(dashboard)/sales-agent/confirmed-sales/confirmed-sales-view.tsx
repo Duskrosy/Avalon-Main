@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { format, parseISO } from "date-fns";
-import { Plus, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, AlertTriangle, RefreshCw, Search, X } from "lucide-react";
 import { CreateOrderDrawer } from "./create-order-drawer";
 import { SyncStatusBadge } from "./shared/sync-status-badge";
 import { OrderActionsMenu } from "./shared/order-actions-menu";
 import { RevertOrCancelDialog } from "./shared/revert-to-draft-dialog";
+import { SyncErrorModal } from "./shared/sync-error-modal";
 
 type Order = {
   id: string;
@@ -47,21 +48,52 @@ const RANGES = [
   { value: "30d", label: "30 Days" },
 ];
 
+const STATUS_CHIPS = [
+  { value: "", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "syncing", label: "Syncing" },
+  { value: "synced", label: "Synced" },
+  { value: "failed", label: "Failed" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+] as const;
+
 export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
   const [scope, setScope] = useState<"mine" | "all">("mine");
   const [range, setRange] = useState("today");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [query, setQuery] = useState("");
+  // Server-side query string the API sees; debounced from `query` so the
+  // agent typing a customer name doesn't fire 5 requests in 200ms.
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [syncErrorOrder, setSyncErrorOrder] = useState<Order | null>(null);
   const [actionDialog, setActionDialog] = useState<{
     order: Order;
     mode: "revert" | "cancel";
   } | null>(null);
 
+  // Debounce the search input by 250ms.
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedQuery(query.trim());
+    }, 250);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ scope, range });
+      if (statusFilter) params.set("status", statusFilter);
+      if (debouncedQuery.length >= 2) params.set("q", debouncedQuery);
       const res = await fetch(`/api/sales/orders?${params.toString()}`);
       if (res.ok) {
         const json = await res.json();
@@ -70,7 +102,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [scope, range]);
+  }, [scope, range, statusFilter, debouncedQuery]);
 
   useEffect(() => {
     void fetchOrders();
@@ -122,14 +154,17 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         </div>
         <button
           type="button"
-          onClick={() => setDrawerOpen(true)}
+          onClick={() => {
+            setEditingOrderId(null);
+            setDrawerOpen(true);
+          }}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
         >
           <Plus size={14} /> Create Order
         </button>
       </header>
 
-      <div className="flex flex-wrap items-center gap-2 mb-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2 mb-2 text-sm">
         {canManage && (
           <select
             value={scope}
@@ -156,6 +191,29 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
             </button>
           ))}
         </div>
+        <div className="relative ml-2 flex-1 min-w-[180px] max-w-[320px]">
+          <Search
+            size={12}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search order # / customer / phone"
+            className="w-full pl-7 pr-7 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+              aria-label="Clear search"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
         <button
           type="button"
           onClick={() => void fetchOrders()}
@@ -164,6 +222,22 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
         </button>
+      </div>
+      <div className="flex flex-wrap items-center gap-1 mb-4 text-xs">
+        {STATUS_CHIPS.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            onClick={() => setStatusFilter(c.value)}
+            className={`px-2 py-1 rounded ${
+              statusFilter === c.value
+                ? "bg-blue-600 text-white"
+                : "border border-gray-200 hover:bg-gray-50 text-gray-700"
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       <div className="border border-gray-200 rounded-md overflow-hidden">
@@ -188,8 +262,31 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                 </td>
               </tr>
             )}
-            {orders.map((o) => (
-              <tr key={o.id} className="hover:bg-gray-50">
+            {orders.map((o) => {
+              const isDraft = o.status === "draft";
+              const isFailed = o.sync_status === "failed";
+              const clickable = isDraft || isFailed;
+              const onRowClick = () => {
+                if (isDraft) {
+                  setEditingOrderId(o.id);
+                  setDrawerOpen(true);
+                } else if (isFailed) {
+                  setSyncErrorOrder(o);
+                }
+              };
+              return (
+              <tr
+                key={o.id}
+                onClick={clickable ? onRowClick : undefined}
+                className={`hover:bg-gray-50 ${clickable ? "cursor-pointer" : ""}`}
+                title={
+                  isDraft
+                    ? "Click to resume editing"
+                    : isFailed
+                      ? "Click to inspect sync failure"
+                      : undefined
+                }
+              >
                 <td className="px-3 py-2 font-mono text-xs">
                   {o.avalon_order_number ?? <span className="text-gray-400">— draft —</span>}
                   {o.route_type === "tnvs" && (
@@ -221,7 +318,10 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                 <td className="px-3 py-2 text-xs text-gray-500">
                   {format(parseISO(o.created_at), "MMM d, HH:mm")}
                 </td>
-                <td className="px-3 py-2">
+                <td
+                  className="px-3 py-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <OrderActionsMenu
                     status={o.status}
                     syncStatus={o.sync_status}
@@ -231,15 +331,30 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                   />
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       <CreateOrderDrawer
         open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        onConfirmed={() => void fetchOrders()}
+        editingOrderId={editingOrderId}
+        onClose={() => {
+          setDrawerOpen(false);
+          setEditingOrderId(null);
+        }}
+        onConfirmed={() => {
+          setEditingOrderId(null);
+          void fetchOrders();
+        }}
+      />
+
+      <SyncErrorModal
+        open={!!syncErrorOrder}
+        order={syncErrorOrder}
+        onClose={() => setSyncErrorOrder(null)}
+        onRetried={() => void fetchOrders()}
       />
 
       {actionDialog && (
