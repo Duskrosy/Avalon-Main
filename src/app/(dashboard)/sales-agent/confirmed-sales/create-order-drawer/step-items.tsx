@@ -6,12 +6,19 @@ import type { DrawerLineItem } from "./types";
 
 type VariantSearchResult = {
   id: string;
-  variant_sku: string;
-  product_name: string | null;
-  product_id: string | null;
-  size: string;
+  product_variant_id: string | null;
+  shopify_product_id: string | null;
+  shopify_variant_id: string | null;
+  variant_sku: string | null;
+  product_name: string;
+  variant_title: string;
+  size: string | null;
   color: string | null;
-  available_stock: number;
+  price: number;
+  image_url: string | null;
+  /** null when Inventory v1 doesn't track this variant; UI shows "not tracked" */
+  available_stock: number | null;
+  stock_tracked: boolean;
 };
 
 type Props = {
@@ -55,25 +62,27 @@ export function StepItems({ items, onAdd, onRemove, onUpdateQty, onSplitBundle }
   }, [query]);
 
   const addVariant = (v: VariantSearchResult) => {
-    const priceStr = priceInput[v.id] ?? "";
-    const price = parseFloat(priceStr);
-    if (isNaN(price) || price <= 0) {
-      alert("Enter a unit price first");
+    // Default to Shopify's price; agent can override via the price input.
+    const overrideStr = priceInput[v.id] ?? "";
+    const override = parseFloat(overrideStr);
+    const price = !isNaN(override) && override > 0 ? override : v.price;
+    if (price <= 0) {
+      alert("Variant has no price; enter one in the input box");
       return;
     }
     onAdd({
-      product_variant_id: v.id,
-      shopify_product_id: null,
-      shopify_variant_id: null,
-      product_name: v.product_name ?? v.variant_sku,
-      variant_name: v.variant_sku,
+      product_variant_id: v.product_variant_id,
+      shopify_product_id: v.shopify_product_id,
+      shopify_variant_id: v.shopify_variant_id,
+      product_name: v.product_name,
+      variant_name: v.variant_title || v.variant_sku || null,
       size: v.size,
       color: v.color,
       quantity: 1,
       unit_price_amount: price,
       adjusted_unit_price_amount: null,
       line_total_amount: price,
-      available_stock: v.available_stock,
+      available_stock: v.available_stock ?? undefined,
     });
     setPriceInput({ ...priceInput, [v.id]: "" });
     setQuery("");
@@ -97,48 +106,72 @@ export function StepItems({ items, onAdd, onRemove, onUpdateQty, onSplitBundle }
 
       {results.length > 0 && (
         <ul className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-60 overflow-auto">
-          {results.map((v) => (
-            <li key={v.id} className="p-2 flex items-center gap-2 text-sm">
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{v.product_name ?? v.variant_sku}</div>
-                <div className="text-xs text-gray-500">
-                  {v.variant_sku} · Size {v.size} {v.color ? `· ${v.color}` : ""}
+          {results.map((v) => {
+            const stockOut = v.stock_tracked && (v.available_stock ?? 0) <= 0;
+            return (
+              <li key={v.id} className="p-2 flex items-center gap-2 text-sm">
+                {v.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={v.image_url}
+                    alt=""
+                    width={36}
+                    height={36}
+                    className="rounded object-cover flex-shrink-0"
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{v.product_name}</div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {v.variant_title || v.variant_sku || ""}
+                    {v.size ? ` · ${v.size}` : ""}
+                    {v.color ? ` · ${v.color}` : ""}
+                  </div>
+                  <div className="text-xs flex items-center gap-2">
+                    <span className="tabular-nums">₱{v.price.toFixed(2)}</span>
+                    {v.stock_tracked ? (
+                      <span
+                        className={
+                          stockOut
+                            ? "text-rose-600"
+                            : (v.available_stock ?? 0) < 5
+                              ? "text-amber-600"
+                              : "text-emerald-600"
+                        }
+                      >
+                        Stock: {v.available_stock}
+                      </span>
+                    ) : (
+                      <span
+                        className="text-gray-400 italic"
+                        title="Inventory v1 does not track this variant. Stock count is not enforced at confirm time."
+                      >
+                        Stock: not tracked
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-xs">
-                  Stock:{" "}
-                  <span
-                    className={
-                      v.available_stock <= 0
-                        ? "text-rose-600"
-                        : v.available_stock < 5
-                          ? "text-amber-600"
-                          : "text-emerald-600"
-                    }
-                  >
-                    {v.available_stock}
-                  </span>
-                </div>
-              </div>
-              <input
-                type="number"
-                placeholder="Price"
-                step="0.01"
-                value={priceInput[v.id] ?? ""}
-                onChange={(e) =>
-                  setPriceInput({ ...priceInput, [v.id]: e.target.value })
-                }
-                className="w-20 px-2 py-1 text-xs border border-gray-200 rounded"
-              />
-              <button
-                type="button"
-                onClick={() => addVariant(v)}
-                disabled={v.available_stock <= 0}
-                className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Add
-              </button>
-            </li>
-          ))}
+                <input
+                  type="number"
+                  placeholder="Override ₱"
+                  step="0.01"
+                  value={priceInput[v.id] ?? ""}
+                  onChange={(e) =>
+                    setPriceInput({ ...priceInput, [v.id]: e.target.value })
+                  }
+                  className="w-20 px-2 py-1 text-xs border border-gray-200 rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => addVariant(v)}
+                  disabled={stockOut}
+                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
 

@@ -61,6 +61,10 @@ const postSchema = z.object({
   region_text: z.string().optional().nullable(),
   postal_code: z.string().optional().nullable(),
   full_address: z.string().optional().nullable(),
+  // PSGC structured codes (Phase 1.5+). Optional so legacy clients still work.
+  region_code: z.string().optional().nullable(),
+  city_code: z.string().optional().nullable(),
+  barangay_code: z.string().optional().nullable(),
   /**
    * If true, also create the customer in Shopify immediately. Default false
    * (defer to order-confirm time).
@@ -153,6 +157,9 @@ export async function POST(req: NextRequest) {
       region_text: body.region_text ?? null,
       postal_code: body.postal_code ?? null,
       full_address: body.full_address ?? null,
+      region_code: body.region_code ?? null,
+      city_code: body.city_code ?? null,
+      barangay_code: body.barangay_code ?? null,
     })
     .select("*")
     .single();
