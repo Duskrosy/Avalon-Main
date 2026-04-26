@@ -1,9 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
+import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
-import { validateBody } from "@/lib/api/validate";
-import { confirmedSalePostSchema, confirmedSalePatchSchema } from "@/lib/api/schemas";
 
 // GET /api/sales/confirmed-sales?month=YYYY-MM&agent_id=...
 export async function GET(req: NextRequest) {
@@ -33,67 +30,24 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(data ?? []);
 }
 
-// POST /api/sales/confirmed-sales
-export async function POST(req: NextRequest) {
-  const supabase = await createClient();
-  const currentUser = await getCurrentUser(supabase);
-  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// sales_confirmed_sales is now a read-only archive (migration 00093 renamed
+// the table to sales_confirmed_sales_legacy and exposed it as a view at the
+// old name). Writes go through /api/sales/orders. The handlers below return
+// 410 Gone so any stragglers fail loudly instead of silently no-op'ing.
 
-  const raw = await req.json();
-  const { data: body, error: validationError } = validateBody(confirmedSalePostSchema, raw);
-  if (validationError) return validationError;
+const GONE_BODY = {
+  error: "sales_confirmed_sales is archived. Use /api/sales/orders instead.",
+  archived_in_migration: "00093_sales_confirmed_sales_legacy",
+} as const;
 
-  const { data, error } = await supabase
-    .from("sales_confirmed_sales")
-    .insert({
-      ...body,
-      created_by: currentUser.id,
-    })
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data, { status: 201 });
+export function POST() {
+  return NextResponse.json(GONE_BODY, { status: 410 });
 }
 
-// PATCH /api/sales/confirmed-sales?id=...
-export async function PATCH(req: NextRequest) {
-  const supabase = await createClient();
-  const currentUser = await getCurrentUser(supabase);
-  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const id = new URL(req.url).searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-
-  const raw = await req.json();
-  const { data: body, error: validationError } = validateBody(confirmedSalePatchSchema, raw);
-  if (validationError) return validationError;
-
-  const { data, error } = await supabase
-    .from("sales_confirmed_sales")
-    .update(body)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+export function PATCH() {
+  return NextResponse.json(GONE_BODY, { status: 410 });
 }
 
-// DELETE /api/sales/confirmed-sales?id=...
-export async function DELETE(req: NextRequest) {
-  const supabase = await createClient();
-  const currentUser = await getCurrentUser(supabase);
-  if (!currentUser || !isManagerOrAbove(currentUser)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
-  const id = new URL(req.url).searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-
-  const admin = createAdminClient();
-  const { error } = await admin.from("sales_confirmed_sales").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ ok: true });
+export function DELETE() {
+  return NextResponse.json(GONE_BODY, { status: 410 });
 }
