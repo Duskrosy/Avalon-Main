@@ -150,6 +150,11 @@ export const NAV_GROUPS: NavGroup[] = [
       { name: "Distressed", slug: "ops-distressed", route: "/operations/distressed" },
       { name: "Courier",    slug: "ops-courier",    route: "/operations/courier" },
       { name: "Remittance", slug: "ops-remittance", route: "/operations/remittance" },
+      // Sales handoff queues — Q1=C: PIC label drives Inventory/Fulfillment views;
+      // CS gets the structured order_adjustments queue.
+      { name: "Order Adjustments",     slug: "ops-order-adjustments",    route: "/operations/order-adjustments",    departments: ["customer-service"] },
+      { name: "Sales → Inventory",     slug: "ops-inventory-handoffs",   route: "/operations/inventory-handoffs",   departments: ["inventory"] },
+      { name: "Sales → Fulfillment",   slug: "ops-fulfillment-handoffs", route: "/operations/fulfillment-handoffs", departments: ["fulfillment"] },
     ],
   },
   {

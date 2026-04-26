@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { CheckCircle2, MoreHorizontal, Undo2, X, RefreshCw } from "lucide-react";
+import {
+  AlertTriangle,
+  Calculator,
+  CheckCircle2,
+  MoreHorizontal,
+  Undo2,
+  X,
+  RefreshCw,
+} from "lucide-react";
 
 type Props = {
   status: string;
@@ -10,6 +18,8 @@ type Props = {
   onCancel: () => void;
   onRetrySync: () => void;
   onComplete?: () => void;
+  onSplitBundle?: () => void;
+  onOpenAdjustment?: () => void;
 };
 
 export function OrderActionsMenu({
@@ -19,6 +29,8 @@ export function OrderActionsMenu({
   onCancel,
   onRetrySync,
   onComplete,
+  onSplitBundle,
+  onOpenAdjustment,
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -68,6 +80,32 @@ export function OrderActionsMenu({
               className="w-full text-left px-3 py-1.5 hover:bg-emerald-50 text-emerald-700 flex items-center gap-2"
             >
               <CheckCircle2 size={13} /> Mark complete
+            </button>
+          )}
+          {onSplitBundle && status !== "draft" && status !== "cancelled" && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onSplitBundle();
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-blue-50 text-blue-700 flex items-center gap-2"
+              title="Distribute the order total evenly across all units (B1T1 COD waybill)"
+            >
+              <Calculator size={13} /> Split bundle evenly
+            </button>
+          )}
+          {onOpenAdjustment && status !== "cancelled" && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onOpenAdjustment();
+              }}
+              className="w-full text-left px-3 py-1.5 hover:bg-amber-50 text-amber-700 flex items-center gap-2"
+              title="Open a CS / Inventory / Fulfillment ticket on this order"
+            >
+              <AlertTriangle size={13} /> Open adjustment
             </button>
           )}
           {status !== "draft" && (

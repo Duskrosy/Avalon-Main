@@ -631,6 +631,43 @@ export async function cancelShopifyOrder(
   return json.order;
 }
 
+// ─── Update existing Shopify order ──────────────────────────────────────────
+
+export type ShopifyOrderUpdateInput = {
+  note?: string;
+  tags?: string;
+  email?: string;
+  phone?: string;
+  shipping_address?: Record<string, unknown>;
+  billing_address?: Record<string, unknown>;
+  note_attributes?: Array<{ name: string; value: string }>;
+  // line_items can only be edited via the Order Edit API for non-fulfilled
+  // items; PUT /orders accepts the field but Shopify silently ignores
+  // changes to fulfilled lines. Caller checks fulfillment_status first.
+  line_items?: Array<Record<string, unknown>>;
+};
+
+/**
+ * Update a Shopify order via PUT /orders/{id}.json. Used by the post-confirm
+ * 15-min in-place edit window: small fixes that Shopify accepts in place
+ * (note text, shipping address, tags) skip the full revert-to-draft cycle.
+ *
+ * The caller MUST verify fulfillment_status !== 'fulfilled' and
+ * financial_status !== 'refunded' before calling — Shopify will accept
+ * the PUT but silently ignore disallowed field changes on fulfilled or
+ * refunded orders, leaving Avalon and Shopify out of sync.
+ */
+export async function updateShopifyOrder(
+  shopifyOrderId: string | number,
+  input: ShopifyOrderUpdateInput,
+): Promise<ShopifyOrder> {
+  const json = await shopifyPut<{ order: ShopifyOrder }>(
+    `/orders/${shopifyOrderId}.json`,
+    { order: input },
+  );
+  return json.order;
+}
+
 // ─── Order transactions (for marking COD orders paid) ───────────────────────
 
 export type ShopifyOrderTransaction = {

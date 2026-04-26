@@ -18,6 +18,8 @@ import { OrderActionsMenu } from "./shared/order-actions-menu";
 import { RevertOrCancelDialog } from "./shared/revert-to-draft-dialog";
 import { SyncErrorModal } from "./shared/sync-error-modal";
 import { CompleteOrderModal } from "./shared/complete-order-modal";
+import { BundleSplitModal } from "./shared/bundle-split-modal";
+import { OpenAdjustmentModal } from "./shared/open-adjustment-modal";
 import { ExpandedOrderRow } from "./shared/expanded-order-row";
 
 type Order = {
@@ -92,6 +94,8 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
   const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
   const [syncErrorOrder, setSyncErrorOrder] = useState<Order | null>(null);
   const [completingOrder, setCompletingOrder] = useState<Order | null>(null);
+  const [splittingOrder, setSplittingOrder] = useState<Order | null>(null);
+  const [adjustingOrder, setAdjustingOrder] = useState<Order | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [actionDialog, setActionDialog] = useState<{
     order: Order;
@@ -373,6 +377,8 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                     onRevert={() => setActionDialog({ order: o, mode: "revert" })}
                     onCancel={() => setActionDialog({ order: o, mode: "cancel" })}
                     onComplete={() => setCompletingOrder(o)}
+                    onSplitBundle={() => setSplittingOrder(o)}
+                    onOpenAdjustment={() => setAdjustingOrder(o)}
                   />
                 </td>
               </tr>
@@ -433,6 +439,35 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         onClose={() => setCompletingOrder(null)}
         onCompleted={() => void fetchOrders()}
       />
+
+      {splittingOrder && (
+        <BundleSplitModal
+          open={true}
+          orderId={splittingOrder.id}
+          orderLabel={
+            splittingOrder.shopify_order_name ??
+            splittingOrder.avalon_order_number ??
+            splittingOrder.id.slice(0, 8)
+          }
+          syncStatus={splittingOrder.sync_status}
+          onClose={() => setSplittingOrder(null)}
+          onApplied={() => void fetchOrders()}
+        />
+      )}
+
+      {adjustingOrder && (
+        <OpenAdjustmentModal
+          open={true}
+          orderId={adjustingOrder.id}
+          orderLabel={
+            adjustingOrder.shopify_order_name ??
+            adjustingOrder.avalon_order_number ??
+            adjustingOrder.id.slice(0, 8)
+          }
+          onClose={() => setAdjustingOrder(null)}
+          onCreated={() => void fetchOrders()}
+        />
+      )}
 
       {actionDialog && (
         <RevertOrCancelDialog

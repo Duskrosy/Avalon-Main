@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   const customFrom = params.get("custom_from");
   const customTo = params.get("custom_to");
   const route = params.get("route"); // 'normal' | 'tnvs' | null
+  const picBucket = params.get("pic_bucket"); // 'inventory' | 'fulfillment' | null
   const q = (params.get("q") ?? "").trim();
   // Combined-state filter: matches the visible badge in the UI. Mapped to
   // status + sync_status server-side so the chip the agent clicks (Draft,
@@ -69,7 +70,12 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  if (scope === "mine") {
+  // PIC bucket queries are department-scoped (Inv/Fulfillment dashboards)
+  // and bypass the scope=mine creator filter — agents on those teams see
+  // every order routed to their bucket regardless of who created it.
+  if (picBucket === "inventory" || picBucket === "fulfillment") {
+    // No-op on scope; bucket itself is the filter.
+  } else if (scope === "mine") {
     query = query.eq("created_by_user_id", currentUser.id);
   } else if (scope === "all") {
     if (!isManagerOrAbove(currentUser)) {
@@ -88,6 +94,20 @@ export async function GET(req: NextRequest) {
   }
   if (route === "normal" || route === "tnvs") {
     query = query.eq("route_type", route);
+  }
+
+  // PIC bucket → orders assigned to a department-style label. Drives
+  // /operations/inventory-handoffs and /operations/fulfillment-handoffs.
+  // Routing model C (per design): the order's person_in_charge_label
+  // is the queue source; no adjustment-row indirection.
+  if (picBucket === "inventory") {
+    query = query
+      .ilike("person_in_charge_label", "%inventory%")
+      .not("status", "in", "(cancelled)");
+  } else if (picBucket === "fulfillment") {
+    query = query
+      .ilike("person_in_charge_label", "%fulfillment%")
+      .not("status", "in", "(cancelled)");
   }
 
   // Status chip → status + sync_status filter. Matches the SyncStatusBadge
@@ -271,6 +291,42 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (admin as any).from("orders").delete().eq("id", order.id);
     return NextResponse.json({ error: itemsErr.message }, { status: 500 });
+  }
+
+  // If the draft was created with adjusted prices (bundle-split applied
+  // in the drawer), write a single resolved adjustment row for audit.
+  // The audit_log_trigger on order_items already captures the raw write;
+  // this row gives the CS queue a structured, type-tagged history.
+  const splitItems = body.items.filter(
+    (it) =>
+      it.adjusted_unit_price_amount != null &&
+      it.adjusted_unit_price_amount !== it.unit_price_amount,
+  );
+  if (splitItems.length >= 2) {
+    const total = splitItems.reduce(
+      (sum, it) => sum + it.unit_price_amount * it.quantity,
+      0,
+    );
+    const totalUnits = splitItems.reduce((sum, it) => sum + it.quantity, 0);
+    const splitPrice = splitItems[0].adjusted_unit_price_amount ?? 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (admin as any).from("order_adjustments").insert({
+      order_id: order.id,
+      adjustment_type: "bundle_split_pricing",
+      status: "resolved",
+      request_text: `Bundle split applied at draft creation (₱${total.toFixed(2)} across ${totalUnits} units → ₱${splitPrice.toFixed(2)} each).`,
+      structured_payload: {
+        split_price: splitPrice,
+        original_total: total,
+        line_count: splitItems.length,
+        unit_count: totalUnits,
+        applied_at_stage: "create",
+      },
+      created_by_user_id: currentUser.id,
+      created_by_name: `${currentUser.first_name} ${currentUser.last_name}`,
+      resolved_by_user_id: currentUser.id,
+      resolved_at: new Date().toISOString(),
+    });
   }
 
   return NextResponse.json({ order }, { status: 201 });
