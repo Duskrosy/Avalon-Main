@@ -135,7 +135,7 @@ export function ExpandedOrderRow({
                 it.adjusted_unit_price_amount ?? it.unit_price_amount;
               return (
                 <li key={it.id} className="py-2 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded bg-gray-50 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded bg-[var(--color-bg-secondary)] border border-[var(--color-border-secondary)] overflow-hidden shrink-0 flex items-center justify-center">
                     {it.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -144,7 +144,7 @@ export function ExpandedOrderRow({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ImageOff size={16} className="text-gray-300" />
+                      <ImageOff size={16} className="text-[var(--color-text-tertiary)]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

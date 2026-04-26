@@ -72,9 +72,11 @@ const patchSchema = z.object({
     .array(
       z.object({
         product_variant_id: z.string().uuid().nullable().optional(),
+        shopify_product_id: z.string().nullable().optional(),
         shopify_variant_id: z.string().nullable().optional(),
         product_name: z.string().min(1),
         variant_name: z.string().nullable().optional(),
+        image_url: z.string().nullable().optional(),
         size: z.string().nullable().optional(),
         color: z.string().nullable().optional(),
         quantity: z.number().int().min(1),
@@ -153,9 +155,11 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       items.map((it) => ({
         order_id: id,
         product_variant_id: it.product_variant_id ?? null,
+        shopify_product_id: it.shopify_product_id ?? null,
         shopify_variant_id: it.shopify_variant_id ?? null,
         product_name: it.product_name,
         variant_name: it.variant_name ?? null,
+        image_url: it.image_url ?? null,
         size: it.size ?? null,
         color: it.color ?? null,
         quantity: it.quantity,

@@ -88,16 +88,16 @@ export function OpenAdjustmentModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-            <AlertTriangle size={14} className="text-amber-600" />
+      <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+            <AlertTriangle size={14} className="text-[var(--color-warning)]" />
             Open adjustment — {orderLabel}
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-700"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             aria-label="Close"
           >
             <X size={16} />
@@ -106,13 +106,13 @@ export function OpenAdjustmentModal({
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
+            <label className="block text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1">
               Type
             </label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               {TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -123,7 +123,7 @@ export function OpenAdjustmentModal({
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
+            <label className="block text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1">
               Route to
             </label>
             <div className="flex flex-wrap gap-1">
@@ -134,8 +134,8 @@ export function OpenAdjustmentModal({
                   onClick={() => setBucket(o.value)}
                   className={`text-xs px-2.5 py-1 rounded border transition-colors ${
                     bucket === o.value
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                      ? "bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-accent-text)]"
+                      : "bg-[var(--color-bg-primary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
                   }`}
                 >
                   {o.label}
@@ -145,7 +145,7 @@ export function OpenAdjustmentModal({
           </div>
 
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
+            <label className="block text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1">
               What needs to happen?
             </label>
             <textarea
@@ -153,23 +153,23 @@ export function OpenAdjustmentModal({
               onChange={(e) => setRequestText(e.target.value)}
               rows={4}
               placeholder="e.g. Customer wants to swap M for L on the black tee"
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-2 py-1.5 text-sm border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] placeholder:text-[var(--color-text-tertiary)]"
             />
           </div>
 
           {error && (
-            <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="rounded border border-[var(--color-error-light)] bg-[var(--color-error-light)] px-3 py-2 text-xs text-[var(--color-error-text)]">
               {error}
             </div>
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] rounded-b-lg">
           <button
             type="button"
             onClick={handleClose}
             disabled={submitting}
-            className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded"
+            className="px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded"
           >
             Cancel
           </button>
@@ -177,10 +177,10 @@ export function OpenAdjustmentModal({
             type="button"
             onClick={submit}
             disabled={submitting}
-            className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="px-3 py-1.5 text-xs bg-[var(--color-accent)] text-[var(--color-accent-text)] rounded hover:bg-[var(--color-accent-hover)] disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             {submitting && (
-              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span className="w-3 h-3 border-2 border-[var(--color-accent-text)]/30 border-t-[var(--color-accent-text)] rounded-full animate-spin" />
             )}
             {submitting ? "Opening…" : "Open adjustment"}
           </button>

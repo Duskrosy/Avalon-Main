@@ -71,16 +71,16 @@ export function BundleSplitModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-            <Calculator size={14} className="text-blue-600" />
+      <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+            <Calculator size={14} className="text-[var(--color-accent)]" />
             Split bundle — {orderLabel}
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-700"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             aria-label="Close"
           >
             <X size={16} />
@@ -90,17 +90,17 @@ export function BundleSplitModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
           {!result && !error && (
             <>
-              <p className="text-xs text-gray-600 leading-relaxed">
+              <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
                 Distributes the order&apos;s total evenly across every unit.
                 Used when a B1T1 or other bundle needs separate per-item
                 prices on the COD waybill.
               </p>
               {isSynced && (
-                <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2">
-                  <div className="text-[10px] uppercase tracking-wide text-amber-700 font-medium mb-1">
+                <div className="rounded border border-[var(--color-warning-light)] bg-[var(--color-warning-light)] px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-[var(--color-warning)] font-medium mb-1">
                     Heads up
                   </div>
-                  <p className="text-xs text-amber-800 leading-relaxed">
+                  <p className="text-xs text-[var(--color-warning-text)] leading-relaxed">
                     This order is already in Shopify. The split is recorded in
                     Avalon and shown on the receipt, but Shopify&apos;s
                     line-item prices won&apos;t update on the existing order.
@@ -109,9 +109,9 @@ export function BundleSplitModal({
                   </p>
                 </div>
               )}
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-[var(--color-text-tertiary)]">
                 Original unit prices are preserved. Stored as
-                <code className="px-1 bg-gray-100 mx-1 rounded">
+                <code className="px-1 bg-[var(--color-bg-tertiary)] mx-1 rounded">
                   adjusted_unit_price_amount
                 </code>
                 per line.
@@ -120,19 +120,19 @@ export function BundleSplitModal({
           )}
 
           {error && (
-            <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="rounded border border-[var(--color-error-light)] bg-[var(--color-error-light)] px-3 py-2 text-xs text-[var(--color-error-text)]">
               {error}
             </div>
           )}
 
           {result && (
             <div className="space-y-2">
-              <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+              <div className="rounded border border-[var(--color-success-light)] bg-[var(--color-success-light)] px-3 py-2 text-xs text-[var(--color-success-text)]">
                 Split applied: ₱{result.split_price.toFixed(2)} per unit across{" "}
                 {result.unit_count} units ({result.line_count} lines).
               </div>
               {result.shopify_split_pending && (
-                <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <div className="rounded border border-[var(--color-warning-light)] bg-[var(--color-warning-light)] px-3 py-2 text-xs text-[var(--color-warning-text)]">
                   Shopify line-item prices were not updated. Revert to draft
                   and re-confirm if the waybill needs to reflect the split.
                 </div>
@@ -141,14 +141,14 @@ export function BundleSplitModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] rounded-b-lg">
           {!result ? (
             <>
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={submitting}
-                className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded"
+                className="px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded"
               >
                 Cancel
               </button>
@@ -156,10 +156,10 @@ export function BundleSplitModal({
                 type="button"
                 onClick={handleApply}
                 disabled={submitting}
-                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-3 py-1.5 text-xs bg-[var(--color-accent)] text-[var(--color-accent-text)] rounded hover:bg-[var(--color-accent-hover)] disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {submitting && (
-                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-3 h-3 border-2 border-[var(--color-accent-text)]/30 border-t-[var(--color-accent-text)] rounded-full animate-spin" />
                 )}
                 {submitting ? "Applying…" : "Apply split"}
               </button>
@@ -168,7 +168,7 @@ export function BundleSplitModal({
             <button
               type="button"
               onClick={handleClose}
-              className="px-3 py-1.5 text-xs bg-gray-900 text-white rounded hover:bg-gray-700"
+              className="px-3 py-1.5 text-xs bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] rounded hover:bg-[var(--color-text-secondary)]"
             >
               Done
             </button>

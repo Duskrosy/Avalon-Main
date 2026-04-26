@@ -162,6 +162,7 @@ export function useCreateOrder() {
         shopify_variant_id: it.shopify_variant_id,
         product_name: it.product_name,
         variant_name: it.variant_name,
+        image_url: it.image_url,
         size: it.size,
         color: it.color,
         quantity: it.quantity,

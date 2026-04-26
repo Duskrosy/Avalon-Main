@@ -325,7 +325,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                   <span className="text-xs text-gray-400 w-4 tabular-nums">
                     {i + 1}.
                   </span>
-                  <div className="w-9 h-9 rounded bg-gray-50 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
+                  <div className="w-9 h-9 rounded bg-[var(--color-bg-secondary)] border border-[var(--color-border-secondary)] overflow-hidden shrink-0 flex items-center justify-center">
                     {it.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -334,7 +334,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <ImageOff size={14} className="text-gray-300" />
+                      <ImageOff size={14} className="text-[var(--color-text-tertiary)]" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
