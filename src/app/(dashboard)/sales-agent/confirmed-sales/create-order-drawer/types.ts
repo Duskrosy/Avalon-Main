@@ -33,6 +33,10 @@ export type DrawerLineItem = {
   shopify_variant_id: string | null;
   product_name: string;
   variant_name: string | null;
+  /** Shopify product image. Captured from the variant search; persists
+   *  to order_items.image_url so the expanded row + customer detail
+   *  show the actual product instead of a placeholder. */
+  image_url: string | null;
   size: string | null;
   color: string | null;
   quantity: number;

@@ -83,25 +83,28 @@ export function PicHandoffsView({ bucket }: Props) {
   };
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div>
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-lg font-semibold flex items-center gap-2">
-            <Icon size={18} /> {C.title}
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+            <Icon size={20} className="text-[var(--color-accent)]" />
+            {C.title}
           </h1>
-          <p className="text-xs text-gray-500 mt-1">{C.blurb}</p>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+            {C.blurb}
+          </p>
         </div>
         <button
           type="button"
           onClick={() => void fetchOrders()}
-          className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] transition-colors"
         >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           Refresh
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {(
           [
             ["", "All open"],
@@ -113,10 +116,10 @@ export function PicHandoffsView({ bucket }: Props) {
             key={key || "all"}
             type="button"
             onClick={() => setStatusFilter(key)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               statusFilter === key
-                ? "bg-blue-600 border-blue-600 text-white"
-                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                ? "bg-[var(--color-text-primary)] border-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
+                : "bg-[var(--color-bg-primary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
             }`}
           >
             {label}
@@ -124,60 +127,69 @@ export function PicHandoffsView({ bucket }: Props) {
         ))}
       </div>
 
-      <div className="border border-gray-200 rounded-md bg-white overflow-x-auto">
+      <div className="border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] overflow-x-auto">
         {loading && orders.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-[var(--color-text-tertiary)]">
+            Loading…
+          </div>
         ) : orders.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-400">
+          <div className="p-8 text-center text-sm text-[var(--color-text-tertiary)]">
             No orders routed to {bucket}.
           </div>
         ) : (
           <table className="w-full text-xs">
-            <thead className="bg-gray-50 text-gray-600">
+            <thead className="bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)]">
               <tr>
                 <th className="px-3 py-2 text-left font-medium">Order</th>
                 <th className="px-3 py-2 text-left font-medium">Customer</th>
-                <th className="px-3 py-2 text-left font-medium">Items</th>
+                <th className="px-3 py-2 text-left font-medium">Notes</th>
                 <th className="px-3 py-2 text-right font-medium">Total</th>
                 <th className="px-3 py-2 text-left font-medium">PIC</th>
                 <th className="px-3 py-2 text-left font-medium">Status</th>
                 <th className="px-3 py-2 text-left font-medium">When</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {orders.map((o) => {
                 const orderLabel =
                   o.shopify_order_name ??
                   o.avalon_order_number ??
                   o.id.slice(0, 8);
                 return (
-                  <tr key={o.id} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 font-medium text-gray-900">
+                  <tr
+                    key={o.id}
+                    className="hover:bg-[var(--color-bg-secondary)] transition-colors"
+                  >
+                    <td className="px-3 py-2 font-medium text-[var(--color-text-primary)]">
                       {orderLabel}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-[var(--color-text-primary)]">
                       <div>{o.customer?.full_name ?? "—"}</div>
-                      <div className="text-[11px] text-gray-500">
+                      <div className="text-[11px] text-[var(--color-text-tertiary)]">
                         {o.customer?.phone ?? ""}
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-gray-600">
+                    <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                       {o.notes ? (
-                        <span title={o.notes}>{o.notes.slice(0, 60)}…</span>
+                        <span title={o.notes}>
+                          {o.notes.length > 60
+                            ? `${o.notes.slice(0, 60)}…`
+                            : o.notes}
+                        </span>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
+                    <td className="px-3 py-2 text-right tabular-nums text-[var(--color-text-primary)]">
                       ₱{o.final_total_amount.toFixed(2)}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-3 py-2 text-[var(--color-text-secondary)]">
                       {o.person_in_charge_label ?? "—"}
                     </td>
                     <td className="px-3 py-2">
                       <StatusChip status={o.status} sync={o.sync_status} />
                     </td>
-                    <td className="px-3 py-2 text-gray-500">
+                    <td className="px-3 py-2 text-[var(--color-text-tertiary)]">
                       {format(parseISO(o.created_at), "MMM d HH:mm")}
                     </td>
                   </tr>
@@ -194,27 +206,27 @@ export function PicHandoffsView({ bucket }: Props) {
 function StatusChip({ status, sync }: { status: string; sync: string }) {
   if (status === "completed") {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-50 text-emerald-700">
+      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-success-light)] text-[var(--color-success)]">
         completed
       </span>
     );
   }
   if (status === "cancelled") {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500">
+      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]">
         cancelled
       </span>
     );
   }
   if (sync === "failed") {
     return (
-      <span className="px-1.5 py-0.5 rounded text-[10px] bg-rose-50 text-rose-700">
+      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-error-light)] text-[var(--color-error)]">
         sync failed
       </span>
     );
   }
   return (
-    <span className="px-1.5 py-0.5 rounded text-[10px] bg-blue-50 text-blue-700">
+    <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--color-accent-light)] text-[var(--color-accent)]">
       {status} · {sync}
     </span>
   );

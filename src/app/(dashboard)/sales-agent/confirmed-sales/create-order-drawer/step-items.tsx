@@ -76,6 +76,7 @@ export function StepItems({ items, onAdd, onRemove, onUpdateQty, onSplitBundle }
       shopify_variant_id: v.shopify_variant_id,
       product_name: v.product_name,
       variant_name: v.variant_title || v.variant_sku || null,
+      image_url: v.image_url,
       size: v.size,
       color: v.color,
       quantity: 1,

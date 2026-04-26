@@ -70,66 +70,70 @@ export function BundleSplitModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <Calculator size={16} className="text-blue-600" />
-            <h2 className="text-sm font-semibold">
-              Split bundle evenly — {orderLabel}
-            </h2>
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+            <Calculator size={14} className="text-blue-600" />
+            Split bundle — {orderLabel}
           </div>
           <button
             type="button"
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-700"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-4 space-y-3 text-sm">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
           {!result && !error && (
             <>
-              <p className="text-gray-700">
+              <p className="text-xs text-gray-600 leading-relaxed">
                 Distributes the order&apos;s total evenly across every unit.
-                Used when a B1T1 or other bundle needs separate per-item prices
-                on the COD waybill.
+                Used when a B1T1 or other bundle needs separate per-item
+                prices on the COD waybill.
               </p>
               {isSynced && (
-                <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 text-xs">
-                  This order is already in Shopify. The split will be recorded
-                  in Avalon and on the receipt, but Shopify&apos;s line-item
-                  prices won&apos;t update on the existing order. If the
-                  waybill must reflect the split, revert to draft after
-                  applying and re-confirm.
-                </p>
+                <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-amber-700 font-medium mb-1">
+                    Heads up
+                  </div>
+                  <p className="text-xs text-amber-800 leading-relaxed">
+                    This order is already in Shopify. The split is recorded in
+                    Avalon and shown on the receipt, but Shopify&apos;s
+                    line-item prices won&apos;t update on the existing order.
+                    Revert to draft and re-confirm if the waybill needs the
+                    split.
+                  </p>
+                </div>
               )}
-              <p className="text-xs text-gray-500">
-                Original unit prices are preserved. The split writes
-                <code className="px-1 bg-gray-100 mx-1">
+              <p className="text-[11px] text-gray-400">
+                Original unit prices are preserved. Stored as
+                <code className="px-1 bg-gray-100 mx-1 rounded">
                   adjusted_unit_price_amount
                 </code>
-                on each line.
+                per line.
               </p>
             </>
           )}
 
           {error && (
-            <div className="text-rose-700 bg-rose-50 border border-rose-200 rounded p-2 text-xs">
+            <div className="rounded border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
               {error}
             </div>
           )}
 
           {result && (
             <div className="space-y-2">
-              <div className="bg-emerald-50 border border-emerald-200 rounded p-2 text-xs text-emerald-800">
+              <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
                 Split applied: ₱{result.split_price.toFixed(2)} per unit across{" "}
                 {result.unit_count} units ({result.line_count} lines).
               </div>
               {result.shopify_split_pending && (
-                <div className="bg-amber-50 border border-amber-200 rounded p-2 text-xs text-amber-800">
-                  Shopify line-item prices were NOT updated. Revert to draft
+                <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  Shopify line-item prices were not updated. Revert to draft
                   and re-confirm if the waybill needs to reflect the split.
                 </div>
               )}
@@ -137,7 +141,7 @@ export function BundleSplitModal({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 p-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-gray-200 bg-gray-50 rounded-b-lg">
           {!result ? (
             <>
               <button
@@ -152,8 +156,11 @@ export function BundleSplitModal({
                 type="button"
                 onClick={handleApply}
                 disabled={submitting}
-                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 inline-flex items-center gap-1.5"
               >
+                {submitting && (
+                  <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
                 {submitting ? "Applying…" : "Apply split"}
               </button>
             </>
@@ -161,7 +168,7 @@ export function BundleSplitModal({
             <button
               type="button"
               onClick={handleClose}
-              className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-3 py-1.5 text-xs bg-gray-900 text-white rounded hover:bg-gray-700"
             >
               Done
             </button>

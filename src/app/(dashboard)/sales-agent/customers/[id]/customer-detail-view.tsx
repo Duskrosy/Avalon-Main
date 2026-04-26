@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ExternalLink,
+  ImageOff,
   Mail,
   MapPin,
   Phone,
@@ -324,7 +325,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                   <span className="text-xs text-gray-400 w-4 tabular-nums">
                     {i + 1}.
                   </span>
-                  <div className="w-9 h-9 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
+                  <div className="w-9 h-9 rounded bg-gray-50 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
                     {it.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -333,7 +334,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-[repeating-linear-gradient(135deg,_#f3f4f6_0_4px,_#e5e7eb_4px_8px)]" />
+                      <ImageOff size={14} className="text-gray-300" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

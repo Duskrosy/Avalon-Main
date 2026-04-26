@@ -6,6 +6,7 @@ import {
   Check,
   CheckCircle2,
   Edit3,
+  ImageOff,
   RefreshCw,
   Sliders,
   Trash2,
@@ -134,7 +135,7 @@ export function ExpandedOrderRow({
                 it.adjusted_unit_price_amount ?? it.unit_price_amount;
               return (
                 <li key={it.id} className="py-2 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded bg-gray-100 border border-gray-200 overflow-hidden shrink-0">
+                  <div className="w-12 h-12 rounded bg-gray-50 border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center">
                     {it.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -143,7 +144,7 @@ export function ExpandedOrderRow({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-[repeating-linear-gradient(135deg,_#f3f4f6_0_4px,_#e5e7eb_4px_8px)]" />
+                      <ImageOff size={16} className="text-gray-300" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

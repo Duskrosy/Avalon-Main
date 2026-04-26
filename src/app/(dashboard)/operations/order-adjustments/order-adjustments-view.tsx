@@ -68,6 +68,13 @@ const TYPE_FILTER_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
+const STATUS_BADGE: Record<Adjustment["status"], string> = {
+  open: "bg-[var(--color-warning-light)] text-[var(--color-warning)]",
+  in_progress: "bg-[var(--color-accent-light)] text-[var(--color-accent)]",
+  resolved: "bg-[var(--color-success-light)] text-[var(--color-success)]",
+  cancelled: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]",
+};
+
 export function OrderAdjustmentsView({ currentUserId }: Props) {
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,11 +90,8 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
     try {
       const params = new URLSearchParams({ bucket: "cs" });
       if (statusTab === "all") {
-        // Show all four statuses; leave the param out and fold in resolved/cancelled
         params.set("status", "open");
-      } else if (statusTab === "open") {
-        // Default endpoint behavior is open+in_progress; pass nothing.
-      } else {
+      } else if (statusTab !== "open") {
         params.set("status", statusTab);
       }
       if (typeFilter) params.set("type", typeFilter);
@@ -159,60 +163,57 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
   }, [adjustments, currentUserId]);
 
   return (
-    <div className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div>
+      <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-lg font-semibold flex items-center gap-2">
-            <AlertTriangle size={18} /> Order Adjustments
+          <h1 className="text-2xl font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+            <AlertTriangle size={20} className="text-[var(--color-warning)]" />
+            Order Adjustments
           </h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Tickets opened by Sales for Customer Service. Claim → resolve →
-            close.
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+            Tickets opened by Sales for Customer Service. Claim, resolve, close.
           </p>
         </div>
         <button
           type="button"
           onClick={() => void fetchAdjustments()}
-          className="flex items-center gap-1 text-xs px-2 py-1 border border-gray-200 rounded hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 text-sm px-3 py-1.5 border border-[var(--color-border-primary)] rounded-lg hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] transition-colors"
         >
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} />
+          <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           Refresh
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         {(
           [
-            ["open", "Open"],
-            ["in_progress", "In progress"],
-            ["resolved", "Resolved"],
-            ["all", "All"],
+            ["open", "Open", counts.open],
+            ["in_progress", "In progress", counts.in_progress],
+            ["resolved", "Resolved", null],
+            ["all", "All", null],
           ] as const
-        ).map(([key, label]) => (
+        ).map(([key, label, count]) => (
           <button
             key={key}
             type="button"
             onClick={() => setStatusTab(key)}
-            className={`text-xs px-3 py-1.5 rounded-full border ${
+            className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
               statusTab === key
-                ? "bg-blue-600 border-blue-600 text-white"
-                : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50"
+                ? "bg-[var(--color-text-primary)] border-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
+                : "bg-[var(--color-bg-primary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
             }`}
           >
             {label}
-            {key === "open" && counts.open > 0 ? ` (${counts.open})` : ""}
-            {key === "in_progress" && counts.in_progress > 0
-              ? ` (${counts.in_progress})`
-              : ""}
+            {count != null && count > 0 ? ` (${count})` : ""}
           </button>
         ))}
 
         <div className="flex items-center gap-1 ml-2">
-          <Filter size={12} className="text-gray-400" />
+          <Filter size={12} className="text-[var(--color-text-tertiary)]" />
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="text-xs px-2 py-1 border border-gray-200 rounded"
+            className="text-xs px-2 py-1 border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
           >
             {TYPE_FILTER_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -223,21 +224,23 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
         </div>
 
         {counts.mine > 0 && (
-          <span className="ml-auto text-xs text-blue-600">
+          <span className="ml-auto text-xs text-[var(--color-accent)]">
             {counts.mine} assigned to you
           </span>
         )}
       </div>
 
-      <div className="border border-gray-200 rounded-md bg-white">
+      <div className="border border-[var(--color-border-primary)] rounded-lg bg-[var(--color-bg-primary)] overflow-hidden">
         {loading && adjustments.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-400">Loading…</div>
+          <div className="p-8 text-center text-sm text-[var(--color-text-tertiary)]">
+            Loading…
+          </div>
         ) : adjustments.length === 0 ? (
-          <div className="p-6 text-center text-xs text-gray-400">
+          <div className="p-8 text-center text-sm text-[var(--color-text-tertiary)]">
             No adjustments in this view.
           </div>
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-[var(--color-border-secondary)]">
             {adjustments.map((a) => {
               const orderLabel =
                 a.order?.shopify_order_name ??
@@ -245,37 +248,44 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
                 a.order_id.slice(0, 8);
               const isMine = a.assigned_to_user_id === currentUserId;
               return (
-                <li key={a.id} className="p-3 hover:bg-gray-50">
+                <li
+                  key={a.id}
+                  className="p-3 hover:bg-[var(--color-bg-secondary)] transition-colors"
+                >
                   <div className="flex items-start gap-3">
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="font-medium text-gray-900">
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className="font-medium text-[var(--color-text-primary)]">
                           {orderLabel}
                         </span>
-                        <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-[10px]">
+                        <span className="px-1.5 py-0.5 bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] rounded text-[10px]">
                           {TYPE_LABEL[a.adjustment_type] ?? a.adjustment_type}
                         </span>
-                        <StatusChip status={a.status} />
+                        <span
+                          className={`px-1.5 py-0.5 rounded text-[10px] ${STATUS_BADGE[a.status]}`}
+                        >
+                          {a.status.replace("_", " ")}
+                        </span>
                         {isMine && (
-                          <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-[var(--color-accent-light)] text-[var(--color-accent)] rounded text-[10px]">
                             You
                           </span>
                         )}
                         {a.assigned_to_label && (
-                          <span className="px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded text-[10px]">
+                          <span className="px-1.5 py-0.5 bg-[var(--color-warning-light)] text-[var(--color-warning)] rounded text-[10px]">
                             → {a.assigned_to_label}
                           </span>
                         )}
                       </div>
-                      <div className="text-sm text-gray-800">
+                      <div className="text-sm text-[var(--color-text-primary)] leading-snug">
                         {a.request_text}
                       </div>
                       {a.resolution_notes && (
-                        <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1 inline-block">
+                        <div className="text-xs text-[var(--color-success)] bg-[var(--color-success-light)] rounded px-2 py-1 inline-block">
                           Resolution: {a.resolution_notes}
                         </div>
                       )}
-                      <div className="flex items-center gap-3 text-[11px] text-gray-500">
+                      <div className="flex items-center gap-3 text-[11px] text-[var(--color-text-tertiary)] flex-wrap">
                         <span>
                           {format(parseISO(a.created_at), "MMM d HH:mm")} ·{" "}
                           {a.created_by_name ?? "—"}
@@ -296,12 +306,12 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
                       </div>
                     </div>
                     {a.status !== "resolved" && a.status !== "cancelled" && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         {a.status === "open" && (
                           <button
                             type="button"
                             onClick={() => claim(a.id)}
-                            className="text-[11px] px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                            className="text-[11px] px-2 py-1 bg-[var(--color-accent)] text-[var(--color-text-inverted)] rounded hover:opacity-90 inline-flex items-center gap-1"
                           >
                             <Clock size={10} /> Claim
                           </button>
@@ -309,14 +319,14 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
                         <button
                           type="button"
                           onClick={() => startResolve(a.id)}
-                          className="text-[11px] px-2 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 flex items-center gap-1"
+                          className="text-[11px] px-2 py-1 bg-[var(--color-success)] text-[var(--color-text-inverted)] rounded hover:opacity-90 inline-flex items-center gap-1"
                         >
                           <CheckCircle2 size={10} /> Resolve
                         </button>
                         <button
                           type="button"
                           onClick={() => cancel(a.id)}
-                          className="text-[11px] px-2 py-1 text-rose-600 hover:bg-rose-50 rounded"
+                          className="text-[11px] p-1 text-[var(--color-text-tertiary)] hover:text-[var(--color-error)] rounded"
                           title="Cancel ticket"
                         >
                           <X size={12} />
@@ -332,13 +342,23 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
       </div>
 
       {resolvingId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-sm font-semibold">Resolve adjustment</h2>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-[var(--color-bg-primary)] rounded-lg shadow-xl w-full max-w-md flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
+              <div className="text-sm font-medium text-[var(--color-text-primary)]">
+                Resolve adjustment
+              </div>
+              <button
+                type="button"
+                onClick={() => setResolvingId(null)}
+                className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
             </div>
             <div className="p-4 space-y-2">
-              <label className="text-xs text-gray-600">
+              <label className="block text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1">
                 Resolution notes (optional)
               </label>
               <textarea
@@ -346,21 +366,21 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
                 onChange={(e) => setResolutionNotes(e.target.value)}
                 rows={3}
                 placeholder="What did you do to resolve this?"
-                className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded"
+                className="w-full px-2 py-1.5 text-sm border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] rounded focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
               />
             </div>
-            <div className="flex justify-end gap-2 p-3 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] rounded-b-lg">
               <button
                 type="button"
                 onClick={() => setResolvingId(null)}
-                className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded"
+                className="px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] rounded"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={submitResolve}
-                className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                className="px-3 py-1.5 text-xs bg-[var(--color-success)] text-[var(--color-text-inverted)] rounded hover:opacity-90"
               >
                 Mark resolved
               </button>
@@ -369,19 +389,5 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
         </div>
       )}
     </div>
-  );
-}
-
-function StatusChip({ status }: { status: Adjustment["status"] }) {
-  const map: Record<Adjustment["status"], string> = {
-    open: "bg-amber-50 text-amber-700",
-    in_progress: "bg-blue-50 text-blue-700",
-    resolved: "bg-emerald-50 text-emerald-700",
-    cancelled: "bg-gray-100 text-gray-500",
-  };
-  return (
-    <span className={`px-1.5 py-0.5 rounded text-[10px] ${map[status]}`}>
-      {status.replace("_", " ")}
-    </span>
   );
 }
