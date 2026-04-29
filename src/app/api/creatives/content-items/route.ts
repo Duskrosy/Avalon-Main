@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
       assigned_to: body.assignee_ids?.[0] ?? body.assigned_to ?? null,
       group_label: body.group_label ?? "local",
       source_request_id: body.source_request_id ?? null,
+      inspo_link: body.inspo_link ?? null,
+      additional_notes: body.additional_notes ?? null,
       created_by: user.id,
     })
     .select("id, title")
