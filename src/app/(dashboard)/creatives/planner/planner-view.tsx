@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { format, parseISO, startOfWeek, endOfWeek, subWeeks, isWithinInterval } from "date-fns";
 import { AssignPostModal, type GatherSelection, type SmmPost, type LiveAd } from "./gather-modal";
 import { useToast, Toast } from "@/components/ui/toast";
+import { Avatar } from "@/components/ui/avatar";
 import { CREATIVE_GROUPS } from "@/lib/creatives/constants";
 import { PeoplePicker } from "@/components/ui/people-picker";
 
@@ -177,15 +178,20 @@ export default function PlannerView({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
-  // Assignee filter: "mine" | "all" | <userId>. Persisted in localStorage so the
-  // last-used scope sticks across page loads. Default is "mine" for creatives,
-  // "all" otherwise.
+  // Assignee filter: "all" | <userId>. Persisted in localStorage so the last-used
+  // scope sticks across page loads. Default is the currently-logged-in user when
+  // they're a creatives member; otherwise "all".
+  const defaultAssignee = isCreatives ? currentUserId : "all";
   const [assigneeFilter, setAssigneeFilter] = useState<string>(() => {
-    if (typeof window === "undefined") return isCreatives ? "mine" : "all";
+    if (typeof window === "undefined") return defaultAssignee;
     try {
-      return window.localStorage.getItem("avalon_planner_assignee_filter") ?? (isCreatives ? "mine" : "all");
+      const stored = window.localStorage.getItem("avalon_planner_assignee_filter");
+      if (!stored) return defaultAssignee;
+      // Legacy "mine" token from earlier filter — interpret as the current user.
+      if (stored === "mine") return currentUserId;
+      return stored;
     } catch {
-      return isCreatives ? "mine" : "all";
+      return defaultAssignee;
     }
   });
   useEffect(() => {
@@ -197,8 +203,26 @@ export default function PlannerView({
     const ids = i.assignees && i.assignees.length > 0
       ? i.assignees.map((a) => a.user_id)
       : (i.assigned_to ? [i.assigned_to] : []);
-    if (assigneeFilter === "mine") return ids.includes(currentUserId);
     return ids.includes(assigneeFilter);
+  }
+
+  // Person-picker dropdown for the assignee filter — shows avatar + name.
+  const filterRef = useRef<HTMLDivElement>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
+  useEffect(() => {
+    if (!filterOpen) return;
+    function onClick(e: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [filterOpen]);
+
+  const selectedProfile = profiles.find((p) => p.id === assigneeFilter);
+  function profileInitials(p: { first_name: string; last_name: string }): string {
+    return `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
   }
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -484,17 +508,67 @@ export default function PlannerView({
           onChange={(e) => setSearch(e.target.value)}
           className="w-full sm:w-64 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-focus)]"
         />
-        <select
-          value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value)}
-          className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-        >
-          <option value="mine">Mine</option>
-          <option value="all">All creative team</option>
-          {profiles.map((p) => (
-            <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
-          ))}
-        </select>
+        <div className="relative" ref={filterRef}>
+          <button
+            type="button"
+            onClick={() => setFilterOpen((o) => !o)}
+            className="flex items-center gap-2 rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] pl-2 pr-3 py-1.5 text-sm hover:bg-[var(--color-surface-hover)] focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          >
+            {selectedProfile ? (
+              <>
+                <Avatar url={selectedProfile.avatar_url} initials={profileInitials(selectedProfile)} size="xs" />
+                <span className="text-[var(--color-text-primary)]">
+                  {selectedProfile.first_name} {selectedProfile.last_name}
+                </span>
+              </>
+            ) : (
+              <>
+                <div className="w-6 h-6 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-[var(--color-text-tertiary)]">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5a4 4 0 11-8 0 4 4 0 018 0zm6 3a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <span className="text-[var(--color-text-primary)]">All creative team</span>
+              </>
+            )}
+            <svg className="w-3 h-3 text-[var(--color-text-tertiary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {filterOpen && (
+            <div className="absolute left-0 top-full mt-1 z-20 w-60 max-h-72 overflow-y-auto rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] shadow-lg py-1">
+              <button
+                type="button"
+                onClick={() => { setAssigneeFilter("all"); setFilterOpen(false); }}
+                className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-[var(--color-surface-hover)] ${assigneeFilter === "all" ? "bg-[var(--color-surface-active)]" : ""}`}
+              >
+                <div className="w-6 h-6 rounded-full bg-[var(--color-bg-tertiary)] flex items-center justify-center text-[var(--color-text-tertiary)]">
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5a4 4 0 11-8 0 4 4 0 018 0zm6 3a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <span className="text-[var(--color-text-primary)]">All creative team</span>
+              </button>
+              <div className="border-t border-[var(--color-border-secondary)] my-1" />
+              {profiles.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => { setAssigneeFilter(p.id); setFilterOpen(false); }}
+                  className={`flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-[var(--color-surface-hover)] ${assigneeFilter === p.id ? "bg-[var(--color-surface-active)]" : ""}`}
+                >
+                  <Avatar url={p.avatar_url} initials={profileInitials(p)} size="xs" />
+                  <span className="text-[var(--color-text-primary)] truncate">
+                    {p.first_name} {p.last_name}
+                    {p.id === currentUserId && (
+                      <span className="ml-1 text-[var(--color-text-tertiary)] text-xs">(you)</span>
+                    )}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         {tab === "planned" && (
           <select
             value={statusFilter}
@@ -533,6 +607,7 @@ export default function PlannerView({
                       <thead>
                         <tr className="border-b border-[var(--color-border-secondary)] text-left text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">
                           <th className="px-4 py-3">Title</th>
+                          <th className="px-4 py-3">Inspo</th>
                           <th className="px-4 py-3">Group</th>
                           <th className="px-4 py-3">Content</th>
                           <th className="px-4 py-3">Format</th>
@@ -553,24 +628,24 @@ export default function PlannerView({
                               idx % 2 === 0 ? "bg-[var(--color-bg-primary)]" : "bg-[var(--color-bg-secondary)]/30"
                             }`}
                           >
-                            <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px]">
-                              <div className="flex items-center gap-1.5">
-                                <span className="truncate">{item.title}</span>
-                                {item.inspo_link && (
-                                  <a
-                                    href={item.inspo_link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="View inspo"
-                                    className="shrink-0 text-[var(--color-text-tertiary)] hover:text-[var(--color-accent)]"
-                                  >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
-                                  </a>
-                                )}
-                              </div>
+                            <td className="px-4 py-3 font-medium text-[var(--color-text-primary)] max-w-[200px] truncate">
+                              {item.title}
+                            </td>
+                            <td className="px-4 py-3">
+                              {item.inspo_link ? (
+                                <a
+                                  href={item.inspo_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="View inspo"
+                                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-success-light)] text-[var(--color-success)] hover:opacity-80"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </a>
+                              ) : null}
                             </td>
                             <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                               {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}
