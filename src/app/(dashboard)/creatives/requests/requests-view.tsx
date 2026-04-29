@@ -103,6 +103,10 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
   const [formTitle, setFormTitle] = useState("");
   const [formBrief, setFormBrief] = useState("");
   const [formTargetDate, setFormTargetDate] = useState("");
+  const [formInspoLink, setFormInspoLink] = useState("");
+
+  // Requester-side tab: split your own requests into active vs terminal states.
+  const [requesterTab, setRequesterTab] = useState<"active" | "completed">("active");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
@@ -174,7 +178,9 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     const params = new URLSearchParams({ limit: "200" });
-    if (statusFilter) params.set("status", statusFilter);
+    // Queue view uses the granular server-side status filter; requester view
+    // fetches all and splits client-side into Active / Completed tabs.
+    if (isFulfillmentView && statusFilter) params.set("status", statusFilter);
     const res = await fetch(`/api/ad-ops/requests?${params}`);
     if (res.ok) {
       const all: Request[] = await res.json();
@@ -379,6 +385,7 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
         title: formTitle.trim(),
         brief: formBrief.trim() || null,
         target_date: formTargetDate || null,
+        inspo_link: formInspoLink.trim() || null,
       }),
     });
 
@@ -394,6 +401,7 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
       setFormTitle("");
       setFormBrief("");
       setFormTargetDate("");
+      setFormInspoLink("");
       setSubmitSuccess(true);
       setTimeout(() => setSubmitSuccess(false), 3000);
       await fetchRequests();
@@ -411,6 +419,8 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     { value: "approved",    label: "Approved" },
     { value: "",            label: "All" },
   ];
+
+  const COMPLETED_STATUSES = new Set(["approved", "rejected", "cancelled"]);
 
   const detailRequest = detailId ? requests.find((r) => r.id === detailId) ?? null : null;
 
@@ -493,6 +503,19 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+              Inspo Link <span className="text-[var(--color-text-tertiary)] font-normal">(optional)</span>
+            </label>
+            <input
+              type="url"
+              value={formInspoLink}
+              onChange={(e) => setFormInspoLink(e.target.value)}
+              placeholder="https://… reference, mood-board, doc"
+              className="w-full text-sm px-3 py-2 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            />
+          </div>
+
           {/* Attachments */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -555,42 +578,94 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
         <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-3">Your Requests</p>
       )}
 
-      <div className="flex items-center gap-1 mb-5 flex-wrap">
-        {STATUS_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setStatusFilter(f.value)}
-            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-              statusFilter === f.value
-                ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
-                : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-        {!loading && (
-          <span className="ml-auto text-xs text-[var(--color-text-tertiary)]">
-            {requests.length} request{requests.length !== 1 ? "s" : ""}
-          </span>
-        )}
-      </div>
+      {isFulfillmentView ? (
+        <div className="flex items-center gap-1 mb-5 flex-wrap">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setStatusFilter(f.value)}
+              className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                statusFilter === f.value
+                  ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] border-[var(--color-text-primary)]"
+                  : "bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)] hover:border-[var(--color-border-primary)]"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+          {!loading && (
+            <span className="ml-auto text-xs text-[var(--color-text-tertiary)]">
+              {requests.length} request{requests.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+      ) : (
+        (() => {
+          const activeCount = requests.filter((r) => !COMPLETED_STATUSES.has(r.status)).length;
+          const completedCount = requests.filter((r) => COMPLETED_STATUSES.has(r.status)).length;
+          return (
+            <div className="flex items-stretch gap-2 mb-5 border-b border-[var(--color-border-secondary)]">
+              {([
+                { value: "active" as const,    label: "Active",    count: activeCount },
+                { value: "completed" as const, label: "Completed", count: completedCount },
+              ]).map((t) => {
+                const active = requesterTab === t.value;
+                return (
+                  <button
+                    key={t.value}
+                    onClick={() => setRequesterTab(t.value)}
+                    className={`relative px-4 py-2.5 text-sm font-medium transition-colors -mb-px border-b-2 ${
+                      active
+                        ? "text-[var(--color-text-primary)] border-[var(--color-text-primary)]"
+                        : "text-[var(--color-text-tertiary)] border-transparent hover:text-[var(--color-text-secondary)]"
+                    }`}
+                  >
+                    {t.label}
+                    <span className={`ml-2 inline-flex items-center justify-center min-w-[20px] px-1.5 h-5 rounded-full text-[11px] ${
+                      active
+                        ? "bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]"
+                        : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)]"
+                    }`}>
+                      {t.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()
+      )}
 
       {loading ? (
         <div className="text-center py-16 text-[var(--color-text-tertiary)] text-sm">Loading…</div>
-      ) : requests.length === 0 ? (
-        <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
-          <p className="text-sm text-[var(--color-text-tertiary)]">
-            {statusFilter
-              ? `No ${statusFilter.replace("_", " ")} requests.`
-              : isFulfillmentView
-                ? "No requests assigned to the Creatives team."
-                : "You haven't submitted any requests yet."}
-          </p>
-        </div>
-      ) : (
+      ) : (() => {
+        const displayedRequests = isFulfillmentView
+          ? requests
+          : requests.filter((r) =>
+              requesterTab === "completed"
+                ? COMPLETED_STATUSES.has(r.status)
+                : !COMPLETED_STATUSES.has(r.status)
+            );
+        if (displayedRequests.length === 0) {
+          return (
+            <div className="bg-[var(--color-bg-secondary)] rounded-[var(--radius-lg)] p-12 text-center">
+              <p className="text-sm text-[var(--color-text-tertiary)]">
+                {isFulfillmentView
+                  ? statusFilter
+                    ? `No ${statusFilter.replace("_", " ")} requests.`
+                    : "No requests assigned to the Creatives team."
+                  : requesterTab === "completed"
+                    ? "No completed requests yet."
+                    : requests.length === 0
+                      ? "You haven't submitted any requests yet."
+                      : "No active requests right now — check the Completed tab."}
+              </p>
+            </div>
+          );
+        }
+        return (
         <div className="space-y-2">
-          {requests.map((r) => {
+          {displayedRequests.map((r) => {
             const attachments = attachmentsByRequest[r.id] ?? [];
             const firstImage = attachments.find((a) => a.mime_type?.startsWith("image/"));
             const transition = nextTransition(r.status);
@@ -697,7 +772,8 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       {/* Detail modal */}
       {detailRequest && (
