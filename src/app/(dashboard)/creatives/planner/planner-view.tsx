@@ -49,6 +49,11 @@ type ContentItem = {
   source_request_id: string | null;
   inspo_link: string | null;
   additional_notes: string | null;
+  source_request: {
+    id: string;
+    inspo_link: string | null;
+    attachments: { id: string }[] | null;
+  } | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -632,20 +637,47 @@ export default function PlannerView({
                               {item.title}
                             </td>
                             <td className="px-4 py-3">
-                              {item.inspo_link ? (
-                                <a
-                                  href={item.inspo_link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  title="View inspo"
-                                  className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-success-light)] text-[var(--color-success)] hover:opacity-80"
-                                >
+                              {(() => {
+                                const directLink = item.inspo_link;
+                                const requestLink = item.source_request?.inspo_link ?? null;
+                                const requestAttachments = item.source_request?.attachments?.length ?? 0;
+                                const hasInspo = !!directLink || !!requestLink || requestAttachments > 0;
+                                if (!hasInspo) return null;
+
+                                const url = directLink ?? requestLink;
+                                const checkClass = "inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--color-success-light)] text-[var(--color-success)] hover:opacity-80";
+                                const checkIcon = (
                                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                   </svg>
-                                </a>
-                              ) : null}
+                                );
+
+                                if (url) {
+                                  return (
+                                    <a
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="View inspo"
+                                      className={checkClass}
+                                    >
+                                      {checkIcon}
+                                    </a>
+                                  );
+                                }
+                                // Attachments only — open the modal so the user can browse files.
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setEditItem(item); }}
+                                    title={`${requestAttachments} attachment${requestAttachments === 1 ? "" : "s"} on the source request`}
+                                    className={checkClass}
+                                  >
+                                    {checkIcon}
+                                  </button>
+                                );
+                              })()}
                             </td>
                             <td className="px-4 py-3 text-[var(--color-text-secondary)]">
                               {item.group_label ? CREATIVE_GROUPS.find((g) => g.slug === item.group_label)?.label ?? item.group_label : "-"}

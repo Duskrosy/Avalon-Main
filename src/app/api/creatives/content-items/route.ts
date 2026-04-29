@@ -22,6 +22,10 @@ export async function GET(req: NextRequest) {
       assignees:content_item_assignees(
         user_id,
         profile:profiles!user_id(id, first_name, last_name, avatar_url)
+      ),
+      source_request:ad_requests!source_request_id(
+        id, inspo_link,
+        attachments:ad_request_attachments(id)
       )
     `)
     .order("created_at", { ascending: false });
