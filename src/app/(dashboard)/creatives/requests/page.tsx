@@ -4,7 +4,13 @@ import { getCurrentUser, isOps, isManagerOrAbove } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { CreativesRequestsView } from "./requests-view";
 
-export default async function CreativesRequestsPage() {
+export default async function CreativesRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ as?: string }>;
+}) {
+  const params = await searchParams;
+  const forceRequester = params.as === "requester";
   const supabase = await createClient();
   const admin = createAdminClient();
   const currentUser = await getCurrentUser(supabase);
@@ -43,9 +49,9 @@ export default async function CreativesRequestsPage() {
       <CreativesRequestsView
         members={profiles ?? []}
         currentUserId={currentUser.id}
-        canManage={isCreativesDept || isOpsUser}
-        isCreativesDept={isCreativesDept}
-        isOps={isOpsUser}
+        canManage={(isCreativesDept || isOpsUser) && !forceRequester}
+        isCreativesDept={isCreativesDept && !forceRequester}
+        isOps={isOpsUser && !forceRequester}
       />
     </div>
   );

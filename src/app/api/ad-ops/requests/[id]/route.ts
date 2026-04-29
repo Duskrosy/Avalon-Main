@@ -15,7 +15,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .from("ad_requests")
     .select(`
       *,
-      requester:profiles!requester_id(id, first_name, last_name)
+      requester:profiles!requester_id(id, first_name, last_name),
+      linked_tasks:creative_content_items!source_request_id(id, title, status)
     `)
     .eq("id", id)
     .single();

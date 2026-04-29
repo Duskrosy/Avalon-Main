@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { format, parseISO } from "date-fns";
 import { PeoplePicker } from "@/components/ui/people-picker";
+import { Lightbox } from "@/components/ui/lightbox";
 
 type LocalAttachment = { file: File; preview?: string };
 
@@ -33,6 +34,7 @@ type Request = {
   assignee: Assignee | null;       // lead assignee hint
   assignees: Assignee[];            // full multi-assignee list from junction table
   kanban_card?: { id: string; col: { name: string } | null } | null;
+  linked_tasks?: { id: string; title: string; status: string }[] | null;
 };
 
 type RemoteAttachment = {
@@ -814,6 +816,7 @@ function RequestDetailModal({
   const moveNext = transitions[0] ?? null;
   const imageAttachments = attachments.filter((a) => a.mime_type?.startsWith("image/"));
   const fileAttachments = attachments.filter((a) => !a.mime_type?.startsWith("image/"));
+  const [preview, setPreview] = useState<RemoteAttachment | null>(null);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -899,16 +902,15 @@ function RequestDetailModal({
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {imageAttachments.map((a) => (
                   a.url ? (
-                    <a
+                    <button
                       key={a.id}
-                      href={a.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      type="button"
+                      onClick={() => setPreview(a)}
                       className="block aspect-square rounded-md border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={a.url} alt={a.file_name ?? ""} className="h-full w-full object-cover" />
-                    </a>
+                    </button>
                   ) : (
                     <div key={a.id} className="aspect-square rounded-md border border-[var(--color-border-primary)] bg-[var(--color-bg-tertiary)] flex items-center justify-center text-[10px] text-[var(--color-text-tertiary)]">
                       image
@@ -919,20 +921,42 @@ function RequestDetailModal({
             </div>
           )}
 
+          {(r.linked_tasks?.length ?? 0) > 0 && (
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">
+                Linked planner task{(r.linked_tasks?.length ?? 0) === 1 ? "" : "s"}
+              </p>
+              <div className="space-y-1.5">
+                {r.linked_tasks!.map((t) => (
+                  <a
+                    key={t.id}
+                    href="/creatives/planner"
+                    className="flex items-center justify-between gap-3 px-3 py-2 rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                  >
+                    <span className="text-sm text-[var(--color-text-primary)] truncate">{t.title}</span>
+                    <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">
+                      {t.status.replace("_", " ")} ↗
+                    </span>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {fileAttachments.length > 0 && (
             <div>
               <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-2">Files</p>
               <div className="flex flex-wrap gap-2">
                 {fileAttachments.map((a) => (
-                  <a
+                  <button
                     key={a.id}
-                    href={a.url ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] max-w-[260px]"
+                    type="button"
+                    onClick={() => a.url && setPreview(a)}
+                    disabled={!a.url}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50 max-w-[260px]"
                   >
                     <span className="truncate">{a.file_name ?? a.path.split("/").pop()}</span>
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -1015,6 +1039,15 @@ function RequestDetailModal({
           )}
         </div>
       </div>
+
+      {preview?.url && (
+        <Lightbox
+          url={preview.url}
+          alt={preview.file_name}
+          mimeType={preview.mime_type}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </div>
   );
 }

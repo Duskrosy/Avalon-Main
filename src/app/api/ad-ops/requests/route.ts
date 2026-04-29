@@ -26,7 +26,8 @@ export async function GET(req: NextRequest) {
       assignees:ad_request_assignees(
         assignee:profiles!assignee_id(id, first_name, last_name, avatar_url)
       ),
-      kanban_card:kanban_cards!linked_card_id(id, col:kanban_columns!column_id(name))
+      kanban_card:kanban_cards!linked_card_id(id, col:kanban_columns!column_id(name)),
+      linked_tasks:creative_content_items!source_request_id(id, title, status)
     `)
     .order("created_at", { ascending: false })
     .limit(limit);

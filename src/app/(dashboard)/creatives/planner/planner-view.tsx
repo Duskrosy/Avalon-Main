@@ -5,6 +5,7 @@ import { format, parseISO, startOfWeek, endOfWeek, subWeeks, isWithinInterval } 
 import { AssignPostModal, type GatherSelection, type SmmPost, type LiveAd } from "./gather-modal";
 import { useToast, Toast } from "@/components/ui/toast";
 import { Avatar } from "@/components/ui/avatar";
+import { Lightbox } from "@/components/ui/lightbox";
 import { CREATIVE_GROUPS } from "@/lib/creatives/constants";
 import { PeoplePicker } from "@/components/ui/people-picker";
 
@@ -1114,6 +1115,7 @@ function ItemModal({
   type SourceAttachment = { id: string; file_name: string | null; mime_type: string | null; url: string | null };
   const [sourceRequest, setSourceRequest] = useState<SourceRequest | null>(null);
   const [sourceAttachments, setSourceAttachments] = useState<SourceAttachment[]>([]);
+  const [preview, setPreview] = useState<SourceAttachment | null>(null);
 
   useEffect(() => {
     const reqId = initial?.source_request_id;
@@ -1204,26 +1206,25 @@ function ItemModal({
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {sourceAttachments.map((a) =>
                   a.url && a.mime_type?.startsWith("image/") ? (
-                    <a
+                    <button
                       key={a.id}
-                      href={a.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      type="button"
+                      onClick={() => setPreview(a)}
                       className="block w-12 h-12 rounded border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={a.url} alt={a.file_name ?? ""} className="h-full w-full object-cover" />
-                    </a>
+                    </button>
                   ) : (
-                    <a
+                    <button
                       key={a.id}
-                      href={a.url ?? "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center px-2 py-1 text-[11px] rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] max-w-[180px]"
+                      type="button"
+                      onClick={() => a.url && setPreview(a)}
+                      disabled={!a.url}
+                      className="inline-flex items-center px-2 py-1 text-[11px] rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50 max-w-[180px]"
                     >
                       <span className="truncate">{a.file_name ?? "file"}</span>
-                    </a>
+                    </button>
                   )
                 )}
               </div>
@@ -1464,6 +1465,15 @@ function ItemModal({
           </div>
         </div>
       </form>
+
+      {preview?.url && (
+        <Lightbox
+          url={preview.url}
+          alt={preview.file_name}
+          mimeType={preview.mime_type}
+          onClose={() => setPreview(null)}
+        />
+      )}
     </Overlay>
   );
 }

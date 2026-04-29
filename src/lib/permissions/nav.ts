@@ -173,7 +173,10 @@ export const NAV_GROUPS: NavGroup[] = [
     slug: "services",
     departments: [],
     items: [
-      { name: "Request for Creatives", slug: "creatives-requests", route: "/creatives/requests" },
+      // Creatives team's queue — action view. Visible to creatives + OPS automatically.
+      { name: "Creatives Queue", slug: "creatives-queue", route: "/creatives/requests", departments: ["creatives"] },
+      // Requester form view for everyone else (and ops who want to submit a request).
+      { name: "Request for Creatives", slug: "creatives-requests", route: "/creatives/requests?as=requester" },
     ],
   },
   {
