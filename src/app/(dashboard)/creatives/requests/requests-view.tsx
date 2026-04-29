@@ -25,6 +25,9 @@ type Request = {
   status: string;
   target_date: string | null;
   notes: string | null;
+  inspo_link: string | null;
+  additional_notes: string | null;
+  deny_reason: string | null;
   created_at: string;
   requester: { id: string; first_name: string; last_name: string } | null;
   assignee: Assignee | null;       // lead assignee hint
@@ -75,7 +78,7 @@ const FULFILLMENT_TRANSITIONS: Record<string, { label: string; next: string; sty
 const DENIABLE_STATUSES = new Set(["submitted", "in_progress", "review"]);
 
 // Requester can edit/delete only before fulfillment starts.
-const REQUESTER_EDITABLE = new Set(["draft", "submitted", "cancelled", "rejected"]);
+const REQUESTER_EDITABLE = new Set(["submitted", "review"]);
 
 function nextTransition(status: string) {
   const list = FULFILLMENT_TRANSITIONS[status] ?? [];
@@ -263,12 +266,71 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     await fetchRequests();
   }
 
-  async function denyRequest(id: string) {
-    if (!confirm("Deny this request? The requester will see it as rejected.")) return;
-    setActionLoading(id);
-    await updateStatus(id, "rejected");
+  // Deny modal state — captures a required deny_reason on rejection.
+  const [denyingRequest, setDenyingRequest] = useState<{ id: string; title: string } | null>(null);
+  const [denyReason, setDenyReason] = useState("");
+  const [denySubmitting, setDenySubmitting] = useState(false);
+
+  function openDenyModal(id: string) {
+    const r = requests.find((x) => x.id === id);
+    if (!r) return;
+    setDenyingRequest({ id: r.id, title: r.title });
+    setDenyReason("");
+  }
+
+  async function submitDeny() {
+    if (!denyingRequest) return;
+    const reason = denyReason.trim();
+    if (!reason) return;
+    setDenySubmitting(true);
+    setActionLoading(denyingRequest.id);
+    const res = await fetch(`/api/ad-ops/requests?id=${denyingRequest.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "rejected", deny_reason: reason }),
+    });
+    setDenySubmitting(false);
     setActionLoading(null);
+    if (!res.ok) {
+      alert("Could not deny request. Please try again.");
+      return;
+    }
+    setDenyingRequest(null);
+    setDenyReason("");
     setDetailId(null);
+    await fetchRequests();
+  }
+
+  // Legacy alias — kept so existing callers (row deny button, detail modal) open the new modal.
+  function denyRequest(id: string) {
+    openDenyModal(id);
+  }
+
+  // Create a planner task from a request — copies title, stamps source_request_id.
+  const [creatingTaskFor, setCreatingTaskFor] = useState<string | null>(null);
+  async function createTaskFromRequest(id: string) {
+    const r = requests.find((x) => x.id === id);
+    if (!r) return;
+    setCreatingTaskFor(id);
+    try {
+      const res = await fetch("/api/creatives/content-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: r.title,
+          source_request_id: r.id,
+          status: "idea",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(typeof data.error === "string" ? data.error : "Could not create task.");
+        return;
+      }
+      alert("Task created. Find it in the Creatives planner.");
+    } finally {
+      setCreatingTaskFor(null);
+    }
   }
 
   async function deleteRequest(id: string) {
@@ -286,7 +348,7 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
     await fetchRequests();
   }
 
-  async function saveEdit(id: string, patch: { title: string; brief: string | null; target_date: string | null }) {
+  async function saveEdit(id: string, patch: { title: string; brief: string | null; target_date: string | null; inspo_link: string | null; additional_notes: string | null }) {
     const res = await fetch(`/api/ad-ops/requests?id=${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -644,11 +706,13 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
           canManage={canManage}
           isFulfillmentView={isFulfillmentView}
           assigning={assigningInModal}
+          creatingTask={creatingTaskFor === detailRequest.id}
           onStartAssign={() => setAssigningInModal(true)}
           onStopAssign={() => setAssigningInModal(false)}
           onUpdateStatus={(status) => updateStatus(detailRequest.id, status)}
           onDeny={() => denyRequest(detailRequest.id)}
           onReassign={(ids) => reassign(detailRequest.id, ids)}
+          onCreateTask={() => createTaskFromRequest(detailRequest.id)}
           onClose={closeDetail}
         />
       )}
@@ -672,6 +736,45 @@ export function CreativesRequestsView({ members, currentUserId, canManage, isCre
           onClose={() => setEditing(null)}
         />
       )}
+
+      {/* Deny reason modal */}
+      {denyingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => !denySubmitting && setDenyingRequest(null)} />
+          <div className="relative bg-[var(--color-bg-primary)] rounded-2xl shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Deny request</h2>
+            <p className="text-sm text-[var(--color-text-secondary)] mt-1 truncate">{denyingRequest.title}</p>
+            <label className="block text-xs font-medium text-[var(--color-text-secondary)] mt-4 mb-1.5">
+              Reason <span className="text-[var(--color-error)]">*</span>
+            </label>
+            <textarea
+              autoFocus
+              value={denyReason}
+              onChange={(e) => setDenyReason(e.target.value)}
+              placeholder="Tell the requester why this is being denied so they can resubmit."
+              rows={4}
+              disabled={denySubmitting}
+              className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50 bg-[var(--color-bg-primary)]"
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setDenyingRequest(null)}
+                disabled={denySubmitting}
+                className="flex-1 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm py-2 rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitDeny}
+                disabled={denySubmitting || !denyReason.trim()}
+                className="flex-1 bg-[var(--color-error)] text-white text-sm py-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+              >
+                {denySubmitting ? "Denying…" : "Deny request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -683,11 +786,13 @@ function RequestDetailModal({
   canManage,
   isFulfillmentView,
   assigning,
+  creatingTask,
   onStartAssign,
   onStopAssign,
   onUpdateStatus,
   onDeny,
   onReassign,
+  onCreateTask,
   onClose,
 }: {
   request: Request;
@@ -696,11 +801,13 @@ function RequestDetailModal({
   canManage: boolean;
   isFulfillmentView: boolean;
   assigning: boolean;
+  creatingTask: boolean;
   onStartAssign: () => void;
   onStopAssign: () => void;
   onUpdateStatus: (status: string) => void;
   onDeny: () => void;
   onReassign: (ids: string[]) => void;
+  onCreateTask: () => void;
   onClose: () => void;
 }) {
   const transitions = FULFILLMENT_TRANSITIONS[r.status] ?? [];
@@ -740,6 +847,13 @@ function RequestDetailModal({
         </div>
 
         <div className="px-6 py-5 space-y-5">
+          {r.status === "rejected" && r.deny_reason && (
+            <div className="rounded-lg border border-red-200 bg-[var(--color-error-light)] px-4 py-3">
+              <p className="text-xs font-semibold text-[var(--color-error)] mb-1">Denied</p>
+              <p className="text-sm text-[var(--color-text-primary)] whitespace-pre-wrap">{r.deny_reason}</p>
+            </div>
+          )}
+
           {r.brief && (
             <div>
               <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Brief</p>
@@ -747,10 +861,33 @@ function RequestDetailModal({
             </div>
           )}
 
+          {r.inspo_link && (
+            <div>
+              <a
+                href={r.inspo_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                View Inspo
+              </a>
+            </div>
+          )}
+
           {r.notes && (
             <div>
               <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Notes</p>
               <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{r.notes}</p>
+            </div>
+          )}
+
+          {r.additional_notes && (
+            <div>
+              <p className="text-xs font-medium text-[var(--color-text-secondary)] mb-1">Additional notes</p>
+              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{r.additional_notes}</p>
             </div>
           )}
 
@@ -823,6 +960,15 @@ function RequestDetailModal({
                     Deny
                   </button>
                 )}
+                {!["draft", "cancelled", "rejected"].includes(r.status) && (
+                  <button
+                    onClick={onCreateTask}
+                    disabled={creatingTask}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+                  >
+                    {creatingTask ? "Creating…" : "Create task"}
+                  </button>
+                )}
                 {transitions.length === 0 && !DENIABLE_STATUSES.has(r.status) && (
                   <p className="text-xs text-[var(--color-text-tertiary)] italic">No transitions available from this status.</p>
                 )}
@@ -885,7 +1031,7 @@ function EditRequestModal({
 }: {
   request: Request;
   remoteAttachments: RemoteAttachment[];
-  onSave: (patch: { title: string; brief: string | null; target_date: string | null }) => Promise<void> | void;
+  onSave: (patch: { title: string; brief: string | null; target_date: string | null; inspo_link: string | null; additional_notes: string | null }) => Promise<void> | void;
   onDelete: () => void;
   onUploadAttachments: (files: LocalAttachment[]) => Promise<boolean>;
   onRemoveRemoteAttachment: (attachmentId: string) => Promise<void>;
@@ -895,6 +1041,8 @@ function EditRequestModal({
   const [title, setTitle] = useState(r.title);
   const [brief, setBrief] = useState(r.brief ?? "");
   const [targetDate, setTargetDate] = useState(r.target_date ?? "");
+  const [inspoLink, setInspoLink] = useState(r.inspo_link ?? "");
+  const [additionalNotes, setAdditionalNotes] = useState(r.additional_notes ?? "");
   const [saving, setSaving] = useState(false);
   const [localAttachments, setLocalAttachments] = useState<LocalAttachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
@@ -946,6 +1094,8 @@ function EditRequestModal({
       title: title.trim(),
       brief: brief.trim() || null,
       target_date: targetDate || null,
+      inspo_link: inspoLink.trim() || null,
+      additional_notes: additionalNotes.trim() || null,
     });
     setSaving(false);
   }
@@ -985,6 +1135,29 @@ function EditRequestModal({
             value={targetDate}
             onChange={(e) => setTargetDate(e.target.value)}
             className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Inspo Link</label>
+          <input
+            type="url"
+            value={inspoLink}
+            onChange={(e) => setInspoLink(e.target.value)}
+            placeholder="https://…"
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+          />
+          <p className="text-[11px] text-[var(--color-text-tertiary)] mt-1">Surfaces as &ldquo;View Inspo&rdquo; on the request and any task it spawns.</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Additional Notes</label>
+          <textarea
+            value={additionalNotes}
+            onChange={(e) => setAdditionalNotes(e.target.value)}
+            rows={4}
+            placeholder="Anything else the creative team should know."
+            className="w-full border border-[var(--color-border-primary)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] resize-none"
           />
         </div>
 

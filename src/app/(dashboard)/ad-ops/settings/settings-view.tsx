@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useToast, Toast } from "@/components/ui/toast";
+import { SyncProgressOverlay, consumeSyncStream, initialSyncProgress, type SyncProgressState } from "@/components/ad-ops/sync-progress-overlay";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,7 +22,11 @@ type MetaAccount = {
   currency: string;
   is_active: boolean;
   group_id: string | null;
+  primary_conversion_id: string | null;
+  primary_conversion_name: string | null;
 };
+
+type CustomConversion = { id: string; name: string };
 
 type Props = {
   initialGroups: Group[];
@@ -53,6 +58,14 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
 
+  // Per-account custom conversion picker state (loaded on demand from Meta)
+  const [customConversions, setCustomConversions] = useState<Record<string, CustomConversion[]>>({});
+  const [loadingConversions, setLoadingConversions] = useState<string | null>(null);
+
+  // Backfill state (ops-only destructive action)
+  const [backfilling, setBackfilling] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<SyncProgressState>(initialSyncProgress);
+
   function isBusy(id: string) { return !!busy[id]; }
   function startBusy(id: string) { setBusy((b) => ({ ...b, [id]: true })); }
   function endBusy(id: string)   { setBusy((b) => { const n = { ...b }; delete n[id]; return n; }); }
@@ -66,6 +79,131 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error ?? `Request failed (${res.status})`);
     return json;
+  }
+
+  async function saveAccountCurrency(accountId: string, currency: string) {
+    setAccounts((prev) => prev.map((a) => a.id === accountId ? { ...a, currency } : a));
+    startBusy(accountId);
+    setError(null);
+    try {
+      await api("PATCH", "/api/ad-ops/meta-accounts", { id: accountId, currency });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update currency");
+    } finally {
+      endBusy(accountId);
+    }
+  }
+
+  async function loadCustomConversions(accountId: string) {
+    setLoadingConversions(accountId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/ad-ops/custom-conversions?account_id=${accountId}`);
+      if (!res.ok) {
+        setError("Failed to load custom conversions from Meta");
+        return;
+      }
+      const data: CustomConversion[] = await res.json();
+      setCustomConversions((prev) => ({ ...prev, [accountId]: data }));
+    } finally {
+      setLoadingConversions(null);
+    }
+  }
+
+  async function saveAccountConversion(accountId: string, convId: string | null, convName: string | null) {
+    setAccounts((prev) => prev.map((a) => a.id === accountId ? { ...a, primary_conversion_id: convId, primary_conversion_name: convName } : a));
+    startBusy(accountId);
+    setError(null);
+    try {
+      await api("PATCH", "/api/ad-ops/meta-accounts", {
+        id: accountId,
+        primary_conversion_id: convId,
+        primary_conversion_name: convName,
+      });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update conversion event");
+    } finally {
+      endBusy(accountId);
+    }
+  }
+
+  async function handleBackfill() {
+    if (!confirm(
+      "Backfill will paginate every campaign on every account (~3,500 rows). " +
+      "This is slow and consumes Meta API quota. Continue?"
+    )) return;
+    setBackfilling(true);
+    setSyncProgress({
+      open: true,
+      title: "Backfilling full campaign catalogue",
+      label: "Getting started…",
+      detail: null,
+      pct: 0,
+      status: "running",
+      summaryText: null,
+      errorText: null,
+    });
+    try {
+      const res = await fetch("/api/ad-ops/sync?mode=full&stream=1", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Backfill failed (${res.status})`);
+      }
+      type SyncSummary = { synced?: number; failed?: number; campaigns?: number; ads?: number; errors?: string[] };
+      const summaryRef: { current: SyncSummary | null } = { current: null };
+      await consumeSyncStream(res, (raw) => {
+        const ev = raw as {
+          stage: string;
+          label?: string;
+          detail?: string;
+          pct?: number;
+          summary?: { synced: number; failed: number; campaigns: number; ads: number; errors?: string[] };
+          message?: string;
+        };
+        if (ev.stage === "error") {
+          setSyncProgress((p) => ({ ...p, status: "error", errorText: ev.message ?? "Unknown error", label: "Backfill failed" }));
+          return;
+        }
+        if (ev.stage === "done") {
+          summaryRef.current = ev.summary ?? null;
+          const campaigns = ev.summary?.campaigns ?? 0;
+          const ads = ev.summary?.ads ?? 0;
+          const failedAccounts = ev.summary?.failed ?? 0;
+          const hasErrors = (ev.summary?.errors ?? []).length > 0;
+          setSyncProgress((p) => ({
+            ...p,
+            status: hasErrors ? "error" : "done",
+            label: ev.label ?? "All done.",
+            detail: null,
+            pct: 100,
+            summaryText: `${campaigns.toLocaleString()} campaigns · ${ads.toLocaleString()} ads updated.`,
+            errorText: hasErrors
+              ? `${failedAccounts} account${failedAccounts === 1 ? "" : "s"} failed: ${String(ev.summary!.errors![0]).slice(0, 240)}`
+              : null,
+          }));
+          return;
+        }
+        setSyncProgress((p) => ({
+          ...p,
+          status: "running",
+          label: ev.label ?? p.label,
+          detail: ev.detail ?? p.detail,
+          pct: typeof ev.pct === "number" ? ev.pct : p.pct,
+        }));
+      });
+      const summary = summaryRef.current;
+      if (summary && !(summary.errors && summary.errors.length > 0)) {
+        setToast({
+          message: `Backfilled ${summary.campaigns ?? 0} campaigns · ${summary.ads ?? 0} ads`,
+          type: "success",
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Network error — backfill request failed";
+      setSyncProgress((p) => ({ ...p, status: "error", label: "Backfill failed", errorText: msg }));
+    } finally {
+      setBackfilling(false);
+    }
   }
 
   // ── Group CRUD ────────────────────────────────────────────────────────────
@@ -271,8 +409,12 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
   // ── Render helper: account chip ────────────────────────────────────────────
   function AccountChip({ account }: { account: MetaAccount }) {
     const [showMove, setShowMove] = useState(false);
+    const [showConfig, setShowConfig] = useState(false);
+    const convList = customConversions[account.id];
+    const isLoadingConv = loadingConversions === account.id;
     return (
-      <div className={`flex items-center gap-2 bg-[var(--color-bg-primary)] border rounded-[var(--radius-lg)] px-3 py-2.5 ${account.is_active ? "border-[var(--color-border-primary)]" : "border-[var(--color-border-secondary)] opacity-60"}`}>
+      <div className={`bg-[var(--color-bg-primary)] border rounded-[var(--radius-lg)] ${account.is_active ? "border-[var(--color-border-primary)]" : "border-[var(--color-border-secondary)] opacity-60"}`}>
+        <div className="flex items-center gap-2 px-3 py-2.5">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-sm font-medium text-[var(--color-text-primary)]">{account.name}</span>
@@ -283,7 +425,13 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
               <span className="text-xs bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] px-1.5 py-0.5 rounded-full">inactive</span>
             )}
           </div>
-          <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-0.5">act_{account.account_id}</p>
+          <p className="text-xs text-[var(--color-text-tertiary)] font-mono mt-0.5">
+            act_{account.account_id}
+            <span className="ml-2 text-[var(--color-text-tertiary)]">· {account.currency}</span>
+            {account.primary_conversion_name && (
+              <span className="ml-2 text-[var(--color-success)]">✓ {account.primary_conversion_name}</span>
+            )}
+          </p>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -291,6 +439,18 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
             <Spinner />
           ) : (
             <>
+              {/* Configure (currency + conversion) */}
+              <button
+                onClick={() => setShowConfig((s) => !s)}
+                title="Configure currency and conversion event"
+                className={`p-1 rounded ${showConfig ? "text-[var(--color-text-primary)] bg-[var(--color-surface-active)]" : "text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"}`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+
               {/* Move to group */}
               <div className="relative">
                 <button
@@ -353,6 +513,82 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
             </>
           )}
         </div>
+        </div>
+
+        {/* Per-account configuration panel */}
+        {showConfig && (
+          <div className="border-t border-[var(--color-border-secondary)] px-3 py-3 bg-[var(--color-bg-secondary)]/40 space-y-3">
+            {/* Currency */}
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium text-[var(--color-text-primary)]">Currency</p>
+                <p className="text-xs text-[var(--color-text-tertiary)]">Used for spend/revenue display on this account</p>
+              </div>
+              <select
+                value={account.currency}
+                onChange={(e) => saveAccountCurrency(account.id, e.target.value)}
+                disabled={isBusy(account.id)}
+                className="border border-[var(--color-border-primary)] rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50 bg-[var(--color-bg-primary)]"
+              >
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+
+            {/* Custom conversion event */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-[var(--color-text-primary)]">Purchase conversion</p>
+                  <p className="text-xs text-[var(--color-text-tertiary)]">Override the default purchase event tracked from Meta</p>
+                </div>
+                {!convList && (
+                  <button
+                    onClick={() => loadCustomConversions(account.id)}
+                    disabled={isLoadingConv}
+                    className="text-xs text-[var(--color-accent)] hover:opacity-80 disabled:opacity-50"
+                  >
+                    {isLoadingConv ? "Loading…" : "Load from Meta"}
+                  </button>
+                )}
+                {convList && (
+                  <button
+                    onClick={() => loadCustomConversions(account.id)}
+                    disabled={isLoadingConv}
+                    title="Reload from Meta"
+                    className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
+                  >
+                    ↺
+                  </button>
+                )}
+              </div>
+
+              {!convList && account.primary_conversion_name && (
+                <p className="text-xs text-[var(--color-success)] bg-[var(--color-success-light)] rounded px-2 py-1">
+                  ✓ {account.primary_conversion_name}
+                </p>
+              )}
+
+              {convList && (
+                <select
+                  value={account.primary_conversion_id ?? ""}
+                  onChange={(e) => {
+                    const selected = convList.find((c) => c.id === e.target.value);
+                    saveAccountConversion(account.id, selected?.id ?? null, selected?.name ?? null);
+                  }}
+                  disabled={isBusy(account.id)}
+                  className="w-full border border-[var(--color-border-primary)] rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-50 bg-[var(--color-bg-primary)]"
+                >
+                  <option value="">— Default (purchase event) —</option>
+                  {convList.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              )}
+
+              {convList?.length === 0 && (
+                <p className="text-xs text-[var(--color-text-tertiary)]">No custom conversions found on this account</p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -564,6 +800,32 @@ export function AdOpsSettings({ initialGroups, initialAccounts }: Props) {
           </div>
         )}
       </div>
+
+      {/* Sync & Backfill — destructive admin action */}
+      <div className="mt-10 pt-6 border-t border-[var(--color-border-secondary)]">
+        <div className="bg-[var(--color-bg-secondary)] rounded-2xl p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">Backfill all campaigns</p>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                Paginate every campaign on every active account. Slow, uses Meta API quota. Use only when normal sync is missing data.
+              </p>
+            </div>
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="shrink-0 border border-[var(--color-border-primary)] text-[var(--color-text-primary)] text-sm px-4 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] disabled:opacity-50 flex items-center gap-2"
+            >
+              {backfilling ? <><Spinner /> Backfilling…</> : "Backfill all campaigns"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <SyncProgressOverlay
+        state={syncProgress}
+        onClose={() => setSyncProgress((p) => ({ ...p, open: false }))}
+      />
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>

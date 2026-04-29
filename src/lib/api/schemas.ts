@@ -315,6 +315,8 @@ export const adRequestPostSchema = z.object({
   assignee_ids: z.array(uuid).optional(),
   target_date: dateStr.optional().nullable(),
   notes: optStr,
+  inspo_link: optStr,
+  additional_notes: optStr,
 });
 
 export const adRequestPatchSchema = z.object({
@@ -324,6 +326,9 @@ export const adRequestPatchSchema = z.object({
   assignee_ids: z.array(uuid).optional(),
   target_date: dateStr.optional().nullable(),
   notes: optStr,
+  inspo_link: optStr,
+  additional_notes: optStr,
+  deny_reason: optStr,
   status: z.enum(["draft", "submitted", "in_progress", "review", "approved", "rejected", "cancelled"]).optional(),
 });
 

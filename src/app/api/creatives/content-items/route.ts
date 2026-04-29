@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser } from "@/lib/permissions";
+import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 
 // GET /api/creatives/content-items?status=&week=
 export async function GET(req: NextRequest) {
@@ -43,6 +43,15 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
 
+  // Spawning a task from an ad_request is a creatives/manager-only action — we don't
+  // want random users linking arbitrary content items to other people's requests.
+  if (body.source_request_id) {
+    const isCreatives = user.department?.slug === "creatives";
+    if (!isManagerOrAbove(user) && !isCreatives) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   const { data: item, error } = await supabase
     .from("creative_content_items")
     .insert({
@@ -62,6 +71,7 @@ export async function POST(req: NextRequest) {
       status: body.status ?? "idea",
       assigned_to: body.assignee_ids?.[0] ?? body.assigned_to ?? null,
       group_label: body.group_label ?? "local",
+      source_request_id: body.source_request_id ?? null,
       created_by: user.id,
     })
     .select("id, title")

@@ -72,6 +72,8 @@ export async function POST(req: NextRequest) {
       status: "submitted",
       target_date: body.target_date ?? null,
       notes: body.notes ?? null,
+      inspo_link: body.inspo_link ?? null,
+      additional_notes: body.additional_notes ?? null,
     })
     .select()
     .single();
@@ -104,6 +106,32 @@ export async function PATCH(req: NextRequest) {
   const raw = await req.json();
   const { data: body, error: validationError } = validateBody(adRequestPatchSchema, raw);
   if (validationError) return validationError;
+
+  // Authorization: manager+/creatives can do anything; requester can only edit
+  // their own request while it's still in {submitted, review}, and never change
+  // status/deny_reason/assignee_ids.
+  const { data: existing } = await supabase
+    .from("ad_requests")
+    .select("requester_id, status")
+    .eq("id", id)
+    .single();
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const isCreatives = currentUser.department?.slug === "creatives";
+  const canManage = isManagerOrAbove(currentUser) || isCreatives;
+  const isRequester = existing.requester_id === currentUser.id;
+
+  if (!canManage) {
+    if (!isRequester) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!REQUESTER_EDITABLE_STATUSES.has(existing.status)) {
+      return NextResponse.json({ error: "Cannot edit a request in this state" }, { status: 403 });
+    }
+    if (body.status !== undefined || body.deny_reason !== undefined || body.assignee_ids !== undefined) {
+      return NextResponse.json({ error: "Cannot change workflow fields as requester" }, { status: 403 });
+    }
+  }
 
   // Peel assignee_ids off — it doesn't exist on ad_requests; we sync the junction separately.
   const { assignee_ids, ...patch } = body;
@@ -176,10 +204,12 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json(data);
 }
 
+const REQUESTER_EDITABLE_STATUSES = new Set(["submitted", "review"]);
+
 // DELETE /api/ad-ops/requests?id=...
 // Allowed: manager+ always; requester on their own request when status is
 // not yet in fulfillment (draft, submitted, cancelled, rejected).
-const REQUESTER_DELETABLE_STATUSES = new Set(["draft", "submitted", "cancelled", "rejected"]);
+const REQUESTER_DELETABLE_STATUSES = new Set(["submitted", "review"]);
 
 export async function DELETE(req: NextRequest) {
   const supabase = await createClient();

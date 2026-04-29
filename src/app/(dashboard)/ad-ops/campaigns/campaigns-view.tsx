@@ -40,13 +40,6 @@ type Account = {
   primary_conversion_name: string | null;
 };
 
-type CustomConversion = {
-  id: string;
-  name: string;
-  pixel?: { id: string };
-  custom_event_type?: string;
-};
-
 type AdStat = {
   campaign_id: string;
   meta_account_id: string;
@@ -303,7 +296,7 @@ function fmtK(n: number) {
 }
 function fmtMoney(n: number, currency = "USD") {
   return new Intl.NumberFormat("en-US", {
-    style: "currency", currency, maximumFractionDigits: 0,
+    style: "currency", currency, currencyDisplay: "narrowSymbol", maximumFractionDigits: 0,
   }).format(n);
 }
 
@@ -497,8 +490,6 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
 
   // Sync state
   const [syncing, setSyncing]   = useState(false);
-  const [syncMenuOpen, setSyncMenuOpen] = useState(false);
-  const [backfilling, setBackfilling] = useState(false);
   const [syncMsg, setSyncMsg]   = useState<{ type: "ok" | "error"; text: string } | null>(null);
   const [syncProgress, setSyncProgress] = useState<SyncProgressState>(initialSyncProgress);
 
@@ -538,20 +529,7 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
   // expandedAdsets: campaignId → Set of expanded adset_ids
   const [expandedAdsets, setExpandedAdsets] = useState<Record<string, Set<string>>>({});
 
-  // Settings modal
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [accountCurrencies, setAccountCurrencies] = useState<Record<string, string>>(
-    Object.fromEntries(accounts.map((a) => [a.id, a.currency ?? "USD"]))
-  );
-  const [savingCurrency, setSavingCurrency] = useState<string | null>(null);
-
-  // Custom conversion state
-  const [customConversions, setCustomConversions] = useState<Record<string, CustomConversion[]>>({}); // accountId → list
-  const [loadingConversions, setLoadingConversions] = useState<string | null>(null);
-  const [accountConversions, setAccountConversions] = useState<Record<string, { id: string | null; name: string | null }>>(
-    Object.fromEntries(accounts.map((a) => [a.id, { id: a.primary_conversion_id ?? null, name: a.primary_conversion_name ?? null }]))
-  );
-  const [savingConversion, setSavingConversion] = useState<string | null>(null);
+  // Account-level settings (currency, conversion event) live at /ad-ops/settings (Epic C)
 
   // Metric cards state (localStorage-persisted)
   const [metricCards, setMetricCards] = useState<MetricCard[]>(() => {
@@ -600,7 +578,6 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
   // Tabs: conversion (main) / messenger / historical (no activity in window).
   const [activeTab, setActiveTab] = useState<"main" | "messenger" | "pending" | "historical">("main");
 
-  const settingsRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   // ── Fetch campaigns + aggregated window stats from the API ──────────────
@@ -658,17 +635,6 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
     return () => { supabase.removeChannel(channel); };
   }, [router]);
 
-  // Close settings on outside click
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
-        setSettingsOpen(false);
-      }
-    }
-    if (settingsOpen) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [settingsOpen]);
-
   // Live fetch when "Today" is selected
   useEffect(() => {
     if (datePreset !== "today") {
@@ -723,20 +689,19 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
     // expandedId changes; the composite cache key prevents duplicate fetches.
   }, [expandedId]);
 
-  // Account map (uses live currency from local state so UI is instant)
+  // Account map — currency comes from authoritative server data; settings live at /ad-ops/settings.
   const accountMap = useMemo(
-    () => Object.fromEntries(accounts.map((a) => [a.id, { ...a, currency: accountCurrencies[a.id] ?? a.currency }])),
-    [accounts, accountCurrencies],
+    () => Object.fromEntries(accounts.map((a) => [a.id, a])),
+    [accounts],
   );
 
   // ── Sync ──────────────────────────────────────────────────────────────────
-  async function runStreamedSync(opts: { backfill: boolean }) {
-    const { backfill } = opts;
-    if (backfill) setBackfilling(true); else setSyncing(true);
+  async function handleSync() {
+    setSyncing(true);
     setSyncMsg(null);
     setSyncProgress({
       open: true,
-      title: backfill ? "Backfilling full campaign catalogue" : "Syncing from Meta",
+      title: "Syncing from Meta",
       label: "Getting started…",
       detail: null,
       pct: 0,
@@ -745,9 +710,8 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
       errorText: null,
     });
 
-    const url = backfill ? "/api/ad-ops/sync?mode=full&stream=1" : "/api/ad-ops/sync?stream=1";
     try {
-      const res = await fetch(url, { method: "POST" });
+      const res = await fetch("/api/ad-ops/sync?stream=1", { method: "POST" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? `Sync failed (${res.status})`);
@@ -804,7 +768,7 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
 
       const summary = summaryRef.current;
       if (summary && !(summary.errors && summary.errors.length > 0)) {
-        const text = `${backfill ? "Backfilled" : "Synced"} ${summary.campaigns ?? 0} campaigns · ${summary.ads ?? 0} ads`;
+        const text = `Synced ${summary.campaigns ?? 0} campaigns · ${summary.ads ?? 0} ads`;
         setSyncMsg({ type: "ok", text });
         setToast({ message: text, type: "success" });
         setRefetchKey((k) => k + 1);
@@ -812,7 +776,7 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
         const firstErr = String(summary.errors[0]).slice(0, 200);
         setSyncMsg({
           type: "error",
-          text: `${backfill ? "Backfill" : "Sync"} finished with errors — ${summary.failed ?? 0} account(s) failed: ${firstErr}`,
+          text: `Sync finished with errors — ${summary.failed ?? 0} account(s) failed: ${firstErr}`,
         });
       }
     } catch (err) {
@@ -820,64 +784,7 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
       setSyncProgress((p) => ({ ...p, status: "error", label: "Sync failed", errorText: msg }));
       setSyncMsg({ type: "error", text: msg });
     } finally {
-      if (backfill) setBackfilling(false); else setSyncing(false);
-    }
-  }
-
-  async function handleSync() {
-    await runStreamedSync({ backfill: false });
-  }
-
-  // ── Manual full-catalog backfill (safety net, tucked in settings menu) ───
-  async function handleBackfill() {
-    const ok = window.confirm(
-      "Backfill will paginate every campaign on every account (~3,500 rows). " +
-      "This can take a minute or two. Continue?",
-    );
-    if (!ok) return;
-    setSyncMenuOpen(false);
-    await runStreamedSync({ backfill: true });
-  }
-
-  // ── Currency save ─────────────────────────────────────────────────────────
-  async function saveCurrency(accountId: string, currency: string) {
-    setAccountCurrencies((prev) => ({ ...prev, [accountId]: currency }));
-    setSavingCurrency(accountId);
-    try {
-      await fetch("/api/ad-ops/meta-accounts", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: accountId, currency }),
-      });
-    } finally {
-      setSavingCurrency(null);
-    }
-  }
-
-  // ── Custom conversion helpers ─────────────────────────────────────────────
-  async function loadCustomConversions(accountId: string) {
-    setLoadingConversions(accountId);
-    try {
-      const res = await fetch(`/api/ad-ops/custom-conversions?account_id=${accountId}`);
-      if (!res.ok) return;
-      const data: CustomConversion[] = await res.json();
-      setCustomConversions((prev) => ({ ...prev, [accountId]: data }));
-    } finally {
-      setLoadingConversions(null);
-    }
-  }
-
-  async function saveConversion(accountId: string, convId: string | null, convName: string | null) {
-    setAccountConversions((prev) => ({ ...prev, [accountId]: { id: convId, name: convName } }));
-    setSavingConversion(accountId);
-    try {
-      await fetch("/api/ad-ops/meta-accounts", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: accountId, primary_conversion_id: convId, primary_conversion_name: convName }),
-      });
-    } finally {
-      setSavingConversion(null);
+      setSyncing(false);
     }
   }
 
@@ -1677,130 +1584,11 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
             )}
           </div>
 
-          {/* Account settings gear */}
-          {canSync && (
-            <div className="relative" ref={settingsRef}>
-              <button
-                onClick={() => setSettingsOpen((o) => !o)}
-                title="Account settings"
-                className={`border rounded-lg p-1.5 transition-colors ${settingsOpen ? "border-[var(--color-text-primary)] bg-[var(--color-text-primary)] text-[var(--color-text-inverted)]" : "border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-primary)]"}`}
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-
-              {/* Settings dropdown */}
-              {settingsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-[var(--radius-lg)] shadow-[var(--shadow-lg)] z-50 p-4">
-                  <p className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wide mb-3">Account Settings</p>
-                  <div className="space-y-4">
-                    {accounts.map((account) => {
-                      const convList = customConversions[account.id];
-                      const currentConv = accountConversions[account.id];
-                      const isLoadingConv = loadingConversions === account.id;
-                      const isSavingConv  = savingConversion === account.id;
-
-                      return (
-                        <div key={account.id} className="space-y-2 pb-3 border-b border-[var(--color-border-secondary)] last:border-b-0 last:pb-0">
-                          {/* Account header */}
-                          <div>
-                            <p className="text-sm font-medium text-[var(--color-text-primary)]">{account.name}</p>
-                            <p className="text-xs text-[var(--color-text-tertiary)]">{account.account_id}</p>
-                          </div>
-
-                          {/* Currency */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-[var(--color-text-secondary)]">Currency</span>
-                            <div className="flex items-center gap-1.5">
-                              <select
-                                value={accountCurrencies[account.id] ?? "USD"}
-                                onChange={(e) => saveCurrency(account.id, e.target.value)}
-                                disabled={savingCurrency === account.id}
-                                className="border border-[var(--color-border-primary)] rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] disabled:opacity-50"
-                              >
-                                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                              </select>
-                              {savingCurrency === account.id && (
-                                <svg className="animate-spin w-3 h-3 text-[var(--color-text-tertiary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                </svg>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Custom conversion */}
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-[var(--color-text-secondary)]">Purchase conversion</span>
-                              {!convList && (
-                                <button
-                                  onClick={() => loadCustomConversions(account.id)}
-                                  disabled={isLoadingConv}
-                                  className="text-xs text-[var(--color-accent)] hover:text-[var(--color-accent)] disabled:opacity-50"
-                                >
-                                  {isLoadingConv ? "Loading…" : "Load from Meta"}
-                                </button>
-                              )}
-                              {convList && (
-                                <button onClick={() => loadCustomConversions(account.id)} disabled={isLoadingConv}
-                                  className="text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]">
-                                  ↺
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Current selection display */}
-                            {!convList && currentConv?.name && (
-                              <p className="text-xs text-[var(--color-success)] bg-[var(--color-success-light)] rounded px-2 py-1">
-                                ✓ {currentConv.name}
-                              </p>
-                            )}
-
-                            {/* Dropdown once loaded */}
-                            {convList && (
-                              <div className="flex items-center gap-1.5">
-                                <select
-                                  value={currentConv?.id ?? ""}
-                                  onChange={(e) => {
-                                    const selected = convList.find((c) => c.id === e.target.value);
-                                    saveConversion(account.id, selected?.id ?? null, selected?.name ?? null);
-                                  }}
-                                  disabled={isSavingConv}
-                                  className="flex-1 border border-[var(--color-border-primary)] rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-50 bg-[var(--color-bg-primary)]"
-                                >
-                                  <option value="">— Default (purchase event) —</option>
-                                  {convList.map((c) => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                  ))}
-                                </select>
-                                {isSavingConv && (
-                                  <svg className="animate-spin w-3 h-3 text-[var(--color-text-tertiary)] shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-                                  </svg>
-                                )}
-                              </div>
-                            )}
-
-                            {convList?.length === 0 && (
-                              <p className="text-xs text-[var(--color-text-tertiary)]">No custom conversions found on this account</p>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Sync button */}
           {canSync && (
             <button
               onClick={handleSync}
-              disabled={syncing || backfilling}
+              disabled={syncing}
               className="bg-[var(--color-text-primary)] text-[var(--color-text-inverted)] text-sm px-4 py-1.5 rounded-lg hover:bg-[var(--color-text-secondary)] transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {syncing ? "Syncing…" : "Sync Now"}
@@ -1810,50 +1598,7 @@ export function CampaignsView({ accounts, canSync, initialWindow }: Props) {
             </button>
           )}
 
-          {/* Settings menu — gear icon with a hidden backfill action */}
-          {canSync && (
-            <div className="relative">
-              <button
-                onClick={() => setSyncMenuOpen((v) => !v)}
-                disabled={syncing || backfilling}
-                aria-label="Sync settings"
-                className="p-1.5 rounded-lg border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
-
-              {syncMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setSyncMenuOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border-primary)] rounded-lg shadow-lg z-20 overflow-hidden">
-                    <div className="px-3 py-2 border-b border-[var(--color-border-secondary)]">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">Safety net</p>
-                    </div>
-                    <button
-                      onClick={handleBackfill}
-                      disabled={backfilling}
-                      className="w-full text-left px-3 py-2.5 hover:bg-[var(--color-surface-hover)] disabled:opacity-50 flex items-start gap-2"
-                    >
-                      <svg className="w-4 h-4 mt-0.5 text-[var(--color-text-secondary)] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                      <div>
-                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                          {backfilling ? "Backfilling…" : "Backfill all campaigns"}
-                        </p>
-                        <p className="text-xs text-[var(--color-text-tertiary)] mt-0.5 leading-snug">
-                          Paginates every campaign on every account. Slow; use only when something's missing from the catalog.
-                        </p>
-                      </div>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          {/* Settings + backfill moved to /ad-ops/settings (Epic C) */}
         </div>
       </div>
 

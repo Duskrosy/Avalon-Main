@@ -13,22 +13,27 @@ export async function PATCH(
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const raw = await req.json();
   const { data: body, error: validationError } = validateBody(kanbanColumnPatchSchema, raw);
   if (validationError) return validationError;
 
-  if (body.name !== undefined) {
-    const { data: col, error: fetchErr } = await supabase
-      .from("kanban_columns")
-      .select("is_default")
-      .eq("id", id)
-      .single();
-    if (fetchErr || !col) return NextResponse.json({ error: "Column not found" }, { status: 404 });
-    if (col.is_default) {
-      return NextResponse.json({ error: "Default columns cannot be renamed" }, { status: 403 });
+  const { data: col, error: fetchErr } = await supabase
+    .from("kanban_columns")
+    .select("is_default, kanban_boards(scope, owner_id)")
+    .eq("id", id)
+    .single();
+  if (fetchErr || !col) return NextResponse.json({ error: "Column not found" }, { status: 404 });
+
+  if (!isManagerOrAbove(currentUser)) {
+    const board = col.kanban_boards as unknown as { scope: string; owner_id: string | null } | null;
+    if (!board || board.scope !== "personal" || board.owner_id !== currentUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+  }
+
+  if (body.name !== undefined && col.is_default) {
+    return NextResponse.json({ error: "Default columns cannot be renamed" }, { status: 403 });
   }
 
   const patch: Record<string, unknown> = {};
@@ -41,7 +46,7 @@ export async function PATCH(
   return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/kanban/columns/[id] — delete column by URL param
+// DELETE /api/kanban/columns/[id] — manager+ or personal-board owner
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,15 +55,22 @@ export async function DELETE(
   const supabase = await createClient();
   const currentUser = await getCurrentUser(supabase);
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  if (!isManagerOrAbove(currentUser)) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { data: col, error: fetchErr } = await supabase
     .from("kanban_columns")
-    .select("is_default")
+    .select("is_default, kanban_boards(scope, owner_id)")
     .eq("id", id)
     .single();
 
   if (fetchErr || !col) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!isManagerOrAbove(currentUser)) {
+    const board = col.kanban_boards as unknown as { scope: string; owner_id: string | null } | null;
+    if (!board || board.scope !== "personal" || board.owner_id !== currentUser.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   if (col.is_default) return NextResponse.json({ error: "Default columns cannot be deleted" }, { status: 403 });
 
   const { error } = await supabase.from("kanban_columns").delete().eq("id", id);

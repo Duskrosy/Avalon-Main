@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { format, parseISO, startOfWeek, endOfWeek, subWeeks, isWithinInterval } from "date-fns";
 import { AssignPostModal, type GatherSelection, type SmmPost, type LiveAd } from "./gather-modal";
 import { useToast, Toast } from "@/components/ui/toast";
@@ -45,6 +45,7 @@ type ContentItem = {
   linked_external_url: string | null;
   linked_at: string | null;
   linked_post_gathered_at: string | null;
+  source_request_id: string | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -72,6 +73,7 @@ type Props = {
   currentUserId: string;
   isManager: boolean;
   currentDeptId: string | null;
+  isCreatives: boolean;
 };
 
 // ── Constants ─────────────────────────────────────────────────
@@ -165,6 +167,7 @@ export default function PlannerView({
   currentUserId,
   isManager,
   currentDeptId,
+  isCreatives,
 }: Props) {
   const { toast, setToast } = useToast();
   const [items, setItems] = useState<ContentItem[]>(initialItems);
@@ -172,6 +175,29 @@ export default function PlannerView({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
+  // Assignee filter: "mine" | "all" | <userId>. Persisted in localStorage so the
+  // last-used scope sticks across page loads. Default is "mine" for creatives,
+  // "all" otherwise.
+  const [assigneeFilter, setAssigneeFilter] = useState<string>(() => {
+    if (typeof window === "undefined") return isCreatives ? "mine" : "all";
+    try {
+      return window.localStorage.getItem("avalon_planner_assignee_filter") ?? (isCreatives ? "mine" : "all");
+    } catch {
+      return isCreatives ? "mine" : "all";
+    }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("avalon_planner_assignee_filter", assigneeFilter); } catch { /* ignore */ }
+  }, [assigneeFilter]);
+
+  function itemMatchesAssignee(i: ContentItem): boolean {
+    if (assigneeFilter === "all") return true;
+    const ids = i.assignees && i.assignees.length > 0
+      ? i.assignees.map((a) => a.user_id)
+      : (i.assigned_to ? [i.assigned_to] : []);
+    if (assigneeFilter === "mine") return ids.includes(currentUserId);
+    return ids.includes(assigneeFilter);
+  }
   const [editItem, setEditItem] = useState<ContentItem | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -184,6 +210,7 @@ export default function PlannerView({
       items
         .filter((i) => PLANNED_STATUSES.includes(i.status))
         .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+        .filter(itemMatchesAssignee)
         .filter(
           (i) =>
             !search ||
@@ -191,7 +218,8 @@ export default function PlannerView({
             (i.campaign_label ?? "").toLowerCase().includes(search.toLowerCase())
         )
         .filter((i) => !statusFilter || i.status === statusFilter),
-    [items, search, statusFilter, groupFilter]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, search, statusFilter, groupFilter, assigneeFilter, currentUserId]
   );
 
   const published = useMemo(
@@ -199,13 +227,15 @@ export default function PlannerView({
       items
         .filter((i) => PUBLISHED_STATUSES.includes(i.status))
         .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+        .filter(itemMatchesAssignee)
         .filter(
           (i) =>
             !search ||
             i.title.toLowerCase().includes(search.toLowerCase()) ||
             (i.campaign_label ?? "").toLowerCase().includes(search.toLowerCase())
         ),
-    [items, search, groupFilter]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, search, groupFilter, assigneeFilter, currentUserId]
   );
 
   const active = tab === "planned" ? planned : published;
@@ -216,6 +246,7 @@ export default function PlannerView({
       .filter((i) => tab === "planned" ? PLANNED_STATUSES.includes(i.status) : PUBLISHED_STATUSES.includes(i.status))
       .filter((i) => !statusFilter || i.status === statusFilter)
       .filter((i) => groupFilter === "all" || i.group_label === groupFilter)
+      .filter(itemMatchesAssignee)
       .filter((i) => {
         if (!q) return true;
         const assigneeName = i.assigned_profile ? `${i.assigned_profile.first_name} ${i.assigned_profile.last_name}` : "";
@@ -227,7 +258,8 @@ export default function PlannerView({
       label: WEEK_LABELS[key],
       items: base.filter((i) => getWeekGroup(i.planned_week_start) === key),
     })).filter((g) => g.items.length > 0);
-  }, [items, tab, statusFilter, groupFilter, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, tab, statusFilter, groupFilter, search, assigneeFilter, currentUserId]);
 
   // ── Inline status change ──────────────────────────────────
   const changeStatus = useCallback(
@@ -450,6 +482,17 @@ export default function PlannerView({
           onChange={(e) => setSearch(e.target.value)}
           className="w-full sm:w-64 rounded-[var(--radius-md)] border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-1.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-border-focus)]"
         />
+        <select
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          className="rounded-lg border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+        >
+          <option value="mine">Mine</option>
+          <option value="all">All creative team</option>
+          {profiles.map((p) => (
+            <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>
+          ))}
+        </select>
         {tab === "planned" && (
           <select
             value={statusFilter}
@@ -931,6 +974,39 @@ function ItemModal({
   const [status, setStatus] = useState(initial?.status ?? "idea");
   const [groupLabel, setGroupLabel] = useState(initial?.group_label ?? "local");
 
+  // Inherited request context: when this item was spawned from an ad_request,
+  // pull the request and its attachments so the creative can see the original brief.
+  type SourceRequest = {
+    id: string;
+    title: string;
+    brief: string | null;
+    inspo_link: string | null;
+    additional_notes: string | null;
+    requester: { first_name: string; last_name: string } | null;
+  };
+  type SourceAttachment = { id: string; file_name: string | null; mime_type: string | null; url: string | null };
+  const [sourceRequest, setSourceRequest] = useState<SourceRequest | null>(null);
+  const [sourceAttachments, setSourceAttachments] = useState<SourceAttachment[]>([]);
+
+  useEffect(() => {
+    const reqId = initial?.source_request_id;
+    if (!reqId) return;
+    let cancelled = false;
+    (async () => {
+      const [reqRes, attachRes] = await Promise.all([
+        fetch(`/api/ad-ops/requests/${reqId}`),
+        fetch(`/api/ad-ops/requests/${reqId}/attachments`),
+      ]);
+      if (cancelled) return;
+      if (reqRes.ok) setSourceRequest(await reqRes.json());
+      if (attachRes.ok) {
+        const data = await attachRes.json();
+        setSourceAttachments(data.attachments ?? []);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [initial?.source_request_id]);
+
   const isEdit = !!initial;
 
   function submit(e: React.FormEvent) {
@@ -961,6 +1037,70 @@ function ItemModal({
         <h2 className="text-lg font-bold text-[var(--color-text-primary)]">
           {isEdit ? "Edit Item" : "New Content Item"}
         </h2>
+
+        {sourceRequest && (
+          <div className="rounded-lg border border-[var(--color-border-secondary)] bg-[var(--color-bg-secondary)] px-4 py-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-tertiary)]">From request</p>
+              {sourceRequest.requester && (
+                <p className="text-[11px] text-[var(--color-text-tertiary)]">
+                  {sourceRequest.requester.first_name} {sourceRequest.requester.last_name}
+                </p>
+              )}
+            </div>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">{sourceRequest.title}</p>
+            {sourceRequest.brief && (
+              <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap">{sourceRequest.brief}</p>
+            )}
+            {sourceRequest.inspo_link && (
+              <a
+                href={sourceRequest.inspo_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:underline"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                View Inspo
+              </a>
+            )}
+            {sourceRequest.additional_notes && (
+              <div>
+                <p className="text-[11px] font-medium text-[var(--color-text-tertiary)]">Additional notes</p>
+                <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap">{sourceRequest.additional_notes}</p>
+              </div>
+            )}
+            {sourceAttachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {sourceAttachments.map((a) =>
+                  a.url && a.mime_type?.startsWith("image/") ? (
+                    <a
+                      key={a.id}
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-12 h-12 rounded border border-[var(--color-border-primary)] overflow-hidden hover:ring-2 hover:ring-[var(--color-accent)]"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={a.url} alt={a.file_name ?? ""} className="h-full w-full object-cover" />
+                    </a>
+                  ) : (
+                    <a
+                      key={a.id}
+                      href={a.url ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-2 py-1 text-[11px] rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] hover:bg-[var(--color-surface-hover)] max-w-[180px]"
+                    >
+                      <span className="truncate">{a.file_name ?? "file"}</span>
+                    </a>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <Field label="Title *">
           <input

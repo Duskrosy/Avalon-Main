@@ -17,7 +17,7 @@ export default async function AdOpsSettingsPage() {
       .order("name"),
     supabase
       .from("ad_meta_accounts")
-      .select("id, account_id, name, label, currency, is_active, group_id")
+      .select("id, account_id, name, label, currency, is_active, group_id, primary_conversion_id, primary_conversion_name")
       .order("name"),
   ]);
 

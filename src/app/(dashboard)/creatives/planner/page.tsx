@@ -17,6 +17,15 @@ export default async function CreativesPlannerPage() {
   // unused because writes only land in smm_top_posts.
   const fromISO = new Date(Date.now() - 30 * 86400_000).toISOString().slice(0, 10);
 
+  // Resolve the creatives department once so we can scope the assignee dropdown
+  // to creative-team members only (Phase 3 ticket).
+  const { data: creativesDept } = await admin
+    .from("departments")
+    .select("id")
+    .eq("slug", "creatives")
+    .single();
+  const creativesDeptId = creativesDept?.id ?? null;
+
   const [
     { data: items },
     { data: profiles },
@@ -36,12 +45,15 @@ export default async function CreativesPlannerPage() {
         )`
       )
       .order("created_at", { ascending: false }),
-    admin
-      .from("profiles")
-      .select("id, first_name, last_name, department_id, avatar_url")
-      .eq("status", "active")
-      .is("deleted_at", null)
-      .order("first_name"),
+    creativesDeptId
+      ? admin
+          .from("profiles")
+          .select("id, first_name, last_name, department_id, avatar_url")
+          .eq("status", "active")
+          .eq("department_id", creativesDeptId)
+          .is("deleted_at", null)
+          .order("first_name")
+      : Promise.resolve({ data: [] }),
     admin
       .from("smm_group_platforms")
       .select("id, group_id, platform, page_name, is_active, token_expires_at")
@@ -129,6 +141,7 @@ export default async function CreativesPlannerPage() {
       currentUserId={user.id}
       isManager={isManagerOrAbove(user)}
       currentDeptId={user.department_id ?? null}
+      isCreatives={creativesDeptId !== null && user.department_id === creativesDeptId}
     />
   );
 }

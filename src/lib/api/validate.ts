@@ -10,6 +10,14 @@ export function validateBody<T extends z.ZodTypeAny>(
 ): ValidationSuccess<z.infer<T>> | ValidationFailure {
   const result = schema.safeParse(data);
   if (!result.success) {
+    // Log full Zod issue list so emoji/unicode rejections are debuggable from server logs.
+    console.warn("[validateBody] schema rejection", {
+      issues: result.error.issues.map((i) => ({
+        path: i.path.join("."),
+        code: i.code,
+        message: i.message,
+      })),
+    });
     return {
       data: null,
       error: NextResponse.json(
