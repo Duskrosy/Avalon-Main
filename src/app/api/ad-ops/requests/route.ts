@@ -202,6 +202,45 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
+  // Auto-create planner task when request is accepted, but only if one doesn't
+  // already exist for this request (lets the creatives team manually spawn extras
+  // from the same request without us double-creating on re-accept).
+  if (data && body.status === "in_progress") {
+    try {
+      const admin = createAdminClient();
+      const { data: existingTask } = await admin
+        .from("creative_content_items")
+        .select("id")
+        .eq("source_request_id", id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingTask) {
+        const { data: task } = await admin
+          .from("creative_content_items")
+          .insert({
+            title: data.title,
+            source_request_id: id,
+            status: "idea",
+            assigned_to: data.assignee_id ?? null,
+            group_label: "local",
+            created_by: currentUser.id,
+          })
+          .select("id")
+          .single();
+
+        // Mirror assignees junction if any are set on the request.
+        if (task && Array.isArray(assignee_ids) && assignee_ids.length > 0) {
+          await admin.from("content_item_assignees").insert(
+            assignee_ids.map((uid) => ({ item_id: task.id, user_id: uid })),
+          );
+        }
+      }
+    } catch {
+      // Task creation is best-effort
+    }
+  }
+
   return NextResponse.json(data);
 }
 
