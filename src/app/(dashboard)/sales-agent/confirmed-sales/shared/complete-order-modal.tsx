@@ -58,6 +58,10 @@ export function CompleteOrderModal({
   // Reset form whenever the modal opens for a new order. Net value is
   // intentionally left blank — agents should not autofill the collected
   // amount from the order total because it would mask short-payments.
+  //
+  // Depend on order.id (stable string) — NOT the order object itself, since
+  // the parent re-creates the object reference on every render, which would
+  // spuriously reset selectedCreative right after the user clicked it.
   useEffect(() => {
     if (!open || !order) return;
     setNetValue(order.net_value_amount ?? null);
@@ -66,7 +70,8 @@ export function CompleteOrderModal({
     setIsAbandonedCart(order.is_abandoned_cart ?? false);
     setAlexLevel("none");
     setError(null);
-  }, [open, order]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, order?.id]);
 
   // Debounced creative search. Hits the Meta-backed picker endpoint;
   // 200ms is enough to avoid request spam while typing.
