@@ -172,7 +172,40 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ orders: data ?? [] });
+
+  // Enrich each row with lifecycle_stage + lifecycle_method from v_order_lifecycle.
+  const ids = (data ?? []).map((r: { id: string }) => r.id);
+  const lifecycleMap = new Map<
+    string,
+    { lifecycle_stage: string; lifecycle_method: string | null }
+  >();
+  if (ids.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: lifeRows } = await (admin as any)
+      .from("v_order_lifecycle")
+      .select("order_id, lifecycle_stage, lifecycle_method")
+      .in("order_id", ids);
+    for (const r of (lifeRows ?? []) as Array<{
+      order_id: string;
+      lifecycle_stage: string;
+      lifecycle_method: string | null;
+    }>) {
+      lifecycleMap.set(r.order_id, {
+        lifecycle_stage: r.lifecycle_stage,
+        lifecycle_method: r.lifecycle_method,
+      });
+    }
+  }
+  const enriched = (data ?? []).map(
+    (row: { id: string } & Record<string, unknown>) => ({
+      ...row,
+      lifecycle_stage:
+        lifecycleMap.get(row.id)?.lifecycle_stage ?? "in_progress",
+      lifecycle_method: lifecycleMap.get(row.id)?.lifecycle_method ?? null,
+    }),
+  );
+
+  return NextResponse.json({ orders: enriched });
 }
 
 // ─── POST /api/sales/orders ──────────────────────────────────────────────────

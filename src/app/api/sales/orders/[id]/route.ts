@@ -38,7 +38,21 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json({ order });
+  // Enrich with lifecycle_stage + lifecycle_method from v_order_lifecycle.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: life } = await (admin as any)
+    .from("v_order_lifecycle")
+    .select("lifecycle_stage, lifecycle_method")
+    .eq("order_id", id)
+    .maybeSingle();
+
+  return NextResponse.json({
+    order: {
+      ...order,
+      lifecycle_stage: life?.lifecycle_stage ?? "in_progress",
+      lifecycle_method: life?.lifecycle_method ?? null,
+    },
+  });
 }
 
 // ─── PATCH /api/sales/orders/[id] — drafts only ─────────────────────────────
