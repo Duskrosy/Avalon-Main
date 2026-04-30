@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 export default function OrderAdjustmentsLegacyRedirect() {
-  redirect("/customer-service/order-adjustments");
+  permanentRedirect("/customer-service/order-adjustments");
 }
