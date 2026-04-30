@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, RefreshCw, X } from "lucide-react";
+
+// Module-level cache for /api/sales/ad-creatives responses. Keyed by query
+// string. 5-minute TTL — Meta sync runs at least daily so older creative
+// metadata is fine for picking. Avoids cold-start every time the modal opens.
+type CachedResponse = { at: number; data: CreativeItem[] };
+const CREATIVES_CACHE = new Map<string, CachedResponse>();
+const CREATIVES_TTL_MS = 5 * 60_000;
 
 // Modal for marking a synced order complete with post-delivery
 // attribution. Lives separate from the create drawer because completion
@@ -73,22 +80,60 @@ export function CompleteOrderModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, order?.id]);
 
-  // Debounced creative search. Hits the Meta-backed picker endpoint;
-  // 200ms is enough to avoid request spam while typing.
+  // Debounced creative search with module-level cache. Hits the Meta-backed
+  // picker endpoint via cache first; on miss, fetches and stores. 200ms
+  // debounce keeps typing responsive without spam.
   useEffect(() => {
     if (!open) return;
+    const cached = CREATIVES_CACHE.get(creativeQuery);
+    if (cached && Date.now() - cached.at < CREATIVES_TTL_MS) {
+      setCreatives(cached.data);
+      setLoadingCreatives(false);
+      return;
+    }
     const t = setTimeout(() => {
       setLoadingCreatives(true);
       const params = new URLSearchParams();
       if (creativeQuery) params.set("q", creativeQuery);
       fetch(`/api/sales/ad-creatives?${params.toString()}`)
         .then((r) => r.json())
-        .then((j) => setCreatives((j.creatives ?? []) as CreativeItem[]))
+        .then((j) => {
+          const list = (j.creatives ?? []) as CreativeItem[];
+          CREATIVES_CACHE.set(creativeQuery, { at: Date.now(), data: list });
+          setCreatives(list);
+        })
         .catch(() => setCreatives([]))
         .finally(() => setLoadingCreatives(false));
     }, 200);
     return () => clearTimeout(t);
   }, [creativeQuery, open]);
+
+  const refreshCreatives = () => {
+    CREATIVES_CACHE.delete(creativeQuery);
+    // Re-trigger by toggling a state nudge: the simplest way is to set the
+    // query to a temporary value and back, but that's ugly. Instead, force a
+    // direct fetch here so the user sees an immediate spinner.
+    setLoadingCreatives(true);
+    const params = new URLSearchParams();
+    if (creativeQuery) params.set("q", creativeQuery);
+    fetch(`/api/sales/ad-creatives?${params.toString()}`)
+      .then((r) => r.json())
+      .then((j) => {
+        const list = (j.creatives ?? []) as CreativeItem[];
+        CREATIVES_CACHE.set(creativeQuery, { at: Date.now(), data: list });
+        setCreatives(list);
+      })
+      .catch(() => setCreatives([]))
+      .finally(() => setLoadingCreatives(false));
+  };
+
+  // Mirror of selectedCreative in a ref so transient state resets (from
+  // unforeseen effect triggers) don't lose the user's pick. Submit reads
+  // state primarily but falls back to ref. Updated on every state change.
+  const selectedRef = useRef<CreativeItem | null>(null);
+  useEffect(() => {
+    selectedRef.current = selectedCreative;
+  }, [selectedCreative]);
 
   if (!open || !order) return null;
 
@@ -98,7 +143,9 @@ export function CompleteOrderModal({
       setError("Net value is required");
       return;
     }
-    if (!selectedCreative) {
+    // Read state first; fall back to ref if state was transiently reset.
+    const picked = selectedCreative ?? selectedRef.current;
+    if (!picked) {
       setError("Pick an ad creative");
       return;
     }
@@ -109,8 +156,8 @@ export function CompleteOrderModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           net_value_amount: netValue,
-          ad_creative_id: selectedCreative.ad_id,
-          ad_creative_name: selectedCreative.ad_name,
+          ad_creative_id: picked.ad_id,
+          ad_creative_name: picked.ad_name,
           is_abandoned_cart: isAbandonedCart,
           alex_ai_assist_level: alexLevel,
         }),
@@ -178,13 +225,28 @@ export function CompleteOrderModal({
             <label className="text-xs font-medium text-gray-700 block mb-1">
               Ad creative *
             </label>
-            <input
-              type="text"
-              value={creativeQuery}
-              onChange={(e) => setCreativeQuery(e.target.value)}
-              placeholder="Search by creative name…"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            {selectedCreative && (
+              <div className="mb-1 inline-flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">
+                ✓ Selected: {selectedCreative.ad_name}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={creativeQuery}
+                onChange={(e) => setCreativeQuery(e.target.value)}
+                placeholder="Search by creative name…"
+                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={refreshCreatives}
+                title="Refresh creatives"
+                className="px-2 text-xs text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50"
+              >
+                <RefreshCw size={12} className={loadingCreatives ? "animate-spin" : ""} />
+              </button>
+            </div>
             <div className="mt-1 max-h-56 overflow-y-auto border border-gray-100 rounded-md">
               {loadingCreatives && (
                 <div className="p-2 text-xs text-gray-400">Loading…</div>
@@ -198,7 +260,10 @@ export function CompleteOrderModal({
                 <button
                   type="button"
                   key={c.ad_id}
-                  onClick={() => setSelectedCreative(c)}
+                  onClick={() => {
+                    selectedRef.current = c;
+                    setSelectedCreative(c);
+                  }}
                   className={`w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 ${
                     selectedCreative?.ad_id === c.ad_id ? "bg-blue-50" : ""
                   }`}
