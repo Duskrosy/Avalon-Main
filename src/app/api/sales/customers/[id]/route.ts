@@ -81,7 +81,7 @@ export async function GET(
   const { data: orderRows } = await (admin as any)
     .from("orders")
     .select(
-      "id, avalon_order_number, shopify_order_name, shopify_order_number, status, sync_status, completion_status, final_total_amount, net_value_amount, delivery_status, created_at, completed_at, items:order_items(product_name, variant_name, size, color, quantity, image_url)",
+      "id, avalon_order_number, shopify_order_name, shopify_order_number, status, sync_status, sync_error, completion_status, final_total_amount, net_value_amount, delivery_status, created_at, completed_at, items:order_items(product_name, variant_name, size, color, quantity, image_url)",
     )
     .eq("customer_id", id)
     .is("deleted_at", null)
@@ -94,6 +94,7 @@ export async function GET(
     shopify_order_number: number | null;
     status: string;
     sync_status: string;
+    sync_error: string | null;
     completion_status: string;
     final_total_amount: number;
     net_value_amount: number | null;
@@ -158,14 +159,41 @@ export async function GET(
     .sort((a, b) => b.quantity - a.quantity)
     .slice(0, 5);
 
-  // Recent orders: trim to a slim shape for the page.
-  const recent_orders = orders.slice(0, 20).map((o) => ({
+  // Recent orders: trim to a slim shape for the page, enriched with
+  // lifecycle_stage + lifecycle_method from v_order_lifecycle.
+  const recentSlice = orders.slice(0, 20);
+  const recentIds = recentSlice.map((o) => o.id);
+  const lifecycleMap = new Map<
+    string,
+    { lifecycle_stage: string; lifecycle_method: string | null }
+  >();
+  if (recentIds.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: lifeRows } = await (admin as any)
+      .from("v_order_lifecycle")
+      .select("order_id, lifecycle_stage, lifecycle_method")
+      .in("order_id", recentIds);
+    for (const r of (lifeRows ?? []) as Array<{
+      order_id: string;
+      lifecycle_stage: string;
+      lifecycle_method: string | null;
+    }>) {
+      lifecycleMap.set(r.order_id, {
+        lifecycle_stage: r.lifecycle_stage,
+        lifecycle_method: r.lifecycle_method,
+      });
+    }
+  }
+  const recent_orders = recentSlice.map((o) => ({
     id: o.id,
     avalon_order_number: o.avalon_order_number,
     shopify_order_name: o.shopify_order_name,
     shopify_order_number: o.shopify_order_number,
     status: o.status,
     sync_status: o.sync_status,
+    sync_error: o.sync_error,
+    lifecycle_stage: lifecycleMap.get(o.id)?.lifecycle_stage ?? "in_progress",
+    lifecycle_method: lifecycleMap.get(o.id)?.lifecycle_method ?? null,
     completion_status: o.completion_status,
     final_total_amount: o.final_total_amount,
     net_value_amount: o.net_value_amount,

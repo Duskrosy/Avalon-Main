@@ -59,6 +59,9 @@ type RecentOrder = {
   shopify_order_number: number | null;
   status: string;
   sync_status: string;
+  sync_error: string | null;
+  lifecycle_stage: string;
+  lifecycle_method: string | null;
   completion_status: string;
   final_total_amount: number;
   net_value_amount: number | null;
@@ -290,8 +293,10 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                       </td>
                       <td className="px-3 py-2">
                         <SyncStatusBadge
-                          status={o.status}
+                          lifecycleStage={o.lifecycle_stage}
+                          lifecycleMethod={o.lifecycle_method}
                           syncStatus={o.sync_status}
+                          syncError={o.sync_error}
                         />
                       </td>
                       <td className="px-3 py-2 text-xs text-gray-500">
