@@ -2,13 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { Truck, Upload } from "lucide-react";
-import type { DrawerHandoff } from "./types";
+import type {
+  DrawerHandoff,
+  CustomerLite,
+  DrawerLineItem,
+  DrawerVoucher,
+  AutoDiscountSnapshot,
+} from "./types";
 import { ReceiptModal, toLocalDatetimeInputValue } from "./receipt-modal";
+import { OrderPreviewCard } from "./order-preview-card";
 
 type Props = {
   orderId: string | null;
   handoff: DrawerHandoff;
   onSetHandoff: (patch: Partial<DrawerHandoff>) => void;
+  customer: CustomerLite | null;
+  items: DrawerLineItem[];
+  voucher: DrawerVoucher | null;
+  manualDiscount: number;
+  manualDiscountReason: string | null;
+  applyAutoDiscounts: boolean;
+  autoDiscountPreview: AutoDiscountSnapshot | null;
+  shippingFee: number;
+  onJumpToStep: (step: 1 | 2 | 3) => void;
 };
 
 const MOP_OPTIONS = ["COD", "GCash", "Credit Card", "Bank Transfer", "QR PH", "Other"] as const;
@@ -20,7 +36,20 @@ const DELIVERY_OPTIONS_NON_COD = [
   { value: "other", label: "Other" },
 ] as const;
 
-export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
+export function StepHandoff({
+  orderId,
+  handoff,
+  onSetHandoff,
+  customer,
+  items,
+  voucher,
+  manualDiscount,
+  manualDiscountReason,
+  applyAutoDiscounts,
+  autoDiscountPreview,
+  shippingFee,
+  onJumpToStep,
+}: Props) {
   const isCOD = handoff.mode_of_payment === "COD";
   const isOther = handoff.mode_of_payment === "Other";
   const requiresReceipt = handoff.mode_of_payment !== null && DIGITAL_MOPS.has(handoff.mode_of_payment);
@@ -46,6 +75,17 @@ export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
 
   return (
     <div className="space-y-4">
+      <OrderPreviewCard
+        customer={customer}
+        items={items}
+        voucher={voucher}
+        manualDiscount={manualDiscount}
+        manualDiscountReason={manualDiscountReason}
+        applyAutoDiscounts={applyAutoDiscounts}
+        autoDiscountPreview={autoDiscountPreview}
+        shippingFee={shippingFee}
+        onJumpToStep={onJumpToStep}
+      />
       <div>
         <label className="text-xs font-medium text-gray-700 block mb-1">Mode of Payment</label>
         <select

@@ -199,6 +199,15 @@ export function CreateOrderDrawer({
               orderId={drawer.state.orderId}
               handoff={drawer.state.handoff}
               onSetHandoff={drawer.setHandoff}
+              customer={drawer.state.customer}
+              items={drawer.state.items}
+              voucher={drawer.state.voucher}
+              manualDiscount={drawer.state.manualDiscount}
+              manualDiscountReason={drawer.state.manualDiscountReason}
+              applyAutoDiscounts={drawer.state.applyAutoDiscounts}
+              autoDiscountPreview={drawer.state.autoDiscountPreview}
+              shippingFee={drawer.state.shippingFee}
+              onJumpToStep={(s) => drawer.setStep(s)}
             />
           )}
         </main>
