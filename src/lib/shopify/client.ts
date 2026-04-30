@@ -537,9 +537,13 @@ export type ShopifyOrderInput = {
   note?: string;
   note_attributes?: Array<{ name: string; value: string }>;
   tags?: string;
-  // CRITICAL — COD payment-due-later semantics: omit `transactions[]` to keep
-  // financial_status='pending' on create. Do NOT add transactions here unless
-  // the upstream caller is recording an actual collected payment.
+  // CRITICAL — Avalon orders ALWAYS land as 'pending' regardless of MOP.
+  // CS verifies receipts, courier remits cash, etc. — those flips happen
+  // downstream, never on order create. Shopify's REST default when no
+  // transactions[] is present has been observed to flip to 'paid' depending
+  // on shop checkout settings; passing financial_status explicitly forces
+  // the right state on every order.
+  financial_status?: "pending" | "paid" | "authorized" | "partially_paid";
   // Inventory behavior bypass: Avalon's Inventory v1 already allocated stock,
   // we do not want Shopify to also decrement its placeholder 999.
   inventory_behavior?: "bypass" | "decrement_obeying_policy" | "decrement_ignoring_policy";
@@ -560,6 +564,10 @@ export async function createShopifyOrder(
   const payload = {
     order: {
       ...input,
+      // Explicitly pin financial_status='pending' unless the caller overrode.
+      // Avalon's create-order flow never records a paid transaction at create
+      // time; payment is verified later by CS or remittance.
+      financial_status: input.financial_status ?? "pending",
       inventory_behavior: input.inventory_behavior ?? "bypass",
     },
   };
@@ -581,6 +589,7 @@ export async function createShopifyOrder(
         order: {
           ...input,
           shipping_address: stripped,
+          financial_status: input.financial_status ?? "pending",
           inventory_behavior: input.inventory_behavior ?? "bypass",
         },
       };
