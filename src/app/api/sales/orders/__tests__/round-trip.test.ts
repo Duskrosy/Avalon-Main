@@ -18,8 +18,32 @@
 // Phase 2/3 alongside the rest of the test suite.
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { createClient } from "@supabase/supabase-js";
 import { runConfirmFlow } from "@/lib/sales/confirm-flow";
 import { releaseOrder } from "@/lib/sales/release-order";
+
+// ─── HTTP-integration scaffolding (used only by the end-to-end case below) ───
+//
+// The new "drawer → CS inbox → dispatch → courier picked_up" case below talks
+// to a running dev server and a real Supabase project. It is NOT exercised by
+// the existing mocked unit tests above. To run it you need:
+//   TEST_BASE_URL                 (defaults to http://localhost:3000)
+//   TEST_CUSTOMER_ID              (existing customer row in the target DB)
+//   SUPABASE_URL                  (or NEXT_PUBLIC_SUPABASE_URL)
+//   SUPABASE_SERVICE_ROLE_KEY     (server-side admin key)
+// Migrations 00096 + 00097 must be applied to that DB.
+const BASE = process.env.TEST_BASE_URL ?? "http://localhost:3000";
+const TEST_CUSTOMER_ID = process.env.TEST_CUSTOMER_ID ?? "";
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_SERVICE_ROLE_KEY =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const admin =
+  SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
+      })
+    : (null as any);
 
 // ─── Test doubles ────────────────────────────────────────────────────────────
 
@@ -359,5 +383,131 @@ describe("Phase 1 round-trip", () => {
     expect(o.shopify_order_id).toBeNull();
     const att = supabase._tables.order_shopify_syncs[0];
     expect(att.status).toBe("cancelled");
+  });
+
+  it("end-to-end: drawer → CS inbox → dispatch → courier picked_up", async () => {
+    // 1. POST draft with new field shape
+    const draftRes = await fetch(`${BASE}/api/sales/orders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer_id: TEST_CUSTOMER_ID,
+        subtotal_amount: 100,
+        final_total_amount: 100,
+        mode_of_payment: "GCash",
+        delivery_method: "tnvs",
+        payment_receipt_path: "orders/test/receipt-stub.png",
+        items: [
+          {
+            product_name: "Test Item",
+            variant_name: null,
+            quantity: 1,
+            unit_price_amount: 100,
+            line_total_amount: 100,
+            adjusted_unit_price_amount: null,
+            shopify_product_id: null,
+            shopify_variant_id: null,
+            product_variant_id: null,
+            image_url: null,
+            size: null,
+            color: null,
+          },
+        ],
+      }),
+    });
+    expect(draftRes.ok).toBe(true);
+    const draft = await draftRes.json();
+    const orderId = draft.order?.id ?? draft.id; // shape varies — accept both
+    expect(orderId).toBeTruthy();
+
+    let opsId: string | null = null;
+    try {
+      // 2. Confirm (Shopify sync). Allow either ok or 202 (async-pending).
+      const confirmRes = await fetch(
+        `${BASE}/api/sales/orders/${orderId}/confirm`,
+        { method: "POST" },
+      );
+      expect([200, 202]).toContain(confirmRes.status);
+
+      // 3. Mark complete with new attribution payload
+      const completeRes = await fetch(
+        `${BASE}/api/sales/orders/${orderId}/complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            net_value_amount: 100,
+            ad_creative_id: "test-creative-id",
+            ad_creative_name: "Test Creative",
+            is_abandoned_cart: false,
+            alex_ai_assist_level: "none",
+          }),
+        },
+      );
+      expect(completeRes.ok).toBe(true);
+
+      // 4. Should appear in CS Inbox
+      const inboxRes = await fetch(
+        `${BASE}/api/customer-service/confirmed-orders?tab=inbox`,
+      );
+      const inbox = await inboxRes.json();
+      const inInbox = (inbox.orders ?? []).find((o: any) => o.id === orderId);
+      expect(inInbox).toBeTruthy();
+
+      // 5. Triage to dispatch (creates ops_orders + dispatch_queue via bridge)
+      const triageRes = await fetch(
+        `${BASE}/api/customer-service/orders/${orderId}/triage`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "dispatch" }),
+        },
+      );
+      expect(triageRes.ok).toBe(true);
+
+      // 6. Manually insert a courier_event of type 'picked_up' on the
+      //    dispatch_queue row that was just created. Use the admin client.
+      const { data: opsRow } = await admin
+        .from("ops_orders")
+        .select("id")
+        .eq("sales_order_id", orderId)
+        .maybeSingle();
+      expect(opsRow).toBeTruthy();
+      opsId = opsRow.id;
+      const { data: dq } = await admin
+        .from("dispatch_queue")
+        .select("id")
+        .eq("order_id", opsRow.id)
+        .maybeSingle();
+      expect(dq).toBeTruthy();
+      await admin.from("courier_events").insert({
+        dispatch_id: dq.id,
+        event_type: "picked_up",
+        event_time: new Date().toISOString(),
+      });
+
+      // 7. Lifecycle should now be 'picked_up' with method 'tnvs'
+      const finalRes = await fetch(`${BASE}/api/sales/orders/${orderId}`);
+      expect(finalRes.ok).toBe(true);
+      const final = await finalRes.json();
+      const order = final.order ?? final;
+      expect(order.lifecycle_stage).toBe("picked_up");
+      expect(order.lifecycle_method).toBe("tnvs");
+    } finally {
+      // Best-effort inline cleanup. No central afterAll exists in this file.
+      if (admin && orderId) {
+        try {
+          if (opsId) {
+            await admin.from("courier_events").delete().eq("dispatch_id", opsId);
+            await admin.from("dispatch_queue").delete().eq("order_id", opsId);
+            await admin.from("ops_orders").delete().eq("id", opsId);
+          }
+          await admin.from("order_items").delete().eq("order_id", orderId);
+          await admin.from("orders").delete().eq("id", orderId);
+        } catch {
+          // swallow cleanup errors — test result is what matters
+        }
+      }
+    }
   });
 });
