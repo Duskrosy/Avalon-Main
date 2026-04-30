@@ -154,7 +154,17 @@ export function useCreateOrder() {
     return {
       customer_id: state.customer!.id,
       subtotal_amount: totals.subtotal,
-      voucher_code: state.voucher?.code ?? null,
+      // Manual code wins. Otherwise, fall back to the applied auto-discount
+      // title(s) so downstream views (CS queue, customer detail, expanded
+      // row) can show WHICH discount applied without joining to the snapshot.
+      // Comma-joins if Shopify ever returns multiple applied auto-discounts.
+      voucher_code:
+        state.voucher?.code
+        ?? (state.applyAutoDiscounts
+          && state.autoDiscountPreview
+          && state.autoDiscountPreview.applied.length > 0
+          ? `Auto: ${state.autoDiscountPreview.applied.map((a) => a.title).join(", ")}`
+          : null),
       voucher_discount_amount: totals.voucherDiscount + (state.autoDiscountPreview?.applied_total ?? 0),
       manual_discount_amount: state.manualDiscount,
       manual_discount_reason: state.manualDiscount > 0 ? state.manualDiscountReason : null,
