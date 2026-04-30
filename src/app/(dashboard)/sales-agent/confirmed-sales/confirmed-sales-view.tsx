@@ -409,6 +409,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                       onDelete={() =>
                         setActionDialog({ order: o, mode: "cancel" })
                       }
+                      onAdjust={() => setAdjustingOrder(o)}
                     />
                   </td>
                 </tr>
