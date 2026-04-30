@@ -930,9 +930,12 @@ export async function calculateDraftOrderDiscount(input: {
       }
     }`;
 
-  const variables = {
+  const buildVars = (includeCustomer: boolean) => ({
     input: {
-      customerId: input.customer_id ? `gid://shopify/Customer/${input.customer_id}` : null,
+      customerId:
+        includeCustomer && input.customer_id
+          ? `gid://shopify/Customer/${input.customer_id}`
+          : null,
       lineItems: input.line_items.map((it) => ({
         variantId: it.variant_id ? `gid://shopify/ProductVariant/${it.variant_id}` : null,
         quantity: it.quantity,
@@ -941,11 +944,28 @@ export async function calculateDraftOrderDiscount(input: {
       })),
       useCustomerDefaultAddress: false,
     },
-  };
+  });
 
-  const data = await shopifyGraphQL<Resp>(MUTATION, variables);
-  if (data.draftOrderCalculate.userErrors?.length) {
-    throw new Error(data.draftOrderCalculate.userErrors[0].message);
+  // Try with customer first; fall back to no customer if Shopify can't find them.
+  // The customer's shopify_customer_id may be stale (deleted on Shopify side)
+  // or not yet synced. Customer-segment automatic discounts won't preview
+  // without it, but catalog/cart-level discounts still resolve.
+  let data: Resp;
+  try {
+    data = await shopifyGraphQL<Resp>(MUTATION, buildVars(true));
+    if (data.draftOrderCalculate.userErrors?.length) {
+      throw new Error(data.draftOrderCalculate.userErrors[0].message);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (input.customer_id && /customer.*not\s*found/i.test(msg)) {
+      data = await shopifyGraphQL<Resp>(MUTATION, buildVars(false));
+      if (data.draftOrderCalculate.userErrors?.length) {
+        throw new Error(data.draftOrderCalculate.userErrors[0].message);
+      }
+    } else {
+      throw err;
+    }
   }
   const ad = data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount;
   if (!ad) {
