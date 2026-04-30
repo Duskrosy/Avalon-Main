@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Truck, Upload } from "lucide-react";
 import type {
   DrawerHandoff,
@@ -25,6 +25,8 @@ type Props = {
   autoDiscountPreview: AutoDiscountSnapshot | null;
   shippingFee: number;
   onJumpToStep: (step: 1 | 2 | 3) => void;
+  addLater: boolean;
+  onSetAddLater: (b: boolean) => void;
 };
 
 const MOP_OPTIONS = ["COD", "GCash", "Credit Card", "Bank Transfer", "QR PH", "Other"] as const;
@@ -49,6 +51,8 @@ export function StepHandoff({
   autoDiscountPreview,
   shippingFee,
   onJumpToStep,
+  addLater,
+  onSetAddLater,
 }: Props) {
   const isCOD = handoff.mode_of_payment === "COD";
   const isOther = handoff.mode_of_payment === "Other";
@@ -114,16 +118,39 @@ export function StepHandoff({
       )}
 
       {(requiresReceipt || isOther) && (
-        <ReceiptBlock
-          orderId={orderId}
-          receiptPath={handoff.payment_receipt_path}
-          referenceNumber={handoff.payment_reference_number ?? ""}
-          transactionAt={handoff.payment_transaction_at ?? toLocalDatetimeInputValue(new Date())}
-          requireRef={requiresReceipt}
-          onChangeReceipt={(path) => onSetHandoff({ payment_receipt_path: path })}
-          onChangeRef={(ref) => onSetHandoff({ payment_reference_number: ref || null })}
-          onChangeTxnAt={(at) => onSetHandoff({ payment_transaction_at: at || null })}
-        />
+        <div className="space-y-3">
+          <label className="inline-flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={addLater}
+              onChange={(e) => onSetAddLater(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Add later</span>
+              <span className="block text-[11px] text-gray-500">
+                I&apos;ll attach receipt, reference number, and transaction time after confirming
+              </span>
+            </span>
+          </label>
+
+          {addLater ? (
+            <div className="text-[11px] text-gray-500 italic px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-md">
+              Receipt and payment details will be added after confirm.
+            </div>
+          ) : (
+            <ReceiptBlock
+              orderId={orderId}
+              receiptPath={handoff.payment_receipt_path}
+              referenceNumber={handoff.payment_reference_number ?? ""}
+              transactionAt={handoff.payment_transaction_at ?? toLocalDatetimeInputValue(new Date())}
+              requireRef={requiresReceipt}
+              onChangeReceipt={(path) => onSetHandoff({ payment_receipt_path: path })}
+              onChangeRef={(ref) => onSetHandoff({ payment_reference_number: ref || null })}
+              onChangeTxnAt={(at) => onSetHandoff({ payment_transaction_at: at || null })}
+            />
+          )}
+        </div>
       )}
 
       <div>
@@ -202,6 +229,7 @@ function ReceiptBlock({
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!receiptPath || !orderId) {
@@ -214,8 +242,12 @@ function ReceiptBlock({
       .catch(() => setThumbUrl(null));
   }, [receiptPath, orderId]);
 
-  const upload = async (file: File) => {
-    if (!orderId) return;
+  const upload = useCallback(async (file: File) => {
+    if (!orderId) {
+      setUploadError("Save draft first (click 'Save draft' before uploading)");
+      return;
+    }
+    setUploadError(null);
     setUploading(true);
     try {
       const sigRes = await fetch(`/api/sales/orders/${orderId}/receipt-upload-url`, {
@@ -224,14 +256,43 @@ function ReceiptBlock({
         body: JSON.stringify({ filename: file.name }),
       });
       const sig = await sigRes.json();
-      if (!sigRes.ok) return;
+      if (!sigRes.ok) {
+        const msg = sig.error ?? `Upload URL signing failed (${sigRes.status})`;
+        console.error("[receipt-upload]", msg, sig);
+        setUploadError(msg);
+        return;
+      }
       const put = await fetch(sig.signedUrl, { method: "PUT", body: file });
-      if (!put.ok) return;
+      if (!put.ok) {
+        const text = await put.text().catch(() => "");
+        const msg = `Upload to storage failed (${put.status}): ${text.slice(0, 200)}`;
+        console.error("[receipt-upload]", msg);
+        setUploadError(msg);
+        return;
+      }
       onChangeReceipt(sig.path);
     } finally {
       setUploading(false);
     }
-  };
+  }, [orderId, onChangeReceipt]);
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (!e.clipboardData) return;
+      for (const item of Array.from(e.clipboardData.items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            void upload(file);
+            return;
+          }
+        }
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [upload]);
 
   return (
     <>
@@ -264,7 +325,7 @@ function ReceiptBlock({
                 <button
                   type="button"
                   onClick={() => onChangeReceipt(null)}
-                  className="text-rose-600"
+                  className="text-rose-600 bg-rose-50 border border-rose-200 rounded px-1.5 py-0.5"
                 >
                   ✕ Remove
                 </button>
@@ -272,19 +333,29 @@ function ReceiptBlock({
             </div>
           </div>
         ) : (
-          <label className="flex items-center gap-2 text-xs border border-dashed border-gray-300 rounded-md px-3 py-2 cursor-pointer hover:bg-gray-50">
-            <Upload size={12} />
-            {uploading ? "Uploading…" : "Upload receipt"}
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void upload(f);
-              }}
-            />
-          </label>
+          <>
+            <label className="flex items-center gap-2 text-xs border border-dashed border-gray-300 rounded-md px-3 py-2 cursor-pointer hover:bg-gray-50">
+              <Upload size={12} />
+              {uploading ? "Uploading…" : "Upload receipt"}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void upload(f);
+                }}
+              />
+            </label>
+            <div className="text-[11px] text-gray-500 mt-1">
+              Or paste an image (⌘V) directly here
+            </div>
+          </>
+        )}
+        {uploadError && (
+          <div className="text-[11px] text-rose-600 mt-1 break-words">
+            {uploadError}
+          </div>
         )}
       </div>
 

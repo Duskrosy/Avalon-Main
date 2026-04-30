@@ -79,7 +79,7 @@ export function StepItems({
   const handleAdd = useCallback(() => {
     if (!pickedFamily || !pickedVariant) return;
     onAdd({
-      product_variant_id: pickedVariant.variant_id,
+      product_variant_id: null,
       shopify_product_id: pickedVariant.shopify_product_id,
       shopify_variant_id: pickedVariant.shopify_variant_id,
       product_name: pickedFamily,
@@ -150,42 +150,58 @@ export function StepItems({
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {variants?.sizes && variants.sizes.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-gray-700 block mb-1">Size</label>
-                <select
-                  value={pickedSize ?? ""}
-                  onChange={(e) => setPickedSize(e.target.value || null)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
-                >
-                  <option value="">— Select —</option>
-                  {variants.sizes.map((s) => (
-                    <option key={s.value} value={s.value}>
-                      {s.value} ({s.stock})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {variants?.colors && variants.colors.length > 0 && (
-              <div>
-                <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
-                <select
-                  value={pickedColor ?? ""}
-                  onChange={(e) => setPickedColor(e.target.value || null)}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
-                >
-                  <option value="">— Select —</option>
-                  {variants.colors.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.value} ({c.stock})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
+          {!variants ? (
+            <div className="text-xs text-gray-400">Loading sizes…</div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {variants.sizes.length > 0 && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Size</label>
+                  <select
+                    value={pickedSize ?? ""}
+                    onChange={(e) => setPickedSize(e.target.value || null)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                  >
+                    <option value="">— Select —</option>
+                    {variants.sizes.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.value} ({s.stock})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {variants.colors.length > 0 && (
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
+                  <select
+                    value={pickedColor ?? ""}
+                    onChange={(e) => setPickedColor(e.target.value || null)}
+                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                  >
+                    <option value="">— Select —</option>
+                    {variants.colors.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.value} ({c.stock})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {pickedVariant?.image_url && (
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={pickedVariant.image_url}
+                alt={pickedFamily ?? ""}
+                className="w-20 h-14 object-cover rounded border border-gray-200"
+              />
+              <span>{pickedSize} / {pickedColor} · ₱{pickedVariant.price.toFixed(2)}</span>
+            </div>
+          )}
 
           <div className="flex items-end gap-2">
             <div className="w-24">

@@ -28,6 +28,7 @@ export function CreateOrderDrawer({
   const drawer = useCreateOrder();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [addLater, setAddLater] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -64,9 +65,10 @@ export function CreateOrderDrawer({
           && ["GCash", "Credit Card", "Bank Transfer", "QR PH"].includes(handoff.mode_of_payment);
         const isOtherMop = handoff.mode_of_payment === "Other";
 
-        const txnRequired = isDigitalMop || isOtherMop;
-        const refRequired = isDigitalMop;
-        const receiptRequired = isDigitalMop; // Other = optional
+        // addLater relaxes ALL three: receipt, ref, transaction-at.
+        const txnRequired = !addLater && (isDigitalMop || isOtherMop);
+        const refRequired = !addLater && isDigitalMop;
+        const receiptRequired = !addLater && isDigitalMop; // Other = optional
 
         return !!handoff.mode_of_payment
           && !!handoff.delivery_method
@@ -208,6 +210,8 @@ export function CreateOrderDrawer({
               autoDiscountPreview={drawer.state.autoDiscountPreview}
               shippingFee={drawer.state.shippingFee}
               onJumpToStep={(s) => drawer.setStep(s)}
+              addLater={addLater}
+              onSetAddLater={setAddLater}
             />
           )}
         </main>
