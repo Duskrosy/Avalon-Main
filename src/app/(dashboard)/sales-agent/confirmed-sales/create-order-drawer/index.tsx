@@ -164,12 +164,19 @@ export function CreateOrderDrawer({
           )}
           {drawer.state.step === 3 && (
             <StepPayment
+              customer={drawer.state.customer}
               items={drawer.state.items}
               voucher={drawer.state.voucher}
               manualDiscount={drawer.state.manualDiscount}
+              manualDiscountReason={drawer.state.manualDiscountReason}
+              applyAutoDiscounts={drawer.state.applyAutoDiscounts}
+              autoDiscountPreview={drawer.state.autoDiscountPreview}
               shippingFee={drawer.state.shippingFee}
               onSetVoucher={drawer.setVoucher}
               onSetManualDiscount={drawer.setManualDiscount}
+              onSetManualDiscountReason={drawer.setManualDiscountReason}
+              onSetApplyAutoDiscounts={drawer.setApplyAutoDiscounts}
+              onSetAutoDiscountPreview={drawer.setAutoDiscountPreview}
               onSetShippingFee={drawer.setShippingFee}
             />
           )}
