@@ -180,10 +180,7 @@ export function CompleteOrderModal({
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
             <CheckCircle2 size={14} className="text-emerald-600" />
-            Complete order —{" "}
-            {order.shopify_order_name ??
-              order.avalon_order_number ??
-              "(no number)"}
+            Complete order — {order.shopify_order_name ?? "(no number)"}
           </div>
           <button
             type="button"

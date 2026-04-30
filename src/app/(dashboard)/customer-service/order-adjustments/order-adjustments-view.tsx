@@ -244,9 +244,7 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
           <ul className="divide-y divide-[var(--color-border-secondary)]">
             {adjustments.map((a) => {
               const orderLabel =
-                a.order?.shopify_order_name ??
-                a.order?.avalon_order_number ??
-                a.order_id.slice(0, 8);
+                a.order?.shopify_order_name ?? a.order_id.slice(0, 8);
               const isMine = a.assigned_to_user_id === currentUserId;
               return (
                 <li

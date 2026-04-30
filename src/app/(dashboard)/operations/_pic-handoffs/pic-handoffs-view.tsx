@@ -151,10 +151,7 @@ export function PicHandoffsView({ bucket }: Props) {
             </thead>
             <tbody className="divide-y divide-[var(--color-border-secondary)]">
               {orders.map((o) => {
-                const orderLabel =
-                  o.shopify_order_name ??
-                  o.avalon_order_number ??
-                  o.id.slice(0, 8);
+                const orderLabel = o.shopify_order_name ?? o.id.slice(0, 8);
                 return (
                   <tr
                     key={o.id}
