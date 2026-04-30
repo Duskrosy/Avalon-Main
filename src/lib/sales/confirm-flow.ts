@@ -543,6 +543,16 @@ export async function runConfirmFlow(
   }
 
   // 4. Fire the Shopify POST with 8s timeout.
+  // NOTE: order.apply_automatic_discounts is honored at PREVIEW time
+  // (drawer's preview-discounts endpoint via draftOrderCalculate) and the
+  // snapshot is written to orders.automatic_discount_snapshot at confirm.
+  // The Shopify REST /orders.json endpoint we POST to here does NOT
+  // auto-apply automatic discounts on create — that's a checkout/draft-order
+  // feature. To make Shopify apply them server-side, switch to
+  // GraphQL orderCreate(applyAutomaticDiscount: true) or use Draft Orders
+  // API. Tracked as a follow-up; preview-time intent is sufficient for
+  // reporting today since the agent has already seen and confirmed the
+  // applied chip.
   const orderForBuild = { ...order, avalon_order_number: avalonOrderNumber };
   const input = buildShopifyOrderInput(
     orderForBuild,

@@ -58,8 +58,22 @@ export function CreateOrderDrawer({
         return drawer.state.items.length > 0;
       case 3:
         return drawer.totals.total >= 0;
-      case 4:
-        return !!drawer.state.handoff.mode_of_payment && !!drawer.state.handoff.delivery_method;
+      case 4: {
+        const handoff = drawer.state.handoff;
+        const isDigitalMop = handoff.mode_of_payment != null
+          && ["GCash", "Credit Card", "Bank Transfer", "QR PH"].includes(handoff.mode_of_payment);
+        const isOtherMop = handoff.mode_of_payment === "Other";
+
+        const txnRequired = isDigitalMop || isOtherMop;
+        const refRequired = isDigitalMop;
+        const receiptRequired = isDigitalMop; // Other = optional
+
+        return !!handoff.mode_of_payment
+          && !!handoff.delivery_method
+          && (!txnRequired || !!handoff.payment_transaction_at)
+          && (!refRequired || !!handoff.payment_reference_number)
+          && (!receiptRequired || !!handoff.payment_receipt_path);
+      }
       default:
         return false;
     }
@@ -164,12 +178,19 @@ export function CreateOrderDrawer({
           )}
           {drawer.state.step === 3 && (
             <StepPayment
+              customer={drawer.state.customer}
               items={drawer.state.items}
               voucher={drawer.state.voucher}
               manualDiscount={drawer.state.manualDiscount}
+              manualDiscountReason={drawer.state.manualDiscountReason}
+              applyAutoDiscounts={drawer.state.applyAutoDiscounts}
+              autoDiscountPreview={drawer.state.autoDiscountPreview}
               shippingFee={drawer.state.shippingFee}
               onSetVoucher={drawer.setVoucher}
               onSetManualDiscount={drawer.setManualDiscount}
+              onSetManualDiscountReason={drawer.setManualDiscountReason}
+              onSetApplyAutoDiscounts={drawer.setApplyAutoDiscounts}
+              onSetAutoDiscountPreview={drawer.setAutoDiscountPreview}
               onSetShippingFee={drawer.setShippingFee}
             />
           )}
@@ -178,6 +199,15 @@ export function CreateOrderDrawer({
               orderId={drawer.state.orderId}
               handoff={drawer.state.handoff}
               onSetHandoff={drawer.setHandoff}
+              customer={drawer.state.customer}
+              items={drawer.state.items}
+              voucher={drawer.state.voucher}
+              manualDiscount={drawer.state.manualDiscount}
+              manualDiscountReason={drawer.state.manualDiscountReason}
+              applyAutoDiscounts={drawer.state.applyAutoDiscounts}
+              autoDiscountPreview={drawer.state.autoDiscountPreview}
+              shippingFee={drawer.state.shippingFee}
+              onJumpToStep={(s) => drawer.setStep(s)}
             />
           )}
         </main>

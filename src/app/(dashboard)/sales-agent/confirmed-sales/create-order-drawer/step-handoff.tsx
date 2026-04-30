@@ -1,13 +1,30 @@
 "use client";
 
-import { useState } from "react";
-import { Truck, Upload, X } from "lucide-react";
-import type { DrawerHandoff } from "./types";
+import { useEffect, useState } from "react";
+import { Truck, Upload } from "lucide-react";
+import type {
+  DrawerHandoff,
+  CustomerLite,
+  DrawerLineItem,
+  DrawerVoucher,
+  AutoDiscountSnapshot,
+} from "./types";
+import { ReceiptModal, toLocalDatetimeInputValue } from "./receipt-modal";
+import { OrderPreviewCard } from "./order-preview-card";
 
 type Props = {
   orderId: string | null;
   handoff: DrawerHandoff;
   onSetHandoff: (patch: Partial<DrawerHandoff>) => void;
+  customer: CustomerLite | null;
+  items: DrawerLineItem[];
+  voucher: DrawerVoucher | null;
+  manualDiscount: number;
+  manualDiscountReason: string | null;
+  applyAutoDiscounts: boolean;
+  autoDiscountPreview: AutoDiscountSnapshot | null;
+  shippingFee: number;
+  onJumpToStep: (step: 1 | 2 | 3) => void;
 };
 
 const MOP_OPTIONS = ["COD", "GCash", "Credit Card", "Bank Transfer", "QR PH", "Other"] as const;
@@ -19,10 +36,20 @@ const DELIVERY_OPTIONS_NON_COD = [
   { value: "other", label: "Other" },
 ] as const;
 
-export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
+export function StepHandoff({
+  orderId,
+  handoff,
+  onSetHandoff,
+  customer,
+  items,
+  voucher,
+  manualDiscount,
+  manualDiscountReason,
+  applyAutoDiscounts,
+  autoDiscountPreview,
+  shippingFee,
+  onJumpToStep,
+}: Props) {
   const isCOD = handoff.mode_of_payment === "COD";
   const isOther = handoff.mode_of_payment === "Other";
   const requiresReceipt = handoff.mode_of_payment !== null && DIGITAL_MOPS.has(handoff.mode_of_payment);
@@ -46,37 +73,19 @@ export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
     }
   };
 
-  const onUploadReceipt = async (file: File) => {
-    if (!orderId) {
-      setUploadError("Save draft first");
-      return;
-    }
-    setUploadError(null);
-    setUploading(true);
-    try {
-      const sigRes = await fetch(`/api/sales/orders/${orderId}/receipt-upload-url`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ filename: file.name }),
-      });
-      const sig = await sigRes.json();
-      if (!sigRes.ok) {
-        setUploadError(sig.error ?? "Upload failed");
-        return;
-      }
-      const put = await fetch(sig.signedUrl, { method: "PUT", body: file });
-      if (!put.ok) {
-        setUploadError("Upload to storage failed");
-        return;
-      }
-      onSetHandoff({ payment_receipt_path: sig.path });
-    } finally {
-      setUploading(false);
-    }
-  };
-
   return (
     <div className="space-y-4">
+      <OrderPreviewCard
+        customer={customer}
+        items={items}
+        voucher={voucher}
+        manualDiscount={manualDiscount}
+        manualDiscountReason={manualDiscountReason}
+        applyAutoDiscounts={applyAutoDiscounts}
+        autoDiscountPreview={autoDiscountPreview}
+        shippingFee={shippingFee}
+        onJumpToStep={onJumpToStep}
+      />
       <div>
         <label className="text-xs font-medium text-gray-700 block mb-1">Mode of Payment</label>
         <select
@@ -91,81 +100,30 @@ export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
         </select>
       </div>
 
-      {requiresReceipt && (
+      {isOther && (
         <div>
-          <label className="text-xs font-medium text-gray-700 block mb-1">Receipt</label>
-          {handoff.payment_receipt_path ? (
-            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5">
-              <span className="truncate flex-1">{handoff.payment_receipt_path.split("/").pop()}</span>
-              <button
-                type="button"
-                onClick={() => onSetHandoff({ payment_receipt_path: null })}
-                aria-label="Remove receipt"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ) : (
-            <label className="flex items-center gap-2 text-xs border border-dashed border-gray-300 rounded-md px-3 py-2 cursor-pointer hover:bg-gray-50">
-              <Upload size={12} />
-              {uploading ? "Uploading…" : "Upload receipt"}
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void onUploadReceipt(f);
-                }}
-              />
-            </label>
-          )}
-          {uploadError && <div className="text-[11px] text-rose-600 mt-1">{uploadError}</div>}
+          <label className="text-xs font-medium text-gray-700 block mb-1">Payment label</label>
+          <input
+            type="text"
+            value={handoff.payment_other_label ?? ""}
+            onChange={(e) => onSetHandoff({ payment_other_label: e.target.value || null })}
+            placeholder="e.g. Maya, Cebuana, store credit…"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+          />
         </div>
       )}
 
-      {isOther && (
-        <>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Payment label</label>
-            <input
-              type="text"
-              value={handoff.payment_other_label ?? ""}
-              onChange={(e) => onSetHandoff({ payment_other_label: e.target.value || null })}
-              placeholder="e.g. Maya, Cebuana, store credit…"
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Receipt (optional)</label>
-            {handoff.payment_receipt_path ? (
-              <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1.5">
-                <span className="truncate flex-1">{handoff.payment_receipt_path.split("/").pop()}</span>
-                <button
-                  type="button"
-                  onClick={() => onSetHandoff({ payment_receipt_path: null })}
-                  aria-label="Remove receipt"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex items-center gap-2 text-xs border border-dashed border-gray-300 rounded-md px-3 py-2 cursor-pointer hover:bg-gray-50">
-                <Upload size={12} />
-                {uploading ? "Uploading…" : "Upload receipt"}
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void onUploadReceipt(f);
-                  }}
-                />
-              </label>
-            )}
-          </div>
-        </>
+      {(requiresReceipt || isOther) && (
+        <ReceiptBlock
+          orderId={orderId}
+          receiptPath={handoff.payment_receipt_path}
+          referenceNumber={handoff.payment_reference_number ?? ""}
+          transactionAt={handoff.payment_transaction_at ?? toLocalDatetimeInputValue(new Date())}
+          requireRef={requiresReceipt}
+          onChangeReceipt={(path) => onSetHandoff({ payment_receipt_path: path })}
+          onChangeRef={(ref) => onSetHandoff({ payment_reference_number: ref || null })}
+          onChangeTxnAt={(at) => onSetHandoff({ payment_transaction_at: at || null })}
+        />
       )}
 
       <div>
@@ -219,5 +177,159 @@ export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
         />
       </div>
     </div>
+  );
+}
+
+function ReceiptBlock({
+  orderId,
+  receiptPath,
+  referenceNumber,
+  transactionAt,
+  requireRef,
+  onChangeReceipt,
+  onChangeRef,
+  onChangeTxnAt,
+}: {
+  orderId: string | null;
+  receiptPath: string | null;
+  referenceNumber: string;
+  transactionAt: string;
+  requireRef: boolean;
+  onChangeReceipt: (path: string | null) => void;
+  onChangeRef: (ref: string) => void;
+  onChangeTxnAt: (at: string) => void;
+}) {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!receiptPath || !orderId) {
+      setThumbUrl(null);
+      return;
+    }
+    fetch(`/api/sales/orders/${orderId}/receipt-signed-url`)
+      .then((r) => r.json())
+      .then((j) => setThumbUrl(j.url ?? null))
+      .catch(() => setThumbUrl(null));
+  }, [receiptPath, orderId]);
+
+  const upload = async (file: File) => {
+    if (!orderId) return;
+    setUploading(true);
+    try {
+      const sigRes = await fetch(`/api/sales/orders/${orderId}/receipt-upload-url`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ filename: file.name }),
+      });
+      const sig = await sigRes.json();
+      if (!sigRes.ok) return;
+      const put = await fetch(sig.signedUrl, { method: "PUT", body: file });
+      if (!put.ok) return;
+      onChangeReceipt(sig.path);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-gray-700 block">Receipt</label>
+        {receiptPath ? (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="w-24 h-16 bg-gray-100 rounded border border-gray-200 overflow-hidden flex-shrink-0"
+            >
+              {thumbUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={thumbUrl} alt="receipt" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-[11px] text-gray-500">Loading…</span>
+              )}
+            </button>
+            <div className="flex-1 text-xs">
+              <div className="text-gray-700 truncate">{receiptPath.split("/").pop()}</div>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="text-blue-600"
+                >
+                  ⤢ Expand
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChangeReceipt(null)}
+                  className="text-rose-600"
+                >
+                  ✕ Remove
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label className="flex items-center gap-2 text-xs border border-dashed border-gray-300 rounded-md px-3 py-2 cursor-pointer hover:bg-gray-50">
+            <Upload size={12} />
+            {uploading ? "Uploading…" : "Upload receipt"}
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void upload(f);
+              }}
+            />
+          </label>
+        )}
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-gray-700 block mb-1">
+          Reference number {requireRef && "*"}
+        </label>
+        <input
+          type="text"
+          value={referenceNumber}
+          onChange={(e) => onChangeRef(e.target.value)}
+          className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+        />
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-gray-700 block mb-1">
+          Transaction date &amp; time *
+        </label>
+        <div className="flex gap-2">
+          <input
+            type="datetime-local"
+            value={transactionAt}
+            onChange={(e) => onChangeTxnAt(e.target.value)}
+            className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-md"
+          />
+          <button
+            type="button"
+            onClick={() => onChangeTxnAt(toLocalDatetimeInputValue(new Date()))}
+            className="px-2 text-[11px] text-blue-600 border border-blue-200 rounded"
+          >
+            Use current
+          </button>
+        </div>
+      </div>
+
+      <ReceiptModal
+        open={modalOpen}
+        imageUrl={thumbUrl}
+        referenceNumber={referenceNumber}
+        transactionAt={transactionAt}
+        onClose={() => setModalOpen(false)}
+        onSetReferenceNumber={onChangeRef}
+        onSetTransactionAt={onChangeTxnAt}
+      />
+    </>
   );
 }

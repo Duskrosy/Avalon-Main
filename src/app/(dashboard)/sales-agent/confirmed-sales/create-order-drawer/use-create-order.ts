@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import {
+  type AutoDiscountSnapshot,
   type CustomerLite,
   type DrawerCompletion,
   type DrawerHandoff,
@@ -20,6 +21,9 @@ const INITIAL_STATE: DrawerState = {
   items: [],
   voucher: null,
   manualDiscount: 0,
+  manualDiscountReason: null,
+  applyAutoDiscounts: false,
+  autoDiscountPreview: null,
   shippingFee: 0,
   handoff: EMPTY_HANDOFF,
   completion: EMPTY_COMPLETION,
@@ -127,24 +131,42 @@ export function useCreateOrder() {
     setState((s) => ({ ...s, shippingFee: amt }));
   }, []);
 
+  const setManualDiscountReason = useCallback((reason: string | null) => {
+    setState((s) => ({ ...s, manualDiscountReason: reason }));
+  }, []);
+
+  const setApplyAutoDiscounts = useCallback((apply: boolean) => {
+    setState((s) => ({ ...s, applyAutoDiscounts: apply }));
+  }, []);
+
+  const setAutoDiscountPreview = useCallback((preview: AutoDiscountSnapshot | null) => {
+    setState((s) => ({ ...s, autoDiscountPreview: preview }));
+  }, []);
+
   const buildPayload = useCallback(() => {
     const totals = computeTotal({
       items: state.items,
       voucher: state.voucher,
       manualDiscount: state.manualDiscount,
       shippingFee: state.shippingFee,
+      autoDiscountTotal: state.autoDiscountPreview?.applied_total ?? 0,
     });
     return {
       customer_id: state.customer!.id,
       subtotal_amount: totals.subtotal,
       voucher_code: state.voucher?.code ?? null,
-      voucher_discount_amount: totals.voucherDiscount,
+      voucher_discount_amount: totals.voucherDiscount + (state.autoDiscountPreview?.applied_total ?? 0),
       manual_discount_amount: state.manualDiscount,
+      manual_discount_reason: state.manualDiscount > 0 ? state.manualDiscountReason : null,
+      apply_automatic_discounts: state.applyAutoDiscounts,
+      automatic_discount_snapshot: state.applyAutoDiscounts ? state.autoDiscountPreview : null,
       shipping_fee_amount: state.shippingFee,
       final_total_amount: totals.total,
       mode_of_payment: state.handoff.mode_of_payment,
       payment_other_label: state.handoff.payment_other_label,
       payment_receipt_path: state.handoff.payment_receipt_path,
+      payment_reference_number: state.handoff.payment_reference_number,
+      payment_transaction_at: state.handoff.payment_transaction_at,
       delivery_method: state.handoff.delivery_method,
       delivery_method_notes: state.handoff.delivery_method_notes,
       notes: state.handoff.notes,
@@ -289,11 +311,16 @@ export function useCreateOrder() {
           items,
           voucher,
           manualDiscount: order.manual_discount_amount ?? 0,
+          manualDiscountReason: order.manual_discount_reason ?? null,
+          applyAutoDiscounts: order.apply_automatic_discounts ?? false,
+          autoDiscountPreview: order.automatic_discount_snapshot ?? null,
           shippingFee: order.shipping_fee_amount ?? 0,
           handoff: {
             mode_of_payment: order.mode_of_payment ?? null,
             payment_other_label: order.payment_other_label ?? null,
             payment_receipt_path: order.payment_receipt_path ?? null,
+            payment_reference_number: order.payment_reference_number ?? null,
+            payment_transaction_at: order.payment_transaction_at ?? null,
             delivery_method: order.delivery_method ?? null,
             delivery_method_notes: order.delivery_method_notes ?? null,
             notes: order.notes ?? null,
@@ -323,6 +350,7 @@ export function useCreateOrder() {
       voucher: state.voucher,
       manualDiscount: state.manualDiscount,
       shippingFee: state.shippingFee,
+      autoDiscountTotal: state.autoDiscountPreview?.applied_total ?? 0,
     }),
     setStep,
     setCustomer,
@@ -333,6 +361,9 @@ export function useCreateOrder() {
     splitBundleEvenly,
     setVoucher,
     setManualDiscount,
+    setManualDiscountReason,
+    setApplyAutoDiscounts,
+    setAutoDiscountPreview,
     setShippingFee,
     setHandoff,
     setCompletion,

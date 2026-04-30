@@ -4,11 +4,7 @@ import { getCurrentUser, isManagerOrAbove } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { validateBody } from "@/lib/api/validate";
-import {
-  cancelShopifyOrder,
-  createShopifyOrderTransaction,
-  listShopifyOrderTransactions,
-} from "@/lib/shopify/client";
+import { cancelShopifyOrder } from "@/lib/shopify/client";
 
 // ─── POST /api/sales/orders/[id]/complete ───────────────────────────────────
 //
@@ -104,26 +100,9 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
             throw err;
           }
         }
-      } else if (body.net_value_amount > 0) {
-        // Mark paid — sale transaction. Idempotency guard: skip if a
-        // successful sale transaction already exists on this order.
-        const txns = await listShopifyOrderTransactions(shopifyOrderId);
-        const alreadyPaid = txns.some(
-          (t) => t.kind === "sale" && t.status === "success",
-        );
-        if (alreadyPaid) {
-          shopifySync = { ok: true, action: "paid-already" };
-        } else {
-          await createShopifyOrderTransaction(shopifyOrderId, {
-            kind: "sale",
-            status: "success",
-            amount: body.net_value_amount.toFixed(2),
-            gateway: "cash",
-            authorization: `avalon-complete-${id}`,
-          });
-          shopifySync = { ok: true, action: "paid" };
-        }
       } else {
+        // Non-abandoned completes leave Shopify financial_status pending;
+        // we no longer mark the order paid via a sale transaction here.
         shopifySync = { ok: true, action: "noop" };
       }
     } catch (err) {

@@ -53,10 +53,22 @@ export type DrawerVoucher = {
   type: "percentage" | "fixed_amount";
 };
 
+export type AutoDiscountSnapshot = {
+  applied: Array<{
+    title: string;
+    type: string;
+    description: string;
+    amount: number;
+  }>;
+  applied_total: number;
+};
+
 export type DrawerHandoff = {
   mode_of_payment: string | null;
   payment_other_label: string | null;
   payment_receipt_path: string | null;
+  payment_reference_number: string | null;
+  payment_transaction_at: string | null;
   delivery_method: "lwe" | "tnvs" | "other" | null;
   delivery_method_notes: string | null;
   notes: string | null;
@@ -78,6 +90,9 @@ export type DrawerState = {
   items: DrawerLineItem[];
   voucher: DrawerVoucher | null;
   manualDiscount: number;
+  manualDiscountReason: string | null;
+  applyAutoDiscounts: boolean;
+  autoDiscountPreview: AutoDiscountSnapshot | null;
   shippingFee: number;
   handoff: DrawerHandoff;
   completion: DrawerCompletion;
@@ -87,6 +102,8 @@ export const EMPTY_HANDOFF: DrawerHandoff = {
   mode_of_payment: null,
   payment_other_label: null,
   payment_receipt_path: null,
+  payment_reference_number: null,
+  payment_transaction_at: null,
   delivery_method: null,
   delivery_method_notes: null,
   notes: null,
@@ -110,16 +127,18 @@ export function computeTotal(state: {
   voucher: DrawerVoucher | null;
   manualDiscount: number;
   shippingFee: number;
-}): { subtotal: number; voucherDiscount: number; total: number } {
+  autoDiscountTotal?: number;
+}): { subtotal: number; voucherDiscount: number; autoDiscount: number; total: number } {
   const subtotal = computeSubtotal(state.items);
   const voucherDiscount = state.voucher
     ? state.voucher.type === "percentage"
       ? subtotal * (state.voucher.amount / 100)
       : state.voucher.amount
     : 0;
+  const autoDiscount = state.autoDiscountTotal ?? 0;
   const total = Math.max(
     0,
-    subtotal - voucherDiscount - state.manualDiscount + state.shippingFee,
+    subtotal - voucherDiscount - autoDiscount - state.manualDiscount + state.shippingFee,
   );
-  return { subtotal, voucherDiscount, total };
+  return { subtotal, voucherDiscount, autoDiscount, total };
 }

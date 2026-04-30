@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, MapPin, Search, UserPlus, X } from "lucide-react";
 import type { CustomerLite } from "./types";
 import { AddressBookModal } from "./address-book-modal";
+import { Toast, useToast } from "@/components/ui/toast";
 
 type Props = {
   selected: CustomerLite | null;
@@ -531,6 +532,13 @@ export function StepCustomer({ selected, onSelect }: Props) {
       .finally(() => setPhLoading((p) => ({ ...p, barangays: false })));
   }, [barangayParent]);
   const [createError, setCreateError] = useState<string | null>(null);
+  // Dedupe + MX-check + success toast state (F10).
+  type DuplicateMatch = CustomerLite & {
+    created_by_name?: string | null;
+  };
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+  const { toast, setToast } = useToast();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -664,13 +672,13 @@ export function StepCustomer({ selected, onSelect }: Props) {
           });
       const json = await res.json();
       if (res.status === 409) {
-        setCreateError(
-          `Possible duplicate: ${json.duplicates?.map((d: CustomerLite) => d.full_name).join(", ")}`,
-        );
+        setDuplicates((json.duplicates ?? []) as DuplicateMatch[]);
+        setCreateError(null);
         return;
       }
       if (!res.ok) {
         setCreateError(json.error ?? "Save failed");
+        setDuplicates([]);
         return;
       }
       // Preserve orders_count if the server response doesn't include one
@@ -682,6 +690,14 @@ export function StepCustomer({ selected, onSelect }: Props) {
           selected?.total_orders_cached ??
           null,
       };
+      setDuplicates([]);
+      // Only toast on create — PATCH (existing customer save) is silent.
+      if (!selected?.id) {
+        setToast({
+          message: `✓ Customer created — ${next.full_name}`,
+          type: "success",
+        });
+      }
       onSelect(next);
       // Snapshot fresh values so dirty state resets.
       setPristine({
@@ -721,6 +737,25 @@ export function StepCustomer({ selected, onSelect }: Props) {
     }
     return m;
   }, [regions]);
+
+  // MX-check on email blur. Yellow warning if domain has no MX records.
+  // Network errors are swallowed — never block the user from continuing.
+  const onEmailBlur = useCallback(async () => {
+    const email = form.email?.trim();
+    if (!email) {
+      setEmailWarning(null);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/sales/customers/email-check?email=${encodeURIComponent(email)}`,
+      );
+      const j = await res.json();
+      setEmailWarning(j.ok ? null : (j.reason ?? "Email may be invalid"));
+    } catch {
+      setEmailWarning(null);
+    }
+  }, [form.email]);
 
   return (
     <div className="space-y-3">
@@ -855,6 +890,64 @@ export function StepCustomer({ selected, onSelect }: Props) {
         </ul>
       )}
 
+      {duplicates.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-amber-800">
+            ⚠ Possible match — same phone/email already in use
+          </div>
+          {duplicates.map((d) => (
+            <div
+              key={d.id}
+              className="border border-amber-200 bg-amber-50 rounded-md p-2 text-xs"
+            >
+              <div className="font-medium">{d.full_name}</div>
+              <div className="text-gray-700">
+                {d.phone ?? ""}
+                {d.email ? ` · ${d.email}` : ""}
+              </div>
+              <div className="text-gray-500">
+                {d.created_by_name
+                  ? `Created by ${d.created_by_name}`
+                  : "Unknown creator"}
+                {d.total_orders_cached != null
+                  ? ` · ${d.total_orders_cached} prior orders`
+                  : ""}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  onSelect({
+                    id: d.id,
+                    shopify_customer_id: d.shopify_customer_id ?? null,
+                    first_name: d.first_name,
+                    last_name: d.last_name,
+                    full_name: d.full_name,
+                    email: d.email ?? null,
+                    phone: d.phone ?? null,
+                    full_address: d.full_address ?? null,
+                    total_orders_cached: d.total_orders_cached ?? null,
+                    address_line_1: d.address_line_1 ?? null,
+                    address_line_2: d.address_line_2 ?? null,
+                    city_text: d.city_text ?? null,
+                    region_text: d.region_text ?? null,
+                    postal_code: d.postal_code ?? null,
+                    region_code: d.region_code ?? null,
+                    city_code: d.city_code ?? null,
+                    barangay_code: d.barangay_code ?? null,
+                    shopify_region: d.shopify_region ?? null,
+                  });
+                  setDuplicates([]);
+                  setCreateError(null);
+                }}
+                className="mt-1.5 px-2 py-1 bg-blue-600 text-white text-[11px] rounded"
+              >
+                Use this customer
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="border border-gray-200 rounded-md p-3 space-y-2 bg-gray-50">
         <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1 flex items-center gap-1.5">
           <UserPlus size={11} />
@@ -880,7 +973,13 @@ export function StepCustomer({ selected, onSelect }: Props) {
             className="input w-full"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
+            onBlur={onEmailBlur}
           />
+          {emailWarning && (
+            <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+              ⚠ {emailWarning} — proceed if you&apos;re sure.
+            </div>
+          )}
           <input
             placeholder="Phone (e.g. 0917 123 4567)"
             className="input w-full"
@@ -1078,6 +1177,8 @@ export function StepCustomer({ selected, onSelect }: Props) {
             )}
           </div>
         </div>
+
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
 
       <style jsx>{`
         .input {

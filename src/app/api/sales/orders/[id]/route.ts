@@ -88,6 +88,11 @@ const patchSchema = z.object({
   ad_creative_name: z.string().nullable().optional(),
   alex_ai_assist_level: z.enum(["none", "partial", "full"]).nullable().optional(),
   delivery_status: z.string().nullable().optional(),
+  manual_discount_reason: z.string().nullable().optional(),
+  apply_automatic_discounts: z.boolean().optional(),
+  automatic_discount_snapshot: z.unknown().nullable().optional(),
+  payment_reference_number: z.string().nullable().optional(),
+  payment_transaction_at: z.string().nullable().optional(),
   items: z
     .array(
       z.object({

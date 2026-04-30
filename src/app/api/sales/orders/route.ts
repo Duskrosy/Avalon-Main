@@ -248,6 +248,11 @@ const orderSchema = z.object({
   ad_creative_name: z.string().nullable().optional(),
   alex_ai_assist_level: z.enum(["none", "partial", "full"]).nullable().optional(),
   delivery_status: z.string().nullable().optional(),
+  manual_discount_reason: z.string().nullable().optional(),
+  apply_automatic_discounts: z.boolean().default(false),
+  automatic_discount_snapshot: z.unknown().nullable().optional(),
+  payment_reference_number: z.string().nullable().optional(),
+  payment_transaction_at: z.string().nullable().optional(),
   items: z.array(itemSchema).min(1),
 });
 
@@ -292,6 +297,11 @@ export async function POST(req: NextRequest) {
       ad_creative_name: body.ad_creative_name ?? null,
       alex_ai_assist_level: body.alex_ai_assist_level ?? "none",
       delivery_status: body.delivery_status ?? null,
+      manual_discount_reason: body.manual_discount_reason ?? null,
+      apply_automatic_discounts: body.apply_automatic_discounts ?? false,
+      automatic_discount_snapshot: body.automatic_discount_snapshot ?? null,
+      payment_reference_number: body.payment_reference_number ?? null,
+      payment_transaction_at: body.payment_transaction_at ?? null,
     })
     .select("*")
     .single();

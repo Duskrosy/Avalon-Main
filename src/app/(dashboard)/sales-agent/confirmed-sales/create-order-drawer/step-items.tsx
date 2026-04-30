@@ -1,218 +1,243 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Search, Trash2, Calculator } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Search, Trash2, Calculator, Edit3 } from "lucide-react";
 import type { DrawerLineItem } from "./types";
 
-type VariantSearchResult = {
-  id: string;
-  product_variant_id: string | null;
+type Family = { product_name: string; sku_count: number };
+type SizeOption = { value: string; stock: number };
+type ColorOption = { value: string; stock: number };
+type Variant = {
+  variant_id: string;
   shopify_product_id: string | null;
   shopify_variant_id: string | null;
-  variant_sku: string | null;
-  product_name: string;
-  variant_title: string;
-  size: string | null;
-  color: string | null;
   price: number;
   image_url: string | null;
-  /** null when Inventory v1 doesn't track this variant; UI shows "not tracked" */
-  available_stock: number | null;
-  stock_tracked: boolean;
+  stock: number;
+};
+type VariantsResponse = {
+  sizes: SizeOption[];
+  colors: ColorOption[];
+  variantsByCombo: Record<string, Variant>;
 };
 
 type Props = {
   items: DrawerLineItem[];
-  onAdd: (it: DrawerLineItem) => void;
+  onAdd: (item: DrawerLineItem) => void;
   onRemove: (idx: number) => void;
   onUpdateQty: (idx: number, qty: number) => void;
   onSplitBundle: () => void;
 };
 
-export function StepItems({ items, onAdd, onRemove, onUpdateQty, onSplitBundle }: Props) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<VariantSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [priceInput, setPriceInput] = useState<Record<string, string>>({});
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+export function StepItems({
+  items,
+  onAdd,
+  onRemove,
+  onUpdateQty,
+  onSplitBundle,
+}: Props) {
+  // ── Family search ──────────────────────────────────────────────
+  const [familyQuery, setFamilyQuery] = useState("");
+  const [families, setFamilies] = useState<Family[]>([]);
+  const [pickedFamily, setPickedFamily] = useState<string | null>(null);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (query.trim().length < 2) {
-      setResults([]);
-      return;
-    }
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `/api/sales/products?q=${encodeURIComponent(query.trim())}`,
-        );
-        if (res.ok) {
-          const json = await res.json();
-          setResults(json.variants ?? []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    }, 250);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query]);
+    const t = setTimeout(() => {
+      const params = new URLSearchParams();
+      if (familyQuery) params.set("q", familyQuery);
+      fetch(`/api/sales/products/families?${params.toString()}`)
+        .then((r) => r.json())
+        .then((j) => setFamilies(j.families ?? []))
+        .catch(() => setFamilies([]));
+    }, 200);
+    return () => clearTimeout(t);
+  }, [familyQuery]);
 
-  const addVariant = (v: VariantSearchResult) => {
-    // Default to Shopify's price; agent can override via the price input.
-    const overrideStr = priceInput[v.id] ?? "";
-    const override = parseFloat(overrideStr);
-    const price = !isNaN(override) && override > 0 ? override : v.price;
-    if (price <= 0) {
-      alert("Variant has no price; enter one in the input box");
+  // ── Variants for the picked family ────────────────────────────
+  const [variants, setVariants] = useState<VariantsResponse | null>(null);
+  useEffect(() => {
+    if (!pickedFamily) {
+      setVariants(null);
       return;
     }
+    fetch(`/api/sales/products/variants?product_name=${encodeURIComponent(pickedFamily)}`)
+      .then((r) => r.json())
+      .then((j) => setVariants(j as VariantsResponse))
+      .catch(() => setVariants(null));
+  }, [pickedFamily]);
+
+  // ── Picker selection state ────────────────────────────────────
+  const [pickedSize, setPickedSize] = useState<string | null>(null);
+  const [pickedColor, setPickedColor] = useState<string | null>(null);
+  const [qty, setQty] = useState(1);
+
+  const pickedVariant: Variant | null = useMemo(() => {
+    if (!variants || !pickedSize || !pickedColor) return null;
+    return variants.variantsByCombo[`${pickedSize}|${pickedColor}`] ?? null;
+  }, [variants, pickedSize, pickedColor]);
+
+  const handleAdd = useCallback(() => {
+    if (!pickedFamily || !pickedVariant) return;
     onAdd({
-      product_variant_id: v.product_variant_id,
-      shopify_product_id: v.shopify_product_id,
-      shopify_variant_id: v.shopify_variant_id,
-      product_name: v.product_name,
-      variant_name: v.variant_title || v.variant_sku || null,
-      image_url: v.image_url,
-      size: v.size,
-      color: v.color,
-      quantity: 1,
-      unit_price_amount: price,
+      product_variant_id: pickedVariant.variant_id,
+      shopify_product_id: pickedVariant.shopify_product_id,
+      shopify_variant_id: pickedVariant.shopify_variant_id,
+      product_name: pickedFamily,
+      variant_name: `${pickedSize} / ${pickedColor}`,
+      image_url: pickedVariant.image_url,
+      size: pickedSize,
+      color: pickedColor,
+      quantity: qty,
+      unit_price_amount: pickedVariant.price,
       adjusted_unit_price_amount: null,
-      line_total_amount: price,
-      available_stock: v.available_stock ?? undefined,
+      line_total_amount: pickedVariant.price * qty,
+      available_stock: pickedVariant.stock,
     });
-    setPriceInput({ ...priceInput, [v.id]: "" });
-    setQuery("");
-    setResults([]);
-  };
+    // Reset for next add — keep the picked family.
+    setPickedSize(null);
+    setPickedColor(null);
+    setQty(1);
+  }, [pickedFamily, pickedVariant, pickedSize, pickedColor, qty, onAdd]);
 
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search variant SKU or size"
-          className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {loading && <div className="text-xs text-gray-500">Searching…</div>}
-
-      {results.length > 0 && (
-        <ul className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-60 overflow-auto">
-          {results.map((v) => {
-            const stockOut = v.stock_tracked && (v.available_stock ?? 0) <= 0;
-            return (
-              <li key={v.id} className="p-2 flex items-center gap-2 text-sm">
-                {v.image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={v.image_url}
-                    alt=""
-                    width={36}
-                    height={36}
-                    className="rounded object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{v.product_name}</div>
-                  <div className="text-xs text-gray-500 truncate">
-                    {v.variant_title || v.variant_sku || ""}
-                    {v.size ? ` · ${v.size}` : ""}
-                    {v.color ? ` · ${v.color}` : ""}
-                  </div>
-                  <div className="text-xs flex items-center gap-2">
-                    <span className="tabular-nums">₱{v.price.toFixed(2)}</span>
-                    {v.stock_tracked ? (
-                      <span
-                        className={
-                          stockOut
-                            ? "text-rose-600"
-                            : (v.available_stock ?? 0) < 5
-                              ? "text-amber-600"
-                              : "text-emerald-600"
-                        }
-                      >
-                        Stock: {v.available_stock}
-                      </span>
-                    ) : (
-                      <span
-                        className="text-gray-400 italic"
-                        title="Inventory v1 does not track this variant. Stock count is not enforced at confirm time."
-                      >
-                        Stock: not tracked
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <input
-                  type="number"
-                  placeholder="Override ₱"
-                  step="0.01"
-                  value={priceInput[v.id] ?? ""}
-                  onChange={(e) =>
-                    setPriceInput({ ...priceInput, [v.id]: e.target.value })
-                  }
-                  className="w-20 px-2 py-1 text-xs border border-gray-200 rounded"
-                />
-                <button
-                  type="button"
-                  onClick={() => addVariant(v)}
-                  disabled={stockOut}
-                  className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-                >
-                  Add
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <div className="border border-gray-200 rounded-md">
-        <div className="flex items-center justify-between p-2 border-b border-gray-100">
-          <div className="text-xs font-medium text-gray-700">
-            Line Items ({items.length})
+      {/* Family search */}
+      {!pickedFamily ? (
+        <div>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="search"
+              value={familyQuery}
+              onChange={(e) => setFamilyQuery(e.target.value)}
+              placeholder={familyQuery ? "Searching…" : "Search families…"}
+              className="w-full pl-9 px-3 py-2 text-sm border border-gray-200 rounded-md"
+            />
           </div>
-          {items.length >= 2 && (
+          <div className="mt-2 max-h-56 overflow-y-auto border border-gray-100 rounded-md">
+            {families.length === 0 && (
+              <div className="p-2 text-xs text-gray-400">
+                {familyQuery ? "No families match" : "Loading…"}
+              </div>
+            )}
+            {families.map((f) => (
+              <button
+                type="button"
+                key={f.product_name}
+                onClick={() => setPickedFamily(f.product_name)}
+                className="w-full text-left px-2 py-1.5 hover:bg-gray-50 text-xs"
+              >
+                <span className="font-medium">{f.product_name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-md">
+            <span className="text-xs">Picked:</span>
+            <span className="text-xs font-medium">{pickedFamily}</span>
             <button
               type="button"
-              onClick={onSplitBundle}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-              title="Bundle split: distribute total price evenly across all items (B1T1 COD waybill clarity)"
+              onClick={() => {
+                setPickedFamily(null);
+                setPickedSize(null);
+                setPickedColor(null);
+              }}
+              className="ml-auto inline-flex items-center gap-1 text-[11px] text-blue-600"
             >
-              <Calculator size={12} /> Split bundle evenly
+              <Edit3 size={11} /> change
             </button>
-          )}
-        </div>
-        {items.length === 0 ? (
-          <div className="p-4 text-center text-xs text-gray-400">
-            Add items above. The drawer can&apos;t advance without at least one line.
           </div>
-        ) : (
-          <ul className="divide-y divide-gray-100">
+
+          <div className="grid grid-cols-2 gap-3">
+            {variants?.sizes && variants.sizes.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-gray-700 block mb-1">Size</label>
+                <select
+                  value={pickedSize ?? ""}
+                  onChange={(e) => setPickedSize(e.target.value || null)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                >
+                  <option value="">— Select —</option>
+                  {variants.sizes.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.value} ({s.stock})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {variants?.colors && variants.colors.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
+                <select
+                  value={pickedColor ?? ""}
+                  onChange={(e) => setPickedColor(e.target.value || null)}
+                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                >
+                  <option value="">— Select —</option>
+                  {variants.colors.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.value} ({c.stock})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-end gap-2">
+            <div className="w-24">
+              <label className="text-xs font-medium text-gray-700 block mb-1">Qty</label>
+              <input
+                type="number"
+                min={1}
+                value={qty}
+                onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!pickedVariant}
+              className="px-3 py-2 text-xs bg-blue-600 text-white rounded-md disabled:opacity-50"
+            >
+              + Add to order
+            </button>
+          </div>
+          {pickedSize && pickedColor && !pickedVariant && (
+            <div className="text-[11px] text-rose-600">
+              No variant for size {pickedSize} / {pickedColor}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Order items list */}
+      {items.length > 0 && (
+        <div className="border-t border-gray-100 pt-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-medium text-gray-700">In this order</div>
+            {items.length >= 2 && (
+              <button
+                type="button"
+                onClick={onSplitBundle}
+                className="inline-flex items-center gap-1 text-[11px] text-blue-600"
+              >
+                <Calculator size={12} /> Split bundle evenly
+              </button>
+            )}
+          </div>
+          <div className="space-y-1.5">
             {items.map((it, idx) => (
-              <li key={idx} className="p-2 flex items-center gap-2 text-sm">
+              <div key={idx} className="flex items-center gap-2 text-xs">
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{it.product_name}</div>
-                  <div className="text-xs text-gray-500">
-                    {it.variant_name ?? ""} {it.size ? `· ${it.size}` : ""}{" "}
-                    {it.color ? `· ${it.color}` : ""}
+                  <div className="text-gray-500 truncate">
+                    {it.variant_name ?? ""}
                   </div>
-                  {it.adjusted_unit_price_amount != null &&
-                    it.adjusted_unit_price_amount !== it.unit_price_amount && (
-                      <div className="text-[11px] text-amber-700">
-                        Adjusted: ₱{it.adjusted_unit_price_amount.toFixed(2)} (was ₱
-                        {it.unit_price_amount.toFixed(2)})
-                      </div>
-                    )}
                 </div>
                 <input
                   type="number"
@@ -221,23 +246,23 @@ export function StepItems({ items, onAdd, onRemove, onUpdateQty, onSplitBundle }
                   onChange={(e) =>
                     onUpdateQty(idx, Math.max(1, parseInt(e.target.value, 10) || 1))
                   }
-                  className="w-14 px-2 py-1 text-xs border border-gray-200 rounded text-center"
+                  className="w-14 px-2 py-1 text-xs border border-gray-200 rounded"
                 />
-                <span className="w-20 text-right text-xs">
+                <span className="w-20 text-right tabular-nums">
                   ₱{it.line_total_amount.toFixed(2)}
                 </span>
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
-                  className="text-gray-400 hover:text-rose-600"
+                  className="text-rose-500"
                 >
                   <Trash2 size={14} />
                 </button>
-              </li>
+              </div>
             ))}
-          </ul>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
