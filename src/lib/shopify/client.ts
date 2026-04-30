@@ -904,18 +904,18 @@ export async function calculateDraftOrderDiscount(input: {
           valueType: string;
           amount: string;
         } | null;
-        totalDiscounts: string | null;
       } | null;
       userErrors: Array<{ field: string[]; message: string }>;
     };
   };
 
+  // CalculatedDraftOrder has appliedDiscount (singular) — its `amount` IS the
+  // discount total. There is no separate `totalDiscounts` field on this type.
   const MUTATION = `
     mutation Calc($input: DraftOrderInput!) {
       draftOrderCalculate(input: $input) {
         calculatedDraftOrder {
           appliedDiscount { title description value valueType amount }
-          totalDiscounts
         }
         userErrors { field message }
       }
@@ -939,8 +939,11 @@ export async function calculateDraftOrderDiscount(input: {
     throw new Error(data.draftOrderCalculate.userErrors[0].message);
   }
   const ad = data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount;
-  const total = parseFloat(data.draftOrderCalculate.calculatedDraftOrder?.totalDiscounts ?? "0");
-  if (!ad || total <= 0) {
+  if (!ad) {
+    return { applied: [], applied_total: 0 };
+  }
+  const amount = parseFloat(ad.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
     return { applied: [], applied_total: 0 };
   }
   return {
@@ -949,10 +952,10 @@ export async function calculateDraftOrderDiscount(input: {
         title: ad.title ?? "Discount",
         type: ad.valueType ?? "Discount",
         description: ad.description ?? "",
-        amount: parseFloat(ad.amount),
+        amount,
       },
     ],
-    applied_total: total,
+    applied_total: amount,
   };
 }
 
