@@ -58,8 +58,22 @@ export function CreateOrderDrawer({
         return drawer.state.items.length > 0;
       case 3:
         return drawer.totals.total >= 0;
-      case 4:
-        return !!drawer.state.handoff.mode_of_payment && !!drawer.state.handoff.delivery_method;
+      case 4: {
+        const handoff = drawer.state.handoff;
+        const isDigitalMop = handoff.mode_of_payment != null
+          && ["GCash", "Credit Card", "Bank Transfer", "QR PH"].includes(handoff.mode_of_payment);
+        const isOtherMop = handoff.mode_of_payment === "Other";
+
+        const txnRequired = isDigitalMop || isOtherMop;
+        const refRequired = isDigitalMop;
+        const receiptRequired = isDigitalMop; // Other = optional
+
+        return !!handoff.mode_of_payment
+          && !!handoff.delivery_method
+          && (!txnRequired || !!handoff.payment_transaction_at)
+          && (!refRequired || !!handoff.payment_reference_number)
+          && (!receiptRequired || !!handoff.payment_receipt_path);
+      }
       default:
         return false;
     }
