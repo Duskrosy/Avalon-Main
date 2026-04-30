@@ -25,6 +25,8 @@ type Props = {
   autoDiscountPreview: AutoDiscountSnapshot | null;
   shippingFee: number;
   onJumpToStep: (step: 1 | 2 | 3) => void;
+  addLater: boolean;
+  onSetAddLater: (b: boolean) => void;
 };
 
 const MOP_OPTIONS = ["COD", "GCash", "Credit Card", "Bank Transfer", "QR PH", "Other"] as const;
@@ -49,6 +51,8 @@ export function StepHandoff({
   autoDiscountPreview,
   shippingFee,
   onJumpToStep,
+  addLater,
+  onSetAddLater,
 }: Props) {
   const isCOD = handoff.mode_of_payment === "COD";
   const isOther = handoff.mode_of_payment === "Other";
@@ -114,16 +118,39 @@ export function StepHandoff({
       )}
 
       {(requiresReceipt || isOther) && (
-        <ReceiptBlock
-          orderId={orderId}
-          receiptPath={handoff.payment_receipt_path}
-          referenceNumber={handoff.payment_reference_number ?? ""}
-          transactionAt={handoff.payment_transaction_at ?? toLocalDatetimeInputValue(new Date())}
-          requireRef={requiresReceipt}
-          onChangeReceipt={(path) => onSetHandoff({ payment_receipt_path: path })}
-          onChangeRef={(ref) => onSetHandoff({ payment_reference_number: ref || null })}
-          onChangeTxnAt={(at) => onSetHandoff({ payment_transaction_at: at || null })}
-        />
+        <div className="space-y-3">
+          <label className="inline-flex items-start gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={addLater}
+              onChange={(e) => onSetAddLater(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Add later</span>
+              <span className="block text-[11px] text-gray-500">
+                I&apos;ll attach receipt, reference number, and transaction time after confirming
+              </span>
+            </span>
+          </label>
+
+          {addLater ? (
+            <div className="text-[11px] text-gray-500 italic px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-md">
+              Receipt and payment details will be added after confirm.
+            </div>
+          ) : (
+            <ReceiptBlock
+              orderId={orderId}
+              receiptPath={handoff.payment_receipt_path}
+              referenceNumber={handoff.payment_reference_number ?? ""}
+              transactionAt={handoff.payment_transaction_at ?? toLocalDatetimeInputValue(new Date())}
+              requireRef={requiresReceipt}
+              onChangeReceipt={(path) => onSetHandoff({ payment_receipt_path: path })}
+              onChangeRef={(ref) => onSetHandoff({ payment_reference_number: ref || null })}
+              onChangeTxnAt={(at) => onSetHandoff({ payment_transaction_at: at || null })}
+            />
+          )}
+        </div>
       )}
 
       <div>
