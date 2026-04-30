@@ -30,7 +30,11 @@ export function StepHandoff({ orderId, handoff, onSetHandoff }: Props) {
 
   const onSetMop = (mop: string | null) => {
     if (mop === "COD") {
-      onSetHandoff({ mode_of_payment: mop, delivery_method: "lwe" });
+      onSetHandoff({
+        mode_of_payment: mop,
+        delivery_method: "lwe",
+        delivery_method_notes: null,
+      });
     } else {
       onSetHandoff({
         mode_of_payment: mop,
