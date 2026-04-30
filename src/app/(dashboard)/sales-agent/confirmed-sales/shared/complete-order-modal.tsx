@@ -1,28 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
-
-type CampaignItem = { name: string; source: "live" | "history" };
 
 // Modal for marking a synced order complete with post-delivery
 // attribution. Lives separate from the create drawer because completion
 // happens days later (when the COD parcel comes back), and the fields
-// captured here drive reporting (net GMV, abandon rate, ad attribution).
+// captured here drive reporting (net GMV, abandoned-cart recovery, ad
+// attribution, Alex AI coverage).
 //
-// Defaults net_value_amount to the order total — most orders deliver
-// in full, so the agent confirms by hitting save. Marking abandoned
-// auto-zeros the net value and sets delivery_status to "abandoned".
+// Net value defaults to empty — agents must confirm the actually
+// collected amount. Ad creative is required and pulled from the live
+// Meta-backed picker so attribution data stays clean (no free text).
 
-const DELIVERY_STATUSES = [
-  { value: "delivered", label: "Delivered" },
-  { value: "partially_delivered", label: "Partially delivered" },
-  { value: "rescheduled", label: "Rescheduled" },
-  { value: "rejected", label: "Rejected by customer" },
-  { value: "returned", label: "Returned to sender" },
-  { value: "abandoned", label: "Abandoned" },
-  { value: "lost", label: "Lost in transit" },
-];
+type CreativeItem = {
+  ad_id: string;
+  ad_name: string;
+  campaign_name: string | null;
+  campaign_date: string | null;
+  status: string;
+};
 
 type Props = {
   open: boolean;
@@ -32,10 +29,7 @@ type Props = {
     shopify_order_name?: string | null;
     final_total_amount: number;
     net_value_amount?: number | null;
-    delivery_status?: string | null;
     is_abandoned_cart?: boolean | null;
-    ad_campaign_source?: string | null;
-    alex_ai_assist?: boolean | null;
   } | null;
   onClose: () => void;
   onCompleted: () => void;
@@ -47,103 +41,78 @@ export function CompleteOrderModal({
   onClose,
   onCompleted,
 }: Props) {
-  const [netValue, setNetValue] = useState<string>("");
-  const [deliveryStatus, setDeliveryStatus] = useState<string>("delivered");
-  const [isAbandoned, setIsAbandoned] = useState(false);
-  const [adCampaign, setAdCampaign] = useState("");
-  const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
-  const [campaignOpen, setCampaignOpen] = useState(false);
-  const campaignBoxRef = useRef<HTMLDivElement>(null);
-  const [alexAssist, setAlexAssist] = useState(false);
+  const [netValue, setNetValue] = useState<number | null>(null);
+  const [creativeQuery, setCreativeQuery] = useState("");
+  const [creatives, setCreatives] = useState<CreativeItem[]>([]);
+  const [selectedCreative, setSelectedCreative] = useState<CreativeItem | null>(
+    null,
+  );
+  const [isAbandonedCart, setIsAbandonedCart] = useState(false);
+  const [alexLevel, setAlexLevel] = useState<"none" | "partial" | "full">(
+    "none",
+  );
+  const [loadingCreatives, setLoadingCreatives] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset form whenever the modal opens for a new order. Net value is
+  // intentionally left blank — agents should not autofill the collected
+  // amount from the order total because it would mask short-payments.
   useEffect(() => {
     if (!open || !order) return;
-    // Seed from existing values where present, else default to the order
-    // total + delivered (most-common path).
-    setNetValue(
-      String(order.net_value_amount ?? order.final_total_amount ?? 0),
-    );
-    setDeliveryStatus(order.delivery_status ?? "delivered");
-    setIsAbandoned(order.is_abandoned_cart ?? false);
-    setAdCampaign(order.ad_campaign_source ?? "");
-    setAlexAssist(order.alex_ai_assist ?? false);
+    setNetValue(order.net_value_amount ?? null);
+    setCreativeQuery("");
+    setSelectedCreative(null);
+    setIsAbandonedCart(order.is_abandoned_cart ?? false);
+    setAlexLevel("none");
     setError(null);
   }, [open, order]);
 
-  // Load campaign suggestions on open. Failures fall back to free-text
-  // only — the free-text input still works without a campaign list.
+  // Debounced creative search. Hits the Meta-backed picker endpoint;
+  // 200ms is enough to avoid request spam while typing.
   useEffect(() => {
     if (!open) return;
-    fetch("/api/sales/ad-campaigns")
-      .then((r) => r.json())
-      .then((j) => setCampaigns((j.items ?? []) as CampaignItem[]))
-      .catch(() => setCampaigns([]));
-  }, [open]);
-
-  // Click-outside the campaign combobox closes the dropdown.
-  useEffect(() => {
-    if (!campaignOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      if (
-        campaignBoxRef.current &&
-        !campaignBoxRef.current.contains(e.target as Node)
-      ) {
-        setCampaignOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [campaignOpen]);
-
-  const filteredCampaigns = useMemo(() => {
-    const q = adCampaign.trim().toLowerCase();
-    const list = q
-      ? campaigns.filter((c) => c.name.toLowerCase().includes(q))
-      : campaigns;
-    return list.slice(0, 30);
-  }, [campaigns, adCampaign]);
+    const t = setTimeout(() => {
+      setLoadingCreatives(true);
+      const params = new URLSearchParams();
+      if (creativeQuery) params.set("q", creativeQuery);
+      fetch(`/api/sales/ad-creatives?${params.toString()}`)
+        .then((r) => r.json())
+        .then((j) => setCreatives((j.creatives ?? []) as CreativeItem[]))
+        .catch(() => setCreatives([]))
+        .finally(() => setLoadingCreatives(false));
+    }, 200);
+    return () => clearTimeout(t);
+  }, [creativeQuery, open]);
 
   if (!open || !order) return null;
 
-  // Toggling abandoned has cascading effects: zero the net value and
-  // flip delivery_status to "abandoned" so the agent doesn't have to
-  // sync them by hand.
-  const onToggleAbandoned = (next: boolean) => {
-    setIsAbandoned(next);
-    if (next) {
-      setNetValue("0");
-      setDeliveryStatus("abandoned");
-    } else if (deliveryStatus === "abandoned") {
-      setDeliveryStatus("delivered");
-      setNetValue(String(order.final_total_amount ?? 0));
-    }
-  };
-
   const submit = async () => {
-    setSubmitting(true);
     setError(null);
+    if (!netValue || netValue <= 0) {
+      setError("Net value is required");
+      return;
+    }
+    if (!selectedCreative) {
+      setError("Pick an ad creative");
+      return;
+    }
+    setSubmitting(true);
     try {
-      const parsedNet = parseFloat(netValue);
-      if (Number.isNaN(parsedNet) || parsedNet < 0) {
-        setError("Net value must be a non-negative number");
-        return;
-      }
       const res = await fetch(`/api/sales/orders/${order.id}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          net_value_amount: parsedNet,
-          delivery_status: deliveryStatus,
-          is_abandoned_cart: isAbandoned,
-          ad_campaign_source: adCampaign.trim() || null,
-          alex_ai_assist: alexAssist,
+          net_value_amount: netValue,
+          ad_creative_id: selectedCreative.ad_id,
+          ad_creative_name: selectedCreative.ad_name,
+          is_abandoned_cart: isAbandonedCart,
+          alex_ai_assist_level: alexLevel,
         }),
       });
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json();
-        setError(j.error ?? "Complete failed");
+        setError(json.error ?? "Failed to mark complete");
         return;
       }
       onCompleted();
@@ -175,112 +144,122 @@ export function CompleteOrderModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
+          {/* Net value */}
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
-              Net value collected (₱)
+            <label className="text-xs font-medium text-gray-700 block mb-1">
+              Net value (₱) *
             </label>
             <input
               type="number"
-              inputMode="decimal"
+              min={0}
               step="0.01"
-              min="0"
-              value={netValue}
-              onChange={(e) => setNetValue(e.target.value)}
-              disabled={isAbandoned}
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              value={netValue ?? ""}
+              onChange={(e) =>
+                setNetValue(
+                  e.target.value ? parseFloat(e.target.value) : null,
+                )
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
             />
             <div className="text-[10px] text-gray-400 mt-0.5">
-              Order total ₱{order.final_total_amount.toFixed(2)}. Override
-              for partial deliveries or split shipments.
+              Order total ₱{order.final_total_amount.toFixed(2)}. Enter the
+              actual amount collected.
             </div>
           </div>
 
+          {/* Ad creative picker */}
           <div>
-            <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
-              Delivery status
-            </label>
-            <select
-              value={deliveryStatus}
-              onChange={(e) => setDeliveryStatus(e.target.value)}
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {DELIVERY_STATUSES.map((s) => (
-                <option key={s.value} value={s.value}>
-                  {s.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <label className="flex items-center gap-2 text-xs text-gray-700 select-none">
-            <input
-              type="checkbox"
-              checked={isAbandoned}
-              onChange={(e) => onToggleAbandoned(e.target.checked)}
-              className="rounded"
-            />
-            Customer abandoned the order (zeroes net + flags abandoned)
-          </label>
-
-          <div ref={campaignBoxRef} className="relative">
-            <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-1">
-              Ad campaign source
+            <label className="text-xs font-medium text-gray-700 block mb-1">
+              Ad creative *
             </label>
             <input
               type="text"
-              value={adCampaign}
-              onChange={(e) => {
-                setAdCampaign(e.target.value);
-                setCampaignOpen(true);
-              }}
-              onFocus={() => setCampaignOpen(true)}
-              placeholder="e.g. Meta - Avalon Aug Promo"
-              className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={creativeQuery}
+              onChange={(e) => setCreativeQuery(e.target.value)}
+              placeholder="Search by creative name…"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            {campaignOpen && filteredCampaigns.length > 0 && (
-              <ul className="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                {filteredCampaigns.map((c) => (
-                  <li key={`${c.source}:${c.name}`}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdCampaign(c.name);
-                        setCampaignOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 flex items-center justify-between gap-2 ${
-                        adCampaign === c.name ? "bg-blue-50 text-blue-900" : ""
-                      }`}
-                    >
-                      <span className="truncate">{c.name}</span>
-                      <span
-                        className={`text-[9px] uppercase tracking-wide px-1 py-0.5 rounded shrink-0 ${
-                          c.source === "live"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {c.source}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="text-[10px] text-gray-400 mt-0.5">
-              Pick a live Meta campaign or type a custom source. Free text
-              accepted — submits whatever&apos;s in the field.
+            <div className="mt-1 max-h-56 overflow-y-auto border border-gray-100 rounded-md">
+              {loadingCreatives && (
+                <div className="p-2 text-xs text-gray-400">Loading…</div>
+              )}
+              {!loadingCreatives && creatives.length === 0 && (
+                <div className="p-2 text-xs text-gray-400">
+                  No creatives found
+                </div>
+              )}
+              {creatives.map((c) => (
+                <button
+                  type="button"
+                  key={c.ad_id}
+                  onClick={() => setSelectedCreative(c)}
+                  className={`w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 ${
+                    selectedCreative?.ad_id === c.ad_id ? "bg-blue-50" : ""
+                  }`}
+                >
+                  <CreativeThumb adId={c.ad_id} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-medium truncate">
+                      {c.ad_name}
+                    </div>
+                    <div className="text-[11px] text-gray-500 truncate">
+                      {c.campaign_name ?? "—"}
+                      {c.campaign_date
+                        ? ` · synced ${new Date(c.campaign_date).toLocaleDateString()}`
+                        : ""}
+                    </div>
+                  </div>
+                  <span
+                    className={`text-[10px] uppercase font-semibold ${
+                      c.status === "live"
+                        ? "text-emerald-600"
+                        : "text-gray-400"
+                    }`}
+                  >
+                    {c.status === "live" ? "LIVE" : c.status}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-xs text-gray-700 select-none">
-            <input
-              type="checkbox"
-              checked={alexAssist}
-              onChange={(e) => setAlexAssist(e.target.checked)}
-              className="rounded"
-            />
-            Alex AI assisted on this order
-          </label>
+          {/* Abandoned cart */}
+          <div>
+            <label className="inline-flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={!!isAbandonedCart}
+                onChange={(e) => setIsAbandonedCart(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-medium">Came from abandoned cart</span>
+                <span className="block text-[11px] text-gray-500">
+                  Only check if the customer was a recovered abandoned cart,
+                  not a forecast.
+                </span>
+              </span>
+            </label>
+          </div>
+
+          {/* Alex AI assist */}
+          <div>
+            <label className="text-xs font-medium text-gray-700 block mb-1">
+              Alex AI assist
+            </label>
+            <select
+              value={alexLevel}
+              onChange={(e) =>
+                setAlexLevel(e.target.value as "none" | "partial" | "full")
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="none">None</option>
+              <option value="partial">Partial</option>
+              <option value="full">Full</option>
+            </select>
+          </div>
 
           {error && (
             <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
@@ -307,6 +286,28 @@ export function CompleteOrderModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Thumbnails endpoint returns a flat { [adId]: url } map (see
+// src/app/api/ad-ops/live-ads/thumbnails/route.ts). One fetch per row
+// is fine here — the visible list is short and results are cached
+// per-render.
+function CreativeThumb({ adId }: { adId: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`/api/ad-ops/live-ads/thumbnails?ad_ids=${adId}`)
+      .then((r) => r.json())
+      .then((j) => setSrc((j?.[adId] as string | undefined) ?? null))
+      .catch(() => setSrc(null));
+  }, [adId]);
+  return (
+    <div className="w-8 h-8 rounded bg-gray-100 overflow-hidden flex-shrink-0">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" className="w-full h-full object-cover" />
+      ) : null}
     </div>
   );
 }
