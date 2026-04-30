@@ -276,7 +276,6 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
               <th className="px-3 py-2 text-left">Customer</th>
               <th className="px-3 py-2 text-right">Total</th>
               <th className="px-3 py-2 text-left">MOP</th>
-              <th className="px-3 py-2 text-left">PIC</th>
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Created</th>
               <th className="px-3 py-2 w-8"></th>
@@ -346,7 +345,6 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                   ₱{o.final_total_amount.toFixed(2)}
                 </td>
                 <td className="px-3 py-2 text-xs">{o.mode_of_payment ?? "—"}</td>
-                <td className="px-3 py-2 text-xs">{o.person_in_charge_label ?? "—"}</td>
                 <td className="px-3 py-2">
                   <SyncStatusBadge
                     lifecycleStage={o.lifecycle_stage}
