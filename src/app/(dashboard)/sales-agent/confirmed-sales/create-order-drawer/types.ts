@@ -55,17 +55,19 @@ export type DrawerVoucher = {
 
 export type DrawerHandoff = {
   mode_of_payment: string | null;
-  person_in_charge_type: "user" | "custom" | "lalamove" | null;
-  person_in_charge_user_id: string | null;
-  person_in_charge_label: string | null;
+  payment_other_label: string | null;
+  payment_receipt_path: string | null;
+  delivery_method: "lwe" | "tnvs" | "other" | null;
+  delivery_method_notes: string | null;
   notes: string | null;
 };
 
 export type DrawerCompletion = {
   net_value_amount: number | null;
   is_abandoned_cart: boolean | null;
-  ad_campaign_source: string | null;
-  alex_ai_assist: boolean | null;
+  ad_creative_id: string | null;
+  ad_creative_name: string | null;
+  alex_ai_assist_level: "none" | "partial" | "full" | null;
   delivery_status: string | null;
 };
 
@@ -83,17 +85,19 @@ export type DrawerState = {
 
 export const EMPTY_HANDOFF: DrawerHandoff = {
   mode_of_payment: null,
-  person_in_charge_type: null,
-  person_in_charge_user_id: null,
-  person_in_charge_label: null,
+  payment_other_label: null,
+  payment_receipt_path: null,
+  delivery_method: null,
+  delivery_method_notes: null,
   notes: null,
 };
 
 export const EMPTY_COMPLETION: DrawerCompletion = {
   net_value_amount: null,
   is_abandoned_cart: null,
-  ad_campaign_source: null,
-  alex_ai_assist: null,
+  ad_creative_id: null,
+  ad_creative_name: null,
+  alex_ai_assist_level: null,
   delivery_status: null,
 };
 
