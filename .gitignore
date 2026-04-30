@@ -56,3 +56,4 @@ gather-*.png
 
 # supabase local temp
 supabase/.temp/
+.worktrees/
