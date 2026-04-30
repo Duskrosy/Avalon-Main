@@ -175,7 +175,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
       <header className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-semibold">Confirmed Sales</h1>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-[var(--color-text-secondary)]">
             Avalon-native order workflow. Drafts stay local until confirmed.
           </p>
         </div>
@@ -196,7 +196,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
           <select
             value={scope}
             onChange={(e) => setScope(e.target.value as "mine" | "all")}
-            className="px-2 py-1 border border-gray-200 rounded text-xs"
+            className="px-2 py-1 border border-[var(--color-border-primary)] rounded text-xs"
           >
             <option value="mine">My Sales</option>
             <option value="all">All Sales</option>
@@ -210,8 +210,8 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
               onClick={() => setRange(r.value)}
               className={`px-2 py-1 rounded ${
                 range === r.value
-                  ? "bg-gray-900 text-white"
-                  : "border border-gray-200 hover:bg-gray-50 text-gray-700"
+                  ? "bg-[var(--color-text-primary)] text-[var(--color-bg-primary)]"
+                  : "border border-[var(--color-border-primary)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]"
               }`}
             >
               {r.label}
@@ -221,20 +221,20 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         <div className="relative ml-2 flex-1 min-w-[180px] max-w-[320px]">
           <Search
             size={12}
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
           />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search order # / customer / phone"
-            className="w-full pl-7 pr-7 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-7 pr-7 py-1 text-xs border border-[var(--color-border-primary)] rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
               aria-label="Clear search"
             >
               <X size={12} />
@@ -247,7 +247,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
           className={`px-2 py-1 border rounded text-xs ${
             statusFilter
               ? "border-blue-300 bg-blue-50 text-blue-900"
-              : "border-gray-200 text-gray-700"
+              : "border-[var(--color-border-primary)] text-[var(--color-text-primary)]"
           }`}
           aria-label="Filter by status"
         >
@@ -260,16 +260,16 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
         <button
           type="button"
           onClick={() => void fetchOrders()}
-          className="ml-auto p-1.5 text-gray-400 hover:text-gray-700"
+          className="ml-auto p-1.5 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
           aria-label="Refresh"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
         </button>
       </div>
 
-      <div className="border border-gray-200 rounded-md overflow-hidden">
+      <div className="border border-[var(--color-border-primary)] rounded-md overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-xs uppercase tracking-wider text-gray-600">
+          <thead className="bg-[var(--color-bg-secondary)] text-xs uppercase tracking-wider text-[var(--color-text-secondary)]">
             <tr>
               <th className="px-2 py-2 w-6"></th>
               <th className="px-3 py-2 text-left">Order</th>
@@ -281,10 +281,10 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
               <th className="px-3 py-2 w-8"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-[var(--color-border-secondary)]">
             {orders.length === 0 && !loading && (
               <tr>
-                <td colSpan={9} className="px-3 py-8 text-center text-xs text-gray-400">
+                <td colSpan={9} className="px-3 py-8 text-center text-xs text-[var(--color-text-tertiary)]">
                   No orders in this range. Click <strong>Create Order</strong> to start.
                 </td>
               </tr>
@@ -298,10 +298,10 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
               <React.Fragment key={o.id}>
               <tr
                 onClick={onRowClick}
-                className="hover:bg-gray-50 cursor-pointer"
+                className="hover:bg-[var(--color-surface-hover)] cursor-pointer"
                 title="Click to expand"
               >
-                <td className="px-2 py-2 text-gray-400 align-middle">
+                <td className="px-2 py-2 text-[var(--color-text-tertiary)] align-middle">
                   {isExpanded ? (
                     <ChevronDown size={14} />
                   ) : (
@@ -312,9 +312,9 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                   {o.shopify_order_name ? (
                     <span>{o.shopify_order_name}</span>
                   ) : o.status === "draft" ? (
-                    <span className="text-gray-400">— draft —</span>
+                    <span className="text-[var(--color-text-tertiary)]">— draft —</span>
                   ) : (
-                    <span className="text-gray-400" title="Pending Shopify sync">
+                    <span className="text-[var(--color-text-tertiary)]" title="Pending Shopify sync">
                       —
                     </span>
                   )}
@@ -331,7 +331,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                       className="hover:underline decoration-gray-300 underline-offset-2"
                     >
                       <div>{o.customer.full_name}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-[var(--color-text-secondary)]">
                         {o.customer.phone ?? o.customer.email ?? ""}
                       </div>
                     </Link>
@@ -366,7 +366,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                       </button>
                     )}
                 </td>
-                <td className="px-3 py-2 text-xs text-gray-500">
+                <td className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                   {format(parseISO(o.created_at), "MMM d, HH:mm")}
                 </td>
                 <td

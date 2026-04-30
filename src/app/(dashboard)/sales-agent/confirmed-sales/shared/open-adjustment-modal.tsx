@@ -20,13 +20,6 @@ const TYPE_OPTIONS = [
   { value: "other", label: "Other" },
 ];
 
-const BUCKET_OPTIONS = [
-  { value: "Customer Service", label: "Customer Service" },
-  { value: "Inventory", label: "Inventory" },
-  { value: "Fulfillment", label: "Fulfillment" },
-  { value: "", label: "Unassigned" },
-];
-
 export function OpenAdjustmentModal({
   open,
   orderId,
@@ -122,27 +115,7 @@ export function OpenAdjustmentModal({
             </select>
           </div>
 
-          <div>
-            <label className="block text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1">
-              Route to
-            </label>
-            <div className="flex flex-wrap gap-1">
-              {BUCKET_OPTIONS.map((o) => (
-                <button
-                  key={o.value || "unassigned"}
-                  type="button"
-                  onClick={() => setBucket(o.value)}
-                  className={`text-xs px-2.5 py-1 rounded border transition-colors ${
-                    bucket === o.value
-                      ? "bg-[var(--color-accent)] border-[var(--color-accent)] text-[var(--color-accent-text)]"
-                      : "bg-[var(--color-bg-primary)] border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)]"
-                  }`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Route picker removed — adjustments always route to Customer Service. */}
 
           <div>
             <label className="block text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] mb-1">

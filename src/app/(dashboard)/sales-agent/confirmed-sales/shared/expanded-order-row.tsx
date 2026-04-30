@@ -85,7 +85,7 @@ export function ExpandedOrderRow({
 
   if (loading || !order) {
     return (
-      <div className="px-4 py-6 text-xs text-gray-500 bg-gray-50/50">
+      <div className="px-4 py-6 text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-secondary)]/50">
         Loading order…
       </div>
     );
@@ -126,10 +126,10 @@ export function ExpandedOrderRow({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 py-5">
         {/* ── Line items ───────────────────────────────────────────── */}
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2 pb-1 border-b border-gray-200">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium mb-2 pb-1 border-b border-[var(--color-border-primary)]">
             Line items
           </div>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-[var(--color-border-secondary)]">
             {order.items.map((it) => {
               const unit =
                 it.adjusted_unit_price_amount ?? it.unit_price_amount;
@@ -151,13 +151,13 @@ export function ExpandedOrderRow({
                     <div className="text-sm font-medium truncate">
                       {it.product_name}
                     </div>
-                    <div className="text-[11px] text-gray-500">
+                    <div className="text-[11px] text-[var(--color-text-secondary)]">
                       {[it.size && `Size ${it.size}`, it.color]
                         .filter(Boolean)
                         .join(" · ")}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500">×{it.quantity}</div>
+                  <div className="text-xs text-[var(--color-text-secondary)]">×{it.quantity}</div>
                   <div className="text-sm tabular-nums w-20 text-right">
                     ₱{(unit * it.quantity).toLocaleString()}
                   </div>
@@ -165,8 +165,8 @@ export function ExpandedOrderRow({
               );
             })}
           </ul>
-          <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-200">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">
+          <div className="flex items-center justify-between pt-2 mt-2 border-t border-[var(--color-border-primary)]">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium">
               Final Total
             </div>
             <div className="text-base font-semibold tabular-nums">
@@ -177,8 +177,8 @@ export function ExpandedOrderRow({
 
         {/* ── Completion ───────────────────────────────────────────── */}
         <div>
-          <div className="flex items-center justify-between mb-2 pb-1 border-b border-gray-200">
-            <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium">
+          <div className="flex items-center justify-between mb-2 pb-1 border-b border-[var(--color-border-primary)]">
+            <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium">
               Completion
             </div>
             {isCompleted ? (
@@ -187,11 +187,11 @@ export function ExpandedOrderRow({
                 Complete
               </span>
             ) : isCancelled ? (
-              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200 font-medium">
+              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border border-[var(--color-border-primary)] font-medium">
                 Cancelled
               </span>
             ) : isDraft ? (
-              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-medium">
+              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] border border-[var(--color-border-primary)] font-medium">
                 Draft
               </span>
             ) : (
@@ -202,7 +202,7 @@ export function ExpandedOrderRow({
             )}
           </div>
           {!isCompleted && !isCancelled && !isDraft && missingCount > 0 && (
-            <p className="text-xs italic text-gray-600 mb-3">
+            <p className="text-xs italic text-[var(--color-text-secondary)] mb-3">
               {missingCount === 1
                 ? "One field still needed before this order can close the loop."
                 : `${spelledOut(missingCount)} fields still needed before this order can close the loop.`}
@@ -217,15 +217,15 @@ export function ExpandedOrderRow({
                 {c.filled ? (
                   <Check size={12} className="text-emerald-600 shrink-0" />
                 ) : (
-                  <span className="w-3 h-3 rounded-full border border-dashed border-gray-400 shrink-0" />
+                  <span className="w-3 h-3 rounded-full border border-dashed border-[var(--color-text-tertiary)] shrink-0" />
                 )}
                 <span
-                  className={c.filled ? "text-gray-900" : "text-gray-500"}
+                  className={c.filled ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-secondary)]"}
                 >
                   {c.label}
                 </span>
                 {c.filled && c.value && (
-                  <span className="ml-auto text-gray-500 truncate max-w-[140px]">
+                  <span className="ml-auto text-[var(--color-text-secondary)] truncate max-w-[140px]">
                     {c.value}
                   </span>
                 )}
@@ -245,7 +245,7 @@ export function ExpandedOrderRow({
 
         {/* ── Handoff & Actions ────────────────────────────────────── */}
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2 pb-1 border-b border-gray-200">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium mb-2 pb-1 border-b border-[var(--color-border-primary)]">
             Handoff & Actions
           </div>
           <dl className="space-y-1.5 text-xs mb-4">
@@ -261,7 +261,7 @@ export function ExpandedOrderRow({
                   className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded ${
                     order.route_type === "tnvs"
                       ? "bg-amber-50 text-amber-700 border border-amber-200"
-                      : "bg-gray-100 text-gray-700"
+                      : "bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]"
                   }`}
                 >
                   {order.route_type === "tnvs" ? "Lalamove" : "Normal"}
@@ -338,8 +338,8 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="text-gray-900 text-right">{value}</dd>
+      <dt className="text-[var(--color-text-secondary)]">{label}</dt>
+      <dd className="text-[var(--color-text-primary)] text-right">{value}</dd>
     </div>
   );
 }
@@ -364,7 +364,7 @@ function ActionBtn({
   const palette =
     tone === "danger"
       ? "border-rose-200 text-rose-700 hover:bg-rose-50"
-      : "border-gray-200 text-gray-700 hover:bg-gray-50";
+      : "border-[var(--color-border-primary)] text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]";
   return (
     <button
       type="button"
