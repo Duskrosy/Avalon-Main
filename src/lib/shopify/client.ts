@@ -803,15 +803,15 @@ export async function listShopifyVouchers(
 
   const QUERY = `
     query ActiveDiscountCodes {
-      discountNodes(first: 250, query: "status:active") {
+      discountNodes(first: 250) {
         edges {
           node {
             id
             discount {
               __typename
-              ... on DiscountCodeBasic        { codes(first: 5) { edges { node { id code } } } }
-              ... on DiscountCodeBxgy         { codes(first: 5) { edges { node { id code } } } }
-              ... on DiscountCodeFreeShipping { codes(first: 5) { edges { node { id code } } } }
+              ... on DiscountCodeBasic        { codes(first: 5) { edges { node { id code } } } status }
+              ... on DiscountCodeBxgy         { codes(first: 5) { edges { node { id code } } } status }
+              ... on DiscountCodeFreeShipping { codes(first: 5) { edges { node { id code } } } status }
             }
           }
         }
