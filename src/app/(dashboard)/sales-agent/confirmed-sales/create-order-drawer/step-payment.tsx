@@ -44,6 +44,8 @@ export function StepPayment({
   const [vouchers, setVouchers] = useState<ShopifyVoucher[]>([]);
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const [voucherQuery, setVoucherQuery] = useState(voucher?.code ?? "");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/sales/vouchers")
@@ -64,8 +66,12 @@ export function StepPayment({
   useEffect(() => {
     if (!applyAutoDiscounts || items.length === 0) {
       onSetAutoDiscountPreview(null);
+      setPreviewLoading(false);
+      setPreviewError(null);
       return;
     }
+    setPreviewLoading(true);
+    setPreviewError(null);
     const t = setTimeout(async () => {
       try {
         const res = await fetch("/api/sales/orders/preview-discounts", {
@@ -81,14 +87,18 @@ export function StepPayment({
             })),
           }),
         });
-        if (res.ok) {
-          const j = (await res.json()) as AutoDiscountSnapshot;
-          onSetAutoDiscountPreview(j);
-        } else {
+        const j = await res.json();
+        if (!res.ok) {
+          setPreviewError(j.error ?? `Shopify failed (${res.status})`);
           onSetAutoDiscountPreview({ applied: [], applied_total: 0 });
+        } else {
+          onSetAutoDiscountPreview(j as AutoDiscountSnapshot);
         }
-      } catch {
+      } catch (err) {
+        setPreviewError(err instanceof Error ? err.message : "Network error");
         onSetAutoDiscountPreview({ applied: [], applied_total: 0 });
+      } finally {
+        setPreviewLoading(false);
       }
     }, 500);
     return () => clearTimeout(t);
@@ -176,20 +186,39 @@ export function StepPayment({
           />
           Apply all eligible automatic discounts
         </label>
-        {applyAutoDiscounts && autoDiscountPreview && autoDiscountPreview.applied.length > 0 && (
-          <div className="mt-2 space-y-1">
-            {autoDiscountPreview.applied.map((a, i) => (
-              <div key={i} className="border border-gray-200 rounded-md p-2 bg-gray-50">
-                <div className="text-xs">
-                  <span className="font-semibold">{a.title}</span>
-                  <span className="ml-2 text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                    {a.type}
-                  </span>
-                </div>
-                <div className="text-[11px] text-gray-600 mt-0.5">{a.description}</div>
+        {applyAutoDiscounts && (
+          <>
+            {previewLoading && (
+              <div className="mt-2 text-[11px] text-gray-500">
+                Checking for automatic discounts…
               </div>
-            ))}
-          </div>
+            )}
+            {!previewLoading && previewError && (
+              <div className="mt-2 text-[11px] text-rose-600">
+                Couldn&apos;t reach Shopify — {previewError}
+              </div>
+            )}
+            {!previewLoading && !previewError && autoDiscountPreview && autoDiscountPreview.applied.length === 0 && items.length > 0 && (
+              <div className="mt-2 text-[11px] text-gray-500">
+                No eligible automatic discounts for this cart.
+              </div>
+            )}
+            {!previewLoading && !previewError && autoDiscountPreview && autoDiscountPreview.applied.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {autoDiscountPreview.applied.map((a, i) => (
+                  <div key={i} className="border border-gray-200 rounded-md p-2 bg-gray-50">
+                    <div className="text-xs">
+                      <span className="font-semibold">{a.title}</span>
+                      <span className="ml-2 text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        {a.type}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-600 mt-0.5">{a.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
