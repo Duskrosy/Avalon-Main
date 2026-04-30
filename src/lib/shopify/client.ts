@@ -764,33 +764,32 @@ export async function listShopifyVouchers(
   ) {
     return _voucherCache.codes;
   }
-  try {
-    // Phase 1: list price rules, then their discount codes. Shopify's discount
-    // codes API requires a price_rule_id, so this is a 2-step join.
-    const rulesJson = await shopifyGet<{ price_rules: Array<{ id: number; ends_at: string | null }> }>(
-      `/price_rules.json?limit=250`,
-    );
-    const activeRules = (rulesJson.price_rules ?? []).filter((r) => {
-      if (!r.ends_at) return true;
-      return new Date(r.ends_at).getTime() > now;
-    });
-    const all: ShopifyDiscountCode[] = [];
-    for (const rule of activeRules) {
-      try {
-        const dcJson = await shopifyGet<{ discount_codes: ShopifyDiscountCode[] }>(
-          `/price_rules/${rule.id}/discount_codes.json`,
-        );
-        all.push(...(dcJson.discount_codes ?? []));
-      } catch {
-        // Per-rule failure should not blow up the whole list.
-        continue;
-      }
+  // Phase 1: list price rules, then their discount codes. Shopify's discount
+  // codes API requires a price_rule_id, so this is a 2-step join.
+  // NOTE: top-level errors propagate to the caller — silently returning an
+  // empty list masks auth/scope issues. Per-rule failures are still tolerated
+  // below so one bad rule can't break the whole dropdown.
+  const rulesJson = await shopifyGet<{ price_rules: Array<{ id: number; ends_at: string | null }> }>(
+    `/price_rules.json?limit=250`,
+  );
+  const activeRules = (rulesJson.price_rules ?? []).filter((r) => {
+    if (!r.ends_at) return true;
+    return new Date(r.ends_at).getTime() > now;
+  });
+  const all: ShopifyDiscountCode[] = [];
+  for (const rule of activeRules) {
+    try {
+      const dcJson = await shopifyGet<{ discount_codes: ShopifyDiscountCode[] }>(
+        `/price_rules/${rule.id}/discount_codes.json`,
+      );
+      all.push(...(dcJson.discount_codes ?? []));
+    } catch {
+      // Per-rule failure shouldn't blow up the whole list.
+      continue;
     }
-    _voucherCache = { at: now, codes: all };
-    return all;
-  } catch {
-    return _voucherCache?.codes ?? [];
   }
+  _voucherCache = { at: now, codes: all };
+  return all;
 }
 
 // ─── Product / variant search (Phase 1.5 hotfix — empty Inventory v1) ───────
