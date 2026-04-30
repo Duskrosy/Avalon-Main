@@ -130,7 +130,7 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
             )}
             {orders.map((o) => (
               <tr key={o.id} className="border-t border-gray-100">
-                <td className="px-3 py-2 font-medium">{o.avalon_order_number ?? o.shopify_order_name ?? o.id.slice(0, 6)}</td>
+                <td className="px-3 py-2 font-medium">{o.shopify_order_name ?? o.id.slice(0, 6)}</td>
                 <td className="px-3 py-2">
                   <ShopifyBadges fin={o.shopify_financial_status} ful={o.shopify_fulfillment_status} />
                   {o.cs_hold_reason && (

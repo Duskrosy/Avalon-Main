@@ -276,7 +276,6 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
               <th className="px-3 py-2 text-left">Customer</th>
               <th className="px-3 py-2 text-right">Total</th>
               <th className="px-3 py-2 text-left">MOP</th>
-              <th className="px-3 py-2 text-left">PIC</th>
               <th className="px-3 py-2 text-left">Status</th>
               <th className="px-3 py-2 text-left">Created</th>
               <th className="px-3 py-2 w-8"></th>
@@ -314,12 +313,10 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                     <span>{o.shopify_order_name}</span>
                   ) : o.status === "draft" ? (
                     <span className="text-gray-400">— draft —</span>
-                  ) : o.avalon_order_number ? (
-                    <span title="Pending Shopify number">
-                      {o.avalon_order_number}
-                    </span>
                   ) : (
-                    <span className="text-gray-400">—</span>
+                    <span className="text-gray-400" title="Pending Shopify sync">
+                      —
+                    </span>
                   )}
                   {o.route_type === "tnvs" && (
                     <span className="ml-2 inline-flex items-center text-[10px] uppercase tracking-wider text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
@@ -346,7 +343,6 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                   ₱{o.final_total_amount.toFixed(2)}
                 </td>
                 <td className="px-3 py-2 text-xs">{o.mode_of_payment ?? "—"}</td>
-                <td className="px-3 py-2 text-xs">{o.person_in_charge_label ?? "—"}</td>
                 <td className="px-3 py-2">
                   <SyncStatusBadge
                     lifecycleStage={o.lifecycle_stage}
@@ -453,9 +449,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
           open={true}
           orderId={splittingOrder.id}
           orderLabel={
-            splittingOrder.shopify_order_name ??
-            splittingOrder.avalon_order_number ??
-            splittingOrder.id.slice(0, 8)
+            splittingOrder.shopify_order_name ?? splittingOrder.id.slice(0, 8)
           }
           syncStatus={splittingOrder.sync_status}
           onClose={() => setSplittingOrder(null)}
@@ -468,9 +462,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
           open={true}
           orderId={adjustingOrder.id}
           orderLabel={
-            adjustingOrder.shopify_order_name ??
-            adjustingOrder.avalon_order_number ??
-            adjustingOrder.id.slice(0, 8)
+            adjustingOrder.shopify_order_name ?? adjustingOrder.id.slice(0, 8)
           }
           onClose={() => setAdjustingOrder(null)}
           onCreated={() => void fetchOrders()}
@@ -482,7 +474,10 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
           open={true}
           isSynced={actionDialog.order.sync_status === "synced"}
           shopifyOrderId={actionDialog.order.shopify_order_id}
-          avalonOrderNumber={actionDialog.order.avalon_order_number}
+          orderLabel={
+            actionDialog.order.shopify_order_name ??
+            actionDialog.order.id.slice(0, 8)
+          }
           mode={actionDialog.mode}
           onConfirm={async (reason) => {
             await onAction(

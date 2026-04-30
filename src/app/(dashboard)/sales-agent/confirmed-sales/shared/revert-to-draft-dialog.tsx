@@ -7,7 +7,7 @@ type Props = {
   open: boolean;
   isSynced: boolean;
   shopifyOrderId: string | null;
-  avalonOrderNumber: string | null;
+  orderLabel: string | null;
   mode: "revert" | "cancel";
   onConfirm: (reason: string) => Promise<void>;
   onClose: () => void;
@@ -17,7 +17,7 @@ export function RevertOrCancelDialog({
   open,
   isSynced,
   shopifyOrderId,
-  avalonOrderNumber,
+  orderLabel,
   mode,
   onConfirm,
   onClose,
@@ -61,7 +61,7 @@ export function RevertOrCancelDialog({
             <div>
               <h3 className="font-semibold text-gray-900">{verb}</h3>
               <p className="text-xs text-gray-600 mt-1">
-                {avalonOrderNumber ? `${avalonOrderNumber} · ` : ""}
+                {orderLabel ? `${orderLabel} · ` : ""}
                 {subtle}
               </p>
             </div>

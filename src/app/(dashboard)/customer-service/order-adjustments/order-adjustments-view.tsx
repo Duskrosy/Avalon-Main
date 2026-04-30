@@ -49,18 +49,19 @@ type Adjustment = {
 type Props = { currentUserId: string };
 
 const TYPE_LABEL: Record<string, string> = {
-  bundle_split_pricing: "Bundle Split",
+  bundle_split_pricing: "Bundle Split Pricing",
   item_replacement: "Item Replacement",
   quantity_correction: "Quantity Correction",
   fulfillment_request: "Fulfillment Request",
   inventory_issue: "Inventory Issue",
+  // customer_service_request retained for legacy rows; not in the filter dropdown.
   customer_service_request: "CS Request",
   other: "Other",
 };
 
 const TYPE_FILTER_OPTIONS = [
   { value: "", label: "All types" },
-  { value: "customer_service_request", label: "CS Request" },
+  { value: "bundle_split_pricing", label: "Bundle Split Pricing" },
   { value: "item_replacement", label: "Item Replacement" },
   { value: "quantity_correction", label: "Quantity Correction" },
   { value: "fulfillment_request", label: "Fulfillment Request" },
@@ -243,9 +244,7 @@ export function OrderAdjustmentsView({ currentUserId }: Props) {
           <ul className="divide-y divide-[var(--color-border-secondary)]">
             {adjustments.map((a) => {
               const orderLabel =
-                a.order?.shopify_order_name ??
-                a.order?.avalon_order_number ??
-                a.order_id.slice(0, 8);
+                a.order?.shopify_order_name ?? a.order_id.slice(0, 8);
               const isMine = a.assigned_to_user_id === currentUserId;
               return (
                 <li
