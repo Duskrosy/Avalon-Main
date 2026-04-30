@@ -236,6 +236,8 @@ async function postWithTimeout(input: ShopifyOrderInput): Promise<
       shopifyOrderId: string;
       shopifyOrderName: string | null;
       shopifyOrderNumber: number | null;
+      financialStatus: string | null;
+      fulfillmentStatus: string | null;
     }
   | { kind: "error"; message: string }
   | { kind: "timeout" }
@@ -250,6 +252,8 @@ async function postWithTimeout(input: ShopifyOrderInput): Promise<
         shopifyOrderName: order.name ?? null,
         shopifyOrderNumber:
           typeof order.order_number === "number" ? order.order_number : null,
+        financialStatus: order.financial_status ?? null,
+        fulfillmentStatus: order.fulfillment_status ?? null,
       })),
       new Promise<{ kind: "timeout" }>((resolve) => {
         controller.signal.addEventListener("abort", () => resolve({ kind: "timeout" }));
@@ -452,6 +456,8 @@ export async function runConfirmFlow(
             shopify_order_id: String(recovered.id),
             shopify_order_name: recoveredName,
             shopify_order_number: recoveredNumber,
+            shopify_financial_status: recovered.financial_status ?? null,
+            shopify_fulfillment_status: recovered.fulfillment_status ?? null,
             sync_error: null,
           })
           .eq("id", orderId);
@@ -600,6 +606,8 @@ export async function runConfirmFlow(
       shopify_order_id: result.shopifyOrderId,
       shopify_order_name: result.shopifyOrderName,
       shopify_order_number: result.shopifyOrderNumber,
+      shopify_financial_status: result.financialStatus,
+      shopify_fulfillment_status: result.fulfillmentStatus,
       sync_error: null,
     })
     .eq("id", orderId);

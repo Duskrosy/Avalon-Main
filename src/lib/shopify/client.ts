@@ -70,6 +70,26 @@ async function shopifyGet<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+type ShopifyGraphQLResponse<T> = { data?: T; errors?: Array<{ message: string }> };
+
+async function shopifyGraphQL<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
+  const token = await getShopifyToken();
+  const res = await fetch(`${BASE}/graphql.json`, {
+    method: "POST",
+    headers: {
+      "X-Shopify-Access-Token": token,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = (await res.json()) as ShopifyGraphQLResponse<T>;
+  if (!res.ok || json.errors?.length) {
+    throw new Error(json.errors?.[0]?.message ?? `Shopify GraphQL ${res.status}`);
+  }
+  return json.data!;
+}
+
 // ─── Single-order lookup (for auto-fill) ─────────────────────────────────────
 
 /**
@@ -764,17 +784,72 @@ export async function listShopifyVouchers(
   ) {
     return _voucherCache.codes;
   }
+  // Primary: GraphQL discountNodes. Returns everything in one request, including
+  // discounts created via the new admin UI that the REST /price_rules endpoint
+  // doesn't expose. Avoids the N+1 + rate-limit issues of the REST path.
+  type GqlResp = {
+    discountNodes: {
+      edges: Array<{
+        node: {
+          id: string;
+          discount: {
+            __typename: string;
+            codes?: { edges: Array<{ node: { id: string; code: string } }> };
+          };
+        };
+      }>;
+    };
+  };
+
+  const QUERY = `
+    query ActiveDiscountCodes {
+      discountNodes(first: 250, query: "status:active") {
+        edges {
+          node {
+            id
+            discount {
+              __typename
+              ... on DiscountCodeBasic        { codes(first: 5) { edges { node { id code } } } }
+              ... on DiscountCodeBxgy         { codes(first: 5) { edges { node { id code } } } }
+              ... on DiscountCodeFreeShipping { codes(first: 5) { edges { node { id code } } } }
+            }
+          }
+        }
+      }
+    }`;
+
+  const all: ShopifyDiscountCode[] = [];
   try {
-    // Phase 1: list price rules, then their discount codes. Shopify's discount
-    // codes API requires a price_rule_id, so this is a 2-step join.
+    const data = await shopifyGraphQL<GqlResp>(QUERY);
+    for (const e of data.discountNodes.edges) {
+      const codeEdges =
+        (e.node.discount as { codes?: { edges: Array<{ node: { id: string; code: string } }> } }).codes
+          ?.edges ?? [];
+      for (const ce of codeEdges) {
+        // Strip the gid:// prefix and trailing path to get a numeric id.
+        const numericId = Number(ce.node.id.replace(/[^0-9]/g, "").slice(-15)) || 0;
+        all.push({
+          id: numericId,
+          price_rule_id: 0,
+          code: ce.node.code,
+          usage_count: 0,
+          created_at: "",
+          updated_at: "",
+        });
+      }
+    }
+  } catch (err) {
+    // GraphQL failed — fall back to a CAPPED REST scan (max 50 rules to stay
+    // under the rate limit). This catches any classic price-rule discounts the
+    // GraphQL query somehow missed, and keeps the function alive if the GraphQL
+    // endpoint itself errors.
     const rulesJson = await shopifyGet<{ price_rules: Array<{ id: number; ends_at: string | null }> }>(
-      `/price_rules.json?limit=250`,
+      `/price_rules.json?limit=50`,
     );
     const activeRules = (rulesJson.price_rules ?? []).filter((r) => {
       if (!r.ends_at) return true;
       return new Date(r.ends_at).getTime() > now;
     });
-    const all: ShopifyDiscountCode[] = [];
     for (const rule of activeRules) {
       try {
         const dcJson = await shopifyGet<{ discount_codes: ShopifyDiscountCode[] }>(
@@ -782,15 +857,21 @@ export async function listShopifyVouchers(
         );
         all.push(...(dcJson.discount_codes ?? []));
       } catch {
-        // Per-rule failure should not blow up the whole list.
         continue;
       }
     }
-    _voucherCache = { at: now, codes: all };
-    return all;
-  } catch {
-    return _voucherCache?.codes ?? [];
+    // If REST also failed entirely (no rules fetched), rethrow the original GraphQL error.
+    if (all.length === 0) throw err;
   }
+
+  const seen = new Set<string>();
+  const unique = all.filter((c) => {
+    if (seen.has(c.code)) return false;
+    seen.add(c.code);
+    return true;
+  });
+  _voucherCache = { at: now, codes: unique };
+  return unique;
 }
 
 // ─── Product / variant search (Phase 1.5 hotfix — empty Inventory v1) ───────

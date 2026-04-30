@@ -31,12 +31,16 @@ export function StepPayment({
 }: Props) {
   const [vouchers, setVouchers] = useState<ShopifyVoucher[]>([]);
   const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoadingVouchers(true);
     fetch("/api/sales/vouchers")
       .then((r) => r.json())
-      .then((j) => setVouchers(j.vouchers ?? []))
+      .then((j) => {
+        setVouchers(j.vouchers ?? []);
+        setVoucherError(j.error ?? null);
+      })
       .finally(() => setLoadingVouchers(false));
   }, []);
 
@@ -77,6 +81,11 @@ export function StepPayment({
         </select>
         {loadingVouchers && (
           <div className="text-[11px] text-gray-400 mt-1">Loading vouchers…</div>
+        )}
+        {voucherError && (
+          <div className="text-[11px] text-rose-600 mt-1">
+            Couldn&apos;t load Shopify vouchers: {voucherError}
+          </div>
         )}
       </div>
 

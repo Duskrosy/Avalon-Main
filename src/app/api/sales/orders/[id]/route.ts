@@ -38,7 +38,21 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  return NextResponse.json({ order });
+  // Enrich with lifecycle_stage + lifecycle_method from v_order_lifecycle.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: life } = await (admin as any)
+    .from("v_order_lifecycle")
+    .select("lifecycle_stage, lifecycle_method")
+    .eq("order_id", id)
+    .maybeSingle();
+
+  return NextResponse.json({
+    order: {
+      ...order,
+      lifecycle_stage: life?.lifecycle_stage ?? "in_progress",
+      lifecycle_method: life?.lifecycle_method ?? null,
+    },
+  });
 }
 
 // ─── PATCH /api/sales/orders/[id] — drafts only ─────────────────────────────
@@ -47,26 +61,32 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 // for post-confirm edits. Phase 2 will add the 15-min in-place edit window.
 
 const patchSchema = z.object({
-  customer_id: z.string().uuid().optional(),
-  subtotal_amount: z.number().min(0).optional(),
+  customer_id: z.string().uuid().nullable().optional(),
+  subtotal_amount: z.number().min(0).nullable().optional(),
   voucher_code: z.string().nullable().optional(),
-  voucher_discount_amount: z.number().min(0).optional(),
-  manual_discount_amount: z.number().min(0).optional(),
-  shipping_fee_amount: z.number().min(0).optional(),
-  final_total_amount: z.number().min(0).optional(),
+  voucher_discount_amount: z.number().min(0).nullable().optional(),
+  manual_discount_amount: z.number().min(0).nullable().optional(),
+  shipping_fee_amount: z.number().min(0).nullable().optional(),
+  final_total_amount: z.number().min(0).nullable().optional(),
   mode_of_payment: z.string().nullable().optional(),
+  payment_other_label: z.string().nullable().optional(),
+  payment_receipt_path: z.string().nullable().optional(),
+  delivery_method: z.enum(["lwe", "tnvs", "other"]).nullable().optional(),
+  delivery_method_notes: z.string().nullable().optional(),
   person_in_charge_type: z
     .enum(["user", "custom", "lalamove"])
     .nullable()
     .optional(),
   person_in_charge_user_id: z.string().uuid().nullable().optional(),
   person_in_charge_label: z.string().nullable().optional(),
-  route_type: z.enum(["normal", "tnvs"]).optional(),
+  route_type: z.enum(["normal", "tnvs"]).nullable().optional(),
+  cs_hold_reason: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   net_value_amount: z.number().min(0).nullable().optional(),
   is_abandoned_cart: z.boolean().nullable().optional(),
-  ad_campaign_source: z.string().nullable().optional(),
-  alex_ai_assist: z.boolean().nullable().optional(),
+  ad_creative_id: z.string().nullable().optional(),
+  ad_creative_name: z.string().nullable().optional(),
+  alex_ai_assist_level: z.enum(["none", "partial", "full"]).nullable().optional(),
   delivery_status: z.string().nullable().optional(),
   items: z
     .array(

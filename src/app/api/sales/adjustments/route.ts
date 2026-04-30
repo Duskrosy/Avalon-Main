@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 // ─── GET /api/sales/adjustments?bucket=cs|inventory|fulfillment&status=open|in_progress|resolved|cancelled&type=...&limit=... ─
 //
 // Queue endpoint shared by:
-//   • /operations/order-adjustments  (bucket=cs)
+//   • /customer-service/order-adjustments  (bucket=cs)
 //   • /operations/inventory-handoffs (bucket=inventory) — hits the orders queue,
 //     not adjustments. Inventory/Fulfillment routing is per the design doc:
 //     C — PIC label drives those queues, not adjustment rows. This endpoint

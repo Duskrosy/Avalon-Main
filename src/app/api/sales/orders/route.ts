@@ -60,9 +60,13 @@ export async function GET(req: NextRequest) {
         "created_by_name, status, sync_status, sync_error, subtotal_amount, " +
         "voucher_code, voucher_discount_amount, manual_discount_amount, " +
         "shipping_fee_amount, final_total_amount, mode_of_payment, " +
+        "payment_other_label, payment_receipt_path, " +
+        "delivery_method, delivery_method_notes, " +
         "person_in_charge_type, person_in_charge_user_id, person_in_charge_label, " +
         "route_type, completion_status, notes, net_value_amount, is_abandoned_cart, " +
-        "ad_campaign_source, alex_ai_assist, delivery_status, " +
+        "ad_creative_id, ad_creative_name, alex_ai_assist_level, " +
+        "delivery_status, shopify_financial_status, shopify_fulfillment_status, " +
+        "cs_hold_reason, " +
         "created_at, updated_at, confirmed_at, " +
         "customer:customers(id, first_name, last_name, full_name, phone, email)",
     )
@@ -168,7 +172,40 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ orders: data ?? [] });
+
+  // Enrich each row with lifecycle_stage + lifecycle_method from v_order_lifecycle.
+  const ids = (data ?? []).map((r: { id: string }) => r.id);
+  const lifecycleMap = new Map<
+    string,
+    { lifecycle_stage: string; lifecycle_method: string | null }
+  >();
+  if (ids.length) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: lifeRows } = await (admin as any)
+      .from("v_order_lifecycle")
+      .select("order_id, lifecycle_stage, lifecycle_method")
+      .in("order_id", ids);
+    for (const r of (lifeRows ?? []) as Array<{
+      order_id: string;
+      lifecycle_stage: string;
+      lifecycle_method: string | null;
+    }>) {
+      lifecycleMap.set(r.order_id, {
+        lifecycle_stage: r.lifecycle_stage,
+        lifecycle_method: r.lifecycle_method,
+      });
+    }
+  }
+  const enriched = (data ?? []).map(
+    (row: { id: string } & Record<string, unknown>) => ({
+      ...row,
+      lifecycle_stage:
+        lifecycleMap.get(row.id)?.lifecycle_stage ?? "in_progress",
+      lifecycle_method: lifecycleMap.get(row.id)?.lifecycle_method ?? null,
+    }),
+  );
+
+  return NextResponse.json({ orders: enriched });
 }
 
 // ─── POST /api/sales/orders ──────────────────────────────────────────────────
@@ -200,16 +237,16 @@ const orderSchema = z.object({
   shipping_fee_amount: z.number().min(0).default(0),
   final_total_amount: z.number().min(0).default(0),
   mode_of_payment: z.string().nullable().optional(),
-  person_in_charge_type: z.enum(["user", "custom", "lalamove"]).nullable().optional(),
-  person_in_charge_user_id: z.string().uuid().nullable().optional(),
-  person_in_charge_label: z.string().nullable().optional(),
-  route_type: z.enum(["normal", "tnvs"]).default("normal"),
+  payment_other_label: z.string().nullable().optional(),
+  payment_receipt_path: z.string().nullable().optional(),
+  delivery_method: z.enum(["lwe", "tnvs", "other"]).nullable().optional(),
+  delivery_method_notes: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
-  // Optional Phase 1 inline completion fields (Handoff step expand-collapse).
   net_value_amount: z.number().min(0).nullable().optional(),
   is_abandoned_cart: z.boolean().nullable().optional(),
-  ad_campaign_source: z.string().nullable().optional(),
-  alex_ai_assist: z.boolean().nullable().optional(),
+  ad_creative_id: z.string().nullable().optional(),
+  ad_creative_name: z.string().nullable().optional(),
+  alex_ai_assist_level: z.enum(["none", "partial", "full"]).nullable().optional(),
   delivery_status: z.string().nullable().optional(),
   items: z.array(itemSchema).min(1),
 });
@@ -224,13 +261,6 @@ export async function POST(req: NextRequest) {
   const raw = await req.json();
   const { data: body, error: validationError } = validateBody(orderSchema, raw);
   if (validationError) return validationError;
-
-  // Auto-route TNVS based on PIC label (case-insensitive 'lalamove').
-  const routeType =
-    body.person_in_charge_label?.toLowerCase() === "lalamove" ||
-    body.person_in_charge_type === "lalamove"
-      ? "tnvs"
-      : body.route_type;
 
   const admin = createAdminClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -249,15 +279,18 @@ export async function POST(req: NextRequest) {
       shipping_fee_amount: body.shipping_fee_amount,
       final_total_amount: body.final_total_amount,
       mode_of_payment: body.mode_of_payment ?? null,
-      person_in_charge_type: body.person_in_charge_type ?? null,
-      person_in_charge_user_id: body.person_in_charge_user_id ?? null,
-      person_in_charge_label: body.person_in_charge_label ?? null,
-      route_type: routeType,
+      payment_other_label: body.payment_other_label ?? null,
+      payment_receipt_path: body.payment_receipt_path ?? null,
+      delivery_method: body.delivery_method ?? null,
+      delivery_method_notes: body.delivery_method_notes ?? null,
+      // route_type derived server-side from delivery_method (was previously PIC).
+      route_type: body.delivery_method === "tnvs" ? "tnvs" : "normal",
       notes: body.notes ?? null,
       net_value_amount: body.net_value_amount ?? null,
       is_abandoned_cart: body.is_abandoned_cart ?? null,
-      ad_campaign_source: body.ad_campaign_source ?? null,
-      alex_ai_assist: body.alex_ai_assist ?? null,
+      ad_creative_id: body.ad_creative_id ?? null,
+      ad_creative_name: body.ad_creative_name ?? null,
+      alex_ai_assist_level: body.alex_ai_assist_level ?? "none",
       delivery_status: body.delivery_status ?? null,
     })
     .select("*")

@@ -34,6 +34,8 @@ type Order = {
   status: string;
   sync_status: string;
   sync_error: string | null;
+  lifecycle_stage: string;
+  lifecycle_method: string | null;
   final_total_amount: number;
   mode_of_payment: string | null;
   person_in_charge_label: string | null;
@@ -346,7 +348,12 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                 <td className="px-3 py-2 text-xs">{o.mode_of_payment ?? "—"}</td>
                 <td className="px-3 py-2 text-xs">{o.person_in_charge_label ?? "—"}</td>
                 <td className="px-3 py-2">
-                  <SyncStatusBadge status={o.status} syncStatus={o.sync_status} />
+                  <SyncStatusBadge
+                    lifecycleStage={o.lifecycle_stage}
+                    lifecycleMethod={o.lifecycle_method}
+                    syncStatus={o.sync_status}
+                    syncError={o.sync_error}
+                  />
                   {o.completion_status === "incomplete" &&
                     o.status === "confirmed" &&
                     o.sync_status === "synced" && (
@@ -402,6 +409,7 @@ export function ConfirmedSalesView({ currentUserId, canManage }: Props) {
                       onDelete={() =>
                         setActionDialog({ order: o, mode: "cancel" })
                       }
+                      onAdjust={() => setAdjustingOrder(o)}
                     />
                   </td>
                 </tr>

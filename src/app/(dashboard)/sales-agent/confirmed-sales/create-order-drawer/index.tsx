@@ -59,7 +59,7 @@ export function CreateOrderDrawer({
       case 3:
         return drawer.totals.total >= 0;
       case 4:
-        return !!drawer.state.handoff.mode_of_payment && !!drawer.state.handoff.person_in_charge_label;
+        return !!drawer.state.handoff.mode_of_payment && !!drawer.state.handoff.delivery_method;
       default:
         return false;
     }
@@ -175,10 +175,9 @@ export function CreateOrderDrawer({
           )}
           {drawer.state.step === 4 && (
             <StepHandoff
+              orderId={drawer.state.orderId}
               handoff={drawer.state.handoff}
-              completion={drawer.state.completion}
               onSetHandoff={drawer.setHandoff}
-              onSetCompletion={drawer.setCompletion}
             />
           )}
         </main>
