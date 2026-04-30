@@ -874,6 +874,88 @@ export async function listShopifyVouchers(
   return unique;
 }
 
+export type AutoDiscountApplied = {
+  title: string;
+  type: string;
+  description: string;
+  amount: number;
+};
+
+/**
+ * Use Shopify's draftOrderCalculate to ask "what auto-discounts would
+ * apply to this cart?" without persisting a draft. Read-only call.
+ */
+export async function calculateDraftOrderDiscount(input: {
+  customer_id: string | null;
+  line_items: Array<{
+    variant_id: string | null;
+    quantity: number;
+    title: string;
+    price: string;
+  }>;
+}): Promise<{ applied: AutoDiscountApplied[]; applied_total: number }> {
+  type Resp = {
+    draftOrderCalculate: {
+      calculatedDraftOrder: {
+        appliedDiscount: {
+          title: string | null;
+          description: string | null;
+          value: string;
+          valueType: string;
+          amount: string;
+        } | null;
+        totalDiscounts: string | null;
+      } | null;
+      userErrors: Array<{ field: string[]; message: string }>;
+    };
+  };
+
+  const MUTATION = `
+    mutation Calc($input: DraftOrderInput!) {
+      draftOrderCalculate(input: $input) {
+        calculatedDraftOrder {
+          appliedDiscount { title description value valueType amount }
+          totalDiscounts
+        }
+        userErrors { field message }
+      }
+    }`;
+
+  const variables = {
+    input: {
+      customerId: input.customer_id ? `gid://shopify/Customer/${input.customer_id}` : null,
+      lineItems: input.line_items.map((it) => ({
+        variantId: it.variant_id ? `gid://shopify/ProductVariant/${it.variant_id}` : null,
+        quantity: it.quantity,
+        title: it.title,
+        originalUnitPrice: it.price,
+      })),
+      useCustomerDefaultAddress: false,
+    },
+  };
+
+  const data = await shopifyGraphQL<Resp>(MUTATION, variables);
+  if (data.draftOrderCalculate.userErrors?.length) {
+    throw new Error(data.draftOrderCalculate.userErrors[0].message);
+  }
+  const ad = data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount;
+  const total = parseFloat(data.draftOrderCalculate.calculatedDraftOrder?.totalDiscounts ?? "0");
+  if (!ad || total <= 0) {
+    return { applied: [], applied_total: 0 };
+  }
+  return {
+    applied: [
+      {
+        title: ad.title ?? "Discount",
+        type: ad.valueType ?? "Discount",
+        description: ad.description ?? "",
+        amount: parseFloat(ad.amount),
+      },
+    ],
+    applied_total: total,
+  };
+}
+
 // ─── Product / variant search (Phase 1.5 hotfix — empty Inventory v1) ───────
 //
 // Used when Avalon's Inventory v1 catalog is unpopulated. We fetch from
