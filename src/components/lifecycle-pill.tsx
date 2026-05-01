@@ -18,20 +18,20 @@ const LABELS: Record<string, string> = {
 };
 
 const TONES: Record<string, string> = {
-  draft: "bg-gray-100 text-gray-700 border-gray-200",
-  incomplete: "bg-amber-50 text-amber-800 border-amber-200",
-  cs_inbox: "bg-blue-50 text-blue-700 border-blue-200",
-  inventory: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  fulfillment: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  picked_up: "bg-sky-50 text-sky-700 border-sky-200",
-  en_route: "bg-sky-50 text-sky-700 border-sky-200",
-  delivered: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  declined: "bg-rose-50 text-rose-700 border-rose-200",
-  en_route_back: "bg-rose-50 text-rose-700 border-rose-200",
-  rts: "bg-rose-50 text-rose-700 border-rose-200",
-  replenished: "bg-emerald-50 text-emerald-700 border-emerald-200 opacity-80",
-  cancelled: "bg-gray-100 text-gray-500 border-gray-200 line-through",
-  in_progress: "bg-gray-50 text-gray-700 border-gray-200",
+  draft: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)]",
+  incomplete: "bg-[var(--color-warning-light)] text-[var(--color-warning-text)] border-[var(--color-warning)]/30",
+  cs_inbox: "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-[var(--color-accent)]/30",
+  inventory: "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-[var(--color-accent)]/30",
+  fulfillment: "bg-[var(--color-accent-light)] text-[var(--color-accent)] border-[var(--color-accent)]/30",
+  picked_up: "bg-[var(--color-info-light)] text-[var(--color-info)] border-[var(--color-info)]/30",
+  en_route: "bg-[var(--color-info-light)] text-[var(--color-info)] border-[var(--color-info)]/30",
+  delivered: "bg-[var(--color-success-light)] text-[var(--color-success-text)] border-[var(--color-success)]/30",
+  declined: "bg-[var(--color-error-light)] text-[var(--color-error-text)] border-[var(--color-error)]/30",
+  en_route_back: "bg-[var(--color-error-light)] text-[var(--color-error-text)] border-[var(--color-error)]/30",
+  rts: "bg-[var(--color-error-light)] text-[var(--color-error-text)] border-[var(--color-error)]/30",
+  replenished: "bg-[var(--color-success-light)] text-[var(--color-success-text)] border-[var(--color-success)]/30 opacity-80",
+  cancelled: "bg-[var(--color-bg-tertiary)] text-[var(--color-text-tertiary)] border-[var(--color-border-primary)] line-through",
+  in_progress: "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border-[var(--color-border-primary)]",
 };
 
 const METHOD_STAGES = new Set(["picked_up", "en_route", "delivered"]);

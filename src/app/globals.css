@@ -476,3 +476,22 @@ html.transitioning *::after {
   30%      { transform: scaleX(-1) translateX(-8px); }
   60%      { transform: scaleX(-1) translateX(2px); }
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Form-control defaults — make every <input>, <textarea>, <select>
+   respect the active theme tokens unless a component explicitly
+   overrides bg/color. Without this, Chrome/Safari paints white
+   backgrounds on inputs in dark mode.
+   ────────────────────────────────────────────────────────────────── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]),
+textarea,
+select {
+  background-color: var(--color-surface-card);
+  color: var(--color-text-primary);
+  color-scheme: light dark;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-tertiary);
+}
