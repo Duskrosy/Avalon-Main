@@ -9,6 +9,12 @@
 //   3. Returns null `plan` when no draft plan exists.
 //   4. Stuck plan (applying_started_at < now() - 60s) is auto-reverted to 'draft'.
 //   5. Returns 404 for a non-existent order ID.
+//   6. Returns `cs_notes: []` (empty array) when no CS notes exist for the order.
+//
+// Note on mockFrom dispatch: the route uses Promise.all([orders, cs_order_notes])
+// so call-count-based dispatch is brittle. We dispatch on the table name instead,
+// using a per-describe callCount only for the stuck-plan branch (which calls
+// cs_edit_plans twice with the same table name).
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../route";
@@ -87,20 +93,42 @@ const DRAFT_PLAN = {
   items: [],
 };
 
-// ── Build mock Supabase chain for "no stuck plan" path ────────────────────
-function buildChain(result: { data: unknown; error: null | { message: string } }) {
-  const chain = {
+// ── Chain builders ──────────────────────────────────────────────────────────
+
+/** Supabase chain for the stuck-plan maybeSingle check (cs_edit_plans first call). */
+function buildStuckCheckChain(stuckPlan: unknown | null) {
+  return {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
-    is: vi.fn().mockReturnThis(),
     lt: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(result),
-    maybeSingle: vi.fn().mockResolvedValue(result),
-    // For stuck-plan UPDATE (returns no meaningful data)
-    resolves: undefined as unknown,
+    maybeSingle: vi.fn().mockResolvedValue({ data: stuckPlan, error: null }),
   };
-  return chain;
+}
+
+/** Supabase chain for the stuck-plan UPDATE (cs_edit_plans second call). */
+function buildRevertChain() {
+  return {
+    update: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+  };
+}
+
+/** Supabase chain for the orders main SELECT. */
+function buildOrdersChain(orderData: unknown, orderError: unknown = null) {
+  return {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue({ data: orderData, error: orderError }),
+  };
+}
+
+/** Supabase chain for cs_order_notes SELECT. Returns empty array by default. */
+function buildNotesChain(notes: unknown[] = []) {
+  return {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    order: vi.fn().mockResolvedValue({ data: notes, error: null }),
+  };
 }
 
 // ── Describe blocks ─────────────────────────────────────────────────────────
@@ -109,48 +137,36 @@ describe("GET /api/customer-service/orders/[id]/full — sales lane", () => {
   beforeEach(() => {
     mockGetUser = vi.fn().mockResolvedValue(VALID_USER);
 
-    // Sequence of .from() calls:
-    //  call 1: stuck-plan check → maybeSingle returns null (no stuck plan)
-    //  call 2: main order fetch → single returns full order
-    let callCount = 0;
-    mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        // Stuck plan check: no applying plan found
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        };
+    // Dispatch on table name. cs_edit_plans: no stuck plan. orders: full order.
+    let editPlanCallCount = 0;
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        editPlanCallCount++;
+        return buildStuckCheckChain(null); // no stuck plan
       }
-      // Main query
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: VALID_UUID,
-            intake_lane: "sales",
-            status: "confirmed",
-            final_total_amount: 1000,
-            mode_of_payment: "GCash",
-            payment_receipt_path: "receipts/abc.jpg",
-            payment_reference_number: "REF-001",
-            payment_transaction_at: "2024-01-01T10:00:00Z",
-            notes: "Please wrap nicely.",
-            shopify_financial_status: null,
-            shopify_gateway: null,
-            shopify_card_last4: null,
-            shopify_transaction_id: null,
-            shopify_transaction_at: null,
-            customer: CUSTOMER,
-            items: ORDER_ITEMS,
-            plan: [],
-          },
-          error: null,
-        }),
-      };
+      if (table === "cs_order_notes") {
+        return buildNotesChain([]); // no CS notes yet
+      }
+      // orders
+      return buildOrdersChain({
+        id: VALID_UUID,
+        intake_lane: "sales",
+        status: "confirmed",
+        final_total_amount: 1000,
+        mode_of_payment: "GCash",
+        payment_receipt_path: "receipts/abc.jpg",
+        payment_reference_number: "REF-001",
+        payment_transaction_at: "2024-01-01T10:00:00Z",
+        notes: "Please wrap nicely.",
+        shopify_financial_status: null,
+        shopify_gateway: null,
+        shopify_card_last4: null,
+        shopify_transaction_id: null,
+        shopify_transaction_at: null,
+        customer: CUSTOMER,
+        items: ORDER_ITEMS,
+        plan: [],
+      });
     });
   });
 
@@ -174,6 +190,9 @@ describe("GET /api/customer-service/orders/[id]/full — sales lane", () => {
 
     expect(body.items).toHaveLength(1);
     expect(body.plan).toBeNull();
+
+    // cs_notes should be an empty array when no notes exist
+    expect(body.cs_notes).toEqual([]);
   });
 });
 
@@ -181,43 +200,32 @@ describe("GET /api/customer-service/orders/[id]/full — conversion lane", () =>
   beforeEach(() => {
     mockGetUser = vi.fn().mockResolvedValue(VALID_USER);
 
-    let callCount = 0;
-    mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        };
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        return buildStuckCheckChain(null);
       }
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: VALID_UUID,
-            intake_lane: "conversion",
-            status: "confirmed",
-            final_total_amount: 2500,
-            mode_of_payment: null,
-            payment_receipt_path: null,
-            payment_reference_number: null,
-            payment_transaction_at: null,
-            notes: null,
-            shopify_financial_status: "paid",
-            shopify_gateway: "shopify_payments",
-            shopify_card_last4: "4242",
-            shopify_transaction_id: "txn_abc123",
-            shopify_transaction_at: "2024-01-02T12:00:00Z",
-            customer: CUSTOMER,
-            items: ORDER_ITEMS,
-            plan: [DRAFT_PLAN],
-          },
-          error: null,
-        }),
-      };
+      if (table === "cs_order_notes") {
+        return buildNotesChain([]);
+      }
+      return buildOrdersChain({
+        id: VALID_UUID,
+        intake_lane: "conversion",
+        status: "confirmed",
+        final_total_amount: 2500,
+        mode_of_payment: null,
+        payment_receipt_path: null,
+        payment_reference_number: null,
+        payment_transaction_at: null,
+        notes: null,
+        shopify_financial_status: "paid",
+        shopify_gateway: "shopify_payments",
+        shopify_card_last4: "4242",
+        shopify_transaction_id: "txn_abc123",
+        shopify_transaction_at: "2024-01-02T12:00:00Z",
+        customer: CUSTOMER,
+        items: ORDER_ITEMS,
+        plan: [DRAFT_PLAN],
+      });
     });
   });
 
@@ -240,6 +248,9 @@ describe("GET /api/customer-service/orders/[id]/full — conversion lane", () =>
     // Draft plan is returned
     expect(body.plan).not.toBeNull();
     expect(body.plan.status).toBe("draft");
+
+    // cs_notes default to empty array
+    expect(body.cs_notes).toEqual([]);
   });
 });
 
@@ -247,43 +258,32 @@ describe("GET /api/customer-service/orders/[id]/full — null plan", () => {
   beforeEach(() => {
     mockGetUser = vi.fn().mockResolvedValue(VALID_USER);
 
-    let callCount = 0;
-    mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        };
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        return buildStuckCheckChain(null);
       }
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: VALID_UUID,
-            intake_lane: "sales",
-            status: "confirmed",
-            final_total_amount: 800,
-            mode_of_payment: "Cash",
-            payment_receipt_path: null,
-            payment_reference_number: null,
-            payment_transaction_at: null,
-            notes: null,
-            shopify_financial_status: null,
-            shopify_gateway: null,
-            shopify_card_last4: null,
-            shopify_transaction_id: null,
-            shopify_transaction_at: null,
-            customer: CUSTOMER,
-            items: [],
-            plan: [], // empty — no plans at all
-          },
-          error: null,
-        }),
-      };
+      if (table === "cs_order_notes") {
+        return buildNotesChain([]);
+      }
+      return buildOrdersChain({
+        id: VALID_UUID,
+        intake_lane: "sales",
+        status: "confirmed",
+        final_total_amount: 800,
+        mode_of_payment: "Cash",
+        payment_receipt_path: null,
+        payment_reference_number: null,
+        payment_transaction_at: null,
+        notes: null,
+        shopify_financial_status: null,
+        shopify_gateway: null,
+        shopify_card_last4: null,
+        shopify_transaction_id: null,
+        shopify_transaction_at: null,
+        customer: CUSTOMER,
+        items: [],
+        plan: [], // empty — no plans at all
+      });
     });
   });
 
@@ -292,6 +292,67 @@ describe("GET /api/customer-service/orders/[id]/full — null plan", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.plan).toBeNull();
+    expect(body.cs_notes).toEqual([]);
+  });
+});
+
+describe("GET /api/customer-service/orders/[id]/full — cs_notes populated", () => {
+  const CS_NOTES = [
+    {
+      id: 1,
+      author_name_snapshot: "Sarah Chen",
+      body: "Customer wants gift wrapping.",
+      created_at: "2024-01-03T09:00:00Z",
+    },
+    {
+      id: 2,
+      author_name_snapshot: "Mark Santos",
+      body: "Confirmed delivery address with customer.",
+      created_at: "2024-01-03T10:30:00Z",
+    },
+  ];
+
+  beforeEach(() => {
+    mockGetUser = vi.fn().mockResolvedValue(VALID_USER);
+
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        return buildStuckCheckChain(null);
+      }
+      if (table === "cs_order_notes") {
+        return buildNotesChain(CS_NOTES);
+      }
+      return buildOrdersChain({
+        id: VALID_UUID,
+        intake_lane: "sales",
+        status: "confirmed",
+        final_total_amount: 1500,
+        mode_of_payment: "GCash",
+        payment_receipt_path: null,
+        payment_reference_number: "REF-002",
+        payment_transaction_at: null,
+        notes: null,
+        shopify_financial_status: null,
+        shopify_gateway: null,
+        shopify_card_last4: null,
+        shopify_transaction_id: null,
+        shopify_transaction_at: null,
+        customer: CUSTOMER,
+        items: ORDER_ITEMS,
+        plan: [],
+      });
+    });
+  });
+
+  it("returns cs_notes array with notes from the feed table", async () => {
+    const res = await GET(makeRequest(VALID_UUID), makeCtx(VALID_UUID));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.cs_notes).toHaveLength(2);
+    expect(body.cs_notes[0].author_name_snapshot).toBe("Sarah Chen");
+    expect(body.cs_notes[0].body).toBe("Customer wants gift wrapping.");
+    expect(body.cs_notes[1].author_name_snapshot).toBe("Mark Santos");
   });
 });
 
@@ -306,53 +367,41 @@ describe("GET /api/customer-service/orders/[id]/full — stuck plan auto-revert"
       applying_started_at: new Date(Date.now() - 120_000).toISOString(), // 2 min ago
     };
 
-    let callCount = 0;
-    mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        // Stuck plan check: returns a stuck plan
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: stuckPlan, error: null }),
-        };
+    // cs_edit_plans is called TWICE for the stuck-plan path (check + revert).
+    // Dispatch on table name; use a counter inside the cs_edit_plans branch.
+    let editPlanCallCount = 0;
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        editPlanCallCount++;
+        if (editPlanCallCount === 1) {
+          return buildStuckCheckChain(stuckPlan);
+        }
+        // Second call: the UPDATE revert
+        return buildRevertChain();
       }
-      if (callCount === 2) {
-        // Stuck plan UPDATE to 'draft'
-        return {
-          update: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-        };
+      if (table === "cs_order_notes") {
+        return buildNotesChain([]);
       }
-      // Main order fetch
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: {
-            id: VALID_UUID,
-            intake_lane: "sales",
-            status: "confirmed",
-            final_total_amount: 500,
-            mode_of_payment: "GCash",
-            payment_receipt_path: null,
-            payment_reference_number: null,
-            payment_transaction_at: null,
-            notes: null,
-            shopify_financial_status: null,
-            shopify_gateway: null,
-            shopify_card_last4: null,
-            shopify_transaction_id: null,
-            shopify_transaction_at: null,
-            customer: CUSTOMER,
-            items: [],
-            // After revert the plan comes back as draft in the main query
-            plan: [{ ...stuckPlan, status: "draft" }],
-          },
-          error: null,
-        }),
-      };
+      // Main order fetch — plan comes back as draft after revert
+      return buildOrdersChain({
+        id: VALID_UUID,
+        intake_lane: "sales",
+        status: "confirmed",
+        final_total_amount: 500,
+        mode_of_payment: "GCash",
+        payment_receipt_path: null,
+        payment_reference_number: null,
+        payment_transaction_at: null,
+        notes: null,
+        shopify_financial_status: null,
+        shopify_gateway: null,
+        shopify_card_last4: null,
+        shopify_transaction_id: null,
+        shopify_transaction_at: null,
+        customer: CUSTOMER,
+        items: [],
+        plan: [{ ...stuckPlan, status: "draft" }],
+      });
     });
   });
 
@@ -361,12 +410,13 @@ describe("GET /api/customer-service/orders/[id]/full — stuck plan auto-revert"
     expect(res.status).toBe(200);
     const body = await res.json();
 
-    // The route should have attempted the revert (mockFrom called 3 times:
-    // stuck-check, revert-update, main-fetch)
-    expect(mockFrom).toHaveBeenCalledTimes(3);
+    // The route should have called mockFrom for: cs_edit_plans (check),
+    // cs_edit_plans (revert), orders, cs_order_notes — 4 total
+    expect(mockFrom).toHaveBeenCalledTimes(4);
     // Plan is now surfaced as draft
     expect(body.plan).not.toBeNull();
     expect(body.plan.status).toBe("draft");
+    expect(body.cs_notes).toEqual([]);
   });
 });
 
@@ -374,25 +424,17 @@ describe("GET /api/customer-service/orders/[id]/full — 404", () => {
   beforeEach(() => {
     mockGetUser = vi.fn().mockResolvedValue(VALID_USER);
 
-    let callCount = 0;
-    mockFrom = vi.fn(() => {
-      callCount++;
-      if (callCount === 1) {
-        return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          lt: vi.fn().mockReturnThis(),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        };
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        return buildStuckCheckChain(null);
       }
-      return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({
-          data: null,
-          error: { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" },
-        }),
-      };
+      if (table === "cs_order_notes") {
+        return buildNotesChain([]);
+      }
+      return buildOrdersChain(
+        null,
+        { code: "PGRST116", message: "JSON object requested, multiple (or no) rows returned" },
+      );
     });
   });
 

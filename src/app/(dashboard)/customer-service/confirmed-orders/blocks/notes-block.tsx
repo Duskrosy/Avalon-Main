@@ -1,19 +1,156 @@
 "use client";
 
-type Props = {
-  notes: string | null;
+import { useState } from "react";
+import { formatDistanceToNow } from "date-fns";
+
+type CsNote = {
+  id: number;
+  author_name_snapshot: string;
+  body: string;
+  created_at: string;
 };
 
-export function NotesBlock({ notes }: Props) {
-  if (!notes) {
-    return (
-      <div className="text-sm text-[var(--color-text-tertiary)] italic">No sales notes.</div>
-    );
+type Props = {
+  /** The immutable sales-agent note set at order-confirm time (orders.notes). */
+  salesNote: string | null;
+  /** Feed of CS team notes from cs_order_notes, in chronological order. */
+  csNotes: CsNote[];
+  orderId: string;
+};
+
+export function NotesBlock({ salesNote, csNotes, orderId }: Props) {
+  const [feed, setFeed] = useState<CsNote[]>(csNotes);
+  const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState<string | null>(null);
+
+  const hasContent = !!salesNote || feed.length > 0;
+
+  async function postNote() {
+    const trimmed = draft.trim();
+    if (!trimmed || posting) return;
+    setPosting(true);
+    setPostError(null);
+
+    // Optimistic append — assign a temporary negative id so we can spot it.
+    const optimisticId = -(Date.now());
+    const optimistic: CsNote = {
+      id: optimisticId,
+      author_name_snapshot: "You",
+      body: trimmed,
+      created_at: new Date().toISOString(),
+    };
+    setFeed((prev) => [...prev, optimistic]);
+    setDraft("");
+
+    try {
+      const res = await fetch(`/api/customer-service/orders/${orderId}/notes`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: trimmed }),
+      });
+
+      if (res.ok) {
+        const { note } = await res.json();
+        // Replace optimistic entry with the real one returned from the server.
+        setFeed((prev) =>
+          prev.map((n) => (n.id === optimisticId ? (note as CsNote) : n)),
+        );
+      } else {
+        // Roll back optimistic entry and show error.
+        setFeed((prev) => prev.filter((n) => n.id !== optimisticId));
+        const j = await res.json().catch(() => ({}));
+        setPostError(j.error ?? "Failed to post note. Please try again.");
+        setDraft(trimmed); // restore draft so user doesn't lose their text
+      }
+    } catch {
+      setFeed((prev) => prev.filter((n) => n.id !== optimisticId));
+      setPostError("Network error. Please try again.");
+      setDraft(trimmed);
+    } finally {
+      setPosting(false);
+    }
   }
 
   return (
-    <div className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap rounded border border-[var(--color-border-primary)] px-3 py-2 bg-[var(--color-bg-secondary)]">
-      {notes}
+    <div className="space-y-3">
+      {/* Empty state */}
+      {!hasContent && (
+        <p className="text-sm italic text-[var(--color-text-tertiary)]">
+          No notes yet. Add the first one.
+        </p>
+      )}
+
+      {/* Sales-agent note (immutable) */}
+      {salesNote && (
+        <div className="rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2.5">
+          <div className="mb-1 flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
+              Sales note
+            </span>
+            <span className="text-[10px] text-[var(--color-text-tertiary)]">
+              · From the sales agent at order time
+            </span>
+          </div>
+          <p className="text-sm italic text-[var(--color-text-secondary)] whitespace-pre-wrap">
+            {salesNote}
+          </p>
+        </div>
+      )}
+
+      {/* CS team notes feed */}
+      {feed.map((note) => (
+        <div
+          key={note.id}
+          className="rounded border border-[var(--color-border-primary)] bg-[var(--color-surface-card)] px-3 py-2.5"
+        >
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="text-[11px] font-medium text-[var(--color-text-primary)]">
+              {note.author_name_snapshot}
+            </span>
+            <span className="text-[10px] text-[var(--color-text-tertiary)] shrink-0">
+              {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+            </span>
+          </div>
+          <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">
+            {note.body}
+          </p>
+        </div>
+      ))}
+
+      {/* Inline post form */}
+      <div className="space-y-2 pt-1">
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            // Cmd/Ctrl+Enter posts (Esc is handled at the drawer level)
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              e.stopPropagation(); // don't let it bubble to the drawer's confirm shortcut
+              void postNote();
+            }
+          }}
+          placeholder="Add a note for the team..."
+          disabled={posting}
+          rows={3}
+          className="w-full resize-y rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-primary)] px-3 py-2 text-sm placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] disabled:opacity-50"
+        />
+        {postError && (
+          <div className="rounded bg-[var(--color-error-light)] border border-[var(--color-error-light)] px-3 py-1.5 text-xs text-[var(--color-error)]">
+            {postError}
+          </div>
+        )}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => void postNote()}
+            disabled={posting || !draft.trim()}
+            className="px-3 py-1.5 rounded text-sm font-medium bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {posting ? "Posting…" : "Post note"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

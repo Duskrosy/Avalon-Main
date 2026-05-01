@@ -54,6 +54,13 @@ type DrawerPlan = {
   items: unknown[];
 } | null;
 
+type CsNote = {
+  id: number;
+  author_name_snapshot: string;
+  body: string;
+  created_at: string;
+};
+
 type FullDrawerResponse = {
   order: {
     id: string;
@@ -103,6 +110,7 @@ type FullDrawerResponse = {
   }>;
   payment: LanePayment;
   notes: string | null;
+  cs_notes: CsNote[];
   plan: DrawerPlan;
 };
 
@@ -236,12 +244,19 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     }
   }
 
-  // 4. Main nested SELECT — single query for order + customer + items + plans.
-  const { data: order, error } = await db
-    .from("orders")
-    .select(ORDER_SELECT)
-    .eq("id", id)
-    .single();
+  // 4. Main nested SELECT + cs_notes feed — run in parallel.
+  const [{ data: order, error }, { data: rawCsNotes }] = await Promise.all([
+    db
+      .from("orders")
+      .select(ORDER_SELECT)
+      .eq("id", id)
+      .single(),
+    db
+      .from("cs_order_notes")
+      .select("id, author_name_snapshot, body, created_at")
+      .eq("order_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
 
   if (error || !order) {
     // PGRST116 = "no rows returned" from PostgREST
@@ -297,6 +312,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     items: Array.isArray(order.items) ? order.items : [],
     payment: buildPaymentBlock(order),
     notes: order.notes ?? null,
+    cs_notes: Array.isArray(rawCsNotes) ? (rawCsNotes as CsNote[]) : [],
     plan,
   };
 
