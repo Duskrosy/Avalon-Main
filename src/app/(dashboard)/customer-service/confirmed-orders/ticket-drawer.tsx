@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
-import { AlertTriangle, ChevronDown, ChevronUp, Truck, X } from "lucide-react";
+import { AlertTriangle, Truck, X } from "lucide-react";
 import { ShippingBlock } from "./blocks/shipping-block";
 import type { AddressShippingStagedOp } from "./blocks/shipping-block";
 import { BillingBlock } from "./blocks/billing-block";
@@ -327,8 +327,6 @@ function CustomerColumn({
   onBillingOpsChange: (ops: AddressBillingStagedOp[]) => void;
   readOnly: boolean;
 }) {
-  const [showBilling, setShowBilling] = useState(false);
-
   return (
     <div className="space-y-4">
       {/* Delivery info */}
@@ -364,24 +362,12 @@ function CustomerColumn({
         />
       </div>
 
-      {/* Billing (collapsible) */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowBilling((v) => !v)}
-          className="flex items-center gap-1 text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] mb-1"
-        >
-          {showBilling ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-          {showBilling ? "Hide billing" : "Show billing"}
-        </button>
-        {showBilling && (
-          <BillingBlock
-            billing={customer}
-            onStagedOpsChange={onBillingOpsChange}
-            readOnly={readOnly}
-          />
-        )}
-      </div>
+      {/* Billing — BillingBlock manages its own collapse */}
+      <BillingBlock
+        billing={customer}
+        onStagedOpsChange={onBillingOpsChange}
+        readOnly={readOnly}
+      />
     </div>
   );
 }
