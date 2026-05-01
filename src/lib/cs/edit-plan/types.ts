@@ -4,10 +4,8 @@
 // Column names follow migration 00101_cs_pass_2_intake_and_plans.sql.
 
 // ─── IntakeLane ───────────────────────────────────────────────────────────────
-// Defined locally because src/lib/sales/intake-lane.ts lives in Lane 4's
-// territory (parallel work). Replace this import once Lane 4 lands.
-// Source of truth: orders_intake_lane_check CHECK constraint in migration 00101.
-export type IntakeLane = 'sales' | 'shopify_admin' | 'conversion' | 'quarantine';
+// Source of truth: src/lib/sales/intake-lane.ts (Lane 1).
+export type { IntakeLane } from "@/lib/sales/intake-lane";
 
 // ─── Edit plan enums ──────────────────────────────────────────────────────────
 
