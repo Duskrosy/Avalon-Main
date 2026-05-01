@@ -23,6 +23,7 @@ const { adminChain } = vi.hoisted(() => {
     order: null as unknown,
     is: null as unknown,
     not: null as unknown,
+    limit: null as unknown,
     _resolve: { data: [], error: null, count: 0 },
   };
 
@@ -32,6 +33,7 @@ const { adminChain } = vi.hoisted(() => {
   chain.order = vi.fn().mockReturnValue(chain);
   chain.is = vi.fn().mockReturnValue(chain);
   chain.not = vi.fn().mockReturnValue(chain);
+  chain.limit = vi.fn().mockReturnValue(chain);
 
   // Make awaiting the chain return _resolve
   Object.defineProperty(chain, "then", {
@@ -184,6 +186,7 @@ describe("GET /api/customer-service/admin/quarantine", () => {
     expect(res.status).toBe(500);
 
     const json = await res.json();
-    expect(json.error).toBe("DB error");
+    // Generic message — internal error details are logged server-side, not leaked.
+    expect(json.error).toBe("Internal error");
   });
 });

@@ -55,9 +55,13 @@ export async function GET(req: NextRequest) {
     const { data, error, count } = await (admin as any)
       .from("cs_intake_classifier_disagreements")
       .select(DISPUTES_SELECT, { count: "exact" })
-      .order("recorded_at", { ascending: false });
+      .order("recorded_at", { ascending: false })
+      .limit(200);  // hard cap; revisit if disputes log grows past this
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error("[admin/quarantine] disputes fetch failed", { code: error.code, message: error.message, hint: error.hint, details: error.details });
+      return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    }
     return NextResponse.json({ rows: data ?? [], count: count ?? 0 });
   }
 
@@ -74,10 +78,13 @@ export async function GET(req: NextRequest) {
     query = query.is("resolved_at", null);
   }
 
-  query = query.order("classified_at", { ascending: false });
+  query = query.order("classified_at", { ascending: false }).limit(200);  // hard cap
 
   const { data, error, count } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[admin/quarantine] quarantine fetch failed", { code: error.code, message: error.message, hint: error.hint, details: error.details });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+  }
 
   return NextResponse.json({ rows: data ?? [], count: count ?? 0 });
 }

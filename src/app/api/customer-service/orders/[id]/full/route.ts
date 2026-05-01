@@ -95,7 +95,7 @@ type FullDrawerResponse = {
     product_name: string;
     variant_name: string | null;
     quantity: number;
-    unit_price: number;
+    unit_price_amount: number;  // matches actual schema (00086_sales_orders_phase1.sql)
     line_total_amount: number;
     size: string | null;
     color: string | null;
@@ -210,7 +210,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   //    If a plan is stuck in 'applying' for >60 seconds, revert it to 'draft'
   //    before returning the payload so the rep doesn't see a permanently-locked plan.
   const sixtySecondsAgo = new Date(Date.now() - 60_000).toISOString();
-  const { data: stuckPlan } = await db
+  const { data: stuckPlan, error: stuckErr } = await db
     .from("cs_edit_plans")
     .select("id")
     .eq("order_id", id)
@@ -218,11 +218,22 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
     .lt("applying_started_at", sixtySecondsAgo)
     .maybeSingle();
 
+  if (stuckErr) {
+    // Non-fatal: log and continue with the main fetch. A failed stuck-plan
+    // check just means the rep might briefly see a stale 'applying' state.
+    console.error("[full-drawer] stuck-plan check failed", { code: stuckErr.code, message: stuckErr.message, hint: stuckErr.hint, details: stuckErr.details });
+  }
+
   if (stuckPlan) {
-    await db
+    // Idempotent: if two concurrent reads both revert, both writes set
+    // status='draft' — last write wins, no correctness issue.
+    const { error: revertErr } = await db
       .from("cs_edit_plans")
       .update({ status: "draft", error_message: "Auto-reverted: stuck in applying >60s" })
       .eq("id", stuckPlan.id);
+    if (revertErr) {
+      console.error("[full-drawer] stuck-plan revert failed", { code: revertErr.code, message: revertErr.message, hint: revertErr.hint, details: revertErr.details });
+    }
   }
 
   // 4. Main nested SELECT — single query for order + customer + items + plans.
@@ -234,12 +245,12 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
 
   if (error || !order) {
     // PGRST116 = "no rows returned" from PostgREST
-    const isNotFound =
-      !order || error?.code === "PGRST116" || error?.message?.includes("no rows");
+    const isNotFound = !order || error?.code === "PGRST116";
     if (isNotFound) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
-    return NextResponse.json({ error: error?.message ?? "Unexpected error" }, { status: 500 });
+    console.error("[full-drawer] order fetch failed", { code: error?.code, message: error?.message, hint: error?.hint, details: error?.details });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 
   // 5. Filter plans to only draft status.

@@ -50,11 +50,12 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 2. Validate path param
-  const orderId = parseInt(id, 10);
-  if (isNaN(orderId)) {
+  // 2. Validate path param — orders.id is uuid (see migration 00086 + 00101)
+  const uuidParse = z.string().uuid().safeParse(id);
+  if (!uuidParse.success) {
     return NextResponse.json({ error: 'Invalid order id' }, { status: 400 });
   }
+  const orderId = uuidParse.data;
 
   // 3. Parse and validate body
   const raw = await req.json().catch(() => null);
@@ -98,7 +99,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     .maybeSingle();
 
   if (planFetchErr) {
-    return NextResponse.json({ error: planFetchErr.message }, { status: 500 });
+    console.error('[edit-plan] plan fetch failed', { code: planFetchErr.code, message: planFetchErr.message, hint: planFetchErr.hint, details: planFetchErr.details });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 
   let planId: number;
@@ -125,7 +127,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .eq('plan_id', planId);
 
     if (deleteErr) {
-      return NextResponse.json({ error: deleteErr.message }, { status: 500 });
+      console.error('[edit-plan] item delete failed', { code: deleteErr.code, message: deleteErr.message, hint: deleteErr.hint, details: deleteErr.details });
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
 
     // UPDATE plan's updated_at
@@ -138,7 +141,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .single();
 
     if (updateErr || !updatedPlan) {
-      return NextResponse.json({ error: updateErr?.message ?? 'Plan update failed' }, { status: 500 });
+      console.error('[edit-plan] plan update failed', { code: updateErr?.code, message: updateErr?.message, hint: updateErr?.hint, details: updateErr?.details });
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
     planRow = updatedPlan;
   } else {
@@ -155,10 +159,17 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .single();
 
     if (insertErr || !newPlan) {
-      return NextResponse.json(
-        { error: insertErr?.message ?? 'Plan creation failed' },
-        { status: 500 },
-      );
+      // 23505 = unique_violation. Triggered by partial unique index on
+      // cs_edit_plans (order_id) WHERE status='draft' (added in migration 00102).
+      // Means another rep is concurrently composing a plan for this order.
+      if (insertErr?.code === '23505') {
+        return NextResponse.json(
+          { error: 'Another rep is already composing a draft for this order' },
+          { status: 409 },
+        );
+      }
+      console.error('[edit-plan] plan insert failed', { code: insertErr?.code, message: insertErr?.message, hint: insertErr?.hint, details: insertErr?.details });
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
     planId = newPlan.id;
     planRow = newPlan;
@@ -180,7 +191,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       .select('id, op, payload, created_at');
 
     if (itemsErr) {
-      return NextResponse.json({ error: itemsErr.message }, { status: 500 });
+      console.error('[edit-plan] items insert failed', { code: itemsErr.code, message: itemsErr.message, hint: itemsErr.hint, details: itemsErr.details });
+      return NextResponse.json({ error: 'Internal error' }, { status: 500 });
     }
     insertedItems = (items ?? []) as EditPlanItem[];
   }
@@ -193,11 +205,12 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     .eq('id', orderId)
     .maybeSingle();
 
-  if (orderErr || !orderRow) {
-    return NextResponse.json(
-      { error: orderErr?.message ?? 'Order not found' },
-      { status: 500 },
-    );
+  if (orderErr) {
+    console.error('[edit-plan] order fetch failed', { code: orderErr.code, message: orderErr.message, hint: orderErr.hint, details: orderErr.details });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
+  if (!orderRow) {
+    return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -207,7 +220,8 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     .eq('order_id', orderId);
 
   if (orderItemsErr) {
-    return NextResponse.json({ error: orderItemsErr.message }, { status: 500 });
+    console.error('[edit-plan] order_items fetch failed', { code: orderItemsErr.code, message: orderItemsErr.message, hint: orderItemsErr.hint, details: orderItemsErr.details });
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
   }
 
   const currentOrderItems: CurrentOrderItem[] = (orderItemsRaw ?? []).map(

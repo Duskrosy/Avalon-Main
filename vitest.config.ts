@@ -17,5 +17,12 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Don't pick up tests from worktrees, node_modules, or build output.
+    exclude: [
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/.next/**",
+      "**/.claude/worktrees/**",
+    ],
   },
 });

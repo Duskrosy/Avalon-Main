@@ -70,7 +70,7 @@ const ORDER_ITEMS = [
     product_name: "Dress",
     variant_name: "S",
     quantity: 2,
-    unit_price: 500,
+    unit_price_amount: 500,
     line_total_amount: 1000,
   },
 ];

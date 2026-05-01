@@ -40,7 +40,7 @@ export interface EditPlanItem {
 
 export interface EditPlan {
   id: number;
-  order_id: number;
+  order_id: string;  // orders.id is uuid (see migration 00086)
   status: EditPlanStatus;
   chosen_path: EditPath | null;
   items: EditPlanItem[];
@@ -60,7 +60,7 @@ export interface EditPlan {
 // ─── Request / response shapes ────────────────────────────────────────────────
 
 export interface ComposeRequest {
-  order_id: number;
+  order_id: string;  // orders.id is uuid
   items: Array<{ op: EditPlanOp; payload: unknown }>;
 }
 
