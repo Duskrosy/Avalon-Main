@@ -122,7 +122,7 @@ export function ExpandedOrderRow({
   const missingCount = checklist.filter((c) => !c.filled).length;
 
   return (
-    <div className="bg-amber-50/30 border-t border-amber-200/40">
+    <div className="bg-amber-50/30 border-t border-amber-200/40 dark:bg-transparent dark:border-[var(--color-border-primary)]">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 px-6 py-5">
         {/* ── Line items ───────────────────────────────────────────── */}
         <div>
