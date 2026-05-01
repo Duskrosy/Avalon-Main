@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Truck, X, Paperclip, AlertTriangle } from "lucide-react";
+import { Truck, X, Paperclip, AlertTriangle, Copy, Pencil, Check } from "lucide-react";
 
 // Right-side drawer for working a claimed CS ticket. Shows the order
 // summary up top, body sections (customer, payment, delivery), and a
@@ -34,6 +34,7 @@ type TicketSummary = {
   claimed_by_user_id: string | null;
   claimer: { full_name: string } | null;
   completed_at: string | null;
+  created_by_name: string | null; // null => conversion (storefront), else chat-sales
 };
 
 type Props = {
@@ -137,8 +138,9 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
         {/* header */}
         <header className="flex items-start justify-between gap-3 px-5 py-4 border-b border-[var(--color-border-primary)]">
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)]">
-              Working ticket
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)]">
+              <span>Working ticket</span>
+              <LaneChip createdByName={ticket.created_by_name} />
             </div>
             <h2
               id="ticket-drawer-title"
@@ -146,10 +148,6 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
             >
               {ticket.shopify_order_name ?? ticket.avalon_order_number ?? ticket.id.slice(0, 6)}
             </h2>
-            <div className="text-xs text-[var(--color-text-secondary)]">
-              {ticket.customer?.full_name ?? "—"}
-              {ticket.customer?.phone ? ` · ${ticket.customer.phone}` : ""}
-            </div>
           </div>
           <button
             type="button"
@@ -179,6 +177,39 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
         <div
           className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm ${claimedByOther ? "opacity-60 pointer-events-none" : ""}`}
         >
+          <Section
+            label="Customer"
+            action={
+              <button
+                type="button"
+                disabled
+                title="Inline edit coming in Pass 5"
+                className="p-1 rounded text-[var(--color-text-tertiary)] cursor-not-allowed"
+                aria-label="Edit customer (coming soon)"
+              >
+                <Pencil size={12} />
+              </button>
+            }
+          >
+            <div className="space-y-1.5">
+              <CopyField
+                label="Name"
+                value={ticket.customer?.full_name ?? "—"}
+                copyable={!!ticket.customer?.full_name}
+              />
+              <CopyField
+                label="Phone"
+                value={ticket.customer?.phone ?? "—"}
+                copyable={!!ticket.customer?.phone}
+              />
+              <CopyField
+                label="Order #"
+                value={ticket.shopify_order_name ?? ticket.avalon_order_number ?? ticket.id.slice(0, 8)}
+                copyable
+              />
+            </div>
+          </Section>
+
           <Section label="Total">
             <div className="text-lg font-semibold tabular-nums">
               ₱{ticket.final_total_amount.toFixed(2)}
@@ -325,13 +356,81 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
   );
 }
 
-function Section({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({
+  label,
+  action,
+  children,
+}: {
+  label: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)] mb-1">
-        {label}
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)]">
+          {label}
+        </div>
+        {action}
       </div>
       {children}
+    </div>
+  );
+}
+
+function LaneChip({ createdByName }: { createdByName: string | null }) {
+  // null created_by_name => storefront / Shopify-direct (conversion sale).
+  // populated => an Avalon agent created the order via the chat-sales flow.
+  const isConversion = !createdByName;
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+        isConversion
+          ? "bg-[var(--color-info-light)] text-[var(--color-info)]"
+          : "bg-[var(--color-success-light)] text-[var(--color-success)]"
+      }`}
+    >
+      {isConversion ? "Conversion" : "Chat"}
+    </span>
+  );
+}
+
+function CopyField({
+  label,
+  value,
+  copyable,
+}: {
+  label: string;
+  value: string;
+  copyable: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    if (!copyable) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard API can fail in some browsers / iframe contexts. Silent fail.
+    }
+  };
+  return (
+    <div className="flex items-center gap-2 group">
+      <span className="text-[11px] text-[var(--color-text-tertiary)] w-14 shrink-0">
+        {label}
+      </span>
+      <span className="text-sm flex-1 min-w-0 truncate">{value}</span>
+      {copyable && (
+        <button
+          type="button"
+          onClick={() => void onCopy()}
+          aria-label={`Copy ${label}`}
+          className="p-1 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+        >
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+        </button>
+      )}
     </div>
   );
 }

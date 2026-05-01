@@ -175,7 +175,10 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
                   } ${claimedByMe ? "border-l-2 border-l-[var(--color-success)]" : ""}`}
                 >
                   <td className="px-3 py-2 font-medium">
-                    {o.shopify_order_name ?? o.id.slice(0, 6)}
+                    <div className="flex items-center gap-2">
+                      <span>{o.shopify_order_name ?? o.id.slice(0, 6)}</span>
+                      <LaneChip createdByName={o.created_by_name} />
+                    </div>
                   </td>
                   <td className="px-3 py-2">
                     <ShopifyBadges
@@ -276,8 +279,9 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm">
-                    {o.shopify_order_name ?? o.id.slice(0, 6)}
+                  <div className="font-medium text-sm flex items-center gap-2">
+                    <span>{o.shopify_order_name ?? o.id.slice(0, 6)}</span>
+                    <LaneChip createdByName={o.created_by_name} />
                   </div>
                   <div className="text-xs text-[var(--color-text-secondary)] truncate">
                     {o.customer?.full_name ?? "—"}
@@ -421,6 +425,21 @@ function shortAgo(human: string): string {
           ? "d"
           : unit[0];
   return `${num}${u}`;
+}
+
+function LaneChip({ createdByName }: { createdByName: string | null }) {
+  const isConversion = !createdByName;
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
+        isConversion
+          ? "bg-[var(--color-info-light)] text-[var(--color-info)]"
+          : "bg-[var(--color-success-light)] text-[var(--color-success)]"
+      }`}
+    >
+      {isConversion ? "Conversion" : "Chat"}
+    </span>
+  );
 }
 
 function ShopifyBadges({ fin, ful }: { fin: string | null; ful: string | null }) {
