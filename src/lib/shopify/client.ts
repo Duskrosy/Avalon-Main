@@ -948,6 +948,18 @@ export async function calculateDraftOrderDiscount(input: {
     },
   });
 
+  // Diagnostic: log the input shape so we can see in Vercel logs whether
+  // variantIds are populated. Auto-discounts on Shopify often target
+  // specific variants/products/collections; if our cart's items have
+  // variantId=null (legacy bundle-split carts, custom line items), no
+  // product-targeted auto-discount can match.
+  const lineItemsForLog = buildVars(true).input.lineItems.map((li) => ({
+    variantId: li.variantId,
+    quantity: li.quantity,
+    title: li.title,
+  }));
+  console.log("[draftOrderCalculate] input lineItems:", JSON.stringify(lineItemsForLog));
+
   // Try with customer first; fall back to no customer if Shopify can't find them.
   // The customer's shopify_customer_id may be stale (deleted on Shopify side)
   // or not yet synced. Customer-segment automatic discounts won't preview
@@ -969,6 +981,10 @@ export async function calculateDraftOrderDiscount(input: {
       throw err;
     }
   }
+  console.log(
+    "[draftOrderCalculate] appliedDiscount:",
+    JSON.stringify(data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount ?? null),
+  );
   const ad = data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount;
   if (!ad) {
     return { applied: [], applied_total: 0 };
