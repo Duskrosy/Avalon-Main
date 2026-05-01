@@ -47,10 +47,14 @@ export type ShopifyOrder = {
     first_name?: string;
     last_name?: string;
     email?: string;
+    phone?: string;
   } | null;
   payment_gateway: string | null;
   tags: string;                            // comma-separated string
   note_attributes: { name: string; value: string }[];
+  // Intake-lane classifier fields (added for CS Pass 2 Lane 2)
+  source_name?: string | null;             // 'web' | 'pos' | 'shopify_draft_order' | ...
+  app_id?: number | null;                  // 580111 = web checkout; others = admin/POS
 };
 
 // ─── Base fetch ───────────────────────────────────────────────────────────────
@@ -151,7 +155,8 @@ export async function fetchShopifyOrders(params: {
 
   const fields =
     "id,order_number,name,created_at,financial_status,fulfillment_status," +
-    "total_price,line_items,customer,payment_gateway,tags,note_attributes";
+    "total_price,line_items,customer,payment_gateway,tags,note_attributes," +
+    "source_name,app_id";
 
   const qs = new URLSearchParams({
     status:  params.status  ?? "any",

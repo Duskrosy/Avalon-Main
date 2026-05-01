@@ -1,8 +1,10 @@
 {
   "crons": [
-    { "path": "/api/ad-ops/sync",                 "schedule": "0 19 * * *" },
-    { "path": "/api/smm/social-sync",             "schedule": "0 20 * * *" },
-    { "path": "/api/sales/shopify-sync",          "schedule": "0 16 * * *" },
-    { "path": "/api/cron/birthday-notifications", "schedule": "0 0 * * *"  }
+    { "path": "/api/ad-ops/sync",                        "schedule": "0 19 * * *" },
+    { "path": "/api/smm/social-sync",                    "schedule": "0 20 * * *" },
+    { "path": "/api/sales/shopify-sync",                 "schedule": "0 16 * * *" },
+    { "path": "/api/cron/birthday-notifications",        "schedule": "0 0 * * *"  },
+    { "path": "/api/cron/cs-conversion-reconciler",      "schedule": "0 * * * *"  },
+    { "path": "/api/cron/webhook-deliveries-prune",      "schedule": "0 3 * * *"  }
   ]
 }
