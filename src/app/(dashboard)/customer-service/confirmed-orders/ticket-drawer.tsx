@@ -172,12 +172,16 @@ function PaymentBlock({
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function BodySkeleton() {
+  // Tailwind v4 only emits classes that appear as literal strings in source.
+  // Don't use template-string class names — also w-100 / w-120 aren't on the
+  // default spacing scale (which tops at w-96).
+  const widths = ["w-20", "w-32", "w-16", "w-28", "w-20"] as const;
   return (
     <div className="space-y-4 animate-pulse">
-      {[80, 120, 60, 100, 80].map((w, i) => (
+      {widths.map((w, i) => (
         <div key={i} className="space-y-2">
           <div className="h-2 w-16 rounded bg-[var(--color-border-primary)]" />
-          <div className={`h-3 w-${w} rounded bg-[var(--color-border-primary)] max-w-full`} />
+          <div className={`h-3 ${w} rounded bg-[var(--color-border-primary)] max-w-full`} />
         </div>
       ))}
     </div>
