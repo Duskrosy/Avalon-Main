@@ -86,11 +86,11 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
           placeholder="Search order # / name / phone…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-3 py-1.5 text-sm border border-gray-200 rounded-md w-72"
+          className="px-3 py-1.5 text-sm border border-[var(--color-border-primary)] rounded-md w-72"
         />
       </div>
 
-      <div className="flex items-center gap-1 border-b border-gray-200">
+      <div className="flex items-center gap-1 border-b border-[var(--color-border-primary)]">
         {(["inbox", "in_progress", "done", "all"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -98,8 +98,8 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
             onClick={() => setTab(t)}
             className={`px-3 py-1.5 text-xs border-b-2 -mb-px ${
               tab === t
-                ? "border-blue-500 text-blue-700 font-medium"
-                : "border-transparent text-gray-600 hover:text-gray-900"
+                ? "border-[var(--color-accent)] text-[var(--color-accent)] font-medium"
+                : "border-transparent text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
             }`}
           >
             {t === "in_progress" ? "In progress" : t[0].toUpperCase() + t.slice(1)}
@@ -107,9 +107,9 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
         ))}
       </div>
 
-      <div className="border border-gray-200 rounded-md overflow-hidden">
+      <div className="border border-[var(--color-border-primary)] rounded-md overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-xs text-gray-600">
+          <thead className="bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)]">
             <tr>
               <th className="text-left px-3 py-2">Order</th>
               <th className="text-left px-3 py-2">Status</th>
@@ -123,36 +123,36 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={8} className="px-3 py-4 text-center text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={8} className="px-3 py-4 text-center text-[var(--color-text-tertiary)]">Loading…</td></tr>
             )}
             {!loading && orders.length === 0 && (
-              <tr><td colSpan={8} className="px-3 py-4 text-center text-gray-400">No orders</td></tr>
+              <tr><td colSpan={8} className="px-3 py-4 text-center text-[var(--color-text-tertiary)]">No orders</td></tr>
             )}
             {orders.map((o) => (
-              <tr key={o.id} className="border-t border-gray-100">
+              <tr key={o.id} className="border-t border-[var(--color-border-secondary)]">
                 <td className="px-3 py-2 font-medium">{o.shopify_order_name ?? o.id.slice(0, 6)}</td>
                 <td className="px-3 py-2">
                   <ShopifyBadges fin={o.shopify_financial_status} ful={o.shopify_fulfillment_status} />
                   {o.cs_hold_reason && (
-                    <span className="ml-1 inline-block text-[10px] uppercase font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    <span className="ml-1 inline-block text-[10px] uppercase font-semibold rounded px-1.5 py-0.5 bg-[var(--color-warning-light)] text-[var(--color-warning)] border border-[var(--color-warning-light)]">
                       ON HOLD — {o.cs_hold_reason}
                     </span>
                   )}
                 </td>
                 <td className="px-3 py-2">
                   <div>{o.customer?.full_name ?? "—"}</div>
-                  <div className="text-[11px] text-gray-500">{o.customer?.phone ?? ""}</div>
+                  <div className="text-[11px] text-[var(--color-text-tertiary)]">{o.customer?.phone ?? ""}</div>
                 </td>
                 <td className="px-3 py-2">
                   <span>{o.mode_of_payment ?? "—"}</span>
                   {o.payment_other_label && (
-                    <span className="text-[11px] text-gray-500"> ({o.payment_other_label})</span>
+                    <span className="text-[11px] text-[var(--color-text-tertiary)]"> ({o.payment_other_label})</span>
                   )}
                   {o.payment_receipt_path && (
                     <button
                       type="button"
                       onClick={() => void previewReceipt(o.id)}
-                      className="ml-1.5 text-blue-600 hover:text-blue-800"
+                      className="ml-1.5 text-[var(--color-accent)] hover:opacity-80"
                       aria-label="Preview receipt"
                     >
                       <Paperclip size={12} />
@@ -170,7 +170,7 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
                 </td>
                 <td className="px-3 py-2 text-xs">
                   <div>{o.created_by_name ?? "—"}</div>
-                  <div className="text-gray-500">
+                  <div className="text-[var(--color-text-tertiary)]">
                     {o.completed_at ? format(new Date(o.completed_at), "MMM d, h:mm a") : ""}
                   </div>
                 </td>
@@ -182,7 +182,7 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
                       if (v) void triage(o.id, v);
                       e.target.value = "";
                     }}
-                    className="text-xs border border-gray-200 rounded px-2 py-1"
+                    className="text-xs rounded px-2 py-1"
                   >
                     <option value="">Triage…</option>
                     <option value="inventory">→ Inventory</option>
@@ -204,12 +204,12 @@ function ShopifyBadges({ fin, ful }: { fin: string | null; ful: string | null })
   return (
     <div className="inline-flex items-center gap-1">
       {fin && (
-        <span className="text-[10px] uppercase font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+        <span className="text-[10px] uppercase font-semibold rounded-full px-2 py-0.5 bg-[var(--color-warning-light)] text-[var(--color-warning)] border border-[var(--color-warning-light)]">
           {fin === "pending" ? "Payment pending" : fin}
         </span>
       )}
       {(ful === null || ful === "unfulfilled" || ful === "partial") && (
-        <span className="text-[10px] uppercase font-semibold text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-full px-2 py-0.5">
+        <span className="text-[10px] uppercase font-semibold rounded-full px-2 py-0.5 bg-[var(--color-info-light)] text-[var(--color-info)] border border-[var(--color-info-light)]">
           {ful ?? "Unfulfilled"}
         </span>
       )}
