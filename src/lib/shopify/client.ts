@@ -908,25 +908,35 @@ export async function calculateDraftOrderDiscount(input: {
   type Resp = {
     draftOrderCalculate: {
       calculatedDraftOrder: {
-        appliedDiscount: {
+        platformDiscounts: Array<{
           title: string | null;
-          description: string | null;
-          value: string;
-          valueType: string;
-          amount: string;
-        } | null;
+          summary: string | null;
+          totalAmount: { amount: string; currencyCode: string } | null;
+          automaticDiscount: boolean;
+          code: string | null;
+        }> | null;
       } | null;
       userErrors: Array<{ field: string[]; message: string }>;
     };
   };
 
-  // CalculatedDraftOrder has appliedDiscount (singular) — its `amount` IS the
-  // discount total. There is no separate `totalDiscounts` field on this type.
+  // Automatic discounts surface in `platformDiscounts` (array) — the
+  // top-level `appliedDiscount` field is for *manual* order-level discounts
+  // passed via input.appliedDiscount and does NOT carry automatic ones.
+  // `acceptAutomaticDiscounts: true` opts the calculate call into evaluating
+  // them. (Function-based automatics still won't preview here — that's a
+  // platform limitation, not a query bug.)
   const MUTATION = `
     mutation Calc($input: DraftOrderInput!) {
       draftOrderCalculate(input: $input) {
         calculatedDraftOrder {
-          appliedDiscount { title description value valueType amount }
+          platformDiscounts {
+            title
+            summary
+            totalAmount { amount currencyCode }
+            automaticDiscount
+            code
+          }
         }
         userErrors { field message }
       }
@@ -945,6 +955,7 @@ export async function calculateDraftOrderDiscount(input: {
         originalUnitPrice: it.price,
       })),
       useCustomerDefaultAddress: false,
+      acceptAutomaticDiscounts: true,
     },
   });
 
@@ -981,29 +992,26 @@ export async function calculateDraftOrderDiscount(input: {
       throw err;
     }
   }
+  const platformDiscounts =
+    data.draftOrderCalculate.calculatedDraftOrder?.platformDiscounts ?? [];
   console.log(
-    "[draftOrderCalculate] appliedDiscount:",
-    JSON.stringify(data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount ?? null),
+    "[draftOrderCalculate] platformDiscounts:",
+    JSON.stringify(platformDiscounts),
   );
-  const ad = data.draftOrderCalculate.calculatedDraftOrder?.appliedDiscount;
-  if (!ad) {
-    return { applied: [], applied_total: 0 };
+  const applied: AutoDiscountApplied[] = [];
+  let applied_total = 0;
+  for (const pd of platformDiscounts) {
+    const amount = parseFloat(pd.totalAmount?.amount ?? "0");
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    applied.push({
+      title: pd.title ?? "Discount",
+      type: pd.automaticDiscount ? "Automatic" : pd.code ? "Code" : "Discount",
+      description: pd.summary ?? "",
+      amount,
+    });
+    applied_total += amount;
   }
-  const amount = parseFloat(ad.amount);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { applied: [], applied_total: 0 };
-  }
-  return {
-    applied: [
-      {
-        title: ad.title ?? "Discount",
-        type: ad.valueType ?? "Discount",
-        description: ad.description ?? "",
-        amount,
-      },
-    ],
-    applied_total: amount,
-  };
+  return { applied, applied_total };
 }
 
 // ─── Product / variant search (Phase 1.5 hotfix — empty Inventory v1) ───────
