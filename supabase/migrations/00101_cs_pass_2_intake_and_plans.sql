@@ -44,7 +44,7 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS shopify_transaction_at timestamptz,
   -- NO ACTION (default) is intentional: deleting a parent order is blocked if
   -- child orders exist, preventing accidental loss of edit-plan history.
-  ADD COLUMN IF NOT EXISTS parent_order_id        bigint
+  ADD COLUMN IF NOT EXISTS parent_order_id        uuid
     REFERENCES public.orders(id);
 
 -- A-2. Index for the hot path "all orders in lane X".
@@ -68,7 +68,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_parent_order_id
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.cs_edit_plans (
   id                          bigserial PRIMARY KEY,
-  order_id                    bigint NOT NULL
+  order_id                    uuid NOT NULL
     REFERENCES public.orders(id),
   status                      text NOT NULL
     CHECK (status IN ('draft', 'applying', 'applied', 'failed', 'cancelled')),
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS public.cs_edit_plan_items (
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.cs_intake_quarantine_review (
   id                        bigserial PRIMARY KEY,
-  order_id                  bigint NOT NULL
+  order_id                  uuid NOT NULL
     REFERENCES public.orders(id),
   shopify_payload_snapshot  jsonb,
   classified_at             timestamptz NOT NULL DEFAULT now(),
@@ -145,7 +145,7 @@ CREATE INDEX IF NOT EXISTS idx_cs_intake_quarantine_review_order_id
 -- ─────────────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.cs_intake_classifier_disagreements (
   id              bigserial PRIMARY KEY,
-  order_id        bigint NOT NULL
+  order_id        uuid NOT NULL
     REFERENCES public.orders(id),
   winner_lane     text NOT NULL,
   loser_lane      text NOT NULL,
