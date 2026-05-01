@@ -19,6 +19,7 @@ type ConfirmedOrder = {
   final_total_amount: number;
   completed_at: string | null;
   created_by_name: string | null;
+  intake_lane: string | null; // Pass 2: direct lane column
   customer: { id: string; full_name: string; phone: string | null } | null;
   cs_hold_reason: string | null;
   person_in_charge_label: string | null;
@@ -177,7 +178,7 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
                   <td className="px-3 py-2 font-medium">
                     <div className="flex items-center gap-2">
                       <span>{o.shopify_order_name ?? o.id.slice(0, 6)}</span>
-                      <LaneChip createdByName={o.created_by_name} />
+                      <LaneChip lane={o.intake_lane} />
                     </div>
                   </td>
                   <td className="px-3 py-2">
@@ -281,7 +282,7 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
                 <div className="min-w-0 flex-1">
                   <div className="font-medium text-sm flex items-center gap-2">
                     <span>{o.shopify_order_name ?? o.id.slice(0, 6)}</span>
-                    <LaneChip createdByName={o.created_by_name} />
+                    <LaneChip lane={o.intake_lane} />
                   </div>
                   <div className="text-xs text-[var(--color-text-secondary)] truncate">
                     {o.customer?.full_name ?? "—"}
@@ -318,7 +319,10 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
 
       {openTicket && (
         <TicketDrawer
-          ticket={openTicket}
+          ticket={{
+            ...openTicket,
+            intake_lane: openTicket.intake_lane ?? null,
+          }}
           currentUserId={currentUserId}
           onClose={() => setOpenTicketId(null)}
           onTriaged={() => {
@@ -427,19 +431,36 @@ function shortAgo(human: string): string {
   return `${num}${u}`;
 }
 
-function LaneChip({ createdByName }: { createdByName: string | null }) {
-  const isConversion = !createdByName;
-  return (
-    <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider ${
-        isConversion
-          ? "bg-[var(--color-info-light)] text-[var(--color-info)]"
-          : "bg-[var(--color-success-light)] text-[var(--color-success)]"
-      }`}
-    >
-      {isConversion ? "Conversion" : "Sales"}
-    </span>
-  );
+function LaneChip({ lane }: { lane: string | null }) {
+  if (lane === "sales") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-[var(--color-success-light)] text-[var(--color-success)]">
+        Sales
+      </span>
+    );
+  }
+  if (lane === "conversion") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-[var(--color-info-light)] text-[var(--color-info)]">
+        Conversion
+      </span>
+    );
+  }
+  if (lane === "shopify_admin") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-[var(--color-accent-light,var(--color-info-light))] text-[var(--color-accent)]">
+        Shopify Admin
+      </span>
+    );
+  }
+  if (lane === "quarantine") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-[var(--color-error-light)] text-[var(--color-error)]">
+        Quarantine
+      </span>
+    );
+  }
+  return null;
 }
 
 function ShopifyBadges({ fin, ful }: { fin: string | null; ful: string | null }) {

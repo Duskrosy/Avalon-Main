@@ -12,6 +12,9 @@ const SELECT = [
   "shopify_financial_status, shopify_fulfillment_status,",
   "person_in_charge_label, cs_hold_reason, final_total_amount,",
   "claimed_by_user_id, claimed_at,",
+  // Pass 2 — lane chip + payment metadata for drawer pre-load
+  "intake_lane, shopify_source_name, shopify_gateway, shopify_card_last4,",
+  "shopify_transaction_id, shopify_transaction_at, parent_order_id,",
   "claimer:profiles!orders_claimed_by_user_id_fkey(id, full_name),",
   "customer:customers(id, first_name, last_name, full_name, phone)",
 ].join(" ");
