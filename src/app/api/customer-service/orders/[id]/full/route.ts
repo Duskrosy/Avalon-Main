@@ -71,6 +71,8 @@ type FullDrawerResponse = {
     status: string;
     final_total_amount: number;
     mode_of_payment: string | null;
+    payment_other_label: string | null;
+    voucher_code: string | null;
     shopify_financial_status: string | null;
     shopify_fulfillment_status: string | null;
     delivery_method: string | null;
@@ -118,7 +120,7 @@ type FullDrawerResponse = {
 
 const ORDER_SELECT = [
   "id, intake_lane, avalon_order_number, shopify_order_name, shopify_order_number,",
-  "status, final_total_amount, mode_of_payment,",
+  "status, final_total_amount, mode_of_payment, payment_other_label, voucher_code,",
   "payment_receipt_path, payment_reference_number, payment_transaction_at,",
   "shopify_financial_status, shopify_fulfillment_status,",
   "shopify_gateway, shopify_card_last4, shopify_transaction_id, shopify_transaction_at,",
@@ -297,6 +299,8 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       status: order.status,
       final_total_amount: order.final_total_amount,
       mode_of_payment: order.mode_of_payment ?? null,
+      payment_other_label: order.payment_other_label ?? null,
+      voucher_code: order.voucher_code ?? null,
       shopify_financial_status: order.shopify_financial_status ?? null,
       shopify_fulfillment_status: order.shopify_fulfillment_status ?? null,
       delivery_method: order.delivery_method ?? null,
