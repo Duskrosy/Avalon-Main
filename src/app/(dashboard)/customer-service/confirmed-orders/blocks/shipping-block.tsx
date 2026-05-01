@@ -13,6 +13,8 @@ type Customer = {
   region_text: string | null;
   postal_code: string | null;
   full_address: string | null;
+  /** Auto-assigned region sent to Shopify's address.province (read-only). */
+  shopify_region: string | null;
 };
 
 export type AddressShippingStagedOp = {
@@ -211,6 +213,19 @@ export function ShippingBlock({ customer, onStagedOpsChange, readOnly }: Props) 
           </span>
           <span className="text-sm text-[var(--color-text-secondary)]">
             {proposed ? addressParts.join(", ") : (customer.full_address ?? addressParts.join(", "))}
+          </span>
+        </div>
+      )}
+      {customer.shopify_region && (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[var(--color-text-tertiary)] w-16 shrink-0">
+            Shopify region
+          </span>
+          <span
+            className="text-xs italic text-[var(--color-text-tertiary)]"
+            title="Auto-assigned from the city pick at order time. Sent to Shopify as the address province. Read-only here."
+          >
+            {customer.shopify_region}
           </span>
         </div>
       )}

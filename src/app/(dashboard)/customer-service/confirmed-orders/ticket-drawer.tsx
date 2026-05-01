@@ -71,6 +71,8 @@ type FullCustomer = {
   region_text: string | null;
   postal_code: string | null;
   full_address: string | null;
+  /** Auto-assigned region sent to Shopify's address.province (read-only in CS). */
+  shopify_region: string | null;
 };
 
 type FullOrderItem = {
