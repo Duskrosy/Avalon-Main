@@ -108,7 +108,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-6xl mx-auto text-sm text-gray-500">
+      <div className="p-6 max-w-6xl mx-auto text-sm text-[var(--color-text-secondary)]">
         Loading customer…
       </div>
     );
@@ -118,11 +118,11 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
       <div className="p-6 max-w-6xl mx-auto">
         <Link
           href="/sales-agent/confirmed-sales"
-          className="text-xs text-gray-500 hover:text-gray-900 inline-flex items-center gap-1 mb-3"
+          className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] inline-flex items-center gap-1 mb-3"
         >
           <ArrowLeft size={12} /> Back to orders
         </Link>
-        <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded p-3">
+        <div className="text-sm text-[var(--color-error-text)] bg-[var(--color-error-light)] border border-[var(--color-error)]/30 rounded p-3">
           {error ?? "Customer not found"}
         </div>
       </div>
@@ -140,7 +140,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
     <div className="p-6 max-w-6xl mx-auto">
       <Link
         href="/sales-agent/confirmed-sales"
-        className="text-xs text-gray-500 hover:text-gray-900 inline-flex items-center gap-1 mb-3"
+        className="text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] inline-flex items-center gap-1 mb-3"
       >
         <ArrowLeft size={12} /> Back to orders
       </Link>
@@ -151,7 +151,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
           <h1 className="text-2xl font-semibold">
             {customer.full_name || "(unnamed customer)"}
           </h1>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-gray-600">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-[var(--color-text-secondary)]">
             {customer.phone && (
               <span className="inline-flex items-center gap-1">
                 <Phone size={11} />
@@ -177,7 +177,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
             <button
               type="button"
               onClick={() => setAddressBookOpen(true)}
-              className="text-xs px-3 py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1"
+              className="text-xs px-3 py-1.5 border border-[var(--color-border-primary)] rounded text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] inline-flex items-center gap-1"
             >
               <MapPin size={11} /> Saved addresses
             </button>
@@ -187,7 +187,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
               href={shopifyAdminUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-xs px-3 py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 inline-flex items-center gap-1"
+              className="text-xs px-3 py-1.5 border border-[var(--color-border-primary)] rounded text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] inline-flex items-center gap-1"
             >
               <ExternalLink size={11} /> Open on Shopify
             </a>
@@ -247,21 +247,21 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent orders */}
         <div className="lg:col-span-2">
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2 pb-1 border-b border-gray-200">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium mb-2 pb-1 border-b border-[var(--color-border-primary)]">
             <ShoppingBag size={10} />
             Recent orders
-            <span className="ml-auto normal-case tracking-normal text-gray-400">
+            <span className="ml-auto normal-case tracking-normal text-[var(--color-text-tertiary)]">
               {recent_orders.length} of {stats.order_count}
             </span>
           </div>
           {recent_orders.length === 0 ? (
-            <div className="text-xs text-gray-400 text-center py-6">
+            <div className="text-xs text-[var(--color-text-tertiary)] text-center py-6">
               No orders yet.
             </div>
           ) : (
-            <div className="border border-gray-200 rounded-md overflow-hidden">
+            <div className="border border-[var(--color-border-primary)] rounded-md overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 text-[10px] uppercase tracking-wider text-gray-600">
+                <thead className="bg-[var(--color-bg-secondary)] text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)]">
                   <tr>
                     <th className="px-3 py-2 text-left">Order</th>
                     <th className="px-3 py-2 text-right">Total</th>
@@ -270,16 +270,16 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                     <th className="px-3 py-2 text-left">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-[var(--color-border-secondary)]">
                   {recent_orders.map((o) => (
-                    <tr key={o.id} className="hover:bg-gray-50">
+                    <tr key={o.id} className="hover:bg-[var(--color-surface-hover)]">
                       <td className="px-3 py-2 font-mono text-xs">
                         {o.shopify_order_name ?? (
-                          <span className="text-gray-400">
+                          <span className="text-[var(--color-text-tertiary)]">
                             {o.status === "draft" ? "— draft —" : "—"}
                           </span>
                         )}
-                        <span className="ml-2 text-[10px] text-gray-400">
+                        <span className="ml-2 text-[10px] text-[var(--color-text-tertiary)]">
                           {o.item_count}{" "}
                           {o.item_count === 1 ? "item" : "items"}
                         </span>
@@ -287,7 +287,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                       <td className="px-3 py-2 text-right tabular-nums">
                         ₱{o.final_total_amount.toLocaleString()}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-gray-600">
+                      <td className="px-3 py-2 text-right tabular-nums text-[var(--color-text-secondary)]">
                         {o.net_value_amount != null
                           ? `₱${o.net_value_amount.toLocaleString()}`
                           : "—"}
@@ -300,7 +300,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                           syncError={o.sync_error}
                         />
                       </td>
-                      <td className="px-3 py-2 text-xs text-gray-500">
+                      <td className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                         {format(parseISO(o.created_at), "MMM d, HH:mm")}
                       </td>
                     </tr>
@@ -313,22 +313,22 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
 
         {/* Top items */}
         <div>
-          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-2 pb-1 border-b border-gray-200">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium mb-2 pb-1 border-b border-[var(--color-border-primary)]">
             <TrendingUp size={10} />
             Top items
           </div>
           {top_items.length === 0 ? (
-            <div className="text-xs text-gray-400 py-6 text-center">
+            <div className="text-xs text-[var(--color-text-tertiary)] py-6 text-center">
               No purchase history.
             </div>
           ) : (
-            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-md">
+            <ul className="divide-y divide-[var(--color-border-secondary)] border border-[var(--color-border-primary)] rounded-md">
               {top_items.map((it, i) => (
                 <li
                   key={it.product_name}
                   className="flex items-center gap-3 px-3 py-2"
                 >
-                  <span className="text-xs text-gray-400 w-4 tabular-nums">
+                  <span className="text-xs text-[var(--color-text-tertiary)] w-4 tabular-nums">
                     {i + 1}.
                   </span>
                   <div className="w-9 h-9 rounded bg-[var(--color-bg-secondary)] border border-[var(--color-border-secondary)] overflow-hidden shrink-0 flex items-center justify-center">
@@ -345,7 +345,7 @@ export function CustomerDetailView({ customerId }: { customerId: string }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm truncate">{it.product_name}</div>
-                    <div className="text-[11px] text-gray-500">
+                    <div className="text-[11px] text-[var(--color-text-secondary)]">
                       {it.quantity} bought
                     </div>
                   </div>
@@ -384,12 +384,12 @@ function StatCard({
   hint?: string;
 }) {
   return (
-    <div className="border border-gray-200 rounded-md px-3 py-2.5 bg-white">
-      <div className="text-[10px] uppercase tracking-wider text-gray-500 font-medium mb-0.5">
+    <div className="border border-[var(--color-border-primary)] rounded-md px-3 py-2.5 bg-[var(--color-surface-card)]">
+      <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-secondary)] font-medium mb-0.5">
         {label}
       </div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
-      {hint && <div className="text-[10px] text-gray-400 mt-0.5">{hint}</div>}
+      {hint && <div className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">{hint}</div>}
     </div>
   );
 }

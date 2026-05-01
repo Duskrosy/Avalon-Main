@@ -87,19 +87,19 @@ function SearchableSelect({
           setOpen((o) => !o);
           setQuery("");
         }}
-        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-left"
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm border border-[var(--color-border-primary)] rounded-md bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] disabled:bg-[var(--color-bg-tertiary)] disabled:text-[var(--color-text-tertiary)] disabled:cursor-not-allowed text-left"
       >
-        <span className={selectedLabel ? "" : "text-gray-400"}>
+        <span className={selectedLabel ? "" : "text-[var(--color-text-tertiary)]"}>
           {selectedLabel || placeholder}
         </span>
-        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+        <ChevronDown size={14} className="text-[var(--color-text-tertiary)] shrink-0" />
       </button>
       {open && !disabled && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
-          <div className="relative border-b border-gray-100">
+        <div className="absolute z-10 mt-1 w-full bg-[var(--color-surface-card)] border border-[var(--color-border-primary)] rounded-md shadow-lg overflow-hidden">
+          <div className="relative border-b border-[var(--color-border-secondary)]">
             <Search
               size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
             />
             <input
               type="text"
@@ -113,7 +113,7 @@ function SearchableSelect({
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                 aria-label="Clear search"
               >
                 <X size={12} />
@@ -122,10 +122,10 @@ function SearchableSelect({
           </div>
           <ul className="max-h-56 overflow-auto text-sm">
             {loading && (
-              <li className="px-3 py-2 text-xs text-gray-500">Loading…</li>
+              <li className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">Loading…</li>
             )}
             {!loading && filtered.length === 0 && (
-              <li className="px-3 py-2 text-xs text-gray-500">No matches</li>
+              <li className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">No matches</li>
             )}
             {filtered.map((i) => (
               <li key={i.code}>
@@ -135,14 +135,14 @@ function SearchableSelect({
                     onChange(i.code, i);
                     setOpen(false);
                   }}
-                  className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 ${
-                    i.code === value ? "bg-blue-50 text-blue-900" : ""
+                  className={`w-full text-left px-3 py-1.5 hover:bg-[var(--color-accent-light)] ${
+                    i.code === value ? "bg-[var(--color-accent-light)] text-blue-900" : ""
                   }`}
                 >
                   {i.short_code ? (
                     <>
                       <span className="font-medium">{i.short_code}</span>
-                      <span className="text-gray-500 ml-1.5">{i.name}</span>
+                      <span className="text-[var(--color-text-secondary)] ml-1.5">{i.name}</span>
                     </>
                   ) : (
                     i.name
@@ -267,20 +267,20 @@ function CityPicker({
           setOpen((o) => !o);
           setQuery("");
         }}
-        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white hover:bg-gray-50 text-left"
+        className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-sm border border-[var(--color-border-primary)] rounded-md bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] text-left"
       >
-        <span className={pickedCityLabel ? "" : "text-gray-400"}>
+        <span className={pickedCityLabel ? "" : "text-[var(--color-text-tertiary)]"}>
           {pickedCityLabel ||
             (regionCode ? "City / Municipality…" : "Search any city…")}
         </span>
-        <ChevronDown size={14} className="text-gray-400 shrink-0" />
+        <ChevronDown size={14} className="text-[var(--color-text-tertiary)] shrink-0" />
       </button>
       {open && (
-        <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden">
-          <div className="relative border-b border-gray-100">
+        <div className="absolute z-10 mt-1 w-full bg-[var(--color-surface-card)] border border-[var(--color-border-primary)] rounded-md shadow-lg overflow-hidden">
+          <div className="relative border-b border-[var(--color-border-secondary)]">
             <Search
               size={12}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]"
             />
             <input
               type="text"
@@ -294,7 +294,7 @@ function CityPicker({
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
                 aria-label="Clear search"
               >
                 <X size={12} />
@@ -303,10 +303,10 @@ function CityPicker({
           </div>
           <ul className="max-h-56 overflow-auto text-sm">
             {(loading || remoteLoading) && (
-              <li className="px-3 py-2 text-xs text-gray-500">Loading…</li>
+              <li className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">Loading…</li>
             )}
             {!loading && !remoteLoading && list.length === 0 && (
-              <li className="px-3 py-2 text-xs text-gray-500">
+              <li className="px-3 py-2 text-xs text-[var(--color-text-secondary)]">
                 {!regionCode && query.trim().length < 2
                   ? "Type 2+ characters to search…"
                   : "No matches"}
@@ -331,20 +331,20 @@ function CityPicker({
                       onPick(c);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 hover:bg-blue-50 flex items-center justify-between gap-2 ${
-                      c.code === pickedCityCode ? "bg-blue-50 text-blue-900" : ""
+                    className={`w-full text-left px-3 py-1.5 hover:bg-[var(--color-accent-light)] flex items-center justify-between gap-2 ${
+                      c.code === pickedCityCode ? "bg-[var(--color-accent-light)] text-blue-900" : ""
                     }`}
                   >
                     <span className="min-w-0 truncate">
                       <span className="font-medium">{c.name}</span>
                       {isSubMuniGlobal && c.parent_city_name && (
-                        <span className="text-gray-500 ml-1.5 text-xs">
+                        <span className="text-[var(--color-text-secondary)] ml-1.5 text-xs">
                           in {c.parent_city_name}
                         </span>
                       )}
                     </span>
                     {regionLabel && (
-                      <span className="text-[10px] uppercase tracking-wide text-gray-400 shrink-0">
+                      <span className="text-[10px] uppercase tracking-wide text-[var(--color-text-tertiary)] shrink-0">
                         {regionLabel}
                       </span>
                     )}
@@ -760,13 +760,13 @@ export function StepCustomer({ selected, onSelect }: Props) {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name, phone, or email"
-          className="w-full pl-9 pr-9 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-9 pr-9 py-2 text-sm border border-[var(--color-border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           autoFocus
         />
         {query && (
@@ -776,7 +776,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
               setQuery("");
               setResults([]);
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             aria-label="Clear search"
           >
             <X size={14} />
@@ -785,20 +785,20 @@ export function StepCustomer({ selected, onSelect }: Props) {
       </div>
 
       {selected && (
-        <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5">
+        <div className="flex items-center justify-between rounded-md border border-[var(--color-success)]/30 bg-[var(--color-success-light)] px-3 py-1.5">
           <div className="flex items-center gap-2 text-xs">
             <span className="font-medium text-emerald-900">
               Editing: {selected.full_name}
             </span>
             {selected.total_orders_cached != null &&
               selected.total_orders_cached > 0 && (
-                <span className="text-emerald-700/80">
+                <span className="text-[var(--color-success-text)]/80">
                   · {selected.total_orders_cached} prior order
                   {selected.total_orders_cached === 1 ? "" : "s"}
                 </span>
               )}
             {isDirty && (
-              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-[var(--color-warning-text)]">
                 Unsaved changes
               </span>
             )}
@@ -809,7 +809,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                 href={`/sales-agent/customers/${selected.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-[11px] px-2 py-1 rounded bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1"
+                className="text-[11px] px-2 py-1 rounded bg-[var(--color-surface-card)] border border-[var(--color-success)]/30 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1"
               >
                 View profile
               </a>
@@ -818,7 +818,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
               <button
                 type="button"
                 onClick={() => setAddressBookOpen(true)}
-                className="text-[11px] px-2 py-1 rounded bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1"
+                className="text-[11px] px-2 py-1 rounded bg-[var(--color-surface-card)] border border-[var(--color-success)]/30 text-emerald-800 hover:bg-emerald-100 flex items-center gap-1"
               >
                 <MapPin size={11} />
                 Saved addresses
@@ -827,7 +827,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
             <button
               type="button"
               onClick={() => onSelect(null)}
-              className="text-emerald-700/70 hover:text-emerald-900"
+              className="text-[var(--color-success-text)]/70 hover:text-emerald-900"
               aria-label="Clear selection"
             >
               <X size={14} />
@@ -853,10 +853,10 @@ export function StepCustomer({ selected, onSelect }: Props) {
         />
       )}
 
-      {loading && <div className="text-xs text-gray-500">Searching…</div>}
+      {loading && <div className="text-xs text-[var(--color-text-secondary)]">Searching…</div>}
 
       {results.length > 0 && (
-        <ul className="border border-gray-200 rounded-md divide-y divide-gray-100 max-h-60 overflow-auto">
+        <ul className="border border-[var(--color-border-primary)] rounded-md divide-y divide-[var(--color-border-secondary)] max-h-60 overflow-auto">
           {results.map((c) => {
             const key = c.id ?? `shopify:${c.shopify_customer_id}`;
             const isImporting = importing === key;
@@ -866,18 +866,18 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   type="button"
                   disabled={isImporting}
                   onClick={() => handlePickResult(c)}
-                  className="w-full text-left px-3 py-2 hover:bg-gray-50 disabled:opacity-60 text-sm flex items-center justify-between"
+                  className="w-full text-left px-3 py-2 hover:bg-[var(--color-surface-hover)] disabled:opacity-60 text-sm flex items-center justify-between"
                 >
                   <span>
                     <span className="font-medium">{c.full_name}</span>
-                    <span className="text-gray-500 text-xs ml-2">
+                    <span className="text-[var(--color-text-secondary)] text-xs ml-2">
                       {c.phone ?? c.email ?? ""}
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
                     {c.total_orders_cached != null &&
                       c.total_orders_cached > 0 && (
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-[var(--color-text-tertiary)]">
                           {c.total_orders_cached} order
                           {c.total_orders_cached === 1 ? "" : "s"}
                         </span>
@@ -892,20 +892,20 @@ export function StepCustomer({ selected, onSelect }: Props) {
 
       {duplicates.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-amber-800">
+          <div className="text-xs font-semibold text-[var(--color-warning-text)]">
             ⚠ Possible match — same phone/email already in use
           </div>
           {duplicates.map((d) => (
             <div
               key={d.id}
-              className="border border-amber-200 bg-amber-50 rounded-md p-2 text-xs"
+              className="border border-[var(--color-warning)]/30 bg-[var(--color-warning-light)] rounded-md p-2 text-xs"
             >
               <div className="font-medium">{d.full_name}</div>
-              <div className="text-gray-700">
+              <div className="text-[var(--color-text-primary)]">
                 {d.phone ?? ""}
                 {d.email ? ` · ${d.email}` : ""}
               </div>
-              <div className="text-gray-500">
+              <div className="text-[var(--color-text-secondary)]">
                 {d.created_by_name
                   ? `Created by ${d.created_by_name}`
                   : "Unknown creator"}
@@ -939,7 +939,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                   setDuplicates([]);
                   setCreateError(null);
                 }}
-                className="mt-1.5 px-2 py-1 bg-blue-600 text-white text-[11px] rounded"
+                className="mt-1.5 px-2 py-1 bg-blue-600 text-[var(--color-text-inverted)] text-[11px] rounded"
               >
                 Use this customer
               </button>
@@ -948,8 +948,8 @@ export function StepCustomer({ selected, onSelect }: Props) {
         </div>
       )}
 
-      <div className="border border-gray-200 rounded-md p-3 space-y-2 bg-gray-50">
-        <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1 flex items-center gap-1.5">
+      <div className="border border-[var(--color-border-primary)] rounded-md p-3 space-y-2 bg-[var(--color-bg-secondary)]">
+        <div className="text-[10px] uppercase tracking-wide text-[var(--color-text-secondary)] mb-1 flex items-center gap-1.5">
           <UserPlus size={11} />
           {selected ? "Customer details" : "New customer details"}
         </div>
@@ -976,7 +976,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
             onBlur={onEmailBlur}
           />
           {emailWarning && (
-            <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+            <div className="text-[11px] text-[var(--color-warning-text)] bg-[var(--color-warning-light)] border border-[var(--color-warning)]/30 rounded px-2 py-1">
               ⚠ {emailWarning} — proceed if you&apos;re sure.
             </div>
           )}
@@ -1148,19 +1148,19 @@ export function StepCustomer({ selected, onSelect }: Props) {
                 setForm({ ...form, shopify_region: e.target.value })
               }
             />
-            <div className="text-[10px] text-gray-400 px-0.5">
+            <div className="text-[10px] text-[var(--color-text-tertiary)] px-0.5">
               Sent to Shopify as the address province. Use the PH province
               name Shopify accepts (e.g. Cebu, Bulacan, Metro Manila).
             </div>
           </div>
-          {createError && <div className="text-xs text-rose-600">{createError}</div>}
+          {createError && <div className="text-xs text-[var(--color-error)]">{createError}</div>}
           <div className="flex justify-end gap-2 pt-1">
             {!selected && (
               <button
                 type="button"
                 disabled={saving || !form.first_name || !form.last_name}
                 onClick={submitForm}
-                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs px-3 py-1.5 bg-blue-600 text-[var(--color-text-inverted)] rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Creating…" : "Create customer"}
               </button>
@@ -1170,7 +1170,7 @@ export function StepCustomer({ selected, onSelect }: Props) {
                 type="button"
                 disabled={saving}
                 onClick={submitForm}
-                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs px-3 py-1.5 bg-blue-600 text-[var(--color-text-inverted)] rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? "Saving…" : "Save changes"}
               </button>

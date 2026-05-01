@@ -810,6 +810,7 @@ export async function listShopifyVouchers(
     };
   };
 
+  // Includes DiscountCodeApp so 3rd-party app-managed code discounts surface.
   const QUERY = `
     query ActiveDiscountCodes {
       discountNodes(first: 250) {
@@ -821,6 +822,7 @@ export async function listShopifyVouchers(
               ... on DiscountCodeBasic        { codes(first: 5) { edges { node { id code } } } status }
               ... on DiscountCodeBxgy         { codes(first: 5) { edges { node { id code } } } status }
               ... on DiscountCodeFreeShipping { codes(first: 5) { edges { node { id code } } } status }
+              ... on DiscountCodeApp          { codes(first: 5) { edges { node { id code } } } status }
             }
           }
         }

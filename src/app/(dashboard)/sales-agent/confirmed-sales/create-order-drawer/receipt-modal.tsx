@@ -27,13 +27,13 @@ export function ReceiptModal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-stretch bg-black/50">
-      <div className="m-auto w-full max-w-5xl h-[90vh] bg-white rounded-lg shadow-2xl flex">
+      <div className="m-auto w-full max-w-5xl h-[90vh] bg-[var(--color-surface-card)] rounded-lg shadow-2xl flex">
         {/* Left: zoomable image */}
-        <div className="flex-1 bg-gray-900 relative overflow-auto">
+        <div className="flex-1 bg-[var(--color-text-primary)] relative overflow-auto">
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-2 right-2 z-10 text-white bg-black/40 rounded-full p-1"
+            className="absolute top-2 right-2 z-10 text-[var(--color-text-inverted)] bg-black/40 rounded-full p-1"
           >
             <X size={18} />
           </button>
@@ -50,39 +50,39 @@ export function ReceiptModal({
                 className="max-w-full max-h-full"
               />
             ) : (
-              <div className="text-gray-400 text-sm">No image to preview</div>
+              <div className="text-[var(--color-text-tertiary)] text-sm">No image to preview</div>
             )}
           </div>
-          <div className="absolute bottom-2 left-2 text-[11px] text-white/70">
+          <div className="absolute bottom-2 left-2 text-[11px] text-[var(--color-text-inverted)]/70">
             Click image to zoom ({zoom.toFixed(1)}×)
           </div>
         </div>
 
         {/* Right: form */}
-        <div className="w-80 p-4 space-y-4 border-l border-gray-200">
+        <div className="w-80 p-4 space-y-4 border-l border-[var(--color-border-primary)]">
           <div className="text-sm font-semibold">Receipt details</div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Reference number *</label>
+            <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Reference number *</label>
             <input
               type="text"
               value={referenceNumber}
               onChange={(e) => onSetReferenceNumber(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
               autoFocus
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Transaction date &amp; time *</label>
+            <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Transaction date &amp; time *</label>
             <input
               type="datetime-local"
               value={transactionAt}
               onChange={(e) => onSetTransactionAt(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+              className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
             />
             <button
               type="button"
               onClick={() => onSetTransactionAt(toLocalDatetimeInputValue(new Date()))}
-              className="text-[11px] text-blue-600 mt-1"
+              className="text-[11px] text-[var(--color-accent)] mt-1"
             >
               Use current
             </button>
@@ -90,7 +90,7 @@ export function ReceiptModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded-md"
+            className="w-full px-3 py-2 bg-blue-600 text-[var(--color-text-inverted)] text-xs rounded-md"
           >
             Save &amp; close
           </button>

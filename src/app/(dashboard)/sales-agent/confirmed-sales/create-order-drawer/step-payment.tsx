@@ -119,21 +119,42 @@ export function StepPayment({
     <div className="space-y-4">
       {/* Voucher combobox */}
       <div>
-        <label className="text-xs font-medium text-gray-700 block mb-1">Discount code</label>
+        <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Discount code</label>
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
           <input
             type="search"
             value={voucherQuery}
             onChange={(e) => setVoucherQuery(e.target.value)}
-            placeholder="Search by code…"
-            className="w-full pl-9 px-3 py-2 text-sm border border-gray-200 rounded-md"
+            onKeyDown={(e) => {
+              // Enter applies the typed code as-is, even if it's not in the
+              // mirror. Lets agents use codes that aren't in the GraphQL
+              // discountNodes response (3rd-party apps, draft discounts, or
+              // codes Avalon hasn't synced yet). Shopify validates on confirm.
+              if (e.key === "Enter" && voucherQuery.trim().length > 0) {
+                e.preventDefault();
+                const exact = filteredVouchers.find(
+                  (v) => v.code.toLowerCase() === voucherQuery.trim().toLowerCase(),
+                );
+                const code = exact?.code ?? voucherQuery.trim();
+                const amountStr = prompt(`Discount amount for "${code}" (₱):`);
+                const amt = parseFloat(amountStr ?? "0");
+                if (!isNaN(amt) && amt > 0) {
+                  onSetVoucher({ code, amount: amt, type: "fixed_amount" });
+                  setVoucherQuery(code);
+                }
+              }
+            }}
+            placeholder="Search by code (or type & Enter to use)…"
+            className="w-full pl-9 px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
           />
         </div>
         {voucherQuery && (
-          <div className="mt-1 max-h-56 overflow-y-auto border border-gray-100 rounded-md">
+          <div className="mt-1 max-h-56 overflow-y-auto border border-[var(--color-border-secondary)] rounded-md">
             {filteredVouchers.length === 0 && (
-              <div className="p-2 text-xs text-gray-400">No matching codes</div>
+              <div className="p-2 text-xs text-[var(--color-text-tertiary)]">
+                No matching codes — press <kbd className="px-1 py-0.5 border rounded text-[10px]">Enter</kbd> to use this code anyway
+              </div>
             )}
             {filteredVouchers.map((v) => (
               <button
@@ -147,7 +168,7 @@ export function StepPayment({
                     setVoucherQuery(v.code);
                   }
                 }}
-                className="w-full text-left px-2 py-1.5 hover:bg-gray-50 text-xs"
+                className="w-full text-left px-2 py-1.5 hover:bg-[var(--color-surface-hover)] text-xs"
               >
                 {v.code}
               </button>
@@ -155,7 +176,7 @@ export function StepPayment({
           </div>
         )}
         {voucher && (
-          <div className="mt-1 text-[11px] text-emerald-700">
+          <div className="mt-1 text-[11px] text-[var(--color-success-text)]">
             Applied: {voucher.code} — ₱{voucher.amount.toFixed(2)}
             <button
               type="button"
@@ -163,14 +184,14 @@ export function StepPayment({
                 onSetVoucher(null);
                 setVoucherQuery("");
               }}
-              className="ml-2 text-rose-600"
+              className="ml-2 text-[var(--color-error)]"
             >
               remove
             </button>
           </div>
         )}
         {voucherError && (
-          <div className="text-[11px] text-rose-600 mt-1">
+          <div className="text-[11px] text-[var(--color-error)] mt-1">
             Couldn&apos;t load Shopify vouchers: {voucherError}
           </div>
         )}
@@ -189,31 +210,31 @@ export function StepPayment({
         {applyAutoDiscounts && (
           <>
             {previewLoading && (
-              <div className="mt-2 text-[11px] text-gray-500">
+              <div className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
                 Checking for automatic discounts…
               </div>
             )}
             {!previewLoading && previewError && (
-              <div className="mt-2 text-[11px] text-rose-600">
+              <div className="mt-2 text-[11px] text-[var(--color-error)]">
                 Couldn&apos;t reach Shopify — {previewError}
               </div>
             )}
             {!previewLoading && !previewError && autoDiscountPreview && autoDiscountPreview.applied.length === 0 && items.length > 0 && (
-              <div className="mt-2 text-[11px] text-gray-500">
+              <div className="mt-2 text-[11px] text-[var(--color-text-secondary)]">
                 No eligible automatic discounts for this cart.
               </div>
             )}
             {!previewLoading && !previewError && autoDiscountPreview && autoDiscountPreview.applied.length > 0 && (
               <div className="mt-2 space-y-1">
                 {autoDiscountPreview.applied.map((a, i) => (
-                  <div key={i} className="border border-gray-200 rounded-md p-2 bg-gray-50">
+                  <div key={i} className="border border-[var(--color-border-primary)] rounded-md p-2 bg-[var(--color-bg-secondary)]">
                     <div className="text-xs">
                       <span className="font-semibold">{a.title}</span>
-                      <span className="ml-2 text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                      <span className="ml-2 text-[10px] text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] px-1.5 py-0.5 rounded">
                         {a.type}
                       </span>
                     </div>
-                    <div className="text-[11px] text-gray-600 mt-0.5">{a.description}</div>
+                    <div className="text-[11px] text-[var(--color-text-secondary)] mt-0.5">{a.description}</div>
                   </div>
                 ))}
               </div>
@@ -225,20 +246,20 @@ export function StepPayment({
       {/* Manual discount + reason */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-gray-700 block mb-1">Manual discount (₱)</label>
+          <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Manual discount (₱)</label>
           <input
             type="number"
             min={0}
             step="0.01"
             value={manualDiscount || ""}
             onChange={(e) => onSetManualDiscount(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+            className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
           />
           {manualDiscount > 0 && (
             <button
               type="button"
               onClick={() => setReasonExpanded((v) => !v)}
-              className="mt-1 text-[11px] text-blue-600"
+              className="mt-1 text-[11px] text-[var(--color-accent)]"
             >
               {reasonExpanded ? "▴ Hide reason" : "▾ See reason for discount"}
             </button>
@@ -248,26 +269,26 @@ export function StepPayment({
               value={manualDiscountReason ?? ""}
               onChange={(e) => onSetManualDiscountReason(e.target.value || null)}
               placeholder="Reason (visible to all downstream)…"
-              className="w-full mt-1 px-3 py-2 text-xs border border-gray-200 rounded-md min-h-[60px]"
+              className="w-full mt-1 px-3 py-2 text-xs border border-[var(--color-border-primary)] rounded-md min-h-[60px]"
             />
           )}
         </div>
         <div>
-          <label className="text-xs font-medium text-gray-700 block mb-1">Shipping fee (₱)</label>
+          <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Shipping fee (₱)</label>
           <input
             type="number"
             min={0}
             step="0.01"
             value={shippingFee || ""}
             onChange={(e) => onSetShippingFee(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+            className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
           />
         </div>
       </div>
 
       {/* Receipt preview */}
-      <div className="border border-gray-200 rounded-md p-3 bg-gray-50">
-        <div className="text-xs font-medium text-gray-700 mb-2">Receipt preview</div>
+      <div className="border border-[var(--color-border-primary)] rounded-md p-3 bg-[var(--color-bg-secondary)]">
+        <div className="text-xs font-medium text-[var(--color-text-primary)] mb-2">Receipt preview</div>
         <div className="space-y-1 text-sm">
           <Row label="Items" value={`₱${totals.subtotal.toFixed(2)}`} />
           {totals.voucherDiscount > 0 && (
@@ -284,7 +305,7 @@ export function StepPayment({
             <Row label="Manual discount" value={`-₱${manualDiscount.toFixed(2)}`} tone="discount" />
           )}
           {shippingFee > 0 && <Row label="Shipping" value={`+₱${shippingFee.toFixed(2)}`} />}
-          <div className="border-t border-gray-200 my-2" />
+          <div className="border-t border-[var(--color-border-primary)] my-2" />
           <Row label="Final total" value={`₱${totals.total.toFixed(2)}`} tone="bold" />
         </div>
       </div>
@@ -295,11 +316,11 @@ export function StepPayment({
 function Row({ label, value, tone }: { label: string; value: string; tone?: "discount" | "bold" }) {
   return (
     <div className="flex justify-between">
-      <span className={tone === "bold" ? "font-semibold" : "text-gray-600"}>{label}</span>
+      <span className={tone === "bold" ? "font-semibold" : "text-[var(--color-text-secondary)]"}>{label}</span>
       <span
         className={
           tone === "discount"
-            ? "text-rose-600"
+            ? "text-[var(--color-error)]"
             : tone === "bold"
               ? "font-semibold"
               : "tabular-nums"

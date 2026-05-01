@@ -176,16 +176,16 @@ export function CompleteOrderModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
-            <CheckCircle2 size={14} className="text-emerald-600" />
+      <div className="bg-[var(--color-surface-card)] rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
+            <CheckCircle2 size={14} className="text-[var(--color-success)]" />
             Complete order — {order.shopify_order_name ?? "(no number)"}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             aria-label="Close"
           >
             <X size={16} />
@@ -195,7 +195,7 @@ export function CompleteOrderModal({
         <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
           {/* Net value */}
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">
+            <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">
               Net value (₱) *
             </label>
             <input
@@ -208,10 +208,10 @@ export function CompleteOrderModal({
                   e.target.value ? parseFloat(e.target.value) : null,
                 )
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
-            <div className="text-[10px] text-gray-400 mt-0.5">
+            <div className="text-[10px] text-[var(--color-text-tertiary)] mt-0.5">
               Order total ₱{order.final_total_amount.toFixed(2)}. Enter the
               actual amount collected.
             </div>
@@ -219,11 +219,11 @@ export function CompleteOrderModal({
 
           {/* Ad creative picker */}
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">
+            <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">
               Ad creative *
             </label>
             {selectedCreative && (
-              <div className="mb-1 inline-flex items-center gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5">
+              <div className="mb-1 inline-flex items-center gap-1.5 text-[11px] text-[var(--color-success-text)] bg-[var(--color-success-light)] border border-[var(--color-success)]/30 rounded px-2 py-0.5">
                 ✓ Selected: {selectedCreative.ad_name}
               </div>
             )}
@@ -233,23 +233,23 @@ export function CompleteOrderModal({
                 value={creativeQuery}
                 onChange={(e) => setCreativeQuery(e.target.value)}
                 placeholder="Search by creative name…"
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
                 type="button"
                 onClick={refreshCreatives}
                 title="Refresh creatives"
-                className="px-2 text-xs text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50"
+                className="px-2 text-xs text-[var(--color-text-secondary)] border border-[var(--color-border-primary)] rounded-md hover:bg-[var(--color-surface-hover)]"
               >
                 <RefreshCw size={12} className={loadingCreatives ? "animate-spin" : ""} />
               </button>
             </div>
-            <div className="mt-1 max-h-56 overflow-y-auto border border-gray-100 rounded-md">
+            <div className="mt-1 max-h-56 overflow-y-auto border border-[var(--color-border-secondary)] rounded-md">
               {loadingCreatives && (
-                <div className="p-2 text-xs text-gray-400">Loading…</div>
+                <div className="p-2 text-xs text-[var(--color-text-tertiary)]">Loading…</div>
               )}
               {!loadingCreatives && creatives.length === 0 && (
-                <div className="p-2 text-xs text-gray-400">
+                <div className="p-2 text-xs text-[var(--color-text-tertiary)]">
                   No creatives found
                 </div>
               )}
@@ -261,8 +261,8 @@ export function CompleteOrderModal({
                     selectedRef.current = c;
                     setSelectedCreative(c);
                   }}
-                  className={`w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-gray-50 ${
-                    selectedCreative?.ad_id === c.ad_id ? "bg-blue-50" : ""
+                  className={`w-full text-left flex items-center gap-2 px-2 py-1.5 hover:bg-[var(--color-surface-hover)] ${
+                    selectedCreative?.ad_id === c.ad_id ? "bg-[var(--color-accent-light)]" : ""
                   }`}
                 >
                   <CreativeThumb adId={c.ad_id} />
@@ -270,7 +270,7 @@ export function CompleteOrderModal({
                     <div className="text-xs font-medium truncate">
                       {c.ad_name}
                     </div>
-                    <div className="text-[11px] text-gray-500 truncate">
+                    <div className="text-[11px] text-[var(--color-text-secondary)] truncate">
                       {c.campaign_name ?? "—"}
                       {c.campaign_date
                         ? ` · synced ${new Date(c.campaign_date).toLocaleDateString()}`
@@ -280,8 +280,8 @@ export function CompleteOrderModal({
                   <span
                     className={`text-[10px] uppercase font-semibold ${
                       c.status === "live"
-                        ? "text-emerald-600"
-                        : "text-gray-400"
+                        ? "text-[var(--color-success)]"
+                        : "text-[var(--color-text-tertiary)]"
                     }`}
                   >
                     {c.status === "live" ? "LIVE" : c.status}
@@ -302,7 +302,7 @@ export function CompleteOrderModal({
               />
               <span>
                 <span className="font-medium">Came from abandoned cart</span>
-                <span className="block text-[11px] text-gray-500">
+                <span className="block text-[11px] text-[var(--color-text-secondary)]">
                   Only check if the customer was a recovered abandoned cart,
                   not a forecast.
                 </span>
@@ -312,7 +312,7 @@ export function CompleteOrderModal({
 
           {/* Alex AI assist */}
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">
+            <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">
               Alex AI assist
             </label>
             <select
@@ -320,7 +320,7 @@ export function CompleteOrderModal({
               onChange={(e) =>
                 setAlexLevel(e.target.value as "none" | "partial" | "full")
               }
-              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="none">None</option>
               <option value="partial">Partial</option>
@@ -329,17 +329,17 @@ export function CompleteOrderModal({
           </div>
 
           {error && (
-            <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
+            <div className="text-xs text-[var(--color-error-text)] bg-[var(--color-error-light)] border border-[var(--color-error)]/30 rounded p-2">
               {error}
             </div>
           )}
         </div>
 
-        <div className="border-t border-gray-200 px-4 py-3 flex justify-end gap-2">
+        <div className="border-t border-[var(--color-border-primary)] px-4 py-3 flex justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-900"
+            className="text-xs px-3 py-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
           >
             Cancel
           </button>
@@ -347,7 +347,7 @@ export function CompleteOrderModal({
             type="button"
             onClick={submit}
             disabled={submitting}
-            className="text-xs px-4 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50"
+            className="text-xs px-4 py-1.5 bg-emerald-600 text-[var(--color-text-inverted)] rounded hover:bg-emerald-700 disabled:opacity-50"
           >
             {submitting ? "Saving…" : "Mark complete"}
           </button>
@@ -370,7 +370,7 @@ function CreativeThumb({ adId }: { adId: string }) {
       .catch(() => setSrc(null));
   }, [adId]);
   return (
-    <div className="w-8 h-8 rounded bg-gray-100 overflow-hidden flex-shrink-0">
+    <div className="w-8 h-8 rounded bg-[var(--color-bg-tertiary)] overflow-hidden flex-shrink-0">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="w-full h-full object-cover" />
