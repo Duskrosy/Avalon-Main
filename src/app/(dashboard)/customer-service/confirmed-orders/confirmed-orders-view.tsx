@@ -437,7 +437,7 @@ function LaneChip({ createdByName }: { createdByName: string | null }) {
           : "bg-[var(--color-success-light)] text-[var(--color-success)]"
       }`}
     >
-      {isConversion ? "Conversion" : "Chat"}
+      {isConversion ? "Conversion" : "Sales"}
     </span>
   );
 }
