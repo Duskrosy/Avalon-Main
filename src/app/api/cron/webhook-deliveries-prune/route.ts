@@ -9,11 +9,10 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { authCron } from "@/lib/auth/cron-auth";
 
 function isCronRequest(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  return authCron(req);
 }
 
 export async function GET(req: NextRequest) {
@@ -32,8 +31,13 @@ export async function GET(req: NextRequest) {
     .lt("received_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
   if (error) {
-    console.error("[webhook-deliveries-prune] Delete failed:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[webhook-deliveries-prune] Delete failed", {
+      code: error.code,
+      message: error.message,
+      hint: error.hint,
+      details: error.details,
+    });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 
   return NextResponse.json({ deleted: count ?? 0 });

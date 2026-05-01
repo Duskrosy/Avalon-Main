@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/admin", () => ({
 vi.mock("@/lib/cs/intake/process-shopify-order", () => ({
   processIncomingShopifyOrder: vi.fn(async () => ({
     status: "inserted",
-    orderId: 42,
+    orderId: "42",
     lane: "conversion",
   })),
 }));
@@ -145,6 +145,6 @@ describe("POST /api/webhooks/shopify/orders-create", () => {
     const res = await POST(req);
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toMatch(/customer lookup failed/);
+    expect(body.error).toMatch(/Internal error/);
   });
 });

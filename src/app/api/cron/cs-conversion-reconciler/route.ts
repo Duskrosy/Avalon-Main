@@ -20,13 +20,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchShopifyOrders } from "@/lib/shopify/client";
 import { processIncomingShopifyOrder } from "@/lib/cs/intake/process-shopify-order";
 import type { ShopifyOrderPayload } from "@/lib/cs/intake/process-shopify-order";
+import { authCron } from "@/lib/auth/cron-auth";
 
 const CONCURRENCY = 5;
 
 function isCronRequest(req: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return false;
-  return req.headers.get("authorization") === `Bearer ${secret}`;
+  return authCron(req);
 }
 
 /**

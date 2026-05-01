@@ -88,7 +88,7 @@ describe("processIncomingShopifyOrder", () => {
       orders: async () => {
         ordersCallCount++;
         if (ordersCallCount === 1) return { data: null, error: null }; // linkage: not found
-        return { data: { id: 42, intake_lane: "conversion" }, error: null }; // INSERT result
+        return { data: { id: "42", intake_lane: "conversion" }, error: null }; // INSERT result
       },
       // customers: first call = SELECT by shopify_id (not found), second = INSERT result
       customers: async () => {
@@ -121,7 +121,7 @@ describe("processIncomingShopifyOrder", () => {
         ordersCallCount++;
         const result = ordersCallCount === 1
           ? { data: null, error: null }
-          : { data: { id: 42, intake_lane: "conversion" }, error: null };
+          : { data: { id: "42", intake_lane: "conversion" }, error: null };
         const builder: Record<string, unknown> = {};
         builder.maybeSingle = vi.fn(async () => result);
         builder.single = vi.fn(async () => result);
@@ -147,8 +147,9 @@ describe("processIncomingShopifyOrder", () => {
     );
 
     expect(result.status).toBe("inserted");
+    if (result.status !== "inserted") throw new Error("narrowing");
     expect(result.lane).toBe("conversion");
-    expect(result.orderId).toBe(42);
+    expect(result.orderId).toBe("42");
   });
 
   // 2. Happy path: sales lane (Avalon-linked via note_attribute)
@@ -178,7 +179,7 @@ describe("processIncomingShopifyOrder", () => {
         if (table === "orders") {
           ordersCallCount++;
           builder.maybeSingle = vi.fn(async () => ({ data: null, error: null })); // linkage: none
-          builder.single = vi.fn(async () => ({ data: { id: 55, intake_lane: "sales" }, error: null }));
+          builder.single = vi.fn(async () => ({ data: { id: "55", intake_lane: "sales" }, error: null }));
           return builder;
         }
         builder.maybeSingle = vi.fn(async () => ({ data: null, error: null }));
@@ -194,8 +195,9 @@ describe("processIncomingShopifyOrder", () => {
     );
 
     expect(result.status).toBe("inserted");
+    if (result.status !== "inserted") throw new Error("narrowing");
     expect(result.lane).toBe("sales");
-    expect(result.orderId).toBe(55);
+    expect(result.orderId).toBe("55");
   });
 
   // 3. Idempotency: duplicate delivery returns { status: 'duplicate' }
@@ -220,7 +222,7 @@ describe("processIncomingShopifyOrder", () => {
             callCount++;
             if (callCount === 1) return { data: null, error: null }; // linkage check: no existing
             // Second maybeSingle call is the winner re-fetch after conflict
-            return { data: { id: 77, intake_lane: "conversion" }, error: null };
+            return { data: { id: "77", intake_lane: "conversion" }, error: null };
           });
           // INSERT fails with unique constraint
           builder.single = vi.fn(async () => ({
@@ -269,7 +271,7 @@ describe("processIncomingShopifyOrder", () => {
         if (table === "orders") {
           builder.insert = vi.fn(() => builder);
           builder.maybeSingle = vi.fn(async () => ({ data: null, error: null })); // linkage: none
-          builder.single = vi.fn(async () => ({ data: { id: 99, intake_lane: "quarantine" }, error: null }));
+          builder.single = vi.fn(async () => ({ data: { id: "99", intake_lane: "quarantine" }, error: null }));
           return builder;
         }
         builder.insert = vi.fn(() => builder);
@@ -286,10 +288,11 @@ describe("processIncomingShopifyOrder", () => {
     );
 
     expect(result.status).toBe("inserted");
+    if (result.status !== "inserted") throw new Error("narrowing");
     expect(result.lane).toBe("quarantine");
     expect(quarantineInsertFn).toHaveBeenCalledOnce();
-    const callArg = quarantineInsertFn.mock.calls[0][0] as Record<string, unknown>;
-    expect(callArg).toHaveProperty("order_id", 99);
+    const callArg = (quarantineInsertFn.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
+    expect(callArg).toHaveProperty("order_id", "99");
     expect(callArg).toHaveProperty("shopify_payload_snapshot");
   });
 
@@ -324,7 +327,7 @@ describe("processIncomingShopifyOrder", () => {
             ordersMaybeSingleCallCount++;
             if (ordersMaybeSingleCallCount === 1) return { data: null, error: null }; // linkage: none
             // Winner re-fetch: has 'sales' lane (different from 'conversion' WEB_ORDER would classify to)
-            return { data: { id: 88, intake_lane: "sales" }, error: null };
+            return { data: { id: "88", intake_lane: "sales" }, error: null };
           });
           builder.single = vi.fn(async () => ({
             data: null,
@@ -348,7 +351,7 @@ describe("processIncomingShopifyOrder", () => {
 
     expect(result.status).toBe("disagreement");
     expect(disagreementInsertFn).toHaveBeenCalledOnce();
-    const callArg = disagreementInsertFn.mock.calls[0][0] as Record<string, unknown>;
+    const callArg = (disagreementInsertFn.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
     expect(callArg.winner_lane).toBe("sales");
     expect(callArg.loser_lane).toBe("conversion");
     expect(callArg.source_loser).toBe("reconciler");
@@ -378,6 +381,7 @@ describe("processIncomingShopifyOrder", () => {
     );
 
     expect(result.status).toBe("error");
+    if (result.status !== "error") throw new Error("narrowing");
     expect(result.error).toMatch(/guest checkout/i);
   });
 
@@ -421,6 +425,7 @@ describe("processIncomingShopifyOrder", () => {
     );
 
     expect(result.status).toBe("error");
-    expect(result.error).toMatch(/database is on fire/);
+    if (result.status !== "error") throw new Error("narrowing");
+    expect(result.error).toMatch(/Internal error/);
   });
 });

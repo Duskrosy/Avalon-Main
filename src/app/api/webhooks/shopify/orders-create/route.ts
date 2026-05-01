@@ -80,10 +80,11 @@ export async function POST(req: NextRequest) {
   const result = await processIncomingShopifyOrder(admin, payload, "webhook");
 
   if (result.status === "error") {
-    console.error("[shopify/orders-create] processIncomingShopifyOrder error:", result.error, {
+    console.error("[shopify/orders-create] processIncomingShopifyOrder error", {
+      error: result.error,
       shopify_order_id: payload.id,
     });
-    return NextResponse.json({ error: result.error }, { status: 500 });
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 
   return NextResponse.json(result);

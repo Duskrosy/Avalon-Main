@@ -26,12 +26,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type IntakeSource = "webhook" | "reconciler";
 
-export interface ProcessResult {
-  status: "inserted" | "duplicate" | "disagreement" | "error";
-  orderId?: number;
-  lane?: IntakeLane;
-  error?: string;
-}
+export type ProcessResult =
+  | { status: "inserted";     orderId: string; lane: IntakeLane }
+  | { status: "duplicate";    orderId?: string; lane?: IntakeLane }
+  | { status: "disagreement"; orderId: string; lane: IntakeLane }
+  | { status: "error";        error: string };
 
 /**
  * The Shopify order shape we need for intake. Extends the classification
@@ -81,9 +80,9 @@ async function findOrCreateCustomer(
 
   if (existing?.id) return existing.id as string;
 
-  // 2. Upsert new customer row
+  // 2. Insert new customer row (race-safe: catch 23505 and re-fetch)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: created, error } = await (supabase as any)
+  const { data: inserted, error: insertErr } = await (supabase as any)
     .from("customers")
     .insert({
       shopify_customer_id: shopifyCustomerId,
@@ -95,8 +94,21 @@ async function findOrCreateCustomer(
     .select("id")
     .single();
 
-  if (error || !created?.id) return null;
-  return created.id as string;
+  if (insertErr?.code === "23505") {
+    // Race: another concurrent process inserted between our SELECT and INSERT.
+    // Re-fetch — the row exists now.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: refetched } = await (supabase as any)
+      .from("customers")
+      .select("id")
+      .eq("shopify_customer_id", shopifyCustomerId)
+      .maybeSingle();
+    if (refetched?.id) return refetched.id as string;
+    throw new Error(`23505 on customer insert but re-fetch returned no row: ${insertErr.message}`);
+  }
+
+  if (insertErr) throw insertErr;
+  return inserted!.id as string;
 }
 
 /**
@@ -224,7 +236,14 @@ export async function processIncomingShopifyOrder(
         (insertError.message ?? "").includes("unique");
 
       if (!isDuplicateError) {
-        return { status: "error", error: insertError.message };
+        console.error("[process-shopify-order] orders INSERT failed", {
+          code: insertError.code,
+          message: insertError.message,
+          hint: insertError.hint,
+          details: insertError.details,
+          shopify_order_id: shopifyOrderId,
+        });
+        return { status: "error", error: "Internal error" };
       }
 
       // Fetch the winner row to compare lanes
@@ -255,7 +274,7 @@ export async function processIncomingShopifyOrder(
       return { status: "duplicate", orderId: winner?.id, lane };
     }
 
-    const orderId: number = inserted.id;
+    const orderId: string = inserted.id as string;
 
     // Step 5: If quarantine, insert review row
     if (lane === "quarantine") {
