@@ -18,6 +18,51 @@ type Props = {
   orderId: string;
 };
 
+const TRUNCATE_AT = 120;
+
+function NoteCard({
+  header,
+  timestamp,
+  body,
+  italic,
+}: {
+  header: string;
+  timestamp: string | null;
+  body: string;
+  italic?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isTruncatable = body.length > TRUNCATE_AT;
+  const displayBody = isTruncatable && !expanded ? body.slice(0, TRUNCATE_AT) : body;
+
+  return (
+    <div className="rounded border border-[var(--color-border-primary)] bg-[var(--color-surface-card)] py-2 px-3">
+      {/* Header row: label + timestamp on one line */}
+      <div className="flex items-center justify-between gap-2 mb-0.5">
+        <span className="text-xs font-medium text-[var(--color-text-primary)]">{header}</span>
+        {timestamp && (
+          <span className="text-xs text-[var(--color-text-tertiary)] shrink-0">{timestamp}</span>
+        )}
+      </div>
+      <p className={`text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap ${italic ? "italic" : ""}`}>
+        {displayBody}
+        {isTruncatable && !expanded && (
+          <>
+            {"… "}
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="text-xs text-[var(--color-accent)] hover:opacity-80"
+            >
+              Show more
+            </button>
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
 export function NotesBlock({ salesNote, csNotes, orderId }: Props) {
   const [feed, setFeed] = useState<CsNote[]>(csNotes);
   const [draft, setDraft] = useState("");
@@ -81,44 +126,30 @@ export function NotesBlock({ salesNote, csNotes, orderId }: Props) {
         </p>
       )}
 
-      {/* Sales-agent note (immutable) */}
-      {salesNote && (
-        <div className="rounded border border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] px-3 py-2.5">
-          <div className="mb-1 flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-tertiary)]">
-              Sales note
-            </span>
-            <span className="text-[10px] text-[var(--color-text-tertiary)]">
-              · From the sales agent at order time
-            </span>
-          </div>
-          <p className="text-sm italic text-[var(--color-text-secondary)] whitespace-pre-wrap">
-            {salesNote}
-          </p>
-        </div>
-      )}
+      {/* All notes: sales note + CS feed — compact cards, gap-1.5 */}
+      <div className="flex flex-col gap-1.5">
+        {/* Sales-agent note (immutable) */}
+        {salesNote && (
+          <NoteCard
+            header="Sales note"
+            timestamp="From the sales agent at order time"
+            body={salesNote}
+            italic
+          />
+        )}
 
-      {/* CS team notes feed */}
-      {feed.map((note) => (
-        <div
-          key={note.id}
-          className="rounded border border-[var(--color-border-primary)] bg-[var(--color-surface-card)] px-3 py-2.5"
-        >
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="text-[11px] font-medium text-[var(--color-text-primary)]">
-              {note.author_name_snapshot}
-            </span>
-            <span className="text-[10px] text-[var(--color-text-tertiary)] shrink-0">
-              {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
-            </span>
-          </div>
-          <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">
-            {note.body}
-          </p>
-        </div>
-      ))}
+        {/* CS team notes feed */}
+        {feed.map((note) => (
+          <NoteCard
+            key={note.id}
+            header={note.author_name_snapshot}
+            timestamp={formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+            body={note.body}
+          />
+        ))}
+      </div>
 
-      {/* Inline post form */}
+      {/* Inline post form — unchanged */}
       <div className="space-y-2 pt-1">
         <textarea
           value={draft}

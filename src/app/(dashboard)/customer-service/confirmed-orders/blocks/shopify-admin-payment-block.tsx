@@ -21,6 +21,10 @@ type Props = {
   payment: ShopifyAdminPayment;
   shopifyFinancialStatus: string | null;
   orderId: string;
+  /** orders.mode_of_payment */
+  mop?: string | null;
+  /** orders.payment_other_label */
+  paymentOtherLabel?: string | null;
 };
 
 function isSalesStyle(
@@ -34,7 +38,7 @@ function isSalesStyle(
   return "payment_reference_number" in p;
 }
 
-export function ShopifyAdminPaymentBlock({ payment, shopifyFinancialStatus, orderId }: Props) {
+export function ShopifyAdminPaymentBlock({ payment, shopifyFinancialStatus, orderId, mop, paymentOtherLabel }: Props) {
   return (
     <div className="space-y-1.5">
       <div className="mb-1.5">
@@ -48,9 +52,9 @@ export function ShopifyAdminPaymentBlock({ payment, shopifyFinancialStatus, orde
         )}
       </div>
       {isSalesStyle(payment) ? (
-        <SalesPaymentBlock payment={payment} orderId={orderId} />
+        <SalesPaymentBlock payment={payment} orderId={orderId} mop={mop} paymentOtherLabel={paymentOtherLabel} />
       ) : (
-        <ConversionPaymentBlock payment={payment} />
+        <ConversionPaymentBlock payment={payment} mop={mop} paymentOtherLabel={paymentOtherLabel} />
       )}
     </div>
   );

@@ -9,11 +9,23 @@ type ConversionPayment = {
 
 type Props = {
   payment: ConversionPayment;
+  /** orders.mode_of_payment — e.g. "GCash", "COD", "Other" */
+  mop?: string | null;
+  /** orders.payment_other_label — used when mop === "Other" */
+  paymentOtherLabel?: string | null;
 };
 
-export function ConversionPaymentBlock({ payment }: Props) {
+export function ConversionPaymentBlock({ payment, mop, paymentOtherLabel }: Props) {
+  const mopLabel = mop === "Other" && paymentOtherLabel ? paymentOtherLabel : (mop ?? null);
+
   return (
     <div className="space-y-1.5">
+      {mopLabel && (
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-[var(--color-text-tertiary)] w-20 shrink-0">Method</span>
+          <span className="text-sm font-medium">{mopLabel}</span>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-[var(--color-text-tertiary)] w-20 shrink-0">Gateway</span>
         <span className="text-sm">{payment.shopify_gateway ?? "—"}</span>

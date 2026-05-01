@@ -4,17 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { AlertTriangle, ChevronDown, ChevronUp, Truck, X } from "lucide-react";
 import { ShippingBlock } from "./blocks/shipping-block";
+import type { AddressShippingStagedOp } from "./blocks/shipping-block";
 import { BillingBlock } from "./blocks/billing-block";
+import type { AddressBillingStagedOp } from "./blocks/billing-block";
 import { ItemsBlock } from "./blocks/items-block";
+import type { ItemStagedOp } from "./blocks/items-block";
 import { NotesBlock } from "./blocks/notes-block";
 import { SalesPaymentBlock } from "./blocks/sales-payment-block";
 import { ConversionPaymentBlock } from "./blocks/conversion-payment-block";
 import { ShopifyAdminPaymentBlock } from "./blocks/shopify-admin-payment-block";
 import { QuarantinePaymentBlock } from "./blocks/quarantine-payment-block";
-import { CockpitComposer } from "./blocks/cockpit-composer";
+import { useToast, Toast } from "@/components/ui/toast";
 
 // Near-full-screen overlay modal for working a claimed CS ticket.
-// Layout: sticky header | scrollable body (2-col grid + notes + cockpit) | sticky footer.
+// Layout: sticky header | scrollable body (2-col grid + notes) | sticky footer.
 // Pass 1 triage behavior, claim/lock model, and keyboard shortcuts are all preserved.
 
 type DeliveryMethod = "lwe" | "tnvs" | "other" | null;
@@ -110,6 +113,9 @@ type FullDrawerData = {
     delivery_method_notes: string | null;
     cs_hold_reason: string | null;
     completed_at: string | null;
+    mode_of_payment: string | null;
+    payment_other_label: string | null;
+    voucher_code: string | null;
   };
   customer: FullCustomer | null;
   items: FullOrderItem[];
@@ -134,6 +140,27 @@ const DESTINATIONS: Array<{ key: TriageDestination; label: string; sublabel?: st
   { key: "dispatch", label: "TNVS", sublabel: "Dispatch" },
 ];
 
+// ── Staged-op summary helpers ─────────────────────────────────────────────────
+
+function describeItemOp(op: ItemStagedOp): string {
+  if (op.op === "add_item") {
+    return `Add item: variant ${op.payload.variant_id}, qty ${op.payload.qty}, ₱${op.payload.unit_price}`;
+  }
+  if (op.op === "remove_item") {
+    return `Remove item: line ${op.payload.line_item_id}`;
+  }
+  if (op.op === "qty_change") {
+    return `Change qty: line ${op.payload.line_item_id} → ${op.payload.new_qty}`;
+  }
+  return "Item change";
+}
+
+function describeAddressOp(op: AddressShippingStagedOp | AddressBillingStagedOp): string {
+  const kind = op.op === "address_shipping" ? "Shipping" : "Billing";
+  const { street, city, country } = op.payload;
+  return `Address (${kind}): ${[street, city, country].filter(Boolean).join(", ")}`;
+}
+
 // ── Payment block dispatcher ──────────────────────────────────────────────────
 
 function PaymentBlock({
@@ -141,14 +168,24 @@ function PaymentBlock({
   payment,
   shopifyFinancialStatus,
   orderId,
+  mop,
+  paymentOtherLabel,
 }: {
   lane: string | null;
   payment: Record<string, unknown>;
   shopifyFinancialStatus: string | null;
   orderId: string;
+  mop?: string | null;
+  paymentOtherLabel?: string | null;
 }) {
   if (lane === "quarantine" && payment.quarantine === true) {
-    return <QuarantinePaymentBlock adminUrl={String(payment.admin_url ?? "")} />;
+    return (
+      <QuarantinePaymentBlock
+        adminUrl={String(payment.admin_url ?? "")}
+        mop={mop}
+        paymentOtherLabel={paymentOtherLabel}
+      />
+    );
   }
   if (lane === "shopify_admin") {
     return (
@@ -156,6 +193,8 @@ function PaymentBlock({
         payment={payment as Parameters<typeof ShopifyAdminPaymentBlock>[0]["payment"]}
         shopifyFinancialStatus={shopifyFinancialStatus}
         orderId={orderId}
+        mop={mop}
+        paymentOtherLabel={paymentOtherLabel}
       />
     );
   }
@@ -163,6 +202,8 @@ function PaymentBlock({
     return (
       <ConversionPaymentBlock
         payment={payment as Parameters<typeof ConversionPaymentBlock>[0]["payment"]}
+        mop={mop}
+        paymentOtherLabel={paymentOtherLabel}
       />
     );
   }
@@ -170,6 +211,8 @@ function PaymentBlock({
     <SalesPaymentBlock
       payment={payment as Parameters<typeof SalesPaymentBlock>[0]["payment"]}
       orderId={orderId}
+      mop={mop}
+      paymentOtherLabel={paymentOtherLabel}
     />
   );
 }
@@ -207,11 +250,13 @@ function HeaderStrip({
   ticket,
   intakeLane,
   saving,
+  pendingCount,
   onClose,
 }: {
   ticket: TicketSummary;
   intakeLane: string | null;
   saving: boolean;
+  pendingCount: number;
   onClose: () => void;
 }) {
   const orderLabel =
@@ -228,6 +273,17 @@ function HeaderStrip({
             {orderLabel}
           </h2>
           <LaneChip lane={intakeLane} />
+          {pendingCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border"
+              style={{ color: "var(--color-warning)", borderColor: "var(--color-warning)", backgroundColor: "var(--color-warning-light)" }}
+            >
+              {/* Colored dot */}
+              <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden="true">
+                <circle cx="3" cy="3" r="3" fill="var(--color-warning)" />
+              </svg>
+              {pendingCount} pending
+            </span>
+          )}
           {ticket.completed_at && (
             <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-[var(--color-bg-secondary)] text-[var(--color-text-tertiary)] border border-[var(--color-border-primary)]">
               Completed
@@ -261,9 +317,15 @@ function HeaderStrip({
 function CustomerColumn({
   customer,
   ticket,
+  onShippingOpsChange,
+  onBillingOpsChange,
+  readOnly,
 }: {
   customer: FullCustomer | null;
   ticket: TicketSummary;
+  onShippingOpsChange: (ops: AddressShippingStagedOp[]) => void;
+  onBillingOpsChange: (ops: AddressBillingStagedOp[]) => void;
+  readOnly: boolean;
 }) {
   const [showBilling, setShowBilling] = useState(false);
 
@@ -295,7 +357,11 @@ function CustomerColumn({
       {/* Shipping */}
       <div>
         <SectionLabel>Shipping address</SectionLabel>
-        <ShippingBlock customer={customer} />
+        <ShippingBlock
+          customer={customer}
+          onStagedOpsChange={onShippingOpsChange}
+          readOnly={readOnly}
+        />
       </div>
 
       {/* Billing (collapsible) */}
@@ -308,7 +374,13 @@ function CustomerColumn({
           {showBilling ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
           {showBilling ? "Hide billing" : "Show billing"}
         </button>
-        {showBilling && <BillingBlock billing={customer} />}
+        {showBilling && (
+          <BillingBlock
+            billing={customer}
+            onStagedOpsChange={onBillingOpsChange}
+            readOnly={readOnly}
+          />
+        )}
       </div>
     </div>
   );
@@ -321,11 +393,15 @@ function ItemsPaymentColumn({
   intakeLane,
   orderId,
   shopifyFinancialStatus,
+  onItemsOpsChange,
+  readOnly,
 }: {
   fullData: FullDrawerData;
   intakeLane: string | null;
   orderId: string;
   shopifyFinancialStatus: string | null;
+  onItemsOpsChange: (ops: ItemStagedOp[]) => void;
+  readOnly: boolean;
 }) {
   return (
     <div className="space-y-4">
@@ -334,6 +410,9 @@ function ItemsPaymentColumn({
         <ItemsBlock
           items={fullData.items}
           finalTotal={fullData.order.final_total_amount}
+          voucher_code={fullData.order.voucher_code}
+          onStagedOpsChange={onItemsOpsChange}
+          readOnly={readOnly}
         />
       </div>
       <div>
@@ -343,56 +422,10 @@ function ItemsPaymentColumn({
           payment={fullData.payment}
           shopifyFinancialStatus={shopifyFinancialStatus}
           orderId={orderId}
+          mop={fullData.order.mode_of_payment}
+          paymentOtherLabel={fullData.order.payment_other_label}
         />
       </div>
-    </div>
-  );
-}
-
-// ── Edit cockpit (collapsed by default) ──────────────────────────────────────
-
-function EditSection({
-  fullData,
-  orderId,
-}: {
-  fullData: FullDrawerData;
-  orderId: string;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="rounded border border-[var(--color-border-primary)]">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-left hover:bg-[var(--color-bg-secondary)]"
-      >
-        <span>Edit this order</span>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-      </button>
-      {expanded && (
-        <div className="px-4 pb-4 border-t border-[var(--color-border-primary)]">
-          <div className="pt-3">
-            <CockpitComposer
-              orderId={orderId}
-              existingItems={
-                (fullData.plan?.items ?? []) as Array<{
-                  id: number;
-                  op: import("@/lib/cs/edit-plan/types").EditPlanOp;
-                  payload: unknown;
-                  created_at: string;
-                }>
-              }
-              orderItems={fullData.items.map((i) => ({
-                id: i.id,
-                product_name: i.product_name,
-                variant_name: i.variant_name,
-                quantity: i.quantity,
-              }))}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -495,6 +528,152 @@ function ActionBar({
   );
 }
 
+// ── Confirmation modal ────────────────────────────────────────────────────────
+
+function ConfirmationModal({
+  itemOps,
+  shippingOps,
+  billingOps,
+  orderId,
+  onClose,
+  onConfirmed,
+}: {
+  itemOps: ItemStagedOp[];
+  shippingOps: AddressShippingStagedOp[];
+  billingOps: AddressBillingStagedOp[];
+  orderId: string;
+  onClose: () => void;
+  onConfirmed: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+
+  const hasItemOps = itemOps.length > 0;
+  const hasAddressOps = shippingOps.length > 0 || billingOps.length > 0;
+  const allOps = [...itemOps, ...shippingOps, ...billingOps];
+
+  async function handleApply() {
+    setModalError(null);
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/customer-service/orders/${orderId}/edit-plan`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ items: allOps }),
+      });
+
+      if (res.ok) {
+        onConfirmed();
+      } else if (res.status === 409) {
+        const j = await res.json().catch(() => ({}));
+        setModalError(
+          j.error ?? "Another rep is composing changes for this order. Refresh to see their plan."
+        );
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setModalError(j.error ?? "Failed to save plan. Please try again.");
+      }
+    } catch {
+      setModalError("Network error. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    // Modal backdrop — absolute inside drawer card
+    <div
+      className="absolute inset-0 z-20 flex items-center justify-center bg-black/40"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="relative w-full max-w-md mx-4 bg-[var(--color-surface-card)] rounded-lg shadow-2xl border border-[var(--color-border-primary)] p-5 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Title */}
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+            Apply pending changes?
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close modal"
+            className="p-1 rounded hover:bg-[var(--color-bg-secondary)] text-[var(--color-text-tertiary)]"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Contextual copy */}
+        <div className="space-y-2 text-sm text-[var(--color-text-secondary)]">
+          {hasAddressOps && (
+            <p>
+              You are editing — address. This will update the existing order in place if Shopify allows it.
+            </p>
+          )}
+          {hasItemOps && (
+            <p>
+              Adding or editing items will create a new linked order. The original sales agent keeps the close.
+            </p>
+          )}
+        </div>
+
+        {/* Op list */}
+        <ul className="space-y-1">
+          {itemOps.map((op, i) => (
+            <li key={`item-${i}`} className="text-xs text-[var(--color-text-secondary)] flex items-start gap-1.5">
+              <span className="mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--color-text-tertiary)] inline-block" />
+              {describeItemOp(op)}
+            </li>
+          ))}
+          {shippingOps.map((op, i) => (
+            <li key={`ship-${i}`} className="text-xs text-[var(--color-text-secondary)] flex items-start gap-1.5">
+              <span className="mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--color-text-tertiary)] inline-block" />
+              {describeAddressOp(op)}
+            </li>
+          ))}
+          {billingOps.map((op, i) => (
+            <li key={`bill-${i}`} className="text-xs text-[var(--color-text-secondary)] flex items-start gap-1.5">
+              <span className="mt-0.5 shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--color-text-tertiary)] inline-block" />
+              {describeAddressOp(op)}
+            </li>
+          ))}
+        </ul>
+
+        {/* Error */}
+        {modalError && (
+          <div className="text-xs px-3 py-2 rounded bg-[var(--color-error-light)] text-[var(--color-error)] border border-[var(--color-error-light)]">
+            {modalError}
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="px-3 py-1.5 rounded text-sm border border-[var(--color-border-primary)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleApply()}
+            disabled={submitting}
+            className="px-3 py-1.5 rounded text-sm font-medium bg-[var(--color-accent)] text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {submitting ? "Applying…" : "Confirm and apply"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Props) {
@@ -509,6 +688,19 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
   const [fullData, setFullData] = useState<FullDrawerData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [fetchLoading, setFetchLoading] = useState(true);
+
+  // Staged ops from child blocks
+  const [itemOps, setItemOps] = useState<ItemStagedOp[]>([]);
+  const [shippingOps, setShippingOps] = useState<AddressShippingStagedOp[]>([]);
+  const [billingOps, setBillingOps] = useState<AddressBillingStagedOp[]>([]);
+  const allStagedOps = [...itemOps, ...shippingOps, ...billingOps];
+  const pendingCount = allStagedOps.length;
+
+  // Confirmation modal
+  const [showModal, setShowModal] = useState(false);
+
+  // Toast
+  const { toast, setToast } = useToast();
 
   const claimedByOther =
     !!ticket.claimed_by_user_id && ticket.claimed_by_user_id !== currentUserId;
@@ -531,28 +723,33 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
     return () => { cancelled = true; };
   }, [ticket.id]);
 
-  // Esc closes; Cmd/Ctrl+Enter triggers Confirm & Route.
+  // Esc closes modal first, then drawer. Cmd/Ctrl+Enter triggers confirm.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !saving) onClose();
+      if (e.key === "Escape" && !saving) {
+        if (showModal) {
+          setShowModal(false);
+          return;
+        }
+        onClose();
+        return;
+      }
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !saving && !claimedByOther) {
         // Don't fire if the event was already handled by the notes textarea
         if (e.defaultPrevented) return;
+        // When modal is open, Cmd+Enter triggers modal apply — handled inside modal
+        if (showModal) return;
         e.preventDefault();
-        void confirm();
+        void handleConfirmClick();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [destination, holdReason, saving, claimedByOther]);
+  }, [destination, holdReason, saving, claimedByOther, showModal]);
 
-  async function confirm() {
+  async function runTriage() {
     setError(null);
-    if (destination === "hold" && !holdReason.trim()) {
-      setError("Please give a reason for the hold.");
-      return;
-    }
     setSaving(true);
     try {
       const body: Record<string, unknown> = { action: destination };
@@ -571,6 +768,36 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
     } finally {
       setSaving(false);
     }
+  }
+
+  // Called by action bar "Confirm & Route" button and Cmd+Enter
+  function handleConfirmClick() {
+    // Validate hold reason first
+    if (destination === "hold" && !holdReason.trim()) {
+      setError("Please give a reason for the hold.");
+      return;
+    }
+    setError(null);
+
+    if (pendingCount > 0) {
+      // Open confirmation modal to apply staged ops first
+      setShowModal(true);
+    } else {
+      // No pending ops — run triage directly
+      void runTriage();
+    }
+  }
+
+  // Called by modal's "Confirm and apply" after edit-plan POST succeeds
+  function handleModalConfirmed() {
+    // Clear staged ops
+    setItemOps([]);
+    setShippingOps([]);
+    setBillingOps([]);
+    setShowModal(false);
+    setToast({ message: "Plan saved. Will apply to Shopify in Phase B.", type: "success" });
+    // Proceed with triage
+    void runTriage();
   }
 
   // Resolve intake_lane: prefer the /full response; fall back to ticket prop.
@@ -597,6 +824,7 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
           ticket={ticket}
           intakeLane={intake_lane}
           saving={saving}
+          pendingCount={pendingCount}
           onClose={onClose}
         />
 
@@ -647,6 +875,9 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
                   <CustomerColumn
                     customer={fullData.customer}
                     ticket={ticket}
+                    onShippingOpsChange={setShippingOps}
+                    onBillingOpsChange={setBillingOps}
+                    readOnly={claimedByOther}
                   />
                 </div>
 
@@ -657,6 +888,8 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
                     intakeLane={intake_lane}
                     orderId={ticket.id}
                     shopifyFinancialStatus={fullData.order.shopify_financial_status}
+                    onItemsOpsChange={setItemOps}
+                    readOnly={claimedByOther}
                   />
                 </div>
               </div>
@@ -670,9 +903,6 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
                   orderId={ticket.id}
                 />
               </div>
-
-              {/* Edit cockpit — collapsed by default */}
-              <EditSection fullData={fullData} orderId={ticket.id} />
             </div>
           )}
         </div>
@@ -687,10 +917,25 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
             setHoldReason={setHoldReason}
             saving={saving}
             error={error}
-            onConfirm={() => void confirm()}
+            onConfirm={handleConfirmClick}
+          />
+        )}
+
+        {/* ── Confirmation modal (inside drawer card) ─────────────────────────── */}
+        {showModal && (
+          <ConfirmationModal
+            itemOps={itemOps}
+            shippingOps={shippingOps}
+            billingOps={billingOps}
+            orderId={ticket.id}
+            onClose={() => setShowModal(false)}
+            onConfirmed={handleModalConfirmed}
           />
         )}
       </div>
+
+      {/* Toast — rendered outside the drawer card so z-index works correctly */}
+      <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
   );
 }
