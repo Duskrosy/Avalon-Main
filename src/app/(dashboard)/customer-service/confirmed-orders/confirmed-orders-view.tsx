@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { format } from "date-fns";
-import { Paperclip, Truck } from "lucide-react";
+import { format, formatDistanceToNowStrict } from "date-fns";
+import { Lock, Paperclip, Truck } from "lucide-react";
+import { TicketDrawer } from "./ticket-drawer";
 
 type ConfirmedOrder = {
   id: string;
@@ -22,15 +23,21 @@ type ConfirmedOrder = {
   cs_hold_reason: string | null;
   person_in_charge_label: string | null;
   status: string;
+  claimed_by_user_id: string | null;
+  claimed_at: string | null;
+  claimer: { id: string; full_name: string } | null;
 };
 
 type Tab = "inbox" | "in_progress" | "done" | "all";
 
-export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: string }) {
+export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }) {
   const [orders, setOrders] = useState<ConfirmedOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState<Tab>("inbox");
   const [search, setSearch] = useState("");
+  const [openTicketId, setOpenTicketId] = useState<string | null>(null);
+  const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -51,23 +58,35 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
     void fetchOrders();
   }, [fetchOrders]);
 
-  const triage = async (
-    orderId: string,
-    action: "inventory" | "fulfillment" | "dispatch" | "hold",
-  ) => {
-    let body: Record<string, unknown> = { action };
-    if (action === "hold") {
-      const reason = window.prompt("Hold reason?", "Awaiting customer reply");
-      if (!reason) return;
-      body = { action, hold_reason: reason };
+  // Auto-dismiss toast after 4s.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const claim = async (orderId: string) => {
+    setPendingClaimId(orderId);
+    try {
+      const res = await fetch(`/api/customer-service/orders/${orderId}/triage`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "claim" }),
+      });
+      if (res.ok) {
+        setOpenTicketId(orderId);
+        void fetchOrders();
+      } else if (res.status === 409) {
+        const j = await res.json().catch(() => ({}));
+        setToast(`${j.claimer_name ?? "Another agent"} just claimed this`);
+        void fetchOrders();
+      } else {
+        const j = await res.json().catch(() => ({}));
+        setToast(j.error ?? "Could not claim ticket");
+      }
+    } finally {
+      setPendingClaimId(null);
     }
-    const res = await fetch(`/api/customer-service/orders/${orderId}/triage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (res.ok) void fetchOrders();
-    else alert((await res.json()).error ?? "Triage failed");
   };
 
   const previewReceipt = async (orderId: string) => {
@@ -76,6 +95,8 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
     const j = await res.json();
     if (j.url) window.open(j.url, "_blank");
   };
+
+  const openTicket = orders.find((o) => o.id === openTicketId) ?? null;
 
   return (
     <div className="p-6 space-y-4">
@@ -107,18 +128,19 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
         ))}
       </div>
 
-      <div className="border border-[var(--color-border-primary)] rounded-md overflow-hidden">
+      {/* Desktop / tablet: table. Mobile: card list. */}
+      <div className="hidden md:block border border-[var(--color-border-primary)] rounded-md overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-[var(--color-bg-secondary)] text-xs text-[var(--color-text-secondary)]">
             <tr>
               <th className="text-left px-3 py-2">Order</th>
               <th className="text-left px-3 py-2">Status</th>
               <th className="text-left px-3 py-2">Customer</th>
-              <th className="text-left px-3 py-2">MOP</th>
+              <th className="text-left px-3 py-2 hidden lg:table-cell">MOP</th>
               <th className="text-left px-3 py-2">Delivery</th>
               <th className="text-right px-3 py-2">Total</th>
-              <th className="text-left px-3 py-2">Agent</th>
-              <th className="text-left px-3 py-2">Triage</th>
+              <th className="text-left px-3 py-2 hidden lg:table-cell">Agent</th>
+              <th className="text-right px-3 py-2">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -128,76 +150,245 @@ export function ConfirmedOrdersView({ currentUserId: _ }: { currentUserId: strin
             {!loading && orders.length === 0 && (
               <tr><td colSpan={8} className="px-3 py-4 text-center text-[var(--color-text-tertiary)]">No orders</td></tr>
             )}
-            {orders.map((o) => (
-              <tr key={o.id} className="border-t border-[var(--color-border-secondary)]">
-                <td className="px-3 py-2 font-medium">{o.shopify_order_name ?? o.id.slice(0, 6)}</td>
-                <td className="px-3 py-2">
-                  <ShopifyBadges fin={o.shopify_financial_status} ful={o.shopify_fulfillment_status} />
-                  {o.cs_hold_reason && (
-                    <span className="ml-1 inline-block text-[10px] uppercase font-semibold rounded px-1.5 py-0.5 bg-[var(--color-warning-light)] text-[var(--color-warning)] border border-[var(--color-warning-light)]">
-                      ON HOLD — {o.cs_hold_reason}
+            {orders.map((o) => {
+              const claimedByMe =
+                o.claimed_by_user_id !== null && o.claimed_by_user_id === currentUserId;
+              const claimedByOther =
+                o.claimed_by_user_id !== null && o.claimed_by_user_id !== currentUserId;
+              return (
+                <tr
+                  key={o.id}
+                  className={`border-t border-[var(--color-border-secondary)] ${
+                    claimedByOther ? "opacity-60" : ""
+                  } ${claimedByMe ? "border-l-2 border-l-[var(--color-success)]" : ""}`}
+                >
+                  <td className="px-3 py-2 font-medium">
+                    {o.shopify_order_name ?? o.id.slice(0, 6)}
+                  </td>
+                  <td className="px-3 py-2">
+                    <ShopifyBadges
+                      fin={o.shopify_financial_status}
+                      ful={o.shopify_fulfillment_status}
+                    />
+                    {o.cs_hold_reason && (
+                      <span className="ml-1 inline-block text-[10px] uppercase font-semibold rounded px-1.5 py-0.5 bg-[var(--color-warning-light)] text-[var(--color-warning)] border border-[var(--color-warning-light)]">
+                        ON HOLD — {o.cs_hold_reason}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div>{o.customer?.full_name ?? "—"}</div>
+                    <div className="text-[11px] text-[var(--color-text-tertiary)]">
+                      {o.customer?.phone ?? ""}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 hidden lg:table-cell">
+                    <span>{o.mode_of_payment ?? "—"}</span>
+                    {o.payment_other_label && (
+                      <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                        {" "}
+                        ({o.payment_other_label})
+                      </span>
+                    )}
+                    {o.payment_receipt_path && (
+                      <button
+                        type="button"
+                        onClick={() => void previewReceipt(o.id)}
+                        className="ml-1.5 text-[var(--color-accent)] hover:opacity-80"
+                        aria-label="Preview receipt"
+                      >
+                        <Paperclip size={12} />
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-3 py-2" title={o.delivery_method_notes ?? ""}>
+                    <span className="inline-flex items-center gap-1">
+                      <Truck size={12} />
+                      {o.delivery_method?.toUpperCase() ?? "—"}
                     </span>
-                  )}
-                </td>
-                <td className="px-3 py-2">
-                  <div>{o.customer?.full_name ?? "—"}</div>
-                  <div className="text-[11px] text-[var(--color-text-tertiary)]">{o.customer?.phone ?? ""}</div>
-                </td>
-                <td className="px-3 py-2">
-                  <span>{o.mode_of_payment ?? "—"}</span>
-                  {o.payment_other_label && (
-                    <span className="text-[11px] text-[var(--color-text-tertiary)]"> ({o.payment_other_label})</span>
-                  )}
-                  {o.payment_receipt_path && (
-                    <button
-                      type="button"
-                      onClick={() => void previewReceipt(o.id)}
-                      className="ml-1.5 text-[var(--color-accent)] hover:opacity-80"
-                      aria-label="Preview receipt"
-                    >
-                      <Paperclip size={12} />
-                    </button>
-                  )}
-                </td>
-                <td className="px-3 py-2" title={o.delivery_method_notes ?? ""}>
-                  <span className="inline-flex items-center gap-1">
-                    <Truck size={12} />
-                    {o.delivery_method?.toUpperCase() ?? "—"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-right tabular-nums">
-                  ₱{o.final_total_amount.toFixed(2)}
-                </td>
-                <td className="px-3 py-2 text-xs">
-                  <div>{o.created_by_name ?? "—"}</div>
-                  <div className="text-[var(--color-text-tertiary)]">
-                    {o.completed_at ? format(new Date(o.completed_at), "MMM d, h:mm a") : ""}
-                  </div>
-                </td>
-                <td className="px-3 py-2">
-                  <select
-                    defaultValue=""
-                    onChange={(e) => {
-                      const v = e.target.value as "inventory" | "fulfillment" | "dispatch" | "hold" | "";
-                      if (v) void triage(o.id, v);
-                      e.target.value = "";
-                    }}
-                    className="text-xs rounded px-2 py-1"
-                  >
-                    <option value="">Triage…</option>
-                    <option value="inventory">→ Inventory</option>
-                    <option value="fulfillment">→ Fulfillment</option>
-                    <option value="dispatch">→ Dispatch ({o.delivery_method?.toUpperCase() ?? "—"})</option>
-                    <option value="hold">→ Hold</option>
-                  </select>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    ₱{o.final_total_amount.toFixed(2)}
+                  </td>
+                  <td className="px-3 py-2 text-xs hidden lg:table-cell">
+                    <div>{o.created_by_name ?? "—"}</div>
+                    <div className="text-[var(--color-text-tertiary)]">
+                      {o.completed_at ? format(new Date(o.completed_at), "MMM d, h:mm a") : ""}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <ActionCell
+                      claimedByMe={claimedByMe}
+                      claimedByOther={claimedByOther}
+                      claimerName={o.claimer?.full_name ?? null}
+                      claimedAt={o.claimed_at}
+                      pending={pendingClaimId === o.id}
+                      onClaim={() => void claim(o.id)}
+                      onOpen={() => setOpenTicketId(o.id)}
+                    />
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-2">
+        {loading && (
+          <div className="px-3 py-4 text-center text-[var(--color-text-tertiary)] text-sm">
+            Loading…
+          </div>
+        )}
+        {!loading && orders.length === 0 && (
+          <div className="px-3 py-4 text-center text-[var(--color-text-tertiary)] text-sm">
+            No orders
+          </div>
+        )}
+        {orders.map((o) => {
+          const claimedByMe =
+            o.claimed_by_user_id !== null && o.claimed_by_user_id === currentUserId;
+          const claimedByOther =
+            o.claimed_by_user_id !== null && o.claimed_by_user_id !== currentUserId;
+          return (
+            <div
+              key={o.id}
+              className={`p-3 rounded-md border border-[var(--color-border-primary)] bg-[var(--color-surface-card)] ${
+                claimedByOther ? "opacity-60" : ""
+              } ${claimedByMe ? "border-l-2 border-l-[var(--color-success)]" : ""}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm">
+                    {o.shopify_order_name ?? o.id.slice(0, 6)}
+                  </div>
+                  <div className="text-xs text-[var(--color-text-secondary)] truncate">
+                    {o.customer?.full_name ?? "—"}
+                  </div>
+                  <div className="mt-1 flex items-center gap-2 text-[11px] text-[var(--color-text-tertiary)]">
+                    <span className="inline-flex items-center gap-1">
+                      <Truck size={11} />
+                      {o.delivery_method?.toUpperCase() ?? "—"}
+                    </span>
+                    <span className="tabular-nums">₱{o.final_total_amount.toFixed(2)}</span>
+                  </div>
+                </div>
+                <ActionCell
+                  claimedByMe={claimedByMe}
+                  claimedByOther={claimedByOther}
+                  claimerName={o.claimer?.full_name ?? null}
+                  claimedAt={o.claimed_at}
+                  pending={pendingClaimId === o.id}
+                  onClaim={() => void claim(o.id)}
+                  onOpen={() => setOpenTicketId(o.id)}
+                />
+              </div>
+              {o.cs_hold_reason && (
+                <div className="mt-2 inline-block text-[10px] uppercase font-semibold rounded px-1.5 py-0.5 bg-[var(--color-warning-light)] text-[var(--color-warning)]">
+                  ON HOLD — {o.cs_hold_reason}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {openTicket && (
+        <TicketDrawer
+          ticket={openTicket}
+          currentUserId={currentUserId}
+          onClose={() => setOpenTicketId(null)}
+          onTriaged={() => {
+            setOpenTicketId(null);
+            void fetchOrders();
+          }}
+        />
+      )}
+
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-md text-sm bg-[var(--color-surface-card)] border border-[var(--color-border-primary)] shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
+}
+
+function ActionCell({
+  claimedByMe,
+  claimedByOther,
+  claimerName,
+  claimedAt,
+  pending,
+  onClaim,
+  onOpen,
+}: {
+  claimedByMe: boolean;
+  claimedByOther: boolean;
+  claimerName: string | null;
+  claimedAt: string | null;
+  pending: boolean;
+  onClaim: () => void;
+  onOpen: () => void;
+}) {
+  if (claimedByMe) {
+    return (
+      <button
+        type="button"
+        onClick={onOpen}
+        className="inline-flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium bg-[var(--color-accent)] text-white hover:opacity-90"
+      >
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-success)]" />
+        Open
+      </button>
+    );
+  }
+  if (claimedByOther) {
+    const ago = claimedAt ? formatDistanceToNowStrict(new Date(claimedAt)) : "";
+    const firstName = claimerName?.split(" ")[0] ?? "Agent";
+    return (
+      <span
+        className="inline-flex items-center gap-1 text-xs text-[var(--color-text-secondary)]"
+        aria-label={`Claimed by ${claimerName ?? "another agent"}${ago ? ` ${ago} ago` : ""}`}
+      >
+        <Lock size={11} />
+        {firstName}
+        {ago && <span className="text-[var(--color-text-tertiary)]"> · {shortAgo(ago)}</span>}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClaim}
+      disabled={pending}
+      className="px-3 py-1 rounded text-xs font-medium border border-[var(--color-border-primary)] hover:bg-[var(--color-bg-secondary)] disabled:opacity-50"
+    >
+      {pending ? "…" : "Claim"}
+    </button>
+  );
+}
+
+// "2 minutes" -> "2m", "1 hour" -> "1h", etc. Compact for the badge.
+function shortAgo(human: string): string {
+  const match = human.match(/^(\d+)\s+(\w+)/);
+  if (!match) return human;
+  const [, num, unit] = match;
+  const u = unit.startsWith("second")
+    ? "s"
+    : unit.startsWith("minute")
+      ? "m"
+      : unit.startsWith("hour")
+        ? "h"
+        : unit.startsWith("day")
+          ? "d"
+          : unit[0];
+  return `${num}${u}`;
 }
 
 function ShopifyBadges({ fin, ful }: { fin: string | null; ful: string | null }) {

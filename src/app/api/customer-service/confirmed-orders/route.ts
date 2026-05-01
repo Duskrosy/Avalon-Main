@@ -11,6 +11,8 @@ const SELECT = [
   "delivery_method, delivery_method_notes,",
   "shopify_financial_status, shopify_fulfillment_status,",
   "person_in_charge_label, cs_hold_reason, final_total_amount,",
+  "claimed_by_user_id, claimed_at,",
+  "claimer:profiles!orders_claimed_by_user_id_fkey(id, full_name),",
   "customer:customers(id, first_name, last_name, full_name, phone)",
 ].join(" ");
 
