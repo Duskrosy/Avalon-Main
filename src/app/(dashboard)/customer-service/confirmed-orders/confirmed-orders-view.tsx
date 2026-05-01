@@ -78,7 +78,14 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
         void fetchOrders();
       } else if (res.status === 409) {
         const j = await res.json().catch(() => ({}));
-        setToast(`${j.claimer_name ?? "Another agent"} just claimed this`);
+        // Two distinct 409 cases: actually claimed by someone (claimer_name
+        // present) vs the row simply isn't in inbox state anymore (already
+        // routed, cancelled, etc.). Toast wording differs.
+        if (j.claimer_name) {
+          setToast(`${j.claimer_name} just claimed this`);
+        } else {
+          setToast(j.error ?? "Cannot claim this ticket");
+        }
         void fetchOrders();
       } else {
         const j = await res.json().catch(() => ({}));
@@ -155,6 +162,11 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
                 o.claimed_by_user_id !== null && o.claimed_by_user_id === currentUserId;
               const claimedByOther =
                 o.claimed_by_user_id !== null && o.claimed_by_user_id !== currentUserId;
+              // Inbox state = the row is actually claimable. Outside the
+              // inbox tab, rows may be already routed/done/cancelled.
+              const inboxState =
+                o.status === "confirmed" &&
+                o.person_in_charge_label === null;
               return (
                 <tr
                   key={o.id}
@@ -222,6 +234,8 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
                       claimedByOther={claimedByOther}
                       claimerName={o.claimer?.full_name ?? null}
                       claimedAt={o.claimed_at}
+                      inboxState={inboxState}
+                      routedTo={o.person_in_charge_label}
                       pending={pendingClaimId === o.id}
                       onClaim={() => void claim(o.id)}
                       onOpen={() => setOpenTicketId(o.id)}
@@ -251,6 +265,8 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
             o.claimed_by_user_id !== null && o.claimed_by_user_id === currentUserId;
           const claimedByOther =
             o.claimed_by_user_id !== null && o.claimed_by_user_id !== currentUserId;
+          const inboxState =
+            o.status === "confirmed" && o.person_in_charge_label === null;
           return (
             <div
               key={o.id}
@@ -279,6 +295,8 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
                   claimedByOther={claimedByOther}
                   claimerName={o.claimer?.full_name ?? null}
                   claimedAt={o.claimed_at}
+                  inboxState={inboxState}
+                  routedTo={o.person_in_charge_label}
                   pending={pendingClaimId === o.id}
                   onClaim={() => void claim(o.id)}
                   onOpen={() => setOpenTicketId(o.id)}
@@ -324,6 +342,8 @@ function ActionCell({
   claimedByOther,
   claimerName,
   claimedAt,
+  inboxState,
+  routedTo,
   pending,
   onClaim,
   onOpen,
@@ -332,6 +352,8 @@ function ActionCell({
   claimedByOther: boolean;
   claimerName: string | null;
   claimedAt: string | null;
+  inboxState: boolean;
+  routedTo: string | null;
   pending: boolean;
   onClaim: () => void;
   onOpen: () => void;
@@ -359,6 +381,16 @@ function ActionCell({
         <Lock size={11} />
         {firstName}
         {ago && <span className="text-[var(--color-text-tertiary)]"> · {shortAgo(ago)}</span>}
+      </span>
+    );
+  }
+  // Not in inbox state — already routed, done, or cancelled. No claim
+  // affordance; show where it went so the All / In progress tabs are
+  // still informative.
+  if (!inboxState) {
+    return (
+      <span className="text-xs text-[var(--color-text-tertiary)]">
+        {routedTo ? `→ ${routedTo}` : "—"}
       </span>
     );
   }
