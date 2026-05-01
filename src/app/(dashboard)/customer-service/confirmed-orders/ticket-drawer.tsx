@@ -1,8 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { Truck, X, Paperclip, AlertTriangle, Copy, Pencil, Check } from "lucide-react";
+import { Truck, X, AlertTriangle } from "lucide-react";
+import { ShippingBlock } from "./blocks/shipping-block";
+import { BillingBlock } from "./blocks/billing-block";
+import { ItemsBlock } from "./blocks/items-block";
+import { NotesBlock } from "./blocks/notes-block";
+import { SalesPaymentBlock } from "./blocks/sales-payment-block";
+import { ConversionPaymentBlock } from "./blocks/conversion-payment-block";
+import { ShopifyAdminPaymentBlock } from "./blocks/shopify-admin-payment-block";
+import { QuarantinePaymentBlock } from "./blocks/quarantine-payment-block";
+import { CockpitComposer } from "./blocks/cockpit-composer";
 
 // Right-side drawer for working a claimed CS ticket. Shows the order
 // summary up top, body sections (customer, payment, delivery), and a
@@ -35,6 +44,7 @@ type TicketSummary = {
   claimer: { full_name: string } | null;
   completed_at: string | null;
   created_by_name: string | null; // null => conversion (storefront), else chat-sales
+  intake_lane: string | null; // Pass 2: direct lane column
 };
 
 type Props = {
@@ -44,9 +54,66 @@ type Props = {
   onTriaged: () => void;
 };
 
-// Auto-suggest the destination based on delivery_method. Pre-Order is
-// CS's call (no inventory data here), so we never auto-pick it. The
-// suggestion is a hint, not a hard rule — rep overrides freely.
+// ── Full drawer response types ────────────────────────────────────────────────
+
+type FullCustomer = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city_text: string | null;
+  region_text: string | null;
+  postal_code: string | null;
+  full_address: string | null;
+};
+
+type FullOrderItem = {
+  id: string;
+  product_name: string;
+  variant_name: string | null;
+  quantity: number;
+  unit_price_amount: number;
+  line_total_amount: number;
+  size: string | null;
+  color: string | null;
+  image_url: string | null;
+  product_variant_id: string | null;
+};
+
+type DrawerPlan = {
+  id: number;
+  status: string;
+  chosen_path: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  items: Array<{ id: number; op: string; payload: unknown; created_at: string }>;
+} | null;
+
+type FullDrawerData = {
+  order: {
+    id: string;
+    intake_lane: string | null;
+    final_total_amount: number;
+    shopify_financial_status: string | null;
+    delivery_method: string | null;
+    delivery_method_notes: string | null;
+    cs_hold_reason: string | null;
+    completed_at: string | null;
+  };
+  customer: FullCustomer | null;
+  items: FullOrderItem[];
+  payment: Record<string, unknown>;
+  notes: string | null;
+  plan: DrawerPlan;
+};
+
+// ── Auto-suggest the destination based on delivery_method ─────────────────────
+// Pre-Order is CS's call (no inventory data here), so we never auto-pick it.
 function suggestDestination(delivery: DeliveryMethod): TriageDestination {
   if (delivery === "tnvs") return "dispatch";
   if (delivery === "lwe") return "inventory";
@@ -61,6 +128,64 @@ const DESTINATIONS: Array<{ key: TriageDestination; label: string; sublabel?: st
   { key: "dispatch", label: "TNVS", sublabel: "Dispatch" },
 ];
 
+// ── Payment block dispatcher ──────────────────────────────────────────────────
+
+function PaymentBlock({
+  lane,
+  payment,
+  shopifyFinancialStatus,
+  orderId,
+}: {
+  lane: string | null;
+  payment: Record<string, unknown>;
+  shopifyFinancialStatus: string | null;
+  orderId: string;
+}) {
+  if (lane === "quarantine" && payment.quarantine === true) {
+    return <QuarantinePaymentBlock adminUrl={String(payment.admin_url ?? "")} />;
+  }
+  if (lane === "shopify_admin") {
+    return (
+      <ShopifyAdminPaymentBlock
+        payment={payment as Parameters<typeof ShopifyAdminPaymentBlock>[0]["payment"]}
+        shopifyFinancialStatus={shopifyFinancialStatus}
+        orderId={orderId}
+      />
+    );
+  }
+  if (lane === "conversion" || (lane === null && !("payment_reference_number" in payment))) {
+    return (
+      <ConversionPaymentBlock
+        payment={payment as Parameters<typeof ConversionPaymentBlock>[0]["payment"]}
+      />
+    );
+  }
+  // sales lane (or fallback)
+  return (
+    <SalesPaymentBlock
+      payment={payment as Parameters<typeof SalesPaymentBlock>[0]["payment"]}
+      orderId={orderId}
+    />
+  );
+}
+
+// ── Loading skeleton ──────────────────────────────────────────────────────────
+
+function BodySkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      {[80, 120, 60, 100, 80].map((w, i) => (
+        <div key={i} className="space-y-2">
+          <div className="h-2 w-16 rounded bg-[var(--color-border-primary)]" />
+          <div className={`h-3 w-${w} rounded bg-[var(--color-border-primary)] max-w-full`} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
 export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Props) {
   const [destination, setDestination] = useState<TriageDestination>(
     suggestDestination(ticket.delivery_method),
@@ -69,8 +194,31 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Full drawer data fetched from /full endpoint
+  const [fullData, setFullData] = useState<FullDrawerData | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fetchLoading, setFetchLoading] = useState(true);
+
   const claimedByOther =
     !!ticket.claimed_by_user_id && ticket.claimed_by_user_id !== currentUserId;
+
+  // Fetch full drawer data on mount
+  useEffect(() => {
+    let cancelled = false;
+    setFetchLoading(true);
+    setFetchError(null);
+    fetch(`/api/customer-service/orders/${ticket.id}/full`)
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.status === 404) { setFetchError("Order not found."); return; }
+        if (!res.ok) { setFetchError("Could not load order details."); return; }
+        const data = await res.json();
+        if (!cancelled) setFullData(data as FullDrawerData);
+      })
+      .catch(() => { if (!cancelled) setFetchError("Could not load order details."); })
+      .finally(() => { if (!cancelled) setFetchLoading(false); });
+    return () => { cancelled = true; };
+  }, [ticket.id]);
 
   // Esc closes; Cmd/Ctrl+Enter triggers Confirm & Route.
   useEffect(() => {
@@ -85,13 +233,6 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination, holdReason, saving, claimedByOther]);
-
-  const previewReceipt = useCallback(async () => {
-    const res = await fetch(`/api/sales/orders/${ticket.id}/receipt-signed-url`);
-    if (!res.ok) return;
-    const j = await res.json();
-    if (j.url) window.open(j.url, "_blank");
-  }, [ticket.id]);
 
   async function confirm() {
     setError(null);
@@ -119,6 +260,9 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
     }
   }
 
+  // Resolve intake_lane: prefer the /full response; fall back to ticket prop.
+  const intake_lane = fullData?.order.intake_lane ?? ticket.intake_lane ?? null;
+
   return (
     <div
       role="dialog"
@@ -140,7 +284,7 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-[var(--color-text-tertiary)]">
               <span>Working ticket</span>
-              <LaneChip createdByName={ticket.created_by_name} />
+              <LaneChip lane={intake_lane} />
             </div>
             <h2
               id="ticket-drawer-title"
@@ -177,84 +321,23 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
         <div
           className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 text-sm ${claimedByOther ? "opacity-60 pointer-events-none" : ""}`}
         >
-          <Section
-            label="Customer"
-            action={
-              <button
-                type="button"
-                disabled
-                title="Inline edit coming in Pass 5"
-                className="p-1 rounded text-[var(--color-text-tertiary)] cursor-not-allowed"
-                aria-label="Edit customer (coming soon)"
-              >
-                <Pencil size={12} />
-              </button>
-            }
-          >
-            <div className="space-y-1.5">
-              <CopyField
-                label="Name"
-                value={ticket.customer?.full_name ?? "—"}
-                copyable={!!ticket.customer?.full_name}
-              />
-              <CopyField
-                label="Phone"
-                value={ticket.customer?.phone ?? "—"}
-                copyable={!!ticket.customer?.phone}
-              />
-              <CopyField
-                label="Order #"
-                value={ticket.shopify_order_name ?? ticket.avalon_order_number ?? ticket.id.slice(0, 8)}
-                copyable
-              />
-            </div>
-          </Section>
-
-          <Section label="Total">
+          {/* Order header row */}
+          <div className="flex items-center justify-between">
             <div className="text-lg font-semibold tabular-nums">
               ₱{ticket.final_total_amount.toFixed(2)}
             </div>
-          </Section>
-
-          <Section label="Payment">
-            <div className="flex items-center gap-2">
-              <span>{ticket.mode_of_payment ?? "—"}</span>
-              {ticket.payment_other_label && (
-                <span className="text-xs text-[var(--color-text-tertiary)]">
-                  ({ticket.payment_other_label})
-                </span>
-              )}
-              {ticket.payment_receipt_path && (
-                <button
-                  type="button"
-                  onClick={() => void previewReceipt()}
-                  className="ml-1 inline-flex items-center gap-1 text-xs text-[var(--color-accent)] hover:opacity-80"
-                >
-                  <Paperclip size={12} /> View receipt
-                </button>
-              )}
-            </div>
-            {ticket.shopify_financial_status && (
-              <div className="text-[11px] text-[var(--color-text-tertiary)] mt-1">
-                Shopify: {ticket.shopify_financial_status}
-                {ticket.shopify_fulfillment_status
-                  ? ` · ${ticket.shopify_fulfillment_status}`
-                  : ""}
+            {ticket.delivery_method && (
+              <div className="inline-flex items-center gap-1.5 text-sm text-[var(--color-text-secondary)]">
+                <Truck size={14} />
+                <span>{ticket.delivery_method.toUpperCase()}</span>
+                {ticket.delivery_method_notes && (
+                  <span className="text-[11px] text-[var(--color-text-tertiary)]">
+                    · {ticket.delivery_method_notes}
+                  </span>
+                )}
               </div>
             )}
-          </Section>
-
-          <Section label="Delivery">
-            <div className="inline-flex items-center gap-1.5">
-              <Truck size={14} />
-              <span>{ticket.delivery_method?.toUpperCase() ?? "—"}</span>
-            </div>
-            {ticket.delivery_method_notes && (
-              <div className="text-[11px] text-[var(--color-text-tertiary)] mt-1">
-                {ticket.delivery_method_notes}
-              </div>
-            )}
-          </Section>
+          </div>
 
           {ticket.cs_hold_reason && (
             <Section label="Hold reason (existing)">
@@ -271,9 +354,72 @@ export function TicketDrawer({ ticket, currentUserId, onClose, onTriaged }: Prop
               </div>
             </Section>
           )}
+
+          {/* Body from /full endpoint */}
+          {fetchLoading && <BodySkeleton />}
+
+          {fetchError && !fetchLoading && (
+            <div className="px-3 py-2 rounded text-xs bg-[var(--color-error-light)] text-[var(--color-error)] border border-[var(--color-error-light)]">
+              {fetchError}
+            </div>
+          )}
+
+          {!fetchLoading && fullData && (
+            <>
+              <Section label="Shipping">
+                <ShippingBlock customer={fullData.customer} />
+              </Section>
+
+              <Section label="Billing">
+                <BillingBlock billing={fullData.customer} />
+              </Section>
+
+              <Section label="Items">
+                <ItemsBlock
+                  items={fullData.items}
+                  finalTotal={fullData.order.final_total_amount}
+                />
+              </Section>
+
+              <Section label="Payment">
+                <PaymentBlock
+                  lane={intake_lane}
+                  payment={fullData.payment}
+                  shopifyFinancialStatus={fullData.order.shopify_financial_status}
+                  orderId={ticket.id}
+                />
+              </Section>
+
+              {fullData.notes && (
+                <Section label="Sales notes">
+                  <NotesBlock notes={fullData.notes} />
+                </Section>
+              )}
+
+              <Section label="Edit plan">
+                <CockpitComposer
+                  orderId={ticket.id}
+                  existingItems={
+                    (fullData.plan?.items ?? []) as Array<{
+                      id: number;
+                      op: import("@/lib/cs/edit-plan/types").EditPlanOp;
+                      payload: unknown;
+                      created_at: string;
+                    }>
+                  }
+                  orderItems={fullData.items.map((i) => ({
+                    id: i.id,
+                    product_name: i.product_name,
+                    variant_name: i.variant_name,
+                    quantity: i.quantity,
+                  }))}
+                />
+              </Section>
+            </>
+          )}
         </div>
 
-        {/* footer */}
+        {/* footer — preserves all Pass 1 triage functionality */}
         <footer className="border-t border-[var(--color-border-primary)] px-5 py-4 space-y-3">
           {!claimedByOther && (
             <>
@@ -378,59 +524,36 @@ function Section({
   );
 }
 
-function LaneChip({ createdByName }: { createdByName: string | null }) {
-  // null created_by_name => storefront / Shopify-direct (conversion sale).
-  // populated => an Avalon agent created the order via the chat-sales flow.
-  const isConversion = !createdByName;
-  return (
-    <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
-        isConversion
-          ? "bg-[var(--color-info-light)] text-[var(--color-info)]"
-          : "bg-[var(--color-success-light)] text-[var(--color-success)]"
-      }`}
-    >
-      {isConversion ? "Conversion" : "Sales"}
-    </span>
-  );
+function LaneChip({ lane }: { lane: string | null }) {
+  if (lane === "sales") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-[var(--color-success-light)] text-[var(--color-success)]">
+        Sales
+      </span>
+    );
+  }
+  if (lane === "conversion") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-[var(--color-info-light)] text-[var(--color-info)]">
+        Conversion
+      </span>
+    );
+  }
+  if (lane === "shopify_admin") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-[var(--color-accent-light,var(--color-info-light))] text-[var(--color-accent)]">
+        Shopify Admin
+      </span>
+    );
+  }
+  if (lane === "quarantine") {
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-[var(--color-error-light)] text-[var(--color-error)]">
+        Quarantine
+      </span>
+    );
+  }
+  // Unknown / null: render nothing
+  return null;
 }
 
-function CopyField({
-  label,
-  value,
-  copyable,
-}: {
-  label: string;
-  value: string;
-  copyable: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-  const onCopy = async () => {
-    if (!copyable) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1200);
-    } catch {
-      // Clipboard API can fail in some browsers / iframe contexts. Silent fail.
-    }
-  };
-  return (
-    <div className="flex items-center gap-2 group">
-      <span className="text-[11px] text-[var(--color-text-tertiary)] w-14 shrink-0">
-        {label}
-      </span>
-      <span className="text-sm flex-1 min-w-0 truncate">{value}</span>
-      {copyable && (
-        <button
-          type="button"
-          onClick={() => void onCopy()}
-          aria-label={`Copy ${label}`}
-          className="p-1 rounded text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
-        >
-          {copied ? <Check size={12} /> : <Copy size={12} />}
-        </button>
-      )}
-    </div>
-  );
-}
