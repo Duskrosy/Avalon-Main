@@ -45,9 +45,9 @@ export function OrderPreviewCard({
     manualDiscount > 0;
 
   return (
-    <div className="border border-gray-200 rounded-md bg-white text-xs">
-      <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-        <span className="font-semibold text-gray-700">Order preview</span>
+    <div className="border border-[var(--color-border-primary)] rounded-md bg-[var(--color-surface-card)] text-xs">
+      <div className="px-3 py-2 border-b border-[var(--color-border-secondary)] flex items-center justify-between">
+        <span className="font-semibold text-[var(--color-text-primary)]">Order preview</span>
       </div>
 
       {customer && (
@@ -56,7 +56,7 @@ export function OrderPreviewCard({
             {customer.full_name} · {customer.phone ?? ""}
           </div>
           {customer.full_address && (
-            <div className="text-gray-600 mt-0.5">{customer.full_address}</div>
+            <div className="text-[var(--color-text-secondary)] mt-0.5">{customer.full_address}</div>
           )}
         </Section>
       )}
@@ -80,7 +80,7 @@ export function OrderPreviewCard({
           {voucher && totals.voucherDiscount > 0 && (
             <div className="flex justify-between">
               <span>Voucher ({voucher.code})</span>
-              <span className="text-rose-600 tabular-nums">
+              <span className="text-[var(--color-error)] tabular-nums">
                 -₱{totals.voucherDiscount.toFixed(2)}
               </span>
             </div>
@@ -90,19 +90,19 @@ export function OrderPreviewCard({
             autoDiscountPreview.applied.map((a, i) => (
               <div key={i} className="flex justify-between">
                 <span>Auto: {a.title}</span>
-                <span className="text-rose-600 tabular-nums">-₱{a.amount.toFixed(2)}</span>
+                <span className="text-[var(--color-error)] tabular-nums">-₱{a.amount.toFixed(2)}</span>
               </div>
             ))}
           {manualDiscount > 0 && (
             <>
               <div className="flex justify-between">
                 <span>Manual</span>
-                <span className="text-rose-600 tabular-nums">
+                <span className="text-[var(--color-error)] tabular-nums">
                   -₱{manualDiscount.toFixed(2)}
                 </span>
               </div>
               {manualDiscountReason && (
-                <div className="text-[11px] text-gray-500 ml-2">
+                <div className="text-[11px] text-[var(--color-text-secondary)] ml-2">
                   reason: {manualDiscountReason}
                 </div>
               )}
@@ -120,7 +120,7 @@ export function OrderPreviewCard({
         </Section>
       )}
 
-      <div className="px-3 py-2 border-t border-gray-200 bg-gray-50 flex justify-between">
+      <div className="px-3 py-2 border-t border-[var(--color-border-primary)] bg-[var(--color-bg-secondary)] flex justify-between">
         <span className="font-semibold">Total</span>
         <span className="font-semibold tabular-nums">₱{totals.total.toFixed(2)}</span>
       </div>
@@ -138,14 +138,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="px-3 py-2 border-b border-gray-100 last:border-b-0">
+    <div className="px-3 py-2 border-b border-[var(--color-border-secondary)] last:border-b-0">
       <div className="flex items-center justify-between mb-1">
-        <span className="font-medium text-gray-700">{title}</span>
+        <span className="font-medium text-[var(--color-text-primary)]">{title}</span>
         <button
           type="button"
           onClick={onEdit}
           aria-label={`Edit ${title}`}
-          className="text-blue-600"
+          className="text-[var(--color-accent)]"
         >
           <Edit3 size={11} />
         </button>

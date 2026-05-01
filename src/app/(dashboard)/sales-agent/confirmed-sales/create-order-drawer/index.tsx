@@ -116,13 +116,13 @@ export function CreateOrderDrawer({
       aria-label="Create order"
     >
       <div className="flex-1 bg-black/30 backdrop-blur-[1px]" onClick={onClose} />
-      <div className="w-full max-w-xl h-full bg-white shadow-2xl flex flex-col">
-        <header className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+      <div className="w-full max-w-xl h-full bg-[var(--color-surface-card)] shadow-2xl flex flex-col">
+        <header className="flex items-center justify-between px-5 py-3 border-b border-[var(--color-border-primary)]">
           <div>
             <div className="text-base font-semibold">
               {editingOrderId ? "Resume Draft" : "Create Order"}
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-[var(--color-text-secondary)]">
               Step {drawer.state.step} of 4 · {STEP_LABELS[drawer.state.step - 1]}
               {loading && " · Loading…"}
             </div>
@@ -130,14 +130,14 @@ export function CreateOrderDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             aria-label="Close"
           >
             <X size={18} />
           </button>
         </header>
 
-        <nav className="flex border-b border-gray-100 px-5 py-2 gap-1 text-[11px] uppercase tracking-wider">
+        <nav className="flex border-b border-[var(--color-border-secondary)] px-5 py-2 gap-1 text-[11px] uppercase tracking-wider">
           {STEP_LABELS.map((label, i) => {
             const stepNum = (i + 1) as 1 | 2 | 3 | 4;
             const isCurrent = drawer.state.step === stepNum;
@@ -150,10 +150,10 @@ export function CreateOrderDrawer({
                 disabled={!isPast && !isCurrent}
                 className={`flex items-center gap-1 px-2 py-1 rounded ${
                   isCurrent
-                    ? "bg-blue-50 text-blue-700"
+                    ? "bg-[var(--color-accent-light)] text-[var(--color-accent-hover)]"
                     : isPast
-                      ? "text-emerald-700 hover:bg-emerald-50"
-                      : "text-gray-400"
+                      ? "text-[var(--color-success-text)] hover:bg-[var(--color-success-light)]"
+                      : "text-[var(--color-text-tertiary)]"
                 }`}
               >
                 {isPast && <Check size={11} />}
@@ -217,12 +217,12 @@ export function CreateOrderDrawer({
         </main>
 
         {error && (
-          <div className="px-5 pb-2 text-xs text-rose-700 bg-rose-50 border-t border-rose-200 py-2">
+          <div className="px-5 pb-2 text-xs text-[var(--color-error-text)] bg-[var(--color-error-light)] border-t border-[var(--color-error)]/30 py-2">
             {error}
           </div>
         )}
 
-        <footer className="border-t border-gray-200 px-5 py-3 flex items-center justify-between gap-2">
+        <footer className="border-t border-[var(--color-border-primary)] px-5 py-3 flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={() =>
@@ -230,7 +230,7 @@ export function CreateOrderDrawer({
               drawer.setStep((drawer.state.step - 1) as 1 | 2 | 3 | 4)
             }
             disabled={drawer.state.step === 1 || drawer.submitting}
-            className="text-xs px-3 py-1.5 text-gray-600 hover:text-gray-900 disabled:text-gray-300 disabled:cursor-not-allowed"
+            className="text-xs px-3 py-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:text-gray-300 disabled:cursor-not-allowed"
           >
             Back
           </button>
@@ -239,7 +239,7 @@ export function CreateOrderDrawer({
               type="button"
               onClick={onSaveDraft}
               disabled={!drawer.state.customer || drawer.state.items.length === 0 || drawer.submitting}
-              className="text-xs px-3 py-1.5 border border-gray-200 rounded text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="text-xs px-3 py-1.5 border border-[var(--color-border-primary)] rounded text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
             >
               Save as Draft
             </button>
@@ -248,7 +248,7 @@ export function CreateOrderDrawer({
                 type="button"
                 onClick={onContinue}
                 disabled={!canAdvance || drawer.submitting}
-                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300"
+                className="text-xs px-3 py-1.5 bg-blue-600 text-[var(--color-text-inverted)] rounded hover:bg-blue-700 disabled:bg-gray-300"
               >
                 Continue
               </button>
@@ -257,7 +257,7 @@ export function CreateOrderDrawer({
                 type="button"
                 onClick={onConfirm}
                 disabled={!canAdvance || drawer.submitting}
-                className="text-xs px-4 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:bg-gray-300"
+                className="text-xs px-4 py-1.5 bg-emerald-600 text-[var(--color-text-inverted)] rounded hover:bg-emerald-700 disabled:bg-gray-300"
               >
                 {drawer.submitting ? "Confirming…" : "Confirm Order"}
               </button>

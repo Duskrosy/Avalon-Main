@@ -1,10 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Search, Trash2, Calculator, Edit3 } from "lucide-react";
+import { Search, Trash2, Calculator, Edit3, Loader2 } from "lucide-react";
 import type { DrawerLineItem } from "./types";
 
 type Family = { product_name: string; sku_count: number };
+
+// Module-level cache for /api/sales/products/families. 5-minute TTL — Shopify
+// product list doesn't change minute-to-minute, and cold-start cost on
+// repeated drawer opens is the actual pain.
+type FamilyCacheEntry = { at: number; data: Family[] };
+const FAMILIES_CACHE = new Map<string, FamilyCacheEntry>();
+const FAMILIES_TTL_MS = 5 * 60_000;
 type SizeOption = { value: string; stock: number };
 type ColorOption = { value: string; stock: number };
 type Variant = {
@@ -40,15 +47,29 @@ export function StepItems({
   const [familyQuery, setFamilyQuery] = useState("");
   const [families, setFamilies] = useState<Family[]>([]);
   const [pickedFamily, setPickedFamily] = useState<string | null>(null);
+  const [loadingFamilies, setLoadingFamilies] = useState(false);
 
   useEffect(() => {
+    // Cache hit — instant render, no spinner.
+    const cached = FAMILIES_CACHE.get(familyQuery);
+    if (cached && Date.now() - cached.at < FAMILIES_TTL_MS) {
+      setFamilies(cached.data);
+      setLoadingFamilies(false);
+      return;
+    }
+    setLoadingFamilies(true);
     const t = setTimeout(() => {
       const params = new URLSearchParams();
       if (familyQuery) params.set("q", familyQuery);
       fetch(`/api/sales/products/families?${params.toString()}`)
         .then((r) => r.json())
-        .then((j) => setFamilies(j.families ?? []))
-        .catch(() => setFamilies([]));
+        .then((j) => {
+          const list = (j.families ?? []) as Family[];
+          FAMILIES_CACHE.set(familyQuery, { at: Date.now(), data: list });
+          setFamilies(list);
+        })
+        .catch(() => setFamilies([]))
+        .finally(() => setLoadingFamilies(false));
     }, 200);
     return () => clearTimeout(t);
   }, [familyQuery]);
@@ -105,19 +126,25 @@ export function StepItems({
       {!pickedFamily ? (
         <div>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
             <input
               type="search"
               value={familyQuery}
               onChange={(e) => setFamilyQuery(e.target.value)}
               placeholder={familyQuery ? "Searching…" : "Search families…"}
-              className="w-full pl-9 px-3 py-2 text-sm border border-gray-200 rounded-md"
+              className="w-full pl-9 px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
             />
           </div>
-          <div className="mt-2 max-h-56 overflow-y-auto border border-gray-100 rounded-md">
-            {families.length === 0 && (
-              <div className="p-2 text-xs text-gray-400">
-                {familyQuery ? "No families match" : "Loading…"}
+          <div className="mt-2 max-h-56 overflow-y-auto border border-[var(--color-border-secondary)] rounded-md">
+            {loadingFamilies && families.length === 0 && (
+              <div className="p-2 text-xs text-[var(--color-text-tertiary)] flex items-center gap-1.5">
+                <Loader2 size={11} className="animate-spin" />
+                Searching…
+              </div>
+            )}
+            {!loadingFamilies && families.length === 0 && (
+              <div className="p-2 text-xs text-[var(--color-text-tertiary)]">
+                {familyQuery ? "No families match" : "No families yet"}
               </div>
             )}
             {families.map((f) => (
@@ -125,7 +152,7 @@ export function StepItems({
                 type="button"
                 key={f.product_name}
                 onClick={() => setPickedFamily(f.product_name)}
-                className="w-full text-left px-2 py-1.5 hover:bg-gray-50 text-xs"
+                className="w-full text-left px-2 py-1.5 hover:bg-[var(--color-surface-hover)] text-xs"
               >
                 <span className="font-medium">{f.product_name}</span>
               </button>
@@ -134,7 +161,7 @@ export function StepItems({
         </div>
       ) : (
         <>
-          <div className="flex items-center gap-2 px-2 py-1.5 bg-gray-50 border border-gray-200 rounded-md">
+          <div className="flex items-center gap-2 px-2 py-1.5 bg-[var(--color-bg-secondary)] border border-[var(--color-border-primary)] rounded-md">
             <span className="text-xs">Picked:</span>
             <span className="text-xs font-medium">{pickedFamily}</span>
             <button
@@ -144,23 +171,23 @@ export function StepItems({
                 setPickedSize(null);
                 setPickedColor(null);
               }}
-              className="ml-auto inline-flex items-center gap-1 text-[11px] text-blue-600"
+              className="ml-auto inline-flex items-center gap-1 text-[11px] text-[var(--color-accent)]"
             >
               <Edit3 size={11} /> change
             </button>
           </div>
 
           {!variants ? (
-            <div className="text-xs text-gray-400">Loading sizes…</div>
+            <div className="text-xs text-[var(--color-text-tertiary)]">Loading sizes…</div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {variants.sizes.length > 0 && (
                 <div>
-                  <label className="text-xs font-medium text-gray-700 block mb-1">Size</label>
+                  <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Size</label>
                   <select
                     value={pickedSize ?? ""}
                     onChange={(e) => setPickedSize(e.target.value || null)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
                   >
                     <option value="">— Select —</option>
                     {variants.sizes.map((s) => (
@@ -173,11 +200,11 @@ export function StepItems({
               )}
               {variants.colors.length > 0 && (
                 <div>
-                  <label className="text-xs font-medium text-gray-700 block mb-1">Color</label>
+                  <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Color</label>
                   <select
                     value={pickedColor ?? ""}
                     onChange={(e) => setPickedColor(e.target.value || null)}
-                    className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                    className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
                   >
                     <option value="">— Select —</option>
                     {variants.colors.map((c) => (
@@ -192,12 +219,12 @@ export function StepItems({
           )}
 
           {pickedVariant?.image_url && (
-            <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={pickedVariant.image_url}
                 alt={pickedFamily ?? ""}
-                className="w-20 h-14 object-cover rounded border border-gray-200"
+                className="w-20 h-14 object-cover rounded border border-[var(--color-border-primary)]"
               />
               <span>{pickedSize} / {pickedColor} · ₱{pickedVariant.price.toFixed(2)}</span>
             </div>
@@ -205,26 +232,26 @@ export function StepItems({
 
           <div className="flex items-end gap-2">
             <div className="w-24">
-              <label className="text-xs font-medium text-gray-700 block mb-1">Qty</label>
+              <label className="text-xs font-medium text-[var(--color-text-primary)] block mb-1">Qty</label>
               <input
                 type="number"
                 min={1}
                 value={qty}
                 onChange={(e) => setQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
-                className="w-full px-3 py-2 text-sm border border-gray-200 rounded-md"
+                className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
               />
             </div>
             <button
               type="button"
               onClick={handleAdd}
               disabled={!pickedVariant}
-              className="px-3 py-2 text-xs bg-blue-600 text-white rounded-md disabled:opacity-50"
+              className="px-3 py-2 text-xs bg-blue-600 text-[var(--color-text-inverted)] rounded-md disabled:opacity-50"
             >
               + Add to order
             </button>
           </div>
           {pickedSize && pickedColor && !pickedVariant && (
-            <div className="text-[11px] text-rose-600">
+            <div className="text-[11px] text-[var(--color-error)]">
               No variant for size {pickedSize} / {pickedColor}
             </div>
           )}
@@ -233,14 +260,14 @@ export function StepItems({
 
       {/* Order items list */}
       {items.length > 0 && (
-        <div className="border-t border-gray-100 pt-3">
+        <div className="border-t border-[var(--color-border-secondary)] pt-3">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-medium text-gray-700">In this order</div>
+            <div className="text-xs font-medium text-[var(--color-text-primary)]">In this order</div>
             {items.length >= 2 && (
               <button
                 type="button"
                 onClick={onSplitBundle}
-                className="inline-flex items-center gap-1 text-[11px] text-blue-600"
+                className="inline-flex items-center gap-1 text-[11px] text-[var(--color-accent)]"
               >
                 <Calculator size={12} /> Split bundle evenly
               </button>
@@ -251,7 +278,7 @@ export function StepItems({
               <div key={idx} className="flex items-center gap-2 text-xs">
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{it.product_name}</div>
-                  <div className="text-gray-500 truncate">
+                  <div className="text-[var(--color-text-secondary)] truncate">
                     {it.variant_name ?? ""}
                   </div>
                 </div>
@@ -262,7 +289,7 @@ export function StepItems({
                   onChange={(e) =>
                     onUpdateQty(idx, Math.max(1, parseInt(e.target.value, 10) || 1))
                   }
-                  className="w-14 px-2 py-1 text-xs border border-gray-200 rounded"
+                  className="w-14 px-2 py-1 text-xs border border-[var(--color-border-primary)] rounded"
                 />
                 <span className="w-20 text-right tabular-nums">
                   ₱{it.line_total_amount.toFixed(2)}
@@ -270,7 +297,7 @@ export function StepItems({
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
-                  className="text-rose-500"
+                  className="text-[var(--color-error)]"
                 >
                   <Trash2 size={14} />
                 </button>

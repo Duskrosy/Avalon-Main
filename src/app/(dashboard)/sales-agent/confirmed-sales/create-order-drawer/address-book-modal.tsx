@@ -159,16 +159,16 @@ export function AddressBookModal({
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+      <div className="bg-[var(--color-surface-card)] rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border-primary)]">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-primary)]">
             <MapPin size={14} />
             Saved Addresses
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-700"
+            className="text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)]"
             aria-label="Close"
           >
             <X size={16} />
@@ -177,17 +177,17 @@ export function AddressBookModal({
 
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {loading && (
-            <div className="text-xs text-gray-500 text-center py-6">
+            <div className="text-xs text-[var(--color-text-secondary)] text-center py-6">
               Loading…
             </div>
           )}
           {error && (
-            <div className="text-xs text-rose-600 px-2 py-1.5 bg-rose-50 rounded">
+            <div className="text-xs text-[var(--color-error)] px-2 py-1.5 bg-[var(--color-error-light)] rounded">
               {error}
             </div>
           )}
           {!loading && !error && addresses.length === 0 && (
-            <div className="text-xs text-gray-500 text-center py-6">
+            <div className="text-xs text-[var(--color-text-secondary)] text-center py-6">
               No saved addresses on Shopify.
             </div>
           )}
@@ -200,8 +200,8 @@ export function AddressBookModal({
                 key={a.id}
                 className={`border rounded-md p-3 text-sm ${
                   isSelected
-                    ? "border-blue-400 bg-blue-50/40"
-                    : "border-gray-200"
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent-light)]/40"
+                    : "border-[var(--color-border-primary)]"
                 }`}
               >
                 <button
@@ -214,15 +214,15 @@ export function AddressBookModal({
                     <div className="flex-1 min-w-0">
                       {!isEditing ? (
                         <>
-                          <div className="font-medium text-gray-900 truncate">
+                          <div className="font-medium text-[var(--color-text-primary)] truncate">
                             {a.address1 || "—"}
                           </div>
                           {a.address2 && (
-                            <div className="text-xs text-gray-600 truncate">
+                            <div className="text-xs text-[var(--color-text-secondary)] truncate">
                               {a.address2}
                             </div>
                           )}
-                          <div className="text-xs text-gray-600 mt-0.5">
+                          <div className="text-xs text-[var(--color-text-secondary)] mt-0.5">
                             {[a.city, a.zip].filter(Boolean).join(" · ")}
                           </div>
                         </>
@@ -240,7 +240,7 @@ export function AddressBookModal({
                               })
                             }
                             placeholder="Street address"
-                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded"
+                            className="w-full px-2 py-1 text-xs border border-[var(--color-border-primary)] rounded"
                           />
                           <input
                             value={editForm.address2}
@@ -251,7 +251,7 @@ export function AddressBookModal({
                               })
                             }
                             placeholder="Address line 2"
-                            className="w-full px-2 py-1 text-xs border border-gray-200 rounded"
+                            className="w-full px-2 py-1 text-xs border border-[var(--color-border-primary)] rounded"
                           />
                           <div className="grid grid-cols-2 gap-1.5">
                             <input
@@ -263,7 +263,7 @@ export function AddressBookModal({
                                 })
                               }
                               placeholder="City"
-                              className="w-full px-2 py-1 text-xs border border-gray-200 rounded"
+                              className="w-full px-2 py-1 text-xs border border-[var(--color-border-primary)] rounded"
                             />
                             <input
                               value={editForm.zip}
@@ -274,7 +274,7 @@ export function AddressBookModal({
                                 })
                               }
                               placeholder="Zip"
-                              className="w-full px-2 py-1 text-xs border border-gray-200 rounded"
+                              className="w-full px-2 py-1 text-xs border border-[var(--color-border-primary)] rounded"
                             />
                           </div>
                         </div>
@@ -298,13 +298,13 @@ export function AddressBookModal({
                 </button>
 
                 {!isEditing ? (
-                  <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-[var(--color-border-secondary)]">
                     {!a.default && (
                       <button
                         type="button"
                         disabled={isBusy}
                         onClick={() => setDefault(a)}
-                        className="text-[11px] px-2 py-1 text-gray-600 hover:text-gray-900 disabled:opacity-50"
+                        className="text-[11px] px-2 py-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50"
                       >
                         {isBusy ? "…" : "Set as default"}
                       </button>
@@ -313,7 +313,7 @@ export function AddressBookModal({
                       type="button"
                       disabled={isBusy}
                       onClick={() => startEdit(a)}
-                      className="text-[11px] px-2 py-1 text-gray-600 hover:text-gray-900 disabled:opacity-50 flex items-center gap-1"
+                      className="text-[11px] px-2 py-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 flex items-center gap-1"
                     >
                       <Edit2 size={10} />
                       Edit
@@ -328,11 +328,11 @@ export function AddressBookModal({
                     </button>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-gray-100">
+                  <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-[var(--color-border-secondary)]">
                     <button
                       type="button"
                       onClick={() => setEditingId(null)}
-                      className="text-[11px] px-2 py-1 text-gray-600 hover:text-gray-900"
+                      className="text-[11px] px-2 py-1 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                     >
                       Cancel
                     </button>
