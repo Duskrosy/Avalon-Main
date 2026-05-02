@@ -57,12 +57,102 @@ export type ShopifyOrder = {
   app_id?: number | null;                  // 580111 = web checkout; others = admin/POS
 };
 
+// ─── Rate limiting ────────────────────────────────────────────────────────────
+//
+// Shopify Standard plan = 2 GraphQL requests/second per shop.
+// Without throttling, concurrent callers (the conversion reconciler runs at
+// concurrency=5; CS Pass 2 Phase B-Lite Apply fires 3 sequential mutations
+// per click) can trip 429s. Two-layer defence: proactive token bucket +
+// reactive retry-on-429.
+//
+//   client call
+//      │
+//      ▼
+//   bucket.take()  ◄── waits if tokens < 1 (refills 1 token / 500ms = 2 req/s)
+//      │
+//      ▼
+//   fetch()  ──────► 200/4xx (other) → return as-is
+//      │
+//      ▼
+//      429 → sleep(retry-after || 1s) → bucket.take() → fetch() once more
+//
+// Per-process bucket. Across Vercel instances each process has its own
+// bucket, but the retry-on-429 path catches what the bucket misses.
+
+class TokenBucket {
+  private tokens: number;
+  private lastRefill: number;
+
+  constructor(
+    private readonly capacity: number,
+    private readonly refillIntervalMs: number,
+  ) {
+    this.tokens = capacity;
+    this.lastRefill = Date.now();
+  }
+
+  async take(): Promise<void> {
+    while (true) {
+      const now = Date.now();
+      const elapsed = now - this.lastRefill;
+      if (elapsed > 0) {
+        this.tokens = Math.min(
+          this.capacity,
+          this.tokens + elapsed / this.refillIntervalMs,
+        );
+        this.lastRefill = now;
+      }
+      if (this.tokens >= 1) {
+        this.tokens -= 1;
+        return;
+      }
+      const waitMs = Math.ceil((1 - this.tokens) * this.refillIntervalMs);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+}
+
+// Shopify Standard: 2 req/s → capacity=2, refill 1 token every 500ms.
+const shopifyBucket = new TokenBucket(2, 500);
+
+/**
+ * Internal: every Shopify HTTP call goes through this. Applies the token
+ * bucket, performs the fetch, and retries once on 429 (honouring the
+ * `retry-after` header when present, defaulting to 1 second otherwise).
+ *
+ * Callers receive the final Response and handle status / body parsing.
+ */
+async function _shopifyRequest(url: string, init: RequestInit): Promise<Response> {
+  await shopifyBucket.take();
+  let res = await fetch(url, init);
+  if (res.status === 429) {
+    const retryAfterHeader = res.headers.get("retry-after");
+    const retryAfterMs =
+      retryAfterHeader && Number.isFinite(Number(retryAfterHeader))
+        ? Number(retryAfterHeader) * 1000
+        : 1000;
+    await new Promise((resolve) => setTimeout(resolve, retryAfterMs));
+    await shopifyBucket.take();
+    res = await fetch(url, init);
+  }
+  return res;
+}
+
+// Exposed for unit tests only — not part of the public API. Resets bucket
+// state so tests can run with a clean slate.
+export function __resetShopifyBucketForTests(): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (shopifyBucket as any).tokens = 2;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (shopifyBucket as any).lastRefill = Date.now();
+}
+
 // ─── Base fetch ───────────────────────────────────────────────────────────────
 
 async function shopifyGet<T>(path: string): Promise<T> {
   const token = await getShopifyToken();
 
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await _shopifyRequest(`${BASE}${path}`, {
     headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
     cache: "no-store",
   });
@@ -78,7 +168,7 @@ type ShopifyGraphQLResponse<T> = { data?: T; errors?: Array<{ message: string }>
 
 async function shopifyGraphQL<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const token = await getShopifyToken();
-  const res = await fetch(`${BASE}/graphql.json`, {
+  const res = await _shopifyRequest(`${BASE}/graphql.json`, {
     method: "POST",
     headers: {
       "X-Shopify-Access-Token": token,
@@ -172,7 +262,7 @@ export async function fetchShopifyOrders(params: {
 
   while (nextUrl) {
     const pageUrl: string = nextUrl;
-    const res: Response = await fetch(pageUrl, {
+    const res: Response = await _shopifyRequest(pageUrl, {
       headers: {
         "X-Shopify-Access-Token": token,
         "Content-Type": "application/json",
@@ -270,7 +360,7 @@ export function buildOrderRow(
 
 async function shopifyPost<T>(path: string, body: unknown): Promise<T> {
   const token = await getShopifyToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await _shopifyRequest(`${BASE}${path}`, {
     method: "POST",
     headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -285,7 +375,7 @@ async function shopifyPost<T>(path: string, body: unknown): Promise<T> {
 
 async function shopifyPut<T>(path: string, body: unknown): Promise<T> {
   const token = await getShopifyToken();
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await _shopifyRequest(`${BASE}${path}`, {
     method: "PUT",
     headers: { "X-Shopify-Access-Token": token, "Content-Type": "application/json" },
     body: JSON.stringify(body),
