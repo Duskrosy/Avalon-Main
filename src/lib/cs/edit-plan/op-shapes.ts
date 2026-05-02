@@ -36,15 +36,45 @@ export const AddressPayloadSchema = z.object({
   zip: z.string().optional(),
   phone: z.string().optional(),
   recipient_name: z.string().optional(),
+  // Optional WHY for the address change. Captured at compose time, rendered
+  // alongside the row in the audit timeline. No SQL column — payload-scoped.
+  reason: z.string().optional(),
 });
 
 // Billing address shares the same shape as shipping.
 export const AddressShippingPayloadSchema = AddressPayloadSchema;
 export const AddressBillingPayloadSchema = AddressPayloadSchema;
 
-export const NotePayloadSchema = z.object({
+// Free-text note (the original shape).
+const FreeTextNotePayloadSchema = z.object({
   text: z.string().min(1),
 });
+
+// Manual-log capture: rep did an item change / cancel directly in Shopify
+// admin (Phase B-Lite does not auto-write those paths). The audit row lives
+// here as a structured note rather than a new op type, so no migration is
+// needed against the cs_edit_plan_items op CHECK constraint.
+//
+// Filter for audit views:
+//   WHERE op = 'note' AND payload->>'kind' = 'manual_shopify_edit'
+const ManualShopifyEditNotePayloadSchema = z.object({
+  kind: z.literal('manual_shopify_edit'),
+  op_described: z.enum(['item_add', 'item_remove', 'qty_change', 'cancel']),
+  summary: z.string().min(1),
+  reason: z.string().optional(),
+  shopify_link: z.string().url().optional(),
+});
+
+// Discriminated union: either a free-text note OR a manual-log entry.
+// Existing consumers writing { text: "..." } continue to work unchanged.
+export const NotePayloadSchema = z.union([
+  FreeTextNotePayloadSchema,
+  ManualShopifyEditNotePayloadSchema,
+]);
+
+export type ManualShopifyEditNotePayload = z.infer<
+  typeof ManualShopifyEditNotePayloadSchema
+>;
 
 // ─── TypeScript types inferred from schemas ───────────────────────────────────
 
