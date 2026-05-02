@@ -1257,3 +1257,145 @@ export async function searchShopifyVariants(
   }
   return out;
 }
+
+// ─── Order edit (GraphQL Admin API) ──────────────────────────────────────────
+//
+// Two-mutation flow with an intermediate calculatedOrder. CS Pass 2 Phase
+// B-Lite uses this for address auto-write only; item changes and cancels
+// stay manual in Shopify admin (and are captured via the manual_log note
+// payload variant).
+//
+//   orderEditBegin(orderId)
+//      → returns calculatedOrder.id (intermediate session id, in-flight)
+//   orderEditUpdateShippingAddress(calculatedOrderId, address)
+//      → stages the address change inside the calc order
+//   orderEditCommit(calculatedOrderId)
+//      → returns the post-write order id (the idempotency anchor —
+//        cs_edit_plans.shopify_commit_id is unique on this value)
+//
+// Idempotency: cross-model verified — anchor on commit_id, not calc id.
+// See learning [shopify-orderedit-two-mutation].
+
+export interface ShopifyMailingAddressInput {
+  address1?: string;
+  address2?: string;
+  city?: string;
+  company?: string;
+  country?: string;
+  countryCode?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  province?: string;
+  provinceCode?: string;
+  zip?: string;
+}
+
+export interface OrderEditBeginResult {
+  calculatedOrderId: string;
+}
+
+export interface OrderEditCommitResult {
+  committedOrderId: string;
+}
+
+interface UserError {
+  field: string[] | null;
+  message: string;
+}
+
+function throwOnUserErrors(label: string, errors: UserError[] | undefined): void {
+  if (errors && errors.length > 0) {
+    const first = errors[0];
+    const path = first.field?.join('.') ?? '';
+    throw new Error(`${label}${path ? ` [${path}]` : ''}: ${first.message}`);
+  }
+}
+
+/**
+ * Begin an order edit session for the given Shopify order id (numeric, REST id).
+ * Returns the calculated-order id used by subsequent edit mutations.
+ */
+export async function orderEditBegin(
+  shopifyOrderId: string | number,
+): Promise<OrderEditBeginResult> {
+  const gid = `gid://shopify/Order/${shopifyOrderId}`;
+  const MUTATION = `
+    mutation OrderEditBegin($id: ID!) {
+      orderEditBegin(id: $id) {
+        calculatedOrder { id }
+        userErrors { field message }
+      }
+    }`;
+  type Resp = {
+    orderEditBegin: {
+      calculatedOrder: { id: string } | null;
+      userErrors: UserError[];
+    };
+  };
+  const data = await shopifyGraphQL<Resp>(MUTATION, { id: gid });
+  throwOnUserErrors('orderEditBegin', data.orderEditBegin.userErrors);
+  const calcId = data.orderEditBegin.calculatedOrder?.id;
+  if (!calcId) throw new Error('orderEditBegin: no calculatedOrder returned');
+  return { calculatedOrderId: calcId };
+}
+
+/**
+ * Update the shipping address on an in-progress calculated order. Must follow
+ * orderEditBegin and precede orderEditCommit.
+ */
+export async function orderEditUpdateShippingAddress(
+  calculatedOrderId: string,
+  address: ShopifyMailingAddressInput,
+): Promise<void> {
+  const MUTATION = `
+    mutation OrderEditUpdateShippingAddress(
+      $id: ID!, $address: MailingAddressInput!
+    ) {
+      orderEditUpdateShippingAddress(id: $id, shippingAddress: $address) {
+        calculatedOrder { id }
+        userErrors { field message }
+      }
+    }`;
+  type Resp = {
+    orderEditUpdateShippingAddress: {
+      calculatedOrder: { id: string } | null;
+      userErrors: UserError[];
+    };
+  };
+  const data = await shopifyGraphQL<Resp>(MUTATION, {
+    id: calculatedOrderId,
+    address,
+  });
+  throwOnUserErrors(
+    'orderEditUpdateShippingAddress',
+    data.orderEditUpdateShippingAddress.userErrors,
+  );
+}
+
+/**
+ * Commit the calculated order. Returns the post-write Shopify order id used
+ * as the idempotency anchor in cs_edit_plans.shopify_commit_id.
+ */
+export async function orderEditCommit(
+  calculatedOrderId: string,
+): Promise<OrderEditCommitResult> {
+  const MUTATION = `
+    mutation OrderEditCommit($id: ID!) {
+      orderEditCommit(id: $id, notifyCustomer: false, staffNote: null) {
+        order { id }
+        userErrors { field message }
+      }
+    }`;
+  type Resp = {
+    orderEditCommit: {
+      order: { id: string } | null;
+      userErrors: UserError[];
+    };
+  };
+  const data = await shopifyGraphQL<Resp>(MUTATION, { id: calculatedOrderId });
+  throwOnUserErrors('orderEditCommit', data.orderEditCommit.userErrors);
+  const orderId = data.orderEditCommit.order?.id;
+  if (!orderId) throw new Error('orderEditCommit: no order returned');
+  return { committedOrderId: orderId };
+}
