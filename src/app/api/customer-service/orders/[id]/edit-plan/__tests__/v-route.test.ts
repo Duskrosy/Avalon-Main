@@ -22,8 +22,9 @@
 //   6. Route replaces items on existing draft (idempotent compose)
 //   7. Response includes price_delta, payment_implication, proposed_path
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ZodError } from 'zod';
+import { NextRequest } from 'next/server';
 
 // ─── Relative imports — work without @/ alias resolution ────────────────────
 import {
@@ -39,6 +40,30 @@ import {
 import { computePlanAnalysis } from '../../../../../../../lib/cs/edit-plan/compute-analysis';
 import type { CurrentOrder, CurrentOrderItem } from '../../../../../../../lib/cs/edit-plan/compute-analysis';
 import type { EditPlanItem } from '../../../../../../../lib/cs/edit-plan/types';
+
+// ─── Mock setup for Layer B (must be hoisted before route import) ────────────
+// Pattern source: src/app/api/customer-service/orders/[id]/full/__tests__/v-route.test.ts
+// Tests run without a live dev server — supabase clients and permissions are mocked.
+
+let mockGetUser: ReturnType<typeof vi.fn>;
+let mockFrom: ReturnType<typeof vi.fn>;
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(async () => ({
+    auth: { getUser: vi.fn() },
+  })),
+}));
+
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: vi.fn(() => ({ from: mockFrom })),
+}));
+
+vi.mock('@/lib/permissions', () => ({
+  getCurrentUser: vi.fn(async () => mockGetUser()),
+}));
+
+// Import POST after mocks are declared (vi.mock is hoisted automatically).
+import { POST } from '../route';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -176,48 +201,65 @@ describe('computePlanAnalysis — route-level sanity checks', () => {
   });
 });
 
-// ─── Layer B: Route integration specs ────────────────────────────────────────
-// These hit the running dev server and are documented as runnable spec.
-// They follow the same pattern as claim-and-route.test.ts — they pass once
-// TEST_BASE_URL points at a live server with migrations 00101 applied.
+// ─── Layer B: Route handler tests with mocked supabase + permissions ────────
+//
+// Pattern source: src/app/api/customer-service/orders/[id]/full/__tests__/v-route.test.ts
+// Direct POST(request, ctx) invocation; supabase clients and getCurrentUser
+// are mocked at module boundary. No dev server required.
+//
+// mockFrom dispatches by table name. Each test wires a per-table chain.
 
-const BASE = process.env.TEST_BASE_URL ?? 'http://localhost:3000';
+const VALID_ORDER_UUID = '00000000-0000-0000-0000-000000000001';
+const VALID_USER = { id: 'user-uuid-1', role: { tier: 3 } };
 
-async function composeEditPlan(
-  orderId: string | number,
-  body: unknown,
-  cookie: string,
-) {
-  return fetch(
-    `${BASE}/api/customer-service/orders/${orderId}/edit-plan`,
+function makeRequest(orderId: string, body: unknown): NextRequest {
+  return new NextRequest(
+    `http://localhost/api/customer-service/orders/${orderId}/edit-plan`,
     {
       method: 'POST',
-      headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify(body),
+      headers: { 'content-type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
     },
   );
 }
 
-describe('POST /api/customer-service/orders/[id]/edit-plan — integration', () => {
+function makeCtx(orderId: string) {
+  return { params: Promise.resolve({ id: orderId }) };
+}
+
+beforeEach(() => {
+  mockGetUser = vi.fn(() => VALID_USER);
+  mockFrom = vi.fn();
+});
+
+describe('POST /api/customer-service/orders/[id]/edit-plan — route handler', () => {
   it('returns 401 when unauthenticated', async () => {
-    const res = await composeEditPlan('test-order-id', { items: [] }, '');
+    mockGetUser = vi.fn(() => null);
+
+    const res = await POST(makeRequest(VALID_ORDER_UUID, { items: [] }), makeCtx(VALID_ORDER_UUID));
     expect(res.status).toBe(401);
   });
 
+  it('returns 400 when path id is not a uuid', async () => {
+    const res = await POST(makeRequest('not-a-uuid', { items: [] }), makeCtx('not-a-uuid'));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/invalid order id/i);
+  });
+
   it('returns 400 when items array is missing', async () => {
-    const res = await composeEditPlan('test-order-id', {}, 'cs-rep-cookie');
+    const res = await POST(makeRequest(VALID_ORDER_UUID, {}), makeCtx(VALID_ORDER_UUID));
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.issues).toBeInstanceOf(Array);
   });
 
   it('returns 400 when add_item payload is missing qty', async () => {
-    const res = await composeEditPlan(
-      'test-order-id',
-      {
+    const res = await POST(
+      makeRequest(VALID_ORDER_UUID, {
         items: [{ op: 'add_item', payload: { variant_id: 'v1' } }],
-      },
-      'cs-rep-cookie',
+      }),
+      makeCtx(VALID_ORDER_UUID),
     );
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -225,22 +267,93 @@ describe('POST /api/customer-service/orders/[id]/edit-plan — integration', () 
   });
 
   it('creates a new draft plan with computed analysis', async () => {
-    // Requires: test-order-id seeded with status=confirmed, migration 00101 applied
-    const res = await composeEditPlan(
-      'test-order-id',
-      {
+    // Wire the per-table chains:
+    //   cs_edit_plans select → no existing draft (maybeSingle returns null)
+    //   cs_edit_plans insert → returns the new plan row
+    //   cs_edit_plan_items insert → returns the inserted items
+    //   orders select → returns the current order row
+    //   order_items select → returns current items
+    const newPlanRow = {
+      id: 42,
+      status: 'draft',
+      chosen_path: null,
+      applied_at: null,
+      error_message: null,
+      created_at: '2026-05-03T00:00:00Z',
+      updated_at: '2026-05-03T00:00:00Z',
+    };
+    const insertedItems = [
+      { id: 1, op: 'add_item', payload: { variant_id: 'v-new', qty: 1, unit_price: 500 }, created_at: '2026-05-03T00:00:00Z' },
+      { id: 2, op: 'note', payload: { text: 'Called in by customer' }, created_at: '2026-05-03T00:00:00Z' },
+    ];
+    const orderRow = {
+      id: VALID_ORDER_UUID,
+      final_total_amount: 10000,
+      intake_lane: 'sales',
+      shopify_financial_status: 'paid',
+    };
+    const orderItemsRows: never[] = []; // empty — add_item doesn't reference existing items
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'cs_edit_plans') {
+        return {
+          // select chain ending in maybeSingle → null (no existing draft)
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+          // insert chain ending in single → the new plan row
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: newPlanRow, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'cs_edit_plan_items') {
+        return {
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: insertedItems, error: null }),
+          }),
+        };
+      }
+      if (table === 'orders') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: orderRow, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'order_items') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: orderItemsRows, error: null }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await POST(
+      makeRequest(VALID_ORDER_UUID, {
         items: [
           { op: 'add_item', payload: { variant_id: 'v-new', qty: 1, unit_price: 500 } },
           { op: 'note', payload: { text: 'Called in by customer' } },
         ],
-      },
-      'cs-rep-cookie',
+      }),
+      makeCtx(VALID_ORDER_UUID),
     );
+
     expect(res.status).toBe(200);
     const { plan } = await res.json();
     expect(plan.status).toBe('draft');
     expect(plan.items).toHaveLength(2);
-    expect(plan.price_delta).toBe(500); // 1 * 500
+    expect(plan.price_delta).toBe(500);
     expect(plan.payment_implication).toBe('additional_charge');
     expect(plan.proposed_path).toBe('order_edit');
     expect(plan.applied_at).toBeNull();
@@ -248,29 +361,188 @@ describe('POST /api/customer-service/orders/[id]/edit-plan — integration', () 
   });
 
   it('replaces items on an existing draft (idempotent compose)', async () => {
-    // First compose — creates the draft
-    await composeEditPlan(
-      'test-order-id',
-      { items: [{ op: 'note', payload: { text: 'First version' } }] },
-      'cs-rep-cookie',
-    );
-
-    // Second compose on the same order — replaces items
-    const res = await composeEditPlan(
-      'test-order-id',
+    // Existing draft path:
+    //   cs_edit_plans select → existing draft row
+    //   cs_edit_plan_items delete → ok
+    //   cs_edit_plans update → same plan id, refreshed updated_at
+    //   cs_edit_plan_items insert → new single address item
+    //   orders + order_items selects as in previous test
+    const existingPlan = {
+      id: 7,
+      status: 'draft',
+      chosen_path: null,
+      applied_at: null,
+      error_message: null,
+      created_at: '2026-05-02T00:00:00Z',
+      updated_at: '2026-05-02T00:00:00Z',
+    };
+    const updatedPlan = { ...existingPlan, updated_at: '2026-05-03T00:00:00Z' };
+    const insertedItems = [
       {
+        id: 99,
+        op: 'address_shipping',
+        payload: { street: '1 New St', city: 'BGC', country: 'PH' },
+        created_at: '2026-05-03T00:00:00Z',
+      },
+    ];
+    const orderRow = {
+      id: VALID_ORDER_UUID,
+      final_total_amount: 10000,
+      intake_lane: 'sales',
+      shopify_financial_status: 'paid',
+    };
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'cs_edit_plans') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: existingPlan, error: null }),
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: updatedPlan, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'cs_edit_plan_items') {
+        return {
+          delete: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockResolvedValue({ data: insertedItems, error: null }),
+          }),
+        };
+      }
+      if (table === 'orders') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: orderRow, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'order_items') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await POST(
+      makeRequest(VALID_ORDER_UUID, {
         items: [
           { op: 'address_shipping', payload: { street: '1 New St', city: 'BGC', country: 'PH' } },
         ],
-      },
-      'cs-rep-cookie',
+      }),
+      makeCtx(VALID_ORDER_UUID),
     );
+
     expect(res.status).toBe(200);
     const { plan } = await res.json();
-    // Should be the same plan (same id), but with 1 item (not 2)
+    expect(plan.id).toBe(7); // same plan id (existing draft, not new)
     expect(plan.items).toHaveLength(1);
     expect(plan.items[0].op).toBe('address_shipping');
     expect(plan.price_delta).toBe(0);
     expect(plan.payment_implication).toBe('no_change');
+  });
+
+  it('returns 409 when concurrent draft insert hits unique violation (23505)', async () => {
+    // Race path: select returns no existing draft, but INSERT trips the
+    // partial unique index (cs_edit_plans (order_id) WHERE status='draft')
+    // because another rep just composed one. PG returns 23505 → 409.
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'cs_edit_plans') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: null,
+                error: { code: '23505', message: 'unique violation' },
+              }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await POST(
+      makeRequest(VALID_ORDER_UUID, { items: [] }),
+      makeCtx(VALID_ORDER_UUID),
+    );
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.error).toMatch(/another rep/i);
+  });
+
+  it('returns 404 when order does not exist', async () => {
+    const newPlanRow = {
+      id: 1,
+      status: 'draft',
+      chosen_path: null,
+      applied_at: null,
+      error_message: null,
+      created_at: '2026-05-03T00:00:00Z',
+      updated_at: '2026-05-03T00:00:00Z',
+    };
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'cs_edit_plans') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: newPlanRow, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === 'cs_edit_plan_items') {
+        // No items inserted (empty items array).
+        return {};
+      }
+      if (table === 'orders') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await POST(
+      makeRequest(VALID_ORDER_UUID, { items: [] }),
+      makeCtx(VALID_ORDER_UUID),
+    );
+    expect(res.status).toBe(404);
+    const body = await res.json();
+    expect(body.error).toMatch(/order not found/i);
   });
 });
