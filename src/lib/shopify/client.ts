@@ -226,6 +226,43 @@ export async function fetchShopifyOrderById(
   }
 }
 
+// ─── Shipping address re-poll (for Phase B-Lite stuck-plan recovery) ────────
+//
+// Fetches just the current shipping address on a Shopify order. Used by the
+// /full route's stuck-plan logic when a plan stalled in 'applying' with a
+// calc_order_id but no commit_id — we need to know whether the Shopify side
+// actually committed the address change or not.
+//
+// Returns null on any error (network, 404, parse). The caller treats null
+// as "cannot disambiguate" and falls through to the existing revert path.
+
+export interface ShopifyShippingAddress {
+  first_name: string | null;
+  last_name: string | null;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  province: string | null;
+  province_code: string | null;
+  country: string | null;
+  country_code: string | null;
+  zip: string | null;
+  phone: string | null;
+}
+
+export async function fetchShopifyOrderShippingAddress(
+  shopifyOrderId: string,
+): Promise<ShopifyShippingAddress | null> {
+  try {
+    const json = await shopifyGet<{ order: { shipping_address: ShopifyShippingAddress | null } }>(
+      `/orders/${shopifyOrderId}.json?fields=shipping_address`,
+    );
+    return json.order?.shipping_address ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Bulk fetch with pagination (for sync) ───────────────────────────────────
 
 /**

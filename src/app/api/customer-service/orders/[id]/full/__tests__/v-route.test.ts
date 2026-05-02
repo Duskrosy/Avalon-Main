@@ -36,6 +36,15 @@ vi.mock("@/lib/supabase/admin", () => ({
   })),
 }));
 
+// Phase B-Lite Lane D — mock the Shopify shipping-address fetch so stuck-plan
+// recovery tests can drive the match/no-match branches without real HTTP.
+let mockShipAddrFetch: ReturnType<typeof vi.fn>;
+vi.mock("@/lib/shopify/client", () => ({
+  fetchShopifyOrderShippingAddress: vi.fn(async (...args: unknown[]) =>
+    mockShipAddrFetch(...args),
+  ),
+}));
+
 vi.mock("@/lib/permissions", () => ({
   getCurrentUser: vi.fn(async () => mockGetUser()),
 }));
@@ -107,9 +116,14 @@ function buildStuckCheckChain(stuckPlan: unknown | null) {
 
 /** Supabase chain for the stuck-plan UPDATE (cs_edit_plans second call). */
 function buildRevertChain() {
+  // Note: Phase B-Lite Lane D added a CAS guard so the UPDATE chain is
+  // .update().eq().eq() — second eq is the status='applying' guard.
   return {
     update: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+    eq: vi.fn().mockReturnThis(),
+    // Terminal: chain is awaited directly after the second eq().
+    then: (resolve: (v: unknown) => unknown) =>
+      Promise.resolve({ data: null, error: null }).then(resolve),
   };
 }
 
@@ -464,5 +478,348 @@ describe("GET /api/customer-service/orders/[id]/full — auth", () => {
     const res = await GET(makeRequest("not-a-uuid"), makeCtx("not-a-uuid"));
     expect(res.status).toBe(400);
     expect(mockFrom).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Phase B-Lite Lane D — stuck-plan Shopify re-poll recovery ───────────────
+
+import { __shippingAddressMatchesForTests } from "../route";
+
+describe("shippingAddressMatches — comparison rules", () => {
+  const proposed = {
+    street: "1 New St",
+    city: "BGC",
+    country: "PH",
+    zip: "1634",
+  };
+
+  it("matches when required fields agree (case + whitespace insensitive)", () => {
+    expect(
+      __shippingAddressMatchesForTests(
+        {
+          first_name: null,
+          last_name: null,
+          address1: "  1 New St  ",
+          address2: null,
+          city: "BGC",
+          province: null,
+          province_code: null,
+          country: "Philippines",
+          country_code: "PH",
+          zip: "1634",
+          phone: null,
+        },
+        proposed,
+      ),
+    ).toBe(true);
+  });
+
+  it("does not match when street differs", () => {
+    expect(
+      __shippingAddressMatchesForTests(
+        {
+          first_name: null,
+          last_name: null,
+          address1: "2 Old St",
+          address2: null,
+          city: "BGC",
+          province: null,
+          province_code: null,
+          country: "PH",
+          country_code: "PH",
+          zip: "1634",
+          phone: null,
+        },
+        proposed,
+      ),
+    ).toBe(false);
+  });
+
+  it("does not match when zip differs and proposed has zip", () => {
+    expect(
+      __shippingAddressMatchesForTests(
+        {
+          first_name: null,
+          last_name: null,
+          address1: "1 New St",
+          address2: null,
+          city: "BGC",
+          province: null,
+          province_code: null,
+          country: "PH",
+          country_code: "PH",
+          zip: "9999",
+          phone: null,
+        },
+        proposed,
+      ),
+    ).toBe(false);
+  });
+
+  it("ignores zip mismatch when proposed has no zip", () => {
+    expect(
+      __shippingAddressMatchesForTests(
+        {
+          first_name: null,
+          last_name: null,
+          address1: "1 New St",
+          address2: null,
+          city: "BGC",
+          province: null,
+          province_code: null,
+          country: "PH",
+          country_code: "PH",
+          zip: "9999",
+          phone: null,
+        },
+        { street: "1 New St", city: "BGC", country: "PH" },
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("GET /full — stuck plan recovery (Lane D Shopify re-poll)", () => {
+  const STUCK_PLAN_BASE = {
+    id: 7,
+    shopify_calculated_order_id: "gid://shopify/CalculatedOrder/100",
+    shopify_commit_id: null,
+    items: [
+      {
+        op: "address_shipping",
+        payload: {
+          street: "1 New St",
+          city: "BGC",
+          country: "PH",
+          zip: "1634",
+        },
+      },
+    ],
+  };
+
+  function buildOrderShopifyIdChain(shopifyOrderId: string | null) {
+    return {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi
+        .fn()
+        .mockResolvedValue({ data: { shopify_order_id: shopifyOrderId }, error: null }),
+    };
+  }
+
+  /** Chain for the post-recovery UPDATE — flips to 'applied'. */
+  function buildAppliedFlipChain() {
+    return {
+      update: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      then: (resolve: (v: unknown) => unknown) =>
+        Promise.resolve({ data: null, error: null }).then(resolve),
+    };
+  }
+
+  beforeEach(() => {
+    mockGetUser = vi.fn().mockResolvedValue(VALID_USER);
+    mockShipAddrFetch = vi.fn();
+  });
+
+  it("flips stuck plan to applied when Shopify address matches proposed", async () => {
+    mockShipAddrFetch = vi.fn().mockResolvedValue({
+      first_name: null,
+      last_name: null,
+      address1: "1 New St",
+      address2: null,
+      city: "BGC",
+      province: null,
+      province_code: null,
+      country: "Philippines",
+      country_code: "PH",
+      zip: "1634",
+      phone: null,
+    });
+
+    let editPlanCalls = 0;
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        editPlanCalls++;
+        if (editPlanCalls === 1) return buildStuckCheckChain(STUCK_PLAN_BASE);
+        // Second call is the applied-flip UPDATE.
+        return buildAppliedFlipChain();
+      }
+      if (table === "orders") {
+        // First time: order shopify_order_id lookup (during disambiguate).
+        // Second time: main order fetch.
+        if (editPlanCalls === 1) return buildOrderShopifyIdChain("5566778899");
+        return buildOrdersChain({
+          id: VALID_UUID,
+          intake_lane: "sales",
+          status: "confirmed",
+          final_total_amount: 500,
+          mode_of_payment: "GCash",
+          payment_receipt_path: null,
+          payment_reference_number: null,
+          payment_transaction_at: null,
+          notes: null,
+          shopify_financial_status: null,
+          shopify_gateway: null,
+          shopify_card_last4: null,
+          shopify_transaction_id: null,
+          shopify_transaction_at: null,
+          customer: CUSTOMER,
+          items: [],
+          // After recovery flip to applied, the draft-filter in the route
+          // returns null (route only surfaces draft plans). The rep no
+          // longer sees a stuck applying plan — that's the user-visible
+          // effect of the recovery.
+          plan: [],
+        });
+      }
+      if (table === "cs_order_notes") return buildNotesChain([]);
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await GET(makeRequest(VALID_UUID), makeCtx(VALID_UUID));
+    expect(res.status).toBe(200);
+    expect(mockShipAddrFetch).toHaveBeenCalledWith("5566778899");
+    const body = await res.json();
+    // Recovery succeeded: plan flipped to applied, no longer in draft, so
+    // the drawer payload shows null (the route filters for draft only).
+    expect(body.plan).toBeNull();
+    // Verify the recovery path called both cs_edit_plans (stuck check + applied-flip).
+    expect(editPlanCalls).toBe(2);
+  });
+
+  it("reverts stuck plan to draft when Shopify address does NOT match (regression of existing path)", async () => {
+    mockShipAddrFetch = vi.fn().mockResolvedValue({
+      first_name: null,
+      last_name: null,
+      address1: "completely different street",
+      address2: null,
+      city: "BGC",
+      province: null,
+      province_code: null,
+      country: "PH",
+      country_code: "PH",
+      zip: "1634",
+      phone: null,
+    });
+
+    let editPlanCalls = 0;
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        editPlanCalls++;
+        if (editPlanCalls === 1) return buildStuckCheckChain(STUCK_PLAN_BASE);
+        return buildRevertChain(); // existing revert path
+      }
+      if (table === "orders") {
+        if (editPlanCalls === 1) return buildOrderShopifyIdChain("5566778899");
+        return buildOrdersChain({
+          id: VALID_UUID,
+          intake_lane: "sales",
+          status: "confirmed",
+          final_total_amount: 500,
+          mode_of_payment: "GCash",
+          payment_receipt_path: null,
+          payment_reference_number: null,
+          payment_transaction_at: null,
+          notes: null,
+          shopify_financial_status: null,
+          shopify_gateway: null,
+          shopify_card_last4: null,
+          shopify_transaction_id: null,
+          shopify_transaction_at: null,
+          customer: CUSTOMER,
+          items: [],
+          plan: [{ id: 7, status: "draft", chosen_path: null, error_message: "Auto-reverted: stuck in applying >60s", created_at: "2026-05-03T00:00:00Z", updated_at: "2026-05-03T00:00:01Z", items: [] }],
+        });
+      }
+      if (table === "cs_order_notes") return buildNotesChain([]);
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await GET(makeRequest(VALID_UUID), makeCtx(VALID_UUID));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.plan?.status).toBe("draft");
+  });
+
+  it("reverts stuck plan to draft when Shopify GET fails (defense-in-depth)", async () => {
+    mockShipAddrFetch = vi.fn().mockResolvedValue(null); // GET error → null
+
+    let editPlanCalls = 0;
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        editPlanCalls++;
+        if (editPlanCalls === 1) return buildStuckCheckChain(STUCK_PLAN_BASE);
+        return buildRevertChain();
+      }
+      if (table === "orders") {
+        if (editPlanCalls === 1) return buildOrderShopifyIdChain("5566778899");
+        return buildOrdersChain({
+          id: VALID_UUID,
+          intake_lane: "sales",
+          status: "confirmed",
+          final_total_amount: 500,
+          mode_of_payment: "GCash",
+          payment_receipt_path: null,
+          payment_reference_number: null,
+          payment_transaction_at: null,
+          notes: null,
+          shopify_financial_status: null,
+          shopify_gateway: null,
+          shopify_card_last4: null,
+          shopify_transaction_id: null,
+          shopify_transaction_at: null,
+          customer: CUSTOMER,
+          items: [],
+          plan: null,
+        });
+      }
+      if (table === "cs_order_notes") return buildNotesChain([]);
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await GET(makeRequest(VALID_UUID), makeCtx(VALID_UUID));
+    expect(res.status).toBe(200);
+    expect(mockShipAddrFetch).toHaveBeenCalled();
+  });
+
+  it("skips Shopify GET when stuck plan has no calc_order_id (Begin never succeeded)", async () => {
+    const stuckPlanNoBegin = { ...STUCK_PLAN_BASE, shopify_calculated_order_id: null };
+
+    let editPlanCalls = 0;
+    mockFrom = vi.fn((table: string) => {
+      if (table === "cs_edit_plans") {
+        editPlanCalls++;
+        if (editPlanCalls === 1) return buildStuckCheckChain(stuckPlanNoBegin);
+        return buildRevertChain();
+      }
+      if (table === "orders") {
+        // No order shopify_order_id lookup happens — disambiguate exits early.
+        return buildOrdersChain({
+          id: VALID_UUID,
+          intake_lane: "sales",
+          status: "confirmed",
+          final_total_amount: 500,
+          mode_of_payment: "GCash",
+          payment_receipt_path: null,
+          payment_reference_number: null,
+          payment_transaction_at: null,
+          notes: null,
+          shopify_financial_status: null,
+          shopify_gateway: null,
+          shopify_card_last4: null,
+          shopify_transaction_id: null,
+          shopify_transaction_at: null,
+          customer: CUSTOMER,
+          items: [],
+          plan: null,
+        });
+      }
+      if (table === "cs_order_notes") return buildNotesChain([]);
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const res = await GET(makeRequest(VALID_UUID), makeCtx(VALID_UUID));
+    expect(res.status).toBe(200);
+    expect(mockShipAddrFetch).not.toHaveBeenCalled();
   });
 });

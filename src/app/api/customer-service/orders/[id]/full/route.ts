@@ -18,6 +18,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/permissions";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  fetchShopifyOrderShippingAddress,
+  type ShopifyShippingAddress,
+} from "@/lib/shopify/client";
+import type { AddressPayload } from "@/lib/cs/edit-plan/op-shapes";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -237,13 +242,38 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = admin as any;
 
-  // 3. Stuck plan auto-revert (eng review [2.1A]).
-  //    If a plan is stuck in 'applying' for >60 seconds, revert it to 'draft'
-  //    before returning the payload so the rep doesn't see a permanently-locked plan.
+  // 3. Stuck plan auto-recovery (eng review [2.1A] + Phase B-Lite Lane D).
+  //
+  // A plan stuck in 'applying' for >60s is either:
+  //   (a) Begin/UpdateShipping never reached Commit → safely revert to draft
+  //   (b) Commit fired but response was lost (network drop, function crash)
+  //       → Shopify side committed; flipping to 'draft' loses audit trail
+  //
+  // Disambiguate (b) from (a) by re-polling Shopify's current shipping
+  // address and comparing it to the proposed payload:
+  //   match    → flip to 'applied' + synthetic shopify_commit_id
+  //   no-match → existing revert path (a)
+  //   GET err  → existing revert path (defense-in-depth — can't lose more
+  //              than the existing behaviour even if Shopify is down)
+  //
+  // Shape:
+  //   stuck plan detected (applying >60s)
+  //      │
+  //      ▼
+  //   has shopify_calculated_order_id AND no shopify_commit_id?
+  //      ├── no   → revert to draft (existing behavior)
+  //      └── yes  → fetch order from Shopify by shopify_order_id
+  //                    │
+  //                    ├── error/null    → revert to draft
+  //                    └── address match → flip to 'applied' + synthetic id
+  //                    └── no match      → revert to draft
   const sixtySecondsAgo = new Date(Date.now() - 60_000).toISOString();
   const { data: stuckPlan, error: stuckErr } = await db
     .from("cs_edit_plans")
-    .select("id")
+    .select(
+      "id, shopify_calculated_order_id, shopify_commit_id, " +
+        "items:cs_edit_plan_items(op, payload)",
+    )
     .eq("order_id", id)
     .eq("status", "applying")
     .lt("applying_started_at", sixtySecondsAgo)
@@ -256,14 +286,35 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
   }
 
   if (stuckPlan) {
-    // Idempotent: if two concurrent reads both revert, both writes set
-    // status='draft' — last write wins, no correctness issue.
-    const { error: revertErr } = await db
-      .from("cs_edit_plans")
-      .update({ status: "draft", error_message: "Auto-reverted: stuck in applying >60s" })
-      .eq("id", stuckPlan.id);
-    if (revertErr) {
-      console.error("[full-drawer] stuck-plan revert failed", { code: revertErr.code, message: revertErr.message, hint: revertErr.hint, details: revertErr.details });
+    const recovery = await disambiguateStuckPlan(db, id, stuckPlan);
+
+    if (recovery === "applied") {
+      // Shopify side has the proposed address — flip to applied with a
+      // synthetic commit_id so audit views can identify recovered plans
+      // distinctly from cleanly-committed ones.
+      const { error: appliedErr } = await db
+        .from("cs_edit_plans")
+        .update({
+          status: "applied",
+          shopify_commit_id: `recovered_${id}`,
+          applied_at: new Date().toISOString(),
+        })
+        .eq("id", stuckPlan.id)
+        .eq("status", "applying"); // CAS to avoid stomping a concurrent revert
+      if (appliedErr) {
+        console.error("[full-drawer] stuck-plan recovery flip-to-applied failed", { code: appliedErr.code, message: appliedErr.message, hint: appliedErr.hint, details: appliedErr.details });
+      }
+    } else {
+      // Idempotent: if two concurrent reads both revert, both writes set
+      // status='draft' — last write wins, no correctness issue.
+      const { error: revertErr } = await db
+        .from("cs_edit_plans")
+        .update({ status: "draft", error_message: "Auto-reverted: stuck in applying >60s" })
+        .eq("id", stuckPlan.id)
+        .eq("status", "applying");
+      if (revertErr) {
+        console.error("[full-drawer] stuck-plan revert failed", { code: revertErr.code, message: revertErr.message, hint: revertErr.hint, details: revertErr.details });
+      }
     }
   }
 
@@ -347,3 +398,117 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
 
   return NextResponse.json(payload);
 }
+
+// ─── Stuck-plan disambiguation (Phase B-Lite Lane D) ─────────────────────────
+
+interface StuckPlanRow {
+  id: number;
+  shopify_calculated_order_id: string | null;
+  shopify_commit_id: string | null;
+  items?: Array<{ op: string; payload: unknown }>;
+}
+
+/**
+ * Decide whether a stuck-in-applying plan should be flipped to 'applied' or
+ * reverted to 'draft' by re-polling Shopify.
+ *
+ * Returns "applied" only if we have positive evidence that Shopify already
+ * committed the proposed address. Any other case returns "revert" — failures
+ * (Shopify down, parse error, missing fields) bias toward the safer revert.
+ */
+async function disambiguateStuckPlan(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any,
+  orderId: string,
+  plan: StuckPlanRow,
+): Promise<"applied" | "revert"> {
+  // (a) If commit_id is already populated, the plan should not have been
+  // 'applying' at all — flag and revert defensively. Should never happen.
+  if (plan.shopify_commit_id) {
+    console.warn("[full-drawer] stuck plan had commit_id but was still applying", {
+      plan_id: plan.id,
+      commit_id: plan.shopify_commit_id,
+    });
+    return "revert";
+  }
+
+  // (b) No calc_order_id means Begin never succeeded. Safe to revert.
+  if (!plan.shopify_calculated_order_id) {
+    return "revert";
+  }
+
+  // (c) No address_shipping op in the items → nothing to compare. Revert.
+  const addressOp = plan.items?.find((i) => i.op === "address_shipping");
+  if (!addressOp) {
+    return "revert";
+  }
+  const proposed = addressOp.payload as AddressPayload;
+
+  // (d) Look up the order's shopify_order_id. We need this for the GET.
+  const { data: orderRow } = await db
+    .from("orders")
+    .select("shopify_order_id")
+    .eq("id", orderId)
+    .maybeSingle();
+
+  if (!orderRow?.shopify_order_id) {
+    return "revert";
+  }
+
+  // (e) Re-poll Shopify. Network/parse errors → revert (defense-in-depth).
+  let shopifyAddress: ShopifyShippingAddress | null;
+  try {
+    shopifyAddress = await fetchShopifyOrderShippingAddress(
+      String(orderRow.shopify_order_id),
+    );
+  } catch {
+    return "revert";
+  }
+
+  if (!shopifyAddress) {
+    return "revert";
+  }
+
+  // (f) Compare the normalized fields. Match all required fields strictly
+  // — false positives flip the audit trail incorrectly.
+  return shippingAddressMatches(shopifyAddress, proposed) ? "applied" : "revert";
+}
+
+/**
+ * Strict comparison of Shopify's current shipping address against the
+ * proposed payload. Required fields (street, city, country) must match
+ * normalized; optional fields (zip, phone) only block when both are present
+ * and differ.
+ */
+function shippingAddressMatches(
+  shopify: ShopifyShippingAddress,
+  proposed: AddressPayload,
+): boolean {
+  const norm = (s: string | null | undefined): string =>
+    (s ?? "").trim().toLowerCase();
+
+  // Required fields — strict match.
+  if (norm(shopify.address1) !== norm(proposed.street)) return false;
+  if (norm(shopify.city) !== norm(proposed.city)) return false;
+  // Country: Shopify exposes both ISO code and full name; match either.
+  const shopifyCountry =
+    norm(shopify.country_code) || norm(shopify.country);
+  if (shopifyCountry !== norm(proposed.country)) return false;
+
+  // Optional fields — block only when proposed has a value AND Shopify
+  // disagrees. If proposed omits the field, don't compare.
+  if (proposed.zip !== undefined && proposed.zip !== "" &&
+      norm(shopify.zip) !== norm(proposed.zip)) {
+    return false;
+  }
+  if (proposed.phone !== undefined && proposed.phone !== "" &&
+      norm(shopify.phone) !== norm(proposed.phone)) {
+    return false;
+  }
+
+  return true;
+}
+
+// Exported for tests so the comparison rules are unit-testable without
+// running the full route handler.
+export { shippingAddressMatches as __shippingAddressMatchesForTests };
