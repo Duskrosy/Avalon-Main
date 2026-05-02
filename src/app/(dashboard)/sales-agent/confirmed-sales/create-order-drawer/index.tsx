@@ -97,6 +97,20 @@ export function CreateOrderDrawer({
     onClose();
   };
 
+  // For receipt upload: materialize an orderId on demand without closing the
+  // drawer. ReceiptBlock calls this when the user attaches a file before
+  // they've manually saved a draft.
+  const onEnsureOrderId = async (): Promise<string | null> => {
+    if (drawer.state.orderId) return drawer.state.orderId;
+    setError(null);
+    const result = await drawer.saveDraft();
+    if (!result.ok) {
+      setError(result.error);
+      return null;
+    }
+    return result.orderId;
+  };
+
   const onConfirm = async () => {
     setError(null);
     const result = await drawer.confirm();
@@ -199,6 +213,7 @@ export function CreateOrderDrawer({
           {drawer.state.step === 4 && (
             <StepHandoff
               orderId={drawer.state.orderId}
+              onEnsureOrderId={onEnsureOrderId}
               handoff={drawer.state.handoff}
               onSetHandoff={drawer.setHandoff}
               customer={drawer.state.customer}

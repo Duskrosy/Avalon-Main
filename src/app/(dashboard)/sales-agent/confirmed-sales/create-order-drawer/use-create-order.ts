@@ -307,10 +307,19 @@ export function useCreateOrder() {
             line_total_amount: (it.line_total_amount as number) ?? 0,
           }),
         );
-        const voucher: DrawerVoucher | null = order.voucher_code
+        // voucher_discount_amount in the DB is the COMBINED total of the
+        // manual voucher + any auto-discount (denormalized for downstream
+        // views). When restoring, peel the auto-discount portion back out so
+        // we don't double-count on the next save. Auto-only discounts
+        // (voucher_code starts with "Auto: ") aren't loaded as a manual
+        // voucher at all — autoDiscountPreview handles them below.
+        const autoDiscountTotal =
+          (order.automatic_discount_snapshot as { applied_total?: number } | null)?.applied_total ?? 0;
+        const isAutoOnly = (order.voucher_code as string | null)?.startsWith("Auto: ") ?? false;
+        const voucher: DrawerVoucher | null = order.voucher_code && !isAutoOnly
           ? {
               code: order.voucher_code,
-              amount: order.voucher_discount_amount ?? 0,
+              amount: Math.max(0, (order.voucher_discount_amount ?? 0) - autoDiscountTotal),
               type: "fixed_amount",
             }
           : null;

@@ -14,6 +14,10 @@ import { OrderPreviewCard } from "./order-preview-card";
 
 type Props = {
   orderId: string | null;
+  /** Returns the orderId, materializing one (via saveDraft) if not yet saved.
+   *  Used by the receipt uploader so the user doesn't have to manually save
+   *  draft before attaching an image. */
+  onEnsureOrderId: () => Promise<string | null>;
   handoff: DrawerHandoff;
   onSetHandoff: (patch: Partial<DrawerHandoff>) => void;
   customer: CustomerLite | null;
@@ -40,6 +44,7 @@ const DELIVERY_OPTIONS_NON_COD = [
 
 export function StepHandoff({
   orderId,
+  onEnsureOrderId,
   handoff,
   onSetHandoff,
   customer,
@@ -141,6 +146,7 @@ export function StepHandoff({
           ) : (
             <ReceiptBlock
               orderId={orderId}
+              onEnsureOrderId={onEnsureOrderId}
               receiptPath={handoff.payment_receipt_path}
               referenceNumber={handoff.payment_reference_number ?? ""}
               transactionAt={handoff.payment_transaction_at ?? toLocalDatetimeInputValue(new Date())}
@@ -209,6 +215,7 @@ export function StepHandoff({
 
 function ReceiptBlock({
   orderId,
+  onEnsureOrderId,
   receiptPath,
   referenceNumber,
   transactionAt,
@@ -218,6 +225,7 @@ function ReceiptBlock({
   onChangeTxnAt,
 }: {
   orderId: string | null;
+  onEnsureOrderId: () => Promise<string | null>;
   receiptPath: string | null;
   referenceNumber: string;
   transactionAt: string;
@@ -227,6 +235,9 @@ function ReceiptBlock({
   onChangeTxnAt: (at: string) => void;
 }) {
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+  // Local blob URL used for instant preview right after upload, before the
+  // server has the path persisted. Cleaned up on next upload / unmount.
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -242,15 +253,33 @@ function ReceiptBlock({
       .catch(() => setThumbUrl(null));
   }, [receiptPath, orderId]);
 
+  // Revoke any stale local blob URL when the component unmounts or the URL changes.
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    };
+  }, [localPreviewUrl]);
+
   const upload = useCallback(async (file: File) => {
-    if (!orderId) {
-      setUploadError("Save draft first (click 'Save draft' before uploading)");
-      return;
-    }
     setUploadError(null);
     setUploading(true);
+    // Show preview immediately from the local file — independent of server
+    // round-trip or DB persistence. Replaces the prior "Save draft first"
+    // gate and the broken signed-URL preview while unsaved.
+    const localUrl = URL.createObjectURL(file);
+    setLocalPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return localUrl;
+    });
     try {
-      const sigRes = await fetch(`/api/sales/orders/${orderId}/receipt-upload-url`, {
+      // Materialize an orderId on demand so the user doesn't have to manually
+      // click "Save draft" before attaching a receipt.
+      const effectiveOrderId = orderId ?? (await onEnsureOrderId());
+      if (!effectiveOrderId) {
+        setUploadError("Couldn't auto-save draft. Fill required fields first.");
+        return;
+      }
+      const sigRes = await fetch(`/api/sales/orders/${effectiveOrderId}/receipt-upload-url`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ filename: file.name }),
@@ -274,7 +303,7 @@ function ReceiptBlock({
     } finally {
       setUploading(false);
     }
-  }, [orderId, onChangeReceipt]);
+  }, [orderId, onEnsureOrderId, onChangeReceipt]);
 
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
@@ -305,9 +334,9 @@ function ReceiptBlock({
               onClick={() => setModalOpen(true)}
               className="w-24 h-16 bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border-primary)] overflow-hidden flex-shrink-0"
             >
-              {thumbUrl ? (
+              {(localPreviewUrl ?? thumbUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={thumbUrl} alt="receipt" className="w-full h-full object-cover" />
+                <img src={localPreviewUrl ?? thumbUrl ?? ""} alt="receipt" className="w-full h-full object-cover" />
               ) : (
                 <span className="text-[11px] text-[var(--color-text-secondary)]">Loading…</span>
               )}
@@ -394,7 +423,7 @@ function ReceiptBlock({
 
       <ReceiptModal
         open={modalOpen}
-        imageUrl={thumbUrl}
+        imageUrl={localPreviewUrl ?? thumbUrl}
         referenceNumber={referenceNumber}
         transactionAt={transactionAt}
         onClose={() => setModalOpen(false)}
