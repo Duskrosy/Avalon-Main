@@ -11,6 +11,7 @@ function isImagePath(path: string): boolean {
 
 type SalesPayment = {
   payment_receipt_path: string | null;
+  cs_payment_receipt_path?: string | null;
   payment_reference_number: string | null;
   payment_transaction_at: string | null;
   notes: string | null;
@@ -23,7 +24,16 @@ type Props = {
   mop?: string | null;
   /** orders.payment_other_label — used when mop === "Other" */
   paymentOtherLabel?: string | null;
+  /** Disable the CS receipt upload (e.g., when ticket is claimed by another rep). */
+  readOnly?: boolean;
 };
+
+// Methods where payment proof is a screenshot rather than cash-on-delivery.
+// Mirrors the set defined in step-handoff (sales drawer).
+const DIGITAL_MOPS = new Set(["GCash", "Credit Card", "Bank Transfer", "QR PH"]);
+function isDigitalMop(mop: string | null | undefined): boolean {
+  return !!mop && DIGITAL_MOPS.has(mop);
+}
 
 // ── Inline receipt image ──────────────────────────────────────────────────────
 
@@ -104,9 +114,150 @@ function ReceiptLink({ orderId }: { orderId: string }) {
   );
 }
 
+// ── CS-uploaded receipt block ────────────────────────────────────────────────
+
+function CsReceiptBlock({
+  orderId,
+  initialPath,
+  readOnly,
+}: {
+  orderId: string;
+  initialPath: string | null;
+  readOnly: boolean;
+}) {
+  const [csPath, setCsPath] = useState<string | null>(initialPath);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch signed display URL whenever csPath changes (and we're not showing a
+  // local preview, which takes priority right after upload).
+  useEffect(() => {
+    if (!csPath) {
+      setSignedUrl(null);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/customer-service/orders/${orderId}/cs-receipt`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled && j?.url) setSignedUrl(j.url); })
+      .catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, [orderId, csPath]);
+
+  // Cleanup blob URLs.
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    };
+  }, [localPreviewUrl]);
+
+  async function handleUpload(file: File) {
+    if (readOnly) return;
+    setError(null);
+    setUploading(true);
+    const blobUrl = URL.createObjectURL(file);
+    setLocalPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return blobUrl;
+    });
+    try {
+      const sigRes = await fetch(`/api/customer-service/orders/${orderId}/cs-receipt`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ filename: file.name }),
+      });
+      const sig = await sigRes.json();
+      if (!sigRes.ok) {
+        setError(sig.error ?? "Upload URL failed");
+        return;
+      }
+      const put = await fetch(sig.signedUrl, { method: "PUT", body: file });
+      if (!put.ok) {
+        setError(`Upload to storage failed (${put.status})`);
+        return;
+      }
+      const commit = await fetch(`/api/customer-service/orders/${orderId}/cs-receipt`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: sig.path }),
+      });
+      if (!commit.ok) {
+        const j = await commit.json().catch(() => ({}));
+        setError(j.error ?? `Commit failed (${commit.status})`);
+        return;
+      }
+      setCsPath(sig.path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const previewUrl = localPreviewUrl ?? signedUrl;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-[var(--color-text-tertiary)] w-20 shrink-0">CS receipt</span>
+        {!csPath && !uploading && !readOnly && (
+          <label className="text-xs text-[var(--color-accent)] hover:opacity-80 cursor-pointer">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handleUpload(f);
+              }}
+            />
+            + Attach receipt
+          </label>
+        )}
+        {csPath && !readOnly && (
+          <label className="text-[11px] text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] cursor-pointer">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void handleUpload(f);
+              }}
+            />
+            Replace
+          </label>
+        )}
+        {uploading && (
+          <span className="text-[11px] text-[var(--color-text-tertiary)]">Uploading…</span>
+        )}
+        {readOnly && !csPath && (
+          <span className="text-[11px] text-[var(--color-text-tertiary)] italic">none</span>
+        )}
+      </div>
+      {error && (
+        <div className="ml-[88px] text-[11px] text-[var(--color-danger)]">{error}</div>
+      )}
+      {previewUrl && (
+        <div className="ml-[88px]">
+          <a href={previewUrl} target="_blank" rel="noreferrer">
+            <img
+              src={previewUrl}
+              alt="CS payment receipt"
+              className="max-h-64 rounded border border-[var(--color-border-secondary)] object-contain hover:opacity-90 transition-opacity"
+            />
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function SalesPaymentBlock({ payment, orderId, mop, paymentOtherLabel }: Props) {
+export function SalesPaymentBlock({ payment, orderId, mop, paymentOtherLabel, readOnly }: Props) {
   // MOP display label: if "Other", use paymentOtherLabel if available.
   const mopLabel = mop === "Other" && paymentOtherLabel ? paymentOtherLabel : (mop ?? null);
 
@@ -147,6 +298,18 @@ export function SalesPaymentBlock({ payment, orderId, mop, paymentOtherLabel }: 
             </div>
           )}
         </div>
+      )}
+
+      {/* CS-uploaded receipt — shown when MOP is digital OR there's already
+          a CS-uploaded one to display. CS reps can attach supplementary proof
+          (e.g., a corrected screenshot the customer sent over the phone)
+          without overwriting the original sales-uploaded one. */}
+      {(isDigitalMop(mop) || payment.cs_payment_receipt_path) && (
+        <CsReceiptBlock
+          orderId={orderId}
+          initialPath={payment.cs_payment_receipt_path ?? null}
+          readOnly={!!readOnly}
+        />
       )}
 
       {payment.notes && (

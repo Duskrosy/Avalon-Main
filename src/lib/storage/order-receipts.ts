@@ -34,3 +34,26 @@ export async function signedReceiptUploadUrl(
   if (error || !data) return null;
   return { path, signedUrl: data.signedUrl, token: data.token };
 }
+
+// ── CS-uploaded receipt variant ─────────────────────────────────────────────
+// Same bucket, distinct path prefix so the two attachments coexist on one order.
+
+export function buildCsReceiptPath(orderId: string, ext: string): string {
+  if (!UUID_RE.test(orderId)) {
+    throw new Error("buildCsReceiptPath: orderId must be a UUID");
+  }
+  const ts = Date.now();
+  const safeExt = ext.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 6) || "bin";
+  return `orders/${orderId}/cs-receipt-${ts}.${safeExt}`;
+}
+
+export async function signedCsReceiptUploadUrl(
+  orderId: string,
+  ext: string,
+): Promise<SignedUploadResult | null> {
+  const admin = createAdminClient();
+  const path = buildCsReceiptPath(orderId, ext);
+  const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path);
+  if (error || !data) return null;
+  return { path, signedUrl: data.signedUrl, token: data.token };
+}

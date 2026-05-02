@@ -215,6 +215,7 @@ function PaymentBlock({
   }
   return (
     <SalesPaymentBlock
+      readOnly={false}
       payment={payment as Parameters<typeof SalesPaymentBlock>[0]["payment"]}
       orderId={orderId}
       mop={mop}

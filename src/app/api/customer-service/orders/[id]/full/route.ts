@@ -25,6 +25,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 type SalesPayment = {
   payment_receipt_path: string | null;
+  cs_payment_receipt_path: string | null;
   payment_reference_number: string | null;
   payment_transaction_at: string | null;
   notes: string | null;
@@ -128,7 +129,7 @@ const ORDER_SELECT = [
   "id, intake_lane, avalon_order_number, shopify_order_name, shopify_order_number,",
   "status, final_total_amount, mode_of_payment, payment_other_label, voucher_code,",
   "voucher_discount_amount, manual_discount_amount, manual_discount_reason, shipping_fee_amount,",
-  "payment_receipt_path, payment_reference_number, payment_transaction_at,",
+  "payment_receipt_path, cs_payment_receipt_path, payment_reference_number, payment_transaction_at,",
   "shopify_financial_status, shopify_fulfillment_status,",
   "shopify_gateway, shopify_card_last4, shopify_transaction_id, shopify_transaction_at,",
   "delivery_method, delivery_method_notes,",
@@ -148,6 +149,7 @@ function buildPaymentBlock(order: Record<string, any>): LanePayment {
   if (lane === "sales") {
     return {
       payment_receipt_path: order.payment_receipt_path ?? null,
+      cs_payment_receipt_path: order.cs_payment_receipt_path ?? null,
       payment_reference_number: order.payment_reference_number ?? null,
       payment_transaction_at: order.payment_transaction_at ?? null,
       notes: order.notes ?? null,
@@ -172,6 +174,7 @@ function buildPaymentBlock(order: Record<string, any>): LanePayment {
     if (order.shopify_financial_status === "pending") {
       return {
         payment_receipt_path: order.payment_receipt_path ?? null,
+        cs_payment_receipt_path: order.cs_payment_receipt_path ?? null,
         payment_reference_number: order.payment_reference_number ?? null,
         payment_transaction_at: order.payment_transaction_at ?? null,
         notes: order.notes ?? null,
@@ -192,8 +195,19 @@ function buildPaymentBlock(order: Record<string, any>): LanePayment {
     };
   }
 
-  // Unknown/null lane — default to conversion-style; safe because conversion
-  // fields are also nullable and the drawer handles them gracefully.
+  // Unknown/null lane (typically pre-Pass-2 orders that predate the migration
+  // 00101 backfill). Fall back to data-driven detection: if there's a rep-
+  // collected receipt path, treat as sales-style; otherwise use conversion
+  // shape. This recovers attachments on legacy orders.
+  if (order.payment_receipt_path || order.cs_payment_receipt_path) {
+    return {
+      payment_receipt_path: order.payment_receipt_path ?? null,
+      cs_payment_receipt_path: order.cs_payment_receipt_path ?? null,
+      payment_reference_number: order.payment_reference_number ?? null,
+      payment_transaction_at: order.payment_transaction_at ?? null,
+      notes: order.notes ?? null,
+    };
+  }
   return {
     shopify_card_last4: order.shopify_card_last4 ?? null,
     shopify_gateway: order.shopify_gateway ?? null,
