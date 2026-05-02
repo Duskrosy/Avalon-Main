@@ -32,24 +32,27 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (admin as any).from("orders").select(SELECT);
 
+  // NOTE: completion_status='complete' is the POST-delivery flag set by
+  // /api/sales/orders/[id]/complete (which also flips status='completed').
+  // CS triage happens BEFORE delivery, so confirmed orders awaiting CS
+  // have completion_status='incomplete'. Filtering on 'complete' here was
+  // a Pass 1 bug — it excluded every order that needed CS triage.
   switch (tab) {
     case "inbox":
       query = query
         .eq("status", "confirmed")
-        .eq("completion_status", "complete")
         .is("person_in_charge_label", null);
       break;
     case "in_progress":
       query = query
-        .eq("completion_status", "complete")
-        .not("person_in_charge_label", "is", null)
-        .not("status", "in", "(cancelled,completed)");
+        .eq("status", "confirmed")
+        .not("person_in_charge_label", "is", null);
       break;
     case "done":
       query = query.in("status", ["completed", "cancelled"]);
       break;
     case "all":
-      query = query.eq("completion_status", "complete");
+      query = query.in("status", ["confirmed", "completed", "cancelled"]);
       break;
   }
 

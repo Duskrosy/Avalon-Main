@@ -126,7 +126,11 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     .maybeSingle();
 
   if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  if (order.status !== "confirmed" || order.completion_status !== "complete") {
+  // CS triage happens between confirm (sales-side) and complete (post-delivery).
+  // Eligibility = order is confirmed and not yet finalized. completion_status
+  // stays 'incomplete' through CS triage — it only flips to 'complete' when the
+  // courier returns the COD parcel (separate /complete endpoint).
+  if (order.status !== "confirmed") {
     return NextResponse.json(
       { error: "Order is not in CS Inbox" },
       { status: 409 },
