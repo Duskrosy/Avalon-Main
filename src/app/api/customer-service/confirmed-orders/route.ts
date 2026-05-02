@@ -32,27 +32,32 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (admin as any).from("orders").select(SELECT);
 
-  // NOTE: completion_status='complete' is the POST-delivery flag set by
-  // /api/sales/orders/[id]/complete (which also flips status='completed').
-  // CS triage happens BEFORE delivery, so confirmed orders awaiting CS
-  // have completion_status='incomplete'. Filtering on 'complete' here was
-  // a Pass 1 bug — it excluded every order that needed CS triage.
+  // completion_status='complete' is the sales-agent's HANDOFF-TO-CS signal
+  // (set by /api/sales/orders/[id]/complete). CS only sees orders that have
+  // been handed off — orders the sales agent is still working on stay invisible.
+  // status='completed' is reserved for the post-delivery wrap-up step that
+  // happens AFTER CS triage + delivery.
   switch (tab) {
     case "inbox":
       query = query
         .eq("status", "confirmed")
+        .eq("completion_status", "complete")
         .is("person_in_charge_label", null);
       break;
     case "in_progress":
       query = query
         .eq("status", "confirmed")
+        .eq("completion_status", "complete")
         .not("person_in_charge_label", "is", null);
       break;
     case "done":
       query = query.in("status", ["completed", "cancelled"]);
       break;
     case "all":
-      query = query.in("status", ["confirmed", "completed", "cancelled"]);
+      // Show every order that has been handed off to CS at any point.
+      query = query.or(
+        "and(status.eq.confirmed,completion_status.eq.complete),status.in.(completed,cancelled)",
+      );
       break;
   }
 

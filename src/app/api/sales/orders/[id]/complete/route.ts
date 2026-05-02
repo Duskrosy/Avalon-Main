@@ -121,11 +121,15 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     shopifySync = { ok: false, action: "no-shopify-id" };
   }
 
+  // The "Complete" action is the sales-agent's handoff to CS, NOT the
+  // post-delivery finalization. Flip completion_status='complete' so the
+  // order appears in the CS Inbox, but leave status='confirmed' so it stays
+  // in the active CS pipeline. A separate post-delivery wrap-up flow will
+  // flip status to 'completed' once the order is fully done.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error } = await (admin as any)
     .from("orders")
     .update({
-      status: "completed",
       completion_status: "complete",
       completed_by_user_id: currentUser.id,
       completed_at: new Date().toISOString(),

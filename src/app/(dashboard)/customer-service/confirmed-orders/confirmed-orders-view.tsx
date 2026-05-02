@@ -24,6 +24,7 @@ type ConfirmedOrder = {
   cs_hold_reason: string | null;
   person_in_charge_label: string | null;
   status: string;
+  completion_status: "incomplete" | "complete";
   claimed_by_user_id: string | null;
   claimed_at: string | null;
   claimer: { id: string; full_name: string } | null;
@@ -164,9 +165,12 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
               const claimedByOther =
                 o.claimed_by_user_id !== null && o.claimed_by_user_id !== currentUserId;
               // Inbox state = the row is actually claimable. Outside the
-              // inbox tab, rows may be already routed/done/cancelled.
+              // inbox tab, rows may be already routed/done/cancelled. Requires
+              // completion_status='complete' (sales has handed off) and that
+              // CS hasn't triaged it yet (no person_in_charge_label).
               const inboxState =
                 o.status === "confirmed" &&
+                o.completion_status === "complete" &&
                 o.person_in_charge_label === null;
               return (
                 <tr
@@ -270,7 +274,9 @@ export function ConfirmedOrdersView({ currentUserId }: { currentUserId: string }
           const claimedByOther =
             o.claimed_by_user_id !== null && o.claimed_by_user_id !== currentUserId;
           const inboxState =
-            o.status === "confirmed" && o.person_in_charge_label === null;
+            o.status === "confirmed" &&
+            o.completion_status === "complete" &&
+            o.person_in_charge_label === null;
           return (
             <div
               key={o.id}
