@@ -25,6 +25,10 @@ type Props = {
   items: OrderItem[];
   finalTotal: number;
   voucher_code?: string | null;
+  voucherDiscountAmount?: number;
+  manualDiscountAmount?: number;
+  manualDiscountReason?: string | null;
+  shippingFeeAmount?: number;
   // Lift staged ops up to ticket-drawer for pending-changes tracking.
   onStagedOpsChange?: (ops: ItemStagedOp[]) => void;
   // Read-only when claimed by another agent.
@@ -134,7 +138,17 @@ function AddItemForm({ onStage, onCancel }: { onStage: (op: ItemStagedOp) => voi
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ItemsBlock({ items, finalTotal, voucher_code, onStagedOpsChange, readOnly }: Props) {
+export function ItemsBlock({
+  items,
+  finalTotal,
+  voucher_code,
+  voucherDiscountAmount = 0,
+  manualDiscountAmount = 0,
+  manualDiscountReason,
+  shippingFeeAmount = 0,
+  onStagedOpsChange,
+  readOnly,
+}: Props) {
   // Per-row edit state: item id → edited qty string
   const [editingQty, setEditingQty] = useState<Record<string, string>>({});
   // Track which items are staged for removal (for visual strikethrough)
@@ -327,6 +341,39 @@ export function ItemsBlock({ items, finalTotal, voucher_code, onStagedOpsChange,
           <span className="text-[var(--color-text-tertiary)]">Voucher applied:</span>
           <span className="font-mono font-medium px-1.5 py-0.5 rounded bg-[var(--color-success-light)] text-[var(--color-success)] border border-[var(--color-success-light)]">
             {voucher_code}
+          </span>
+          {voucherDiscountAmount > 0 && (
+            <span className="text-[var(--color-text-secondary)] tabular-nums">
+              −₱{voucherDiscountAmount.toFixed(2)}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Manual discount + reason */}
+      {manualDiscountAmount > 0 && (
+        <div className="text-xs space-y-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[var(--color-text-tertiary)]">Manual discount:</span>
+            <span className="text-[var(--color-text-secondary)] tabular-nums">
+              −₱{manualDiscountAmount.toFixed(2)}
+            </span>
+          </div>
+          {manualDiscountReason && (
+            <div className="pl-[5.25rem] text-[11px] italic text-[var(--color-text-secondary)]">
+              <span className="not-italic text-[var(--color-text-tertiary)]">Reason: </span>
+              {manualDiscountReason}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Shipping fee */}
+      {shippingFeeAmount > 0 && (
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-[var(--color-text-tertiary)]">Shipping fee:</span>
+          <span className="text-[var(--color-text-secondary)] tabular-nums">
+            +₱{shippingFeeAmount.toFixed(2)}
           </span>
         </div>
       )}

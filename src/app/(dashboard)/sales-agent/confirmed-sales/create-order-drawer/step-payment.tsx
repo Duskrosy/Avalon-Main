@@ -105,7 +105,6 @@ export function StepPayment({
   }, [applyAutoDiscounts, items, customer?.shopify_customer_id, onSetAutoDiscountPreview]);
 
   // ── Manual discount reason expand ────────────────────────────────
-  const [reasonExpanded, setReasonExpanded] = useState(!!manualDiscountReason);
 
   const totals = computeTotal({
     items,
@@ -256,19 +255,10 @@ export function StepPayment({
             className="w-full px-3 py-2 text-sm border border-[var(--color-border-primary)] rounded-md"
           />
           {manualDiscount > 0 && (
-            <button
-              type="button"
-              onClick={() => setReasonExpanded((v) => !v)}
-              className="mt-1 text-[11px] text-[var(--color-accent)]"
-            >
-              {reasonExpanded ? "▴ Hide reason" : "▾ See reason for discount"}
-            </button>
-          )}
-          {manualDiscount > 0 && reasonExpanded && (
             <textarea
               value={manualDiscountReason ?? ""}
               onChange={(e) => onSetManualDiscountReason(e.target.value || null)}
-              placeholder="Reason (visible to all downstream)…"
+              placeholder="Reason for discount (visible to all downstream)…"
               className="w-full mt-1 px-3 py-2 text-xs border border-[var(--color-border-primary)] rounded-md min-h-[60px]"
             />
           )}

@@ -118,6 +118,10 @@ type FullDrawerData = {
     mode_of_payment: string | null;
     payment_other_label: string | null;
     voucher_code: string | null;
+    voucher_discount_amount: number;
+    manual_discount_amount: number;
+    manual_discount_reason: string | null;
+    shipping_fee_amount: number;
   };
   customer: FullCustomer | null;
   items: FullOrderItem[];
@@ -399,6 +403,10 @@ function ItemsPaymentColumn({
           items={fullData.items}
           finalTotal={fullData.order.final_total_amount}
           voucher_code={fullData.order.voucher_code}
+          voucherDiscountAmount={fullData.order.voucher_discount_amount}
+          manualDiscountAmount={fullData.order.manual_discount_amount}
+          manualDiscountReason={fullData.order.manual_discount_reason}
+          shippingFeeAmount={fullData.order.shipping_fee_amount}
           onStagedOpsChange={onItemsOpsChange}
           readOnly={readOnly}
         />
