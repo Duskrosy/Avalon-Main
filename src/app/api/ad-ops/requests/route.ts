@@ -142,7 +142,11 @@ export async function PATCH(req: NextRequest) {
     patch.assignee_id = assignee_ids[0] ?? null;
   }
 
-  const { data, error } = await supabase
+  // Use admin client: RLS UPDATE on ad_requests is gated to ad-ops/creatives/marketing,
+  // but requesters are authorized by the route logic above. Without admin, requester
+  // edits hit 0 rows and .single() throws "Cannot coerce the result to a single JSON object".
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("ad_requests")
     .update(patch)
     .eq("id", id)
@@ -153,7 +157,6 @@ export async function PATCH(req: NextRequest) {
 
   // Sync junction table if assignee_ids was provided.
   if (assignee_ids !== undefined) {
-    const admin = createAdminClient();
     await admin.from("ad_request_assignees").delete().eq("ad_request_id", id);
     if (assignee_ids.length > 0) {
       await admin.from("ad_request_assignees").insert(

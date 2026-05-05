@@ -17,13 +17,19 @@ const ALLOWED_MIME = new Set([
   "text/csv",
 ]);
 
+// Departments that staff the ad-request queue and need attachment visibility on
+// every request (not just their own assignments) — they triage before assigning.
+const QUEUE_DEPT_SLUGS = new Set(["creatives", "ad-ops", "marketing"]);
+
 async function ticketAccess(
   admin: ReturnType<typeof createAdminClient>,
   requestId: string,
   userId: string,
   userIsOps: boolean,
+  userDeptSlug: string | null,
 ): Promise<boolean> {
   if (userIsOps) return true;
+  if (userDeptSlug && QUEUE_DEPT_SLUGS.has(userDeptSlug)) return true;
 
   const { data: request } = await admin
     .from("ad_requests")
@@ -54,7 +60,7 @@ export async function GET(
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const allowed = await ticketAccess(admin, id, currentUser.id, isOps(currentUser));
+  const allowed = await ticketAccess(admin, id, currentUser.id, isOps(currentUser), currentUser.department?.slug ?? null);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { data: rows, error } = await admin
@@ -88,7 +94,7 @@ export async function POST(
   if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const admin = createAdminClient();
-  const allowed = await ticketAccess(admin, id, currentUser.id, isOps(currentUser));
+  const allowed = await ticketAccess(admin, id, currentUser.id, isOps(currentUser), currentUser.department?.slug ?? null);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   let form: FormData;
@@ -173,7 +179,7 @@ export async function DELETE(
   if (!attachmentId) return NextResponse.json({ error: "Missing attachment_id" }, { status: 400 });
 
   const admin = createAdminClient();
-  const allowed = await ticketAccess(admin, id, currentUser.id, isOps(currentUser));
+  const allowed = await ticketAccess(admin, id, currentUser.id, isOps(currentUser), currentUser.department?.slug ?? null);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { data: row } = await admin
